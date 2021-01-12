@@ -30,28 +30,29 @@ import org.springframework.lang.Nullable;
  * @since 2.0
  */
 @SuppressWarnings("serial")
-public class AspectJMethodBeforeAdvice extends AbstractAspectJAdvice implements MethodBeforeAdvice, Serializable {
+public class AspectJMethodBeforeAdvice extends AbstractAspectJAdvice
+        implements MethodBeforeAdvice, Serializable {
 
-	public AspectJMethodBeforeAdvice(
-			Method aspectJBeforeAdviceMethod, AspectJExpressionPointcut pointcut, AspectInstanceFactory aif) {
+    public AspectJMethodBeforeAdvice(
+            Method aspectJBeforeAdviceMethod,
+            AspectJExpressionPointcut pointcut,
+            AspectInstanceFactory aif) {
 
-		super(aspectJBeforeAdviceMethod, pointcut, aif);
-	}
+        super(aspectJBeforeAdviceMethod, pointcut, aif);
+    }
 
+    @Override
+    public void before(Method method, Object[] args, @Nullable Object target) throws Throwable {
+        invokeAdviceMethod(getJoinPointMatch(), null, null);
+    }
 
-	@Override
-	public void before(Method method, Object[] args, @Nullable Object target) throws Throwable {
-		invokeAdviceMethod(getJoinPointMatch(), null, null);
-	}
+    @Override
+    public boolean isBeforeAdvice() {
+        return true;
+    }
 
-	@Override
-	public boolean isBeforeAdvice() {
-		return true;
-	}
-
-	@Override
-	public boolean isAfterAdvice() {
-		return false;
-	}
-
+    @Override
+    public boolean isAfterAdvice() {
+        return false;
+    }
 }

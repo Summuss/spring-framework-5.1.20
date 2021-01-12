@@ -28,15 +28,14 @@ import org.springframework.core.annotation.AliasFor;
 import org.springframework.web.context.WebApplicationContext;
 
 /**
- * {@code @RequestScope} is a specialization of {@link Scope @Scope} for a
- * component whose lifecycle is bound to the current web request.
+ * {@code @RequestScope} is a specialization of {@link Scope @Scope} for a component whose lifecycle
+ * is bound to the current web request.
  *
- * <p>Specifically, {@code @RequestScope} is a <em>composed annotation</em> that
- * acts as a shortcut for {@code @Scope("request")} with the default
- * {@link #proxyMode} set to {@link ScopedProxyMode#TARGET_CLASS TARGET_CLASS}.
+ * <p>Specifically, {@code @RequestScope} is a <em>composed annotation</em> that acts as a shortcut
+ * for {@code @Scope("request")} with the default {@link #proxyMode} set to {@link
+ * ScopedProxyMode#TARGET_CLASS TARGET_CLASS}.
  *
- * <p>{@code @RequestScope} may be used as a meta-annotation to create custom
- * composed annotations.
+ * <p>{@code @RequestScope} may be used as a meta-annotation to create custom composed annotations.
  *
  * @author Sam Brannen
  * @since 4.3
@@ -54,11 +53,11 @@ import org.springframework.web.context.WebApplicationContext;
 @Scope(WebApplicationContext.SCOPE_REQUEST)
 public @interface RequestScope {
 
-	/**
-	 * Alias for {@link Scope#proxyMode}.
-	 * <p>Defaults to {@link ScopedProxyMode#TARGET_CLASS}.
-	 */
-	@AliasFor(annotation = Scope.class)
-	ScopedProxyMode proxyMode() default ScopedProxyMode.TARGET_CLASS;
-
+    /**
+     * Alias for {@link Scope#proxyMode}.
+     *
+     * <p>Defaults to {@link ScopedProxyMode#TARGET_CLASS}.
+     */
+    @AliasFor(annotation = Scope.class)
+    ScopedProxyMode proxyMode() default ScopedProxyMode.TARGET_CLASS;
 }

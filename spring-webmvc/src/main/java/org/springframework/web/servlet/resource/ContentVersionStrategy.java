@@ -23,9 +23,8 @@ import org.springframework.util.DigestUtils;
 import org.springframework.util.FileCopyUtils;
 
 /**
- * A {@code VersionStrategy} that calculates an Hex MD5 hashes from the content
- * of the resource and appends it to the file name, e.g.
- * {@code "styles/main-e36d2e05253c6c7085a91522ce43a0b4.css"}.
+ * A {@code VersionStrategy} that calculates an Hex MD5 hashes from the content of the resource and
+ * appends it to the file name, e.g. {@code "styles/main-e36d2e05253c6c7085a91522ce43a0b4.css"}.
  *
  * @author Brian Clozel
  * @author Rossen Stoyanchev
@@ -34,19 +33,17 @@ import org.springframework.util.FileCopyUtils;
  */
 public class ContentVersionStrategy extends AbstractVersionStrategy {
 
-	public ContentVersionStrategy() {
-		super(new FileNameVersionPathStrategy());
-	}
+    public ContentVersionStrategy() {
+        super(new FileNameVersionPathStrategy());
+    }
 
-	@Override
-	public String getResourceVersion(Resource resource) {
-		try {
-			byte[] content = FileCopyUtils.copyToByteArray(resource.getInputStream());
-			return DigestUtils.md5DigestAsHex(content);
-		}
-		catch (IOException ex) {
-			throw new IllegalStateException("Failed to calculate hash for " + resource, ex);
-		}
-	}
-
+    @Override
+    public String getResourceVersion(Resource resource) {
+        try {
+            byte[] content = FileCopyUtils.copyToByteArray(resource.getInputStream());
+            return DigestUtils.md5DigestAsHex(content);
+        } catch (IOException ex) {
+            throw new IllegalStateException("Failed to calculate hash for " + resource, ex);
+        }
+    }
 }

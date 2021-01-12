@@ -26,20 +26,21 @@ import static org.junit.Assert.*;
 
 /**
  * Integration tests that verify support for {@link ApplicationContextInitializer
- * ApplicationContextInitializers} in conjunction with annotation-driven
- * configuration in the TestContext framework.
+ * ApplicationContextInitializers} in conjunction with annotation-driven configuration in the
+ * TestContext framework.
  *
  * @author Sam Brannen
  * @since 3.2
  */
 @ContextConfiguration(initializers = DevProfileInitializer.class, inheritInitializers = false)
-public class OverriddenInitializersAnnotationConfigTests extends SingleInitializerAnnotationConfigTests {
+public class OverriddenInitializersAnnotationConfigTests
+        extends SingleInitializerAnnotationConfigTests {
 
-	@Test
-	@Override
-	public void activeBeans() {
-		assertEquals("foo", foo);
-		assertNull(bar);
-		assertEquals("dev profile config", baz);
-	}
+    @Test
+    @Override
+    public void activeBeans() {
+        assertEquals("foo", foo);
+        assertNull(bar);
+        assertEquals("dev profile config", baz);
+    }
 }

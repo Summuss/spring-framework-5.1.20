@@ -35,39 +35,38 @@ import static org.junit.Assume.*;
  */
 public class ServiceLoaderTests {
 
-	@Test
-	public void testServiceLoaderFactoryBean() {
-		assumeTrue(ServiceLoader.load(DocumentBuilderFactory.class).iterator().hasNext());
+    @Test
+    public void testServiceLoaderFactoryBean() {
+        assumeTrue(ServiceLoader.load(DocumentBuilderFactory.class).iterator().hasNext());
 
-		DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
-		RootBeanDefinition bd = new RootBeanDefinition(ServiceLoaderFactoryBean.class);
-		bd.getPropertyValues().add("serviceType", DocumentBuilderFactory.class.getName());
-		bf.registerBeanDefinition("service", bd);
-		ServiceLoader<?> serviceLoader = (ServiceLoader<?>) bf.getBean("service");
-		assertTrue(serviceLoader.iterator().next() instanceof DocumentBuilderFactory);
-	}
+        DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
+        RootBeanDefinition bd = new RootBeanDefinition(ServiceLoaderFactoryBean.class);
+        bd.getPropertyValues().add("serviceType", DocumentBuilderFactory.class.getName());
+        bf.registerBeanDefinition("service", bd);
+        ServiceLoader<?> serviceLoader = (ServiceLoader<?>) bf.getBean("service");
+        assertTrue(serviceLoader.iterator().next() instanceof DocumentBuilderFactory);
+    }
 
-	@Test
-	public void testServiceFactoryBean() {
-		assumeTrue(ServiceLoader.load(DocumentBuilderFactory.class).iterator().hasNext());
+    @Test
+    public void testServiceFactoryBean() {
+        assumeTrue(ServiceLoader.load(DocumentBuilderFactory.class).iterator().hasNext());
 
-		DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
-		RootBeanDefinition bd = new RootBeanDefinition(ServiceFactoryBean.class);
-		bd.getPropertyValues().add("serviceType", DocumentBuilderFactory.class.getName());
-		bf.registerBeanDefinition("service", bd);
-		assertTrue(bf.getBean("service") instanceof DocumentBuilderFactory);
-	}
+        DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
+        RootBeanDefinition bd = new RootBeanDefinition(ServiceFactoryBean.class);
+        bd.getPropertyValues().add("serviceType", DocumentBuilderFactory.class.getName());
+        bf.registerBeanDefinition("service", bd);
+        assertTrue(bf.getBean("service") instanceof DocumentBuilderFactory);
+    }
 
-	@Test
-	public void testServiceListFactoryBean() {
-		assumeTrue(ServiceLoader.load(DocumentBuilderFactory.class).iterator().hasNext());
+    @Test
+    public void testServiceListFactoryBean() {
+        assumeTrue(ServiceLoader.load(DocumentBuilderFactory.class).iterator().hasNext());
 
-		DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
-		RootBeanDefinition bd = new RootBeanDefinition(ServiceListFactoryBean.class);
-		bd.getPropertyValues().add("serviceType", DocumentBuilderFactory.class.getName());
-		bf.registerBeanDefinition("service", bd);
-		List<?> serviceList = (List<?>) bf.getBean("service");
-		assertTrue(serviceList.get(0) instanceof DocumentBuilderFactory);
-	}
-
+        DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
+        RootBeanDefinition bd = new RootBeanDefinition(ServiceListFactoryBean.class);
+        bd.getPropertyValues().add("serviceType", DocumentBuilderFactory.class.getName());
+        bf.registerBeanDefinition("service", bd);
+        List<?> serviceList = (List<?>) bf.getBean("service");
+        assertTrue(serviceList.get(0) instanceof DocumentBuilderFactory);
+    }
 }

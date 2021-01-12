@@ -33,22 +33,25 @@ import org.springframework.web.method.support.ModelAndViewContainer;
  */
 public class CallableMethodReturnValueHandler implements HandlerMethodReturnValueHandler {
 
-	@Override
-	public boolean supportsReturnType(MethodParameter returnType) {
-		return Callable.class.isAssignableFrom(returnType.getParameterType());
-	}
+    @Override
+    public boolean supportsReturnType(MethodParameter returnType) {
+        return Callable.class.isAssignableFrom(returnType.getParameterType());
+    }
 
-	@Override
-	public void handleReturnValue(@Nullable Object returnValue, MethodParameter returnType,
-			ModelAndViewContainer mavContainer, NativeWebRequest webRequest) throws Exception {
+    @Override
+    public void handleReturnValue(
+            @Nullable Object returnValue,
+            MethodParameter returnType,
+            ModelAndViewContainer mavContainer,
+            NativeWebRequest webRequest)
+            throws Exception {
 
-		if (returnValue == null) {
-			mavContainer.setRequestHandled(true);
-			return;
-		}
+        if (returnValue == null) {
+            mavContainer.setRequestHandled(true);
+            return;
+        }
 
-		Callable<?> callable = (Callable<?>) returnValue;
-		WebAsyncUtils.getAsyncManager(webRequest).startCallableProcessing(callable, mavContainer);
-	}
-
+        Callable<?> callable = (Callable<?>) returnValue;
+        WebAsyncUtils.getAsyncManager(webRequest).startCallableProcessing(callable, mavContainer);
+    }
 }

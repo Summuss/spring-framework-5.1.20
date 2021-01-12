@@ -29,33 +29,31 @@ import static org.junit.Assert.*;
  */
 public class DateTimeFormatterFactoryBeanTests {
 
-	private final DateTimeFormatterFactoryBean factory = new DateTimeFormatterFactoryBean();
+    private final DateTimeFormatterFactoryBean factory = new DateTimeFormatterFactoryBean();
 
+    @Test
+    public void isSingleton() {
+        assertThat(factory.isSingleton(), is(true));
+    }
 
-	@Test
-	public void isSingleton() {
-		assertThat(factory.isSingleton(), is(true));
-	}
+    @Test
+    @SuppressWarnings("rawtypes")
+    public void getObjectType() {
+        assertThat(factory.getObjectType(), is(equalTo((Class) DateTimeFormatter.class)));
+    }
 
-	@Test
-	@SuppressWarnings("rawtypes")
-	public void getObjectType() {
-		assertThat(factory.getObjectType(), is(equalTo((Class) DateTimeFormatter.class)));
-	}
+    @Test
+    public void getObject() {
+        factory.afterPropertiesSet();
+        assertThat(factory.getObject(), is(equalTo(DateTimeFormat.mediumDateTime())));
+    }
 
-	@Test
-	public void getObject() {
-		factory.afterPropertiesSet();
-		assertThat(factory.getObject(), is(equalTo(DateTimeFormat.mediumDateTime())));
-	}
-
-	@Test
-	public void getObjectIsAlwaysSingleton() {
-		factory.afterPropertiesSet();
-		DateTimeFormatter formatter = factory.getObject();
-		assertThat(formatter, is(equalTo(DateTimeFormat.mediumDateTime())));
-		factory.setStyle("LL");
-		assertThat(factory.getObject(), is(sameInstance(formatter)));
-	}
-
+    @Test
+    public void getObjectIsAlwaysSingleton() {
+        factory.afterPropertiesSet();
+        DateTimeFormatter formatter = factory.getObject();
+        assertThat(formatter, is(equalTo(DateTimeFormat.mediumDateTime())));
+        factory.setStyle("LL");
+        assertThat(factory.getObject(), is(sameInstance(formatter)));
+    }
 }

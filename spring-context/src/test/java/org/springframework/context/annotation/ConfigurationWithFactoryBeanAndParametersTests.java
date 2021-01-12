@@ -26,63 +26,56 @@ import org.springframework.context.ApplicationContext;
 import static org.junit.Assert.*;
 
 /**
- * Test case cornering the bug initially raised with SPR-8762, in which a
- * NullPointerException would be raised if a FactoryBean-returning @Bean method also
- * accepts parameters
+ * Test case cornering the bug initially raised with SPR-8762, in which a NullPointerException would
+ * be raised if a FactoryBean-returning @Bean method also accepts parameters
  *
  * @author Chris Beams
  * @since 3.1
  */
 public class ConfigurationWithFactoryBeanAndParametersTests {
 
-	@Test
-	public void test() {
-		ApplicationContext ctx = new AnnotationConfigApplicationContext(Config.class, Bar.class);
-		assertNotNull(ctx.getBean(Bar.class).foo);
-	}
+    @Test
+    public void test() {
+        ApplicationContext ctx = new AnnotationConfigApplicationContext(Config.class, Bar.class);
+        assertNotNull(ctx.getBean(Bar.class).foo);
+    }
 
+    @Configuration
+    static class Config {
 
-	@Configuration
-	static class Config {
+        @Bean
+        public FactoryBean<Foo> fb(@Value("42") String answer) {
+            return new FooFactoryBean();
+        }
+    }
 
-		@Bean
-		public FactoryBean<Foo> fb(@Value("42") String answer) {
-			return new FooFactoryBean();
-		}
-	}
+    static class Foo {}
 
+    static class Bar {
 
-	static class Foo {
-	}
+        Foo foo;
 
+        @Autowired
+        public Bar(Foo foo) {
+            this.foo = foo;
+        }
+    }
 
-	static class Bar {
+    static class FooFactoryBean implements FactoryBean<Foo> {
 
-		Foo foo;
+        @Override
+        public Foo getObject() {
+            return new Foo();
+        }
 
-		@Autowired
-		public Bar(Foo foo) {
-			this.foo = foo;
-		}
-	}
+        @Override
+        public Class<Foo> getObjectType() {
+            return Foo.class;
+        }
 
-
-	static class FooFactoryBean implements FactoryBean<Foo> {
-
-		@Override
-		public Foo getObject() {
-			return new Foo();
-		}
-
-		@Override
-		public Class<Foo> getObjectType() {
-			return Foo.class;
-		}
-
-		@Override
-		public boolean isSingleton() {
-			return true;
-		}
-	}
-
+        @Override
+        public boolean isSingleton() {
+            return true;
+        }
+    }
 }

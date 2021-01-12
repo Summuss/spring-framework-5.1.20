@@ -16,11 +16,6 @@
 
 package example.scannable;
 
-
-/**
- * @author Juergen Hoeller
- */
+/** @author Juergen Hoeller */
 @CustomStereotype
-public class DefaultNamedComponent {
-
-}
+public class DefaultNamedComponent {}

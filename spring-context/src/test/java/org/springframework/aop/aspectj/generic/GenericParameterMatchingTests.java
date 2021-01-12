@@ -28,107 +28,103 @@ import org.springframework.context.support.ClassPathXmlApplicationContext;
 import static org.junit.Assert.*;
 
 /**
- * Tests that poitncut matching is correct with generic method parameter.
- * See SPR-3904 for more details.
+ * Tests that poitncut matching is correct with generic method parameter. See SPR-3904 for more
+ * details.
  *
  * @author Ramnivas Laddad
  * @author Chris Beams
  */
 public class GenericParameterMatchingTests {
 
-	private CounterAspect counterAspect;
+    private CounterAspect counterAspect;
 
-	private GenericInterface<String> testBean;
+    private GenericInterface<String> testBean;
 
+    @SuppressWarnings("unchecked")
+    @org.junit.Before
+    public void setup() {
+        ClassPathXmlApplicationContext ctx =
+                new ClassPathXmlApplicationContext(
+                        getClass().getSimpleName() + "-context.xml", getClass());
 
-	@SuppressWarnings("unchecked")
-	@org.junit.Before
-	public void setup() {
-		ClassPathXmlApplicationContext ctx =
-				new ClassPathXmlApplicationContext(getClass().getSimpleName() + "-context.xml", getClass());
+        counterAspect = (CounterAspect) ctx.getBean("counterAspect");
+        counterAspect.reset();
 
-		counterAspect = (CounterAspect) ctx.getBean("counterAspect");
-		counterAspect.reset();
+        testBean = (GenericInterface<String>) ctx.getBean("testBean");
+    }
 
-		testBean = (GenericInterface<String>) ctx.getBean("testBean");
-	}
+    @Test
+    public void testGenericInterfaceGenericArgExecution() {
+        testBean.save("");
+        assertEquals(1, counterAspect.genericInterfaceGenericArgExecutionCount);
+    }
 
+    @Test
+    public void testGenericInterfaceGenericCollectionArgExecution() {
+        testBean.saveAll(null);
+        assertEquals(1, counterAspect.genericInterfaceGenericCollectionArgExecutionCount);
+    }
 
-	@Test
-	public void testGenericInterfaceGenericArgExecution() {
-		testBean.save("");
-		assertEquals(1, counterAspect.genericInterfaceGenericArgExecutionCount);
-	}
+    @Test
+    public void testGenericInterfaceSubtypeGenericCollectionArgExecution() {
+        testBean.saveAll(null);
+        assertEquals(1, counterAspect.genericInterfaceSubtypeGenericCollectionArgExecutionCount);
+    }
 
-	@Test
-	public void testGenericInterfaceGenericCollectionArgExecution() {
-		testBean.saveAll(null);
-		assertEquals(1, counterAspect.genericInterfaceGenericCollectionArgExecutionCount);
-	}
+    static interface GenericInterface<T> {
 
-	@Test
-	public void testGenericInterfaceSubtypeGenericCollectionArgExecution() {
-		testBean.saveAll(null);
-		assertEquals(1, counterAspect.genericInterfaceSubtypeGenericCollectionArgExecutionCount);
-	}
+        public void save(T bean);
 
+        public void saveAll(Collection<T> beans);
+    }
 
-	static interface GenericInterface<T> {
+    static class GenericImpl<T> implements GenericInterface<T> {
 
-		public void save(T bean);
+        @Override
+        public void save(T bean) {}
 
-		public void saveAll(Collection<T> beans);
-	}
+        @Override
+        public void saveAll(Collection<T> beans) {}
+    }
 
+    @Aspect
+    static class CounterAspect {
 
-	static class GenericImpl<T> implements GenericInterface<T> {
+        int genericInterfaceGenericArgExecutionCount;
+        int genericInterfaceGenericCollectionArgExecutionCount;
+        int genericInterfaceSubtypeGenericCollectionArgExecutionCount;
 
-		@Override
-		public void save(T bean) {
-		}
+        public void reset() {
+            genericInterfaceGenericArgExecutionCount = 0;
+            genericInterfaceGenericCollectionArgExecutionCount = 0;
+            genericInterfaceSubtypeGenericCollectionArgExecutionCount = 0;
+        }
 
-		@Override
-		public void saveAll(Collection<T> beans) {
-		}
-	}
+        @Pointcut(
+                "execution(* org.springframework.aop.aspectj.generic.GenericParameterMatchingTests.GenericInterface.save(..))")
+        public void genericInterfaceGenericArgExecution() {}
 
+        @Pointcut(
+                "execution(* org.springframework.aop.aspectj.generic.GenericParameterMatchingTests.GenericInterface.saveAll(..))")
+        public void GenericInterfaceGenericCollectionArgExecution() {}
 
-	@Aspect
-	static class CounterAspect {
+        @Pointcut(
+                "execution(* org.springframework.aop.aspectj.generic.GenericParameterMatchingTests.GenericInterface+.saveAll(..))")
+        public void genericInterfaceSubtypeGenericCollectionArgExecution() {}
 
-		int genericInterfaceGenericArgExecutionCount;
-		int genericInterfaceGenericCollectionArgExecutionCount;
-		int genericInterfaceSubtypeGenericCollectionArgExecutionCount;
+        @Before("genericInterfaceGenericArgExecution()")
+        public void incrementGenericInterfaceGenericArgExecution() {
+            genericInterfaceGenericArgExecutionCount++;
+        }
 
-		public void reset() {
-			genericInterfaceGenericArgExecutionCount = 0;
-			genericInterfaceGenericCollectionArgExecutionCount = 0;
-			genericInterfaceSubtypeGenericCollectionArgExecutionCount = 0;
-		}
+        @Before("GenericInterfaceGenericCollectionArgExecution()")
+        public void incrementGenericInterfaceGenericCollectionArgExecution() {
+            genericInterfaceGenericCollectionArgExecutionCount++;
+        }
 
-		@Pointcut("execution(* org.springframework.aop.aspectj.generic.GenericParameterMatchingTests.GenericInterface.save(..))")
-		public void genericInterfaceGenericArgExecution() {}
-
-		@Pointcut("execution(* org.springframework.aop.aspectj.generic.GenericParameterMatchingTests.GenericInterface.saveAll(..))")
-		public void GenericInterfaceGenericCollectionArgExecution() {}
-
-		@Pointcut("execution(* org.springframework.aop.aspectj.generic.GenericParameterMatchingTests.GenericInterface+.saveAll(..))")
-		public void genericInterfaceSubtypeGenericCollectionArgExecution() {}
-
-		@Before("genericInterfaceGenericArgExecution()")
-		public void incrementGenericInterfaceGenericArgExecution() {
-			genericInterfaceGenericArgExecutionCount++;
-		}
-
-		@Before("GenericInterfaceGenericCollectionArgExecution()")
-		public void incrementGenericInterfaceGenericCollectionArgExecution() {
-			genericInterfaceGenericCollectionArgExecutionCount++;
-		}
-
-		@Before("genericInterfaceSubtypeGenericCollectionArgExecution()")
-		public void incrementGenericInterfaceSubtypeGenericCollectionArgExecution() {
-			genericInterfaceSubtypeGenericCollectionArgExecutionCount++;
-		}
-	}
-
+        @Before("genericInterfaceSubtypeGenericCollectionArgExecution()")
+        public void incrementGenericInterfaceSubtypeGenericCollectionArgExecution() {
+            genericInterfaceSubtypeGenericCollectionArgExecutionCount++;
+        }
+    }
 }

@@ -31,32 +31,31 @@ import static org.springframework.util.xml.XmlValidationModeDetector.VALIDATION_
  */
 public class XmlValidationModeDetectorTests {
 
-	private final XmlValidationModeDetector xmlValidationModeDetector = new XmlValidationModeDetector();
+    private final XmlValidationModeDetector xmlValidationModeDetector =
+            new XmlValidationModeDetector();
 
+    @Test
+    public void dtdWithTrailingComment() throws Exception {
+        dtdDetection("dtdWithTrailingComment.xml");
+    }
 
-	@Test
-	public void dtdWithTrailingComment() throws Exception {
-		dtdDetection("dtdWithTrailingComment.xml");
-	}
+    @Test
+    public void dtdWithLeadingComment() throws Exception {
+        dtdDetection("dtdWithLeadingComment.xml");
+    }
 
-	@Test
-	public void dtdWithLeadingComment() throws Exception {
-		dtdDetection("dtdWithLeadingComment.xml");
-	}
+    @Test
+    public void dtdWithCommentOnNextLine() throws Exception {
+        dtdDetection("dtdWithCommentOnNextLine.xml");
+    }
 
-	@Test
-	public void dtdWithCommentOnNextLine() throws Exception {
-		dtdDetection("dtdWithCommentOnNextLine.xml");
-	}
+    @Test
+    public void dtdWithMultipleComments() throws Exception {
+        dtdDetection("dtdWithMultipleComments.xml");
+    }
 
-	@Test
-	public void dtdWithMultipleComments() throws Exception {
-		dtdDetection("dtdWithMultipleComments.xml");
-	}
-
-	private void dtdDetection(String fileName) throws Exception {
-		InputStream inputStream = getClass().getResourceAsStream(fileName);
-		assertEquals(VALIDATION_DTD, xmlValidationModeDetector.detectValidationMode(inputStream));
-	}
-
+    private void dtdDetection(String fileName) throws Exception {
+        InputStream inputStream = getClass().getResourceAsStream(fileName);
+        assertEquals(VALIDATION_DTD, xmlValidationModeDetector.detectValidationMode(inputStream));
+    }
 }

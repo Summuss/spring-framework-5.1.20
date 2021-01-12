@@ -30,11 +30,10 @@ import static org.junit.Assert.*;
  */
 public class AopNamespaceHandlerProxyTargetClassTests extends AopNamespaceHandlerTests {
 
-	@Test
-	public void testIsClassProxy() {
-		ITestBean bean = getTestBean();
-		assertTrue("Should be a CGLIB proxy", AopUtils.isCglibProxy(bean));
-		assertTrue("Should expose proxy", ((Advised) bean).isExposeProxy());
-	}
-
+    @Test
+    public void testIsClassProxy() {
+        ITestBean bean = getTestBean();
+        assertTrue("Should be a CGLIB proxy", AopUtils.isCglibProxy(bean));
+        assertTrue("Should expose proxy", ((Advised) bean).isExposeProxy());
+    }
 }

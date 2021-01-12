@@ -29,11 +29,10 @@ import static org.junit.Assert.*;
 @ActiveProfiles("dev")
 public class DevProfileAnnotationConfigTests extends DefaultProfileAnnotationConfigTests {
 
-	@Test
-	@Override
-	public void employee() {
-		assertNotNull("employee bean should be loaded for the 'dev' profile", employee);
-		assertEquals("John Smith", employee.getName());
-	}
-
+    @Test
+    @Override
+    public void employee() {
+        assertNotNull("employee bean should be loaded for the 'dev' profile", employee);
+        assertEquals("John Smith", employee.getName());
+    }
 }

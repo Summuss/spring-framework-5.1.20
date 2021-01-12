@@ -24,8 +24,8 @@ import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * Spring-specific subclass of Hibernate's JTASessionContext,
- * setting {@code FlushMode.MANUAL} for read-only transactions.
+ * Spring-specific subclass of Hibernate's JTASessionContext, setting {@code FlushMode.MANUAL} for
+ * read-only transactions.
  *
  * @author Juergen Hoeller
  * @since 4.2
@@ -33,18 +33,17 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @SuppressWarnings("serial")
 public class SpringJtaSessionContext extends JTASessionContext {
 
-	public SpringJtaSessionContext(SessionFactoryImplementor factory) {
-		super(factory);
-	}
+    public SpringJtaSessionContext(SessionFactoryImplementor factory) {
+        super(factory);
+    }
 
-	@Override
-	@SuppressWarnings("deprecation")
-	protected Session buildOrObtainSession() {
-		Session session = super.buildOrObtainSession();
-		if (TransactionSynchronizationManager.isCurrentTransactionReadOnly()) {
-			session.setFlushMode(FlushMode.MANUAL);
-		}
-		return session;
-	}
-
+    @Override
+    @SuppressWarnings("deprecation")
+    protected Session buildOrObtainSession() {
+        Session session = super.buildOrObtainSession();
+        if (TransactionSynchronizationManager.isCurrentTransactionReadOnly()) {
+            session.setFlushMode(FlushMode.MANUAL);
+        }
+        return session;
+    }
 }

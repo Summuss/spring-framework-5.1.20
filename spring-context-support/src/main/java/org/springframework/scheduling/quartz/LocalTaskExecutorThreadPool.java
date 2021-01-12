@@ -28,8 +28,8 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Quartz {@link ThreadPool} adapter that delegates to a Spring-managed
- * {@link Executor} instance, specified on {@link SchedulerFactoryBean}.
+ * Quartz {@link ThreadPool} adapter that delegates to a Spring-managed {@link Executor} instance,
+ * specified on {@link SchedulerFactoryBean}.
  *
  * @author Juergen Hoeller
  * @since 2.0
@@ -37,63 +37,55 @@ import org.springframework.util.Assert;
  */
 public class LocalTaskExecutorThreadPool implements ThreadPool {
 
-	/** Logger available to subclasses. */
-	protected final Log logger = LogFactory.getLog(getClass());
+    /** Logger available to subclasses. */
+    protected final Log logger = LogFactory.getLog(getClass());
 
-	@Nullable
-	private Executor taskExecutor;
+    @Nullable private Executor taskExecutor;
 
+    @Override
+    public void setInstanceId(String schedInstId) {}
 
-	@Override
-	public void setInstanceId(String schedInstId) {
-	}
+    @Override
+    public void setInstanceName(String schedName) {}
 
-	@Override
-	public void setInstanceName(String schedName) {
-	}
+    @Override
+    public void initialize() throws SchedulerConfigException {
+        // Absolutely needs thread-bound Executor to initialize.
+        this.taskExecutor = SchedulerFactoryBean.getConfigTimeTaskExecutor();
+        if (this.taskExecutor == null) {
+            throw new SchedulerConfigException(
+                    "No local Executor found for configuration - "
+                            + "'taskExecutor' property must be set on SchedulerFactoryBean");
+        }
+    }
 
+    @Override
+    public void shutdown(boolean waitForJobsToComplete) {}
 
-	@Override
-	public void initialize() throws SchedulerConfigException {
-		// Absolutely needs thread-bound Executor to initialize.
-		this.taskExecutor = SchedulerFactoryBean.getConfigTimeTaskExecutor();
-		if (this.taskExecutor == null) {
-			throw new SchedulerConfigException("No local Executor found for configuration - " +
-					"'taskExecutor' property must be set on SchedulerFactoryBean");
-		}
-	}
+    @Override
+    public int getPoolSize() {
+        return -1;
+    }
 
-	@Override
-	public void shutdown(boolean waitForJobsToComplete) {
-	}
+    @Override
+    public boolean runInThread(Runnable runnable) {
+        Assert.state(this.taskExecutor != null, "No TaskExecutor available");
+        try {
+            this.taskExecutor.execute(runnable);
+            return true;
+        } catch (RejectedExecutionException ex) {
+            logger.error("Task has been rejected by TaskExecutor", ex);
+            return false;
+        }
+    }
 
-	@Override
-	public int getPoolSize() {
-		return -1;
-	}
-
-
-	@Override
-	public boolean runInThread(Runnable runnable) {
-		Assert.state(this.taskExecutor != null, "No TaskExecutor available");
-		try {
-			this.taskExecutor.execute(runnable);
-			return true;
-		}
-		catch (RejectedExecutionException ex) {
-			logger.error("Task has been rejected by TaskExecutor", ex);
-			return false;
-		}
-	}
-
-	@Override
-	public int blockForAvailableThreads() {
-		// The present implementation always returns 1, making Quartz
-		// always schedule any tasks that it feels like scheduling.
-		// This could be made smarter for specific TaskExecutors,
-		// for example calling {@code getMaximumPoolSize() - getActiveCount()}
-		// on a {@code java.util.concurrent.ThreadPoolExecutor}.
-		return 1;
-	}
-
+    @Override
+    public int blockForAvailableThreads() {
+        // The present implementation always returns 1, making Quartz
+        // always schedule any tasks that it feels like scheduling.
+        // This could be made smarter for specific TaskExecutors,
+        // for example calling {@code getMaximumPoolSize() - getActiveCount()}
+        // on a {@code java.util.concurrent.ThreadPoolExecutor}.
+        return 1;
+    }
 }

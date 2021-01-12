@@ -48,125 +48,129 @@ import org.springframework.web.reactive.socket.adapter.StandardWebSocketSession;
  * @author Violeta Georgieva
  * @author Rossen Stoyanchev
  * @since 5.0
- * @see <a href="https://www.jcp.org/en/jsr/detail?id=356">https://www.jcp.org/en/jsr/detail?id=356</a>
+ * @see <a
+ *     href="https://www.jcp.org/en/jsr/detail?id=356">https://www.jcp.org/en/jsr/detail?id=356</a>
  */
 public class StandardWebSocketClient implements WebSocketClient {
 
-	private static final Log logger = LogFactory.getLog(StandardWebSocketClient.class);
+    private static final Log logger = LogFactory.getLog(StandardWebSocketClient.class);
 
+    private final DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
 
-	private final DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
+    private final WebSocketContainer webSocketContainer;
 
-	private final WebSocketContainer webSocketContainer;
+    /**
+     * Default constructor that calls {@code ContainerProvider.getWebSocketContainer()} to obtain a
+     * (new) {@link WebSocketContainer} instance.
+     */
+    public StandardWebSocketClient() {
+        this(ContainerProvider.getWebSocketContainer());
+    }
 
+    /**
+     * Constructor accepting an existing {@link WebSocketContainer} instance.
+     *
+     * @param webSocketContainer a web socket container
+     */
+    public StandardWebSocketClient(WebSocketContainer webSocketContainer) {
+        this.webSocketContainer = webSocketContainer;
+    }
 
-	/**
-	 * Default constructor that calls
-	 * {@code ContainerProvider.getWebSocketContainer()} to obtain a (new)
-	 * {@link WebSocketContainer} instance.
-	 */
-	public StandardWebSocketClient() {
-		this(ContainerProvider.getWebSocketContainer());
-	}
+    /** Return the configured {@link WebSocketContainer} to use. */
+    public WebSocketContainer getWebSocketContainer() {
+        return this.webSocketContainer;
+    }
 
-	/**
-	 * Constructor accepting an existing {@link WebSocketContainer} instance.
-	 * @param webSocketContainer a web socket container
-	 */
-	public StandardWebSocketClient(WebSocketContainer webSocketContainer) {
-		this.webSocketContainer = webSocketContainer;
-	}
+    @Override
+    public Mono<Void> execute(URI url, WebSocketHandler handler) {
+        return execute(url, new HttpHeaders(), handler);
+    }
 
+    @Override
+    public Mono<Void> execute(URI url, HttpHeaders headers, WebSocketHandler handler) {
+        return executeInternal(url, headers, handler);
+    }
 
-	/**
-	 * Return the configured {@link WebSocketContainer} to use.
-	 */
-	public WebSocketContainer getWebSocketContainer() {
-		return this.webSocketContainer;
-	}
+    private Mono<Void> executeInternal(
+            URI url, HttpHeaders requestHeaders, WebSocketHandler handler) {
+        MonoProcessor<Void> completionMono = MonoProcessor.create();
+        return Mono.fromCallable(
+                        () -> {
+                            if (logger.isDebugEnabled()) {
+                                logger.debug("Connecting to " + url);
+                            }
+                            List<String> protocols = handler.getSubProtocols();
+                            DefaultConfigurator configurator =
+                                    new DefaultConfigurator(requestHeaders);
+                            Endpoint endpoint =
+                                    createEndpoint(url, handler, completionMono, configurator);
+                            ClientEndpointConfig config =
+                                    createEndpointConfig(configurator, protocols);
+                            return this.webSocketContainer.connectToServer(endpoint, config, url);
+                        })
+                .subscribeOn(Schedulers.elastic()) // connectToServer is blocking
+                .then(completionMono);
+    }
 
+    private StandardWebSocketHandlerAdapter createEndpoint(
+            URI url,
+            WebSocketHandler handler,
+            MonoProcessor<Void> completion,
+            DefaultConfigurator configurator) {
 
-	@Override
-	public Mono<Void> execute(URI url, WebSocketHandler handler) {
-		return execute(url, new HttpHeaders(), handler);
-	}
+        return new StandardWebSocketHandlerAdapter(
+                handler,
+                session ->
+                        createWebSocketSession(
+                                session, createHandshakeInfo(url, configurator), completion));
+    }
 
-	@Override
-	public Mono<Void> execute(URI url, HttpHeaders headers, WebSocketHandler handler) {
-		return executeInternal(url, headers, handler);
-	}
+    private HandshakeInfo createHandshakeInfo(URI url, DefaultConfigurator configurator) {
+        HttpHeaders responseHeaders = configurator.getResponseHeaders();
+        String protocol = responseHeaders.getFirst("Sec-WebSocket-Protocol");
+        return new HandshakeInfo(url, responseHeaders, Mono.empty(), protocol);
+    }
 
-	private Mono<Void> executeInternal(URI url, HttpHeaders requestHeaders, WebSocketHandler handler) {
-		MonoProcessor<Void> completionMono = MonoProcessor.create();
-		return Mono.fromCallable(
-				() -> {
-					if (logger.isDebugEnabled()) {
-						logger.debug("Connecting to " + url);
-					}
-					List<String> protocols = handler.getSubProtocols();
-					DefaultConfigurator configurator = new DefaultConfigurator(requestHeaders);
-					Endpoint endpoint = createEndpoint(url, handler, completionMono, configurator);
-					ClientEndpointConfig config = createEndpointConfig(configurator, protocols);
-					return this.webSocketContainer.connectToServer(endpoint, config, url);
-				})
-				.subscribeOn(Schedulers.elastic()) // connectToServer is blocking
-				.then(completionMono);
-	}
+    protected StandardWebSocketSession createWebSocketSession(
+            Session session, HandshakeInfo info, MonoProcessor<Void> completion) {
 
-	private StandardWebSocketHandlerAdapter createEndpoint(URI url, WebSocketHandler handler,
-			MonoProcessor<Void> completion, DefaultConfigurator configurator) {
+        return new StandardWebSocketSession(session, info, this.bufferFactory, completion);
+    }
 
-		return new StandardWebSocketHandlerAdapter(handler, session ->
-				createWebSocketSession(session, createHandshakeInfo(url, configurator), completion));
-	}
+    private ClientEndpointConfig createEndpointConfig(
+            Configurator configurator, List<String> subProtocols) {
+        return ClientEndpointConfig.Builder.create()
+                .configurator(configurator)
+                .preferredSubprotocols(subProtocols)
+                .build();
+    }
 
-	private HandshakeInfo createHandshakeInfo(URI url, DefaultConfigurator configurator) {
-		HttpHeaders responseHeaders = configurator.getResponseHeaders();
-		String protocol = responseHeaders.getFirst("Sec-WebSocket-Protocol");
-		return new HandshakeInfo(url, responseHeaders, Mono.empty(), protocol);
-	}
+    protected DataBufferFactory bufferFactory() {
+        return this.bufferFactory;
+    }
 
-	protected StandardWebSocketSession createWebSocketSession(Session session, HandshakeInfo info,
-			MonoProcessor<Void> completion) {
+    private static final class DefaultConfigurator extends Configurator {
 
-		return new StandardWebSocketSession(session, info, this.bufferFactory, completion);
-	}
+        private final HttpHeaders requestHeaders;
 
-	private ClientEndpointConfig createEndpointConfig(Configurator configurator, List<String> subProtocols) {
-		return ClientEndpointConfig.Builder.create()
-				.configurator(configurator)
-				.preferredSubprotocols(subProtocols)
-				.build();
-	}
+        private final HttpHeaders responseHeaders = new HttpHeaders();
 
-	protected DataBufferFactory bufferFactory() {
-		return this.bufferFactory;
-	}
+        public DefaultConfigurator(HttpHeaders requestHeaders) {
+            this.requestHeaders = requestHeaders;
+        }
 
+        public HttpHeaders getResponseHeaders() {
+            return this.responseHeaders;
+        }
 
-	private static final class DefaultConfigurator extends Configurator {
+        @Override
+        public void beforeRequest(Map<String, List<String>> requestHeaders) {
+            requestHeaders.putAll(this.requestHeaders);
+        }
 
-		private final HttpHeaders requestHeaders;
-
-		private final HttpHeaders responseHeaders = new HttpHeaders();
-
-		public DefaultConfigurator(HttpHeaders requestHeaders) {
-			this.requestHeaders = requestHeaders;
-		}
-
-		public HttpHeaders getResponseHeaders() {
-			return this.responseHeaders;
-		}
-
-		@Override
-		public void beforeRequest(Map<String, List<String>> requestHeaders) {
-			requestHeaders.putAll(this.requestHeaders);
-		}
-
-		@Override
-		public void afterResponse(HandshakeResponse response) {
-			response.getHeaders().forEach(this.responseHeaders::put);
-		}
-	}
-
+        @Override
+        public void afterResponse(HandshakeResponse response) {
+            response.getHeaders().forEach(this.responseHeaders::put);
+        }
+    }
 }

@@ -53,319 +53,309 @@ import static org.junit.Assert.*;
  */
 public class EnableMBeanExportConfigurationTests {
 
-	@Rule
-	public final ExpectedException thrown = ExpectedException.none();
+    @Rule public final ExpectedException thrown = ExpectedException.none();
 
-	private AnnotationConfigApplicationContext ctx;
+    private AnnotationConfigApplicationContext ctx;
 
-	@After
-	public void closeContext() {
-		if (this.ctx != null) {
-			this.ctx.close();
-		}
-	}
+    @After
+    public void closeContext() {
+        if (this.ctx != null) {
+            this.ctx.close();
+        }
+    }
 
-	@Test
-	public void testLazyNaming() throws Exception {
-		load(LazyNamingConfiguration.class);
-		validateAnnotationTestBean();
-	}
+    @Test
+    public void testLazyNaming() throws Exception {
+        load(LazyNamingConfiguration.class);
+        validateAnnotationTestBean();
+    }
 
-	private void load(Class<?>... config) {
-		this.ctx = new AnnotationConfigApplicationContext(config);
-	}
+    private void load(Class<?>... config) {
+        this.ctx = new AnnotationConfigApplicationContext(config);
+    }
 
-	@Test
-	public void testOnlyTargetClassIsExposed() throws Exception {
-		load(ProxyConfiguration.class);
-		validateAnnotationTestBean();
-	}
+    @Test
+    public void testOnlyTargetClassIsExposed() throws Exception {
+        load(ProxyConfiguration.class);
+        validateAnnotationTestBean();
+    }
 
-	@Test
-	@SuppressWarnings("resource")
-	public void testPackagePrivateExtensionCantBeExposed() {
-		this.thrown.expect(InvalidMetadataException.class);
-		this.thrown.expectMessage(PackagePrivateTestBean.class.getName());
-		this.thrown.expectMessage("must be public");
-		new AnnotationConfigApplicationContext(PackagePrivateConfiguration.class);
-	}
+    @Test
+    @SuppressWarnings("resource")
+    public void testPackagePrivateExtensionCantBeExposed() {
+        this.thrown.expect(InvalidMetadataException.class);
+        this.thrown.expectMessage(PackagePrivateTestBean.class.getName());
+        this.thrown.expectMessage("must be public");
+        new AnnotationConfigApplicationContext(PackagePrivateConfiguration.class);
+    }
 
-	@Test
-	@SuppressWarnings("resource")
-	public void testPackagePrivateImplementationCantBeExposed() {
-		this.thrown.expect(InvalidMetadataException.class);
-		this.thrown.expectMessage(PackagePrivateAnnotationTestBean.class.getName());
-		this.thrown.expectMessage("must be public");
-		new AnnotationConfigApplicationContext(PackagePrivateInterfaceImplementationConfiguration.class);
-	}
+    @Test
+    @SuppressWarnings("resource")
+    public void testPackagePrivateImplementationCantBeExposed() {
+        this.thrown.expect(InvalidMetadataException.class);
+        this.thrown.expectMessage(PackagePrivateAnnotationTestBean.class.getName());
+        this.thrown.expectMessage("must be public");
+        new AnnotationConfigApplicationContext(
+                PackagePrivateInterfaceImplementationConfiguration.class);
+    }
 
-	@Test
-	public void testPackagePrivateClassExtensionCanBeExposed() throws Exception {
-		load(PackagePrivateExtensionConfiguration.class);
-		validateAnnotationTestBean();
-	}
+    @Test
+    public void testPackagePrivateClassExtensionCanBeExposed() throws Exception {
+        load(PackagePrivateExtensionConfiguration.class);
+        validateAnnotationTestBean();
+    }
 
-	@Test
-	public void testPlaceholderBased() throws Exception {
-		MockEnvironment env = new MockEnvironment();
-		env.setProperty("serverName", "server");
-		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
-		context.setEnvironment(env);
-		context.register(PlaceholderBasedConfiguration.class);
-		context.refresh();
-		this.ctx = context;
-		validateAnnotationTestBean();
-	}
+    @Test
+    public void testPlaceholderBased() throws Exception {
+        MockEnvironment env = new MockEnvironment();
+        env.setProperty("serverName", "server");
+        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+        context.setEnvironment(env);
+        context.register(PlaceholderBasedConfiguration.class);
+        context.refresh();
+        this.ctx = context;
+        validateAnnotationTestBean();
+    }
 
-	@Test
-	public void testLazyAssembling() throws Exception {
-		System.setProperty("domain", "bean");
-		load(LazyAssemblingConfiguration.class);
-		try {
-			MBeanServer server = (MBeanServer) this.ctx.getBean("server");
+    @Test
+    public void testLazyAssembling() throws Exception {
+        System.setProperty("domain", "bean");
+        load(LazyAssemblingConfiguration.class);
+        try {
+            MBeanServer server = (MBeanServer) this.ctx.getBean("server");
 
-			validateMBeanAttribute(server, "bean:name=testBean4", "TEST");
-			validateMBeanAttribute(server, "bean:name=testBean5", "FACTORY");
-			validateMBeanAttribute(server, "spring:mbean=true", "Rob Harrop");
-			validateMBeanAttribute(server, "spring:mbean=another", "Juergen Hoeller");
-		}
-		finally {
-			System.clearProperty("domain");
-		}
-	}
+            validateMBeanAttribute(server, "bean:name=testBean4", "TEST");
+            validateMBeanAttribute(server, "bean:name=testBean5", "FACTORY");
+            validateMBeanAttribute(server, "spring:mbean=true", "Rob Harrop");
+            validateMBeanAttribute(server, "spring:mbean=another", "Juergen Hoeller");
+        } finally {
+            System.clearProperty("domain");
+        }
+    }
 
-	@Test
-	public void testComponentScan() throws Exception {
-		load(ComponentScanConfiguration.class);
-		MBeanServer server = (MBeanServer) this.ctx.getBean("server");
-		validateMBeanAttribute(server, "bean:name=testBean4", null);
-	}
+    @Test
+    public void testComponentScan() throws Exception {
+        load(ComponentScanConfiguration.class);
+        MBeanServer server = (MBeanServer) this.ctx.getBean("server");
+        validateMBeanAttribute(server, "bean:name=testBean4", null);
+    }
 
-	private void validateAnnotationTestBean() throws Exception {
-		MBeanServer server = (MBeanServer) this.ctx.getBean("server");
-		validateMBeanAttribute(server,"bean:name=testBean4", "TEST");
-	}
+    private void validateAnnotationTestBean() throws Exception {
+        MBeanServer server = (MBeanServer) this.ctx.getBean("server");
+        validateMBeanAttribute(server, "bean:name=testBean4", "TEST");
+    }
 
-	private void validateMBeanAttribute(MBeanServer server, String objectName, String expected) throws Exception {
-		ObjectName oname = ObjectNameManager.getInstance(objectName);
-		assertNotNull(server.getObjectInstance(oname));
-		String name = (String) server.getAttribute(oname, "Name");
-		assertEquals("Invalid name returned", expected, name);
-	}
+    private void validateMBeanAttribute(MBeanServer server, String objectName, String expected)
+            throws Exception {
+        ObjectName oname = ObjectNameManager.getInstance(objectName);
+        assertNotNull(server.getObjectInstance(oname));
+        String name = (String) server.getAttribute(oname, "Name");
+        assertEquals("Invalid name returned", expected, name);
+    }
 
+    @Configuration
+    @EnableMBeanExport(server = "server")
+    static class LazyNamingConfiguration {
 
-	@Configuration
-	@EnableMBeanExport(server = "server")
-	static class LazyNamingConfiguration {
+        @Bean
+        public MBeanServerFactoryBean server() throws Exception {
+            return new MBeanServerFactoryBean();
+        }
 
-		@Bean
-		public MBeanServerFactoryBean server() throws Exception {
-			return new MBeanServerFactoryBean();
-		}
+        @Bean
+        @Lazy
+        public AnnotationTestBean testBean() {
+            AnnotationTestBean bean = new AnnotationTestBean();
+            bean.setName("TEST");
+            bean.setAge(100);
+            return bean;
+        }
+    }
 
-		@Bean
-		@Lazy
-		public AnnotationTestBean testBean() {
-			AnnotationTestBean bean = new AnnotationTestBean();
-			bean.setName("TEST");
-			bean.setAge(100);
-			return bean;
-		}
-	}
+    @Configuration
+    @EnableMBeanExport(server = "server")
+    static class ProxyConfiguration {
 
-	@Configuration
-	@EnableMBeanExport(server = "server")
-	static class ProxyConfiguration {
+        @Bean
+        public MBeanServerFactoryBean server() throws Exception {
+            return new MBeanServerFactoryBean();
+        }
 
-		@Bean
-		public MBeanServerFactoryBean server() throws Exception {
-			return new MBeanServerFactoryBean();
-		}
+        @Bean
+        @Lazy
+        @Scope(proxyMode = ScopedProxyMode.TARGET_CLASS)
+        public AnnotationTestBean testBean() {
+            AnnotationTestBean bean = new AnnotationTestBean();
+            bean.setName("TEST");
+            bean.setAge(100);
+            return bean;
+        }
+    }
 
-		@Bean
-		@Lazy
-		@Scope(proxyMode = ScopedProxyMode.TARGET_CLASS)
-		public AnnotationTestBean testBean() {
-			AnnotationTestBean bean = new AnnotationTestBean();
-			bean.setName("TEST");
-			bean.setAge(100);
-			return bean;
-		}
-	}
+    @Configuration
+    @EnableMBeanExport(server = "${serverName}")
+    static class PlaceholderBasedConfiguration {
 
+        @Bean
+        public MBeanServerFactoryBean server() throws Exception {
+            return new MBeanServerFactoryBean();
+        }
 
-	@Configuration
-	@EnableMBeanExport(server = "${serverName}")
-	static class PlaceholderBasedConfiguration {
+        @Bean
+        @Lazy
+        public AnnotationTestBean testBean() {
+            AnnotationTestBean bean = new AnnotationTestBean();
+            bean.setName("TEST");
+            bean.setAge(100);
+            return bean;
+        }
+    }
 
-		@Bean
-		public MBeanServerFactoryBean server() throws Exception {
-			return new MBeanServerFactoryBean();
-		}
+    @Configuration
+    @EnableMBeanExport(server = "server", registration = RegistrationPolicy.REPLACE_EXISTING)
+    static class LazyAssemblingConfiguration {
 
-		@Bean
-		@Lazy
-		public AnnotationTestBean testBean() {
-			AnnotationTestBean bean = new AnnotationTestBean();
-			bean.setName("TEST");
-			bean.setAge(100);
-			return bean;
-		}
-	}
+        @Bean
+        public PropertyPlaceholderConfigurer ppc() {
+            return new PropertyPlaceholderConfigurer();
+        }
 
+        @Bean
+        public MBeanServerFactoryBean server() throws Exception {
+            return new MBeanServerFactoryBean();
+        }
 
-	@Configuration
-	@EnableMBeanExport(server="server", registration=RegistrationPolicy.REPLACE_EXISTING)
-	static class LazyAssemblingConfiguration {
+        @Bean("bean:name=testBean4")
+        @Lazy
+        public AnnotationTestBean testBean4() {
+            AnnotationTestBean bean = new AnnotationTestBean();
+            bean.setName("TEST");
+            bean.setAge(100);
+            return bean;
+        }
 
-		@Bean
-		public PropertyPlaceholderConfigurer ppc() {
-			return new PropertyPlaceholderConfigurer();
-		}
+        @Bean("bean:name=testBean5")
+        public AnnotationTestBeanFactory testBean5() throws Exception {
+            return new AnnotationTestBeanFactory();
+        }
 
-		@Bean
-		public MBeanServerFactoryBean server() throws Exception {
-			return new MBeanServerFactoryBean();
-		}
+        @Bean(name = "spring:mbean=true")
+        @Lazy
+        public TestDynamicMBean dynamic() {
+            return new TestDynamicMBean();
+        }
 
-		@Bean("bean:name=testBean4")
-		@Lazy
-		public AnnotationTestBean testBean4() {
-			AnnotationTestBean bean = new AnnotationTestBean();
-			bean.setName("TEST");
-			bean.setAge(100);
-			return bean;
-		}
+        @Bean(name = "spring:mbean=another")
+        @Lazy
+        public MBeanExporterTests.Person person() {
+            MBeanExporterTests.Person person = new MBeanExporterTests.Person();
+            person.setName("Juergen Hoeller");
+            return person;
+        }
 
-		@Bean("bean:name=testBean5")
-		public AnnotationTestBeanFactory testBean5() throws Exception {
-			return new AnnotationTestBeanFactory();
-		}
+        @Bean
+        @Lazy
+        public Object notLoadable() throws Exception {
+            return Class.forName("does.not.exist").newInstance();
+        }
+    }
 
-		@Bean(name="spring:mbean=true")
-		@Lazy
-		public TestDynamicMBean dynamic() {
-			return new TestDynamicMBean();
-		}
+    @Configuration
+    @ComponentScan(excludeFilters = @ComponentScan.Filter(value = Configuration.class))
+    @EnableMBeanExport(server = "server")
+    static class ComponentScanConfiguration {
 
-		@Bean(name="spring:mbean=another")
-		@Lazy
-		public MBeanExporterTests.Person person() {
-			MBeanExporterTests.Person person = new MBeanExporterTests.Person();
-			person.setName("Juergen Hoeller");
-			return person;
-		}
+        @Bean
+        public MBeanServerFactoryBean server() throws Exception {
+            return new MBeanServerFactoryBean();
+        }
+    }
 
-		@Bean
-		@Lazy
-		public Object notLoadable() throws Exception {
-			return Class.forName("does.not.exist").newInstance();
-		}
-	}
+    @Configuration
+    @EnableMBeanExport(server = "server")
+    static class PackagePrivateConfiguration {
 
+        @Bean
+        public MBeanServerFactoryBean server() throws Exception {
+            return new MBeanServerFactoryBean();
+        }
 
-	@Configuration
-	@ComponentScan(excludeFilters = @ComponentScan.Filter(value=Configuration.class))
-	@EnableMBeanExport(server = "server")
-	static class ComponentScanConfiguration {
+        @Bean
+        public PackagePrivateTestBean testBean() {
+            return new PackagePrivateTestBean();
+        }
+    }
 
-		@Bean
-		public MBeanServerFactoryBean server() throws Exception {
-			return new MBeanServerFactoryBean();
-		}
-	}
+    @ManagedResource(objectName = "bean:name=packagePrivate")
+    private static class PackagePrivateTestBean {
 
-	@Configuration
-	@EnableMBeanExport(server = "server")
-	static class PackagePrivateConfiguration {
+        private String name;
 
-		@Bean
-		public MBeanServerFactoryBean server() throws Exception {
-			return new MBeanServerFactoryBean();
-		}
+        @ManagedAttribute
+        public String getName() {
+            return this.name;
+        }
 
-		@Bean
-		public PackagePrivateTestBean testBean() {
-			return new PackagePrivateTestBean();
-		}
-	}
+        @ManagedAttribute
+        public void setName(String name) {
+            this.name = name;
+        }
+    }
 
-	@ManagedResource(objectName = "bean:name=packagePrivate")
-	private static class PackagePrivateTestBean {
+    @Configuration
+    @EnableMBeanExport(server = "server")
+    static class PackagePrivateExtensionConfiguration {
 
-		private String name;
+        @Bean
+        public MBeanServerFactoryBean server() throws Exception {
+            return new MBeanServerFactoryBean();
+        }
 
-		@ManagedAttribute
-		public String getName() {
-			return this.name;
-		}
+        @Bean
+        public PackagePrivateTestBeanExtension testBean() {
+            PackagePrivateTestBeanExtension bean = new PackagePrivateTestBeanExtension();
+            bean.setName("TEST");
+            return bean;
+        }
+    }
 
-		@ManagedAttribute
-		public void setName(String name) {
-			this.name = name;
-		}
-	}
+    private static class PackagePrivateTestBeanExtension extends AnnotationTestBean {}
 
+    @Configuration
+    @EnableMBeanExport(server = "server")
+    static class PackagePrivateInterfaceImplementationConfiguration {
 
-	@Configuration
-	@EnableMBeanExport(server = "server")
-	static class PackagePrivateExtensionConfiguration {
+        @Bean
+        public MBeanServerFactoryBean server() throws Exception {
+            return new MBeanServerFactoryBean();
+        }
 
-		@Bean
-		public MBeanServerFactoryBean server() throws Exception {
-			return new MBeanServerFactoryBean();
-		}
+        @Bean
+        public PackagePrivateAnnotationTestBean testBean() {
+            return new PackagePrivateAnnotationTestBean();
+        }
+    }
 
-		@Bean
-		public PackagePrivateTestBeanExtension testBean() {
-			PackagePrivateTestBeanExtension bean = new PackagePrivateTestBeanExtension();
-			bean.setName("TEST");
-			return bean;
-		}
-	}
+    private static class PackagePrivateAnnotationTestBean implements AnotherAnnotationTestBean {
 
-	private static class PackagePrivateTestBeanExtension extends AnnotationTestBean {
+        private String bar;
 
-	}
+        @Override
+        public void foo() {}
 
-	@Configuration
-	@EnableMBeanExport(server = "server")
-	static class PackagePrivateInterfaceImplementationConfiguration {
+        @Override
+        public String getBar() {
+            return this.bar;
+        }
 
-		@Bean
-		public MBeanServerFactoryBean server() throws Exception {
-			return new MBeanServerFactoryBean();
-		}
+        @Override
+        public void setBar(String bar) {
+            this.bar = bar;
+        }
 
-		@Bean
-		public PackagePrivateAnnotationTestBean testBean() {
-			return new PackagePrivateAnnotationTestBean();
-		}
-	}
-
-	private static class PackagePrivateAnnotationTestBean implements AnotherAnnotationTestBean {
-
-		private String bar;
-
-		@Override
-		public void foo() {
-
-		}
-
-		@Override
-		public String getBar() {
-			return this.bar;
-		}
-
-		@Override
-		public void setBar(String bar) {
-			this.bar = bar;
-		}
-
-		@Override
-		public int getCacheEntries() {
-			return 0;
-		}
-	}
-
+        @Override
+        public int getCacheEntries() {
+            return 0;
+        }
+    }
 }

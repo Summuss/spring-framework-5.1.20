@@ -31,226 +31,224 @@ import org.springframework.util.Assert;
  */
 class LeakAwareDataBuffer implements PooledDataBuffer {
 
-	private final DataBuffer delegate;
+    private final DataBuffer delegate;
 
-	private final AssertionError leakError;
+    private final AssertionError leakError;
 
-	private final LeakAwareDataBufferFactory dataBufferFactory;
+    private final LeakAwareDataBufferFactory dataBufferFactory;
 
+    LeakAwareDataBuffer(DataBuffer delegate, LeakAwareDataBufferFactory dataBufferFactory) {
+        Assert.notNull(delegate, "Delegate must not be null");
+        Assert.notNull(dataBufferFactory, "DataBufferFactory must not be null");
+        this.delegate = delegate;
+        this.dataBufferFactory = dataBufferFactory;
+        this.leakError = createLeakError(delegate);
+    }
 
-	LeakAwareDataBuffer(DataBuffer delegate, LeakAwareDataBufferFactory dataBufferFactory) {
-		Assert.notNull(delegate, "Delegate must not be null");
-		Assert.notNull(dataBufferFactory, "DataBufferFactory must not be null");
-		this.delegate = delegate;
-		this.dataBufferFactory = dataBufferFactory;
-		this.leakError = createLeakError(delegate);
-	}
+    private static AssertionError createLeakError(DataBuffer delegate) {
+        String message =
+                String.format(
+                        "DataBuffer leak detected: {%s} has not been released.%n"
+                                + "Stack trace of buffer allocation statement follows:",
+                        delegate);
+        AssertionError result = new AssertionError(message);
+        // remove first four irrelevant stack trace elements
+        StackTraceElement[] oldTrace = result.getStackTrace();
+        StackTraceElement[] newTrace = new StackTraceElement[oldTrace.length - 4];
+        System.arraycopy(oldTrace, 4, newTrace, 0, oldTrace.length - 4);
+        result.setStackTrace(newTrace);
+        return result;
+    }
 
-	private static AssertionError createLeakError(DataBuffer delegate) {
-		String message = String.format("DataBuffer leak detected: {%s} has not been released.%n" +
-				"Stack trace of buffer allocation statement follows:",
-				delegate);
-		AssertionError result = new AssertionError(message);
-		// remove first four irrelevant stack trace elements
-		StackTraceElement[] oldTrace = result.getStackTrace();
-		StackTraceElement[] newTrace = new StackTraceElement[oldTrace.length - 4];
-		System.arraycopy(oldTrace, 4, newTrace, 0, oldTrace.length - 4);
-		result.setStackTrace(newTrace);
-		return result;
-	}
+    AssertionError leakError() {
+        return this.leakError;
+    }
 
-	AssertionError leakError() {
-		return this.leakError;
-	}
+    public DataBuffer getDelegate() {
+        return this.delegate;
+    }
 
+    @Override
+    public boolean isAllocated() {
+        return this.delegate instanceof PooledDataBuffer
+                && ((PooledDataBuffer) this.delegate).isAllocated();
+    }
 
-	public DataBuffer getDelegate() {
-		return this.delegate;
-	}
+    @Override
+    public PooledDataBuffer retain() {
+        if (this.delegate instanceof PooledDataBuffer) {
+            ((PooledDataBuffer) this.delegate).retain();
+        }
+        return this;
+    }
 
-	@Override
-	public boolean isAllocated() {
-		return this.delegate instanceof PooledDataBuffer &&
-				((PooledDataBuffer) this.delegate).isAllocated();
-	}
+    @Override
+    public boolean release() {
+        if (this.delegate instanceof PooledDataBuffer) {
+            ((PooledDataBuffer) this.delegate).release();
+        }
+        return isAllocated();
+    }
 
-	@Override
-	public PooledDataBuffer retain() {
-		if (this.delegate instanceof PooledDataBuffer) {
-			((PooledDataBuffer) this.delegate).retain();
-		}
-		return this;
-	}
+    // delegation
 
-	@Override
-	public boolean release() {
-		if (this.delegate instanceof PooledDataBuffer) {
-			((PooledDataBuffer) this.delegate).release();
-		}
-		return isAllocated();
-	}
+    @Override
+    public LeakAwareDataBufferFactory factory() {
+        return this.dataBufferFactory;
+    }
 
-	// delegation
+    @Override
+    public int indexOf(IntPredicate predicate, int fromIndex) {
+        return this.delegate.indexOf(predicate, fromIndex);
+    }
 
+    @Override
+    public int lastIndexOf(IntPredicate predicate, int fromIndex) {
+        return this.delegate.lastIndexOf(predicate, fromIndex);
+    }
 
-	@Override
-	public LeakAwareDataBufferFactory factory() {
-		return this.dataBufferFactory;
-	}
+    @Override
+    public int readableByteCount() {
+        return this.delegate.readableByteCount();
+    }
 
-	@Override
-	public int indexOf(IntPredicate predicate, int fromIndex) {
-		return this.delegate.indexOf(predicate, fromIndex);
-	}
+    @Override
+    public int writableByteCount() {
+        return this.delegate.writableByteCount();
+    }
 
-	@Override
-	public int lastIndexOf(IntPredicate predicate, int fromIndex) {
-		return this.delegate.lastIndexOf(predicate, fromIndex);
-	}
+    @Override
+    public int readPosition() {
+        return this.delegate.readPosition();
+    }
 
-	@Override
-	public int readableByteCount() {
-		return this.delegate.readableByteCount();
-	}
+    @Override
+    public DataBuffer readPosition(int readPosition) {
+        return this.delegate.readPosition(readPosition);
+    }
 
-	@Override
-	public int writableByteCount() {
-		return this.delegate.writableByteCount();
-	}
+    @Override
+    public int writePosition() {
+        return this.delegate.writePosition();
+    }
 
-	@Override
-	public int readPosition() {
-		return this.delegate.readPosition();
-	}
+    @Override
+    public DataBuffer writePosition(int writePosition) {
+        return this.delegate.writePosition(writePosition);
+    }
 
-	@Override
-	public DataBuffer readPosition(int readPosition) {
-		return this.delegate.readPosition(readPosition);
-	}
+    @Override
+    public int capacity() {
+        return this.delegate.capacity();
+    }
 
-	@Override
-	public int writePosition() {
-		return this.delegate.writePosition();
-	}
+    @Override
+    public DataBuffer capacity(int newCapacity) {
+        return this.delegate.capacity(newCapacity);
+    }
 
-	@Override
-	public DataBuffer writePosition(int writePosition) {
-		return this.delegate.writePosition(writePosition);
-	}
+    @Override
+    public DataBuffer ensureCapacity(int capacity) {
+        return this.delegate.ensureCapacity(capacity);
+    }
 
-	@Override
-	public int capacity() {
-		return this.delegate.capacity();
-	}
+    @Override
+    public byte getByte(int index) {
+        return this.delegate.getByte(index);
+    }
 
-	@Override
-	public DataBuffer capacity(int newCapacity) {
-		return this.delegate.capacity(newCapacity);
-	}
+    @Override
+    public byte read() {
+        return this.delegate.read();
+    }
 
-	@Override
-	public DataBuffer ensureCapacity(int capacity) {
-		return this.delegate.ensureCapacity(capacity);
-	}
+    @Override
+    public DataBuffer read(byte[] destination) {
+        return this.delegate.read(destination);
+    }
 
-	@Override
-	public byte getByte(int index) {
-		return this.delegate.getByte(index);
-	}
+    @Override
+    public DataBuffer read(byte[] destination, int offset, int length) {
+        return this.delegate.read(destination, offset, length);
+    }
 
-	@Override
-	public byte read() {
-		return this.delegate.read();
-	}
+    @Override
+    public DataBuffer write(byte b) {
+        return this.delegate.write(b);
+    }
 
-	@Override
-	public DataBuffer read(byte[] destination) {
-		return this.delegate.read(destination);
-	}
+    @Override
+    public DataBuffer write(byte[] source) {
+        return this.delegate.write(source);
+    }
 
-	@Override
-	public DataBuffer read(byte[] destination, int offset, int length) {
-		return this.delegate.read(destination, offset, length);
-	}
+    @Override
+    public DataBuffer write(byte[] source, int offset, int length) {
+        return this.delegate.write(source, offset, length);
+    }
 
-	@Override
-	public DataBuffer write(byte b) {
-		return this.delegate.write(b);
-	}
+    @Override
+    public DataBuffer write(DataBuffer... buffers) {
+        return this.delegate.write(buffers);
+    }
 
-	@Override
-	public DataBuffer write(byte[] source) {
-		return this.delegate.write(source);
-	}
+    @Override
+    public DataBuffer write(ByteBuffer... buffers) {
+        return this.delegate.write(buffers);
+    }
 
-	@Override
-	public DataBuffer write(byte[] source, int offset, int length) {
-		return this.delegate.write(source, offset, length);
-	}
+    @Override
+    public DataBuffer write(CharSequence charSequence, Charset charset) {
+        return this.delegate.write(charSequence, charset);
+    }
 
-	@Override
-	public DataBuffer write(DataBuffer... buffers) {
-		return this.delegate.write(buffers);
-	}
+    @Override
+    public DataBuffer slice(int index, int length) {
+        return this.delegate.slice(index, length);
+    }
 
-	@Override
-	public DataBuffer write(ByteBuffer... buffers) {
-		return this.delegate.write(buffers);
-	}
+    @Override
+    public ByteBuffer asByteBuffer() {
+        return this.delegate.asByteBuffer();
+    }
 
-	@Override
-	public DataBuffer write(CharSequence charSequence, Charset charset) {
-		return this.delegate.write(charSequence, charset);
-	}
+    @Override
+    public ByteBuffer asByteBuffer(int index, int length) {
+        return this.delegate.asByteBuffer(index, length);
+    }
 
-	@Override
-	public DataBuffer slice(int index, int length) {
-		return this.delegate.slice(index, length);
-	}
+    @Override
+    public InputStream asInputStream() {
+        return this.delegate.asInputStream();
+    }
 
-	@Override
-	public ByteBuffer asByteBuffer() {
-		return this.delegate.asByteBuffer();
-	}
+    @Override
+    public InputStream asInputStream(boolean releaseOnClose) {
+        return this.delegate.asInputStream(releaseOnClose);
+    }
 
-	@Override
-	public ByteBuffer asByteBuffer(int index, int length) {
-		return this.delegate.asByteBuffer(index, length);
-	}
+    @Override
+    public OutputStream asOutputStream() {
+        return this.delegate.asOutputStream();
+    }
 
-	@Override
-	public InputStream asInputStream() {
-		return this.delegate.asInputStream();
-	}
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof LeakAwareDataBuffer) {
+            LeakAwareDataBuffer other = (LeakAwareDataBuffer) o;
+            return this.delegate.equals(other.delegate);
+        } else {
+            return false;
+        }
+    }
 
-	@Override
-	public InputStream asInputStream(boolean releaseOnClose) {
-		return this.delegate.asInputStream(releaseOnClose);
-	}
+    @Override
+    public int hashCode() {
+        return this.delegate.hashCode();
+    }
 
-	@Override
-	public OutputStream asOutputStream() {
-		return this.delegate.asOutputStream();
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (o instanceof LeakAwareDataBuffer) {
-			LeakAwareDataBuffer other = (LeakAwareDataBuffer) o;
-			return this.delegate.equals(other.delegate);
-		}
-		else {
-			return false;
-		}
-	}
-
-	@Override
-	public int hashCode() {
-		return this.delegate.hashCode();
-	}
-
-	@Override
-	public String toString() {
-		return String.format("LeakAwareDataBuffer (%s)", this.delegate);
-	}
+    @Override
+    public String toString() {
+        return String.format("LeakAwareDataBuffer (%s)", this.delegate);
+    }
 }

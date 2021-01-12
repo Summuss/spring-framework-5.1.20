@@ -33,31 +33,30 @@ import static org.junit.Assert.*;
  * @since 3.2.2
  */
 @RunWith(SpringJUnit4ClassRunner.class)
-@ContextHierarchy(@ContextConfiguration(name = "child", classes = ClassHierarchyWithMergedConfigLevelTwoTests.OrderConfig.class))
-public class ClassHierarchyWithMergedConfigLevelTwoTests extends ClassHierarchyWithMergedConfigLevelOneTests {
+@ContextHierarchy(
+        @ContextConfiguration(
+                name = "child",
+                classes = ClassHierarchyWithMergedConfigLevelTwoTests.OrderConfig.class))
+public class ClassHierarchyWithMergedConfigLevelTwoTests
+        extends ClassHierarchyWithMergedConfigLevelOneTests {
 
-	@Configuration
-	static class OrderConfig {
+    @Configuration
+    static class OrderConfig {
 
-		@Autowired
-		private ClassHierarchyWithMergedConfigLevelOneTests.UserConfig userConfig;
+        @Autowired private ClassHierarchyWithMergedConfigLevelOneTests.UserConfig userConfig;
 
-		@Bean
-		public String order() {
-			return userConfig.user() + " + order";
-		}
-	}
+        @Bean
+        public String order() {
+            return userConfig.user() + " + order";
+        }
+    }
 
+    @Autowired private String order;
 
-	@Autowired
-	private String order;
-
-
-	@Test
-	@Override
-	public void loadContextHierarchy() {
-		super.loadContextHierarchy();
-		assertEquals("parent + user + order", order);
-	}
-
+    @Test
+    @Override
+    public void loadContextHierarchy() {
+        super.loadContextHierarchy();
+        assertEquals("parent + user + order", order);
+    }
 }

@@ -30,13 +30,12 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.ServerWebInputException;
 
 /**
- * Resolves method arguments annotated with {@code @RequestBody} by reading the
- * body of the request through a compatible {@code HttpMessageReader}.
+ * Resolves method arguments annotated with {@code @RequestBody} by reading the body of the request
+ * through a compatible {@code HttpMessageReader}.
  *
- * <p>An {@code @RequestBody} method argument is also validated if it is
- * annotated with {@code @javax.validation.Valid} or
- * {@link org.springframework.validation.annotation.Validated}. Validation
- * failure results in an {@link ServerWebInputException}.
+ * <p>An {@code @RequestBody} method argument is also validated if it is annotated with
+ * {@code @javax.validation.Valid} or {@link org.springframework.validation.annotation.Validated}.
+ * Validation failure results in an {@link ServerWebInputException}.
  *
  * @author Sebastien Deleuze
  * @author Stephane Maldini
@@ -45,25 +44,23 @@ import org.springframework.web.server.ServerWebInputException;
  */
 public class RequestBodyArgumentResolver extends AbstractMessageReaderArgumentResolver {
 
-	public RequestBodyArgumentResolver(List<HttpMessageReader<?>> readers,
-			ReactiveAdapterRegistry registry) {
+    public RequestBodyArgumentResolver(
+            List<HttpMessageReader<?>> readers, ReactiveAdapterRegistry registry) {
 
-		super(readers, registry);
-	}
+        super(readers, registry);
+    }
 
+    @Override
+    public boolean supportsParameter(MethodParameter parameter) {
+        return parameter.hasParameterAnnotation(RequestBody.class);
+    }
 
-	@Override
-	public boolean supportsParameter(MethodParameter parameter) {
-		return parameter.hasParameterAnnotation(RequestBody.class);
-	}
+    @Override
+    public Mono<Object> resolveArgument(
+            MethodParameter param, BindingContext bindingContext, ServerWebExchange exchange) {
 
-	@Override
-	public Mono<Object> resolveArgument(
-			MethodParameter param, BindingContext bindingContext, ServerWebExchange exchange) {
-
-		RequestBody ann = param.getParameterAnnotation(RequestBody.class);
-		Assert.state(ann != null, "No RequestBody annotation");
-		return readBody(param, ann.required(), bindingContext, exchange);
-	}
-
+        RequestBody ann = param.getParameterAnnotation(RequestBody.class);
+        Assert.state(ann != null, "No RequestBody annotation");
+        return readBody(param, ann.required(), bindingContext, exchange);
+    }
 }

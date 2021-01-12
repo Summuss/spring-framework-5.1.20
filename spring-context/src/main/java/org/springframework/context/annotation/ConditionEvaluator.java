@@ -47,181 +47,183 @@ import org.springframework.util.MultiValueMap;
  */
 class ConditionEvaluator {
 
-	private final ConditionContextImpl context;
+    private final ConditionContextImpl context;
 
+    /** Create a new {@link ConditionEvaluator} instance. */
+    public ConditionEvaluator(
+            @Nullable BeanDefinitionRegistry registry,
+            @Nullable Environment environment,
+            @Nullable ResourceLoader resourceLoader) {
 
-	/**
-	 * Create a new {@link ConditionEvaluator} instance.
-	 */
-	public ConditionEvaluator(@Nullable BeanDefinitionRegistry registry,
-			@Nullable Environment environment, @Nullable ResourceLoader resourceLoader) {
+        this.context = new ConditionContextImpl(registry, environment, resourceLoader);
+    }
 
-		this.context = new ConditionContextImpl(registry, environment, resourceLoader);
-	}
+    /**
+     * Determine if an item should be skipped based on {@code @Conditional} annotations. The {@link
+     * ConfigurationPhase} will be deduced from the type of item (i.e. a {@code @Configuration}
+     * class will be {@link ConfigurationPhase#PARSE_CONFIGURATION})
+     *
+     * @param metadata the meta data
+     * @return if the item should be skipped
+     */
+    public boolean shouldSkip(AnnotatedTypeMetadata metadata) {
+        return shouldSkip(metadata, null);
+    }
 
+    /**
+     * Determine if an item should be skipped based on {@code @Conditional} annotations.
+     *
+     * @param metadata the meta data
+     * @param phase the phase of the call
+     * @return if the item should be skipped
+     */
+    public boolean shouldSkip(
+            @Nullable AnnotatedTypeMetadata metadata, @Nullable ConfigurationPhase phase) {
+        if (metadata == null || !metadata.isAnnotated(Conditional.class.getName())) {
+            return false;
+        }
 
-	/**
-	 * Determine if an item should be skipped based on {@code @Conditional} annotations.
-	 * The {@link ConfigurationPhase} will be deduced from the type of item (i.e. a
-	 * {@code @Configuration} class will be {@link ConfigurationPhase#PARSE_CONFIGURATION})
-	 * @param metadata the meta data
-	 * @return if the item should be skipped
-	 */
-	public boolean shouldSkip(AnnotatedTypeMetadata metadata) {
-		return shouldSkip(metadata, null);
-	}
+        if (phase == null) {
+            if (metadata instanceof AnnotationMetadata
+                    && ConfigurationClassUtils.isConfigurationCandidate(
+                            (AnnotationMetadata) metadata)) {
+                return shouldSkip(metadata, ConfigurationPhase.PARSE_CONFIGURATION);
+            }
+            return shouldSkip(metadata, ConfigurationPhase.REGISTER_BEAN);
+        }
 
-	/**
-	 * Determine if an item should be skipped based on {@code @Conditional} annotations.
-	 * @param metadata the meta data
-	 * @param phase the phase of the call
-	 * @return if the item should be skipped
-	 */
-	public boolean shouldSkip(@Nullable AnnotatedTypeMetadata metadata, @Nullable ConfigurationPhase phase) {
-		if (metadata == null || !metadata.isAnnotated(Conditional.class.getName())) {
-			return false;
-		}
+        List<Condition> conditions = new ArrayList<>();
+        for (String[] conditionClasses : getConditionClasses(metadata)) {
+            for (String conditionClass : conditionClasses) {
+                Condition condition = getCondition(conditionClass, this.context.getClassLoader());
+                conditions.add(condition);
+            }
+        }
 
-		if (phase == null) {
-			if (metadata instanceof AnnotationMetadata &&
-					ConfigurationClassUtils.isConfigurationCandidate((AnnotationMetadata) metadata)) {
-				return shouldSkip(metadata, ConfigurationPhase.PARSE_CONFIGURATION);
-			}
-			return shouldSkip(metadata, ConfigurationPhase.REGISTER_BEAN);
-		}
+        AnnotationAwareOrderComparator.sort(conditions);
 
-		List<Condition> conditions = new ArrayList<>();
-		for (String[] conditionClasses : getConditionClasses(metadata)) {
-			for (String conditionClass : conditionClasses) {
-				Condition condition = getCondition(conditionClass, this.context.getClassLoader());
-				conditions.add(condition);
-			}
-		}
+        for (Condition condition : conditions) {
+            ConfigurationPhase requiredPhase = null;
+            if (condition instanceof ConfigurationCondition) {
+                requiredPhase = ((ConfigurationCondition) condition).getConfigurationPhase();
+            }
+            if ((requiredPhase == null || requiredPhase == phase)
+                    && !condition.matches(this.context, metadata)) {
+                return true;
+            }
+        }
 
-		AnnotationAwareOrderComparator.sort(conditions);
+        return false;
+    }
 
-		for (Condition condition : conditions) {
-			ConfigurationPhase requiredPhase = null;
-			if (condition instanceof ConfigurationCondition) {
-				requiredPhase = ((ConfigurationCondition) condition).getConfigurationPhase();
-			}
-			if ((requiredPhase == null || requiredPhase == phase) && !condition.matches(this.context, metadata)) {
-				return true;
-			}
-		}
+    @SuppressWarnings("unchecked")
+    private List<String[]> getConditionClasses(AnnotatedTypeMetadata metadata) {
+        MultiValueMap<String, Object> attributes =
+                metadata.getAllAnnotationAttributes(Conditional.class.getName(), true);
+        Object values = (attributes != null ? attributes.get("value") : null);
+        return (List<String[]>) (values != null ? values : Collections.emptyList());
+    }
 
-		return false;
-	}
+    private Condition getCondition(String conditionClassName, @Nullable ClassLoader classloader) {
+        Class<?> conditionClass = ClassUtils.resolveClassName(conditionClassName, classloader);
+        return (Condition) BeanUtils.instantiateClass(conditionClass);
+    }
 
-	@SuppressWarnings("unchecked")
-	private List<String[]> getConditionClasses(AnnotatedTypeMetadata metadata) {
-		MultiValueMap<String, Object> attributes = metadata.getAllAnnotationAttributes(Conditional.class.getName(), true);
-		Object values = (attributes != null ? attributes.get("value") : null);
-		return (List<String[]>) (values != null ? values : Collections.emptyList());
-	}
+    /** Implementation of a {@link ConditionContext}. */
+    private static class ConditionContextImpl implements ConditionContext {
 
-	private Condition getCondition(String conditionClassName, @Nullable ClassLoader classloader) {
-		Class<?> conditionClass = ClassUtils.resolveClassName(conditionClassName, classloader);
-		return (Condition) BeanUtils.instantiateClass(conditionClass);
-	}
+        @Nullable private final BeanDefinitionRegistry registry;
 
+        @Nullable private final ConfigurableListableBeanFactory beanFactory;
 
-	/**
-	 * Implementation of a {@link ConditionContext}.
-	 */
-	private static class ConditionContextImpl implements ConditionContext {
+        private final Environment environment;
 
-		@Nullable
-		private final BeanDefinitionRegistry registry;
+        private final ResourceLoader resourceLoader;
 
-		@Nullable
-		private final ConfigurableListableBeanFactory beanFactory;
+        @Nullable private final ClassLoader classLoader;
 
-		private final Environment environment;
+        public ConditionContextImpl(
+                @Nullable BeanDefinitionRegistry registry,
+                @Nullable Environment environment,
+                @Nullable ResourceLoader resourceLoader) {
 
-		private final ResourceLoader resourceLoader;
+            this.registry = registry;
+            this.beanFactory = deduceBeanFactory(registry);
+            this.environment = (environment != null ? environment : deduceEnvironment(registry));
+            this.resourceLoader =
+                    (resourceLoader != null ? resourceLoader : deduceResourceLoader(registry));
+            this.classLoader = deduceClassLoader(resourceLoader, this.beanFactory);
+        }
 
-		@Nullable
-		private final ClassLoader classLoader;
+        @Nullable
+        private ConfigurableListableBeanFactory deduceBeanFactory(
+                @Nullable BeanDefinitionRegistry source) {
+            if (source instanceof ConfigurableListableBeanFactory) {
+                return (ConfigurableListableBeanFactory) source;
+            }
+            if (source instanceof ConfigurableApplicationContext) {
+                return (((ConfigurableApplicationContext) source).getBeanFactory());
+            }
+            return null;
+        }
 
-		public ConditionContextImpl(@Nullable BeanDefinitionRegistry registry,
-				@Nullable Environment environment, @Nullable ResourceLoader resourceLoader) {
+        private Environment deduceEnvironment(@Nullable BeanDefinitionRegistry source) {
+            if (source instanceof EnvironmentCapable) {
+                return ((EnvironmentCapable) source).getEnvironment();
+            }
+            return new StandardEnvironment();
+        }
 
-			this.registry = registry;
-			this.beanFactory = deduceBeanFactory(registry);
-			this.environment = (environment != null ? environment : deduceEnvironment(registry));
-			this.resourceLoader = (resourceLoader != null ? resourceLoader : deduceResourceLoader(registry));
-			this.classLoader = deduceClassLoader(resourceLoader, this.beanFactory);
-		}
+        private ResourceLoader deduceResourceLoader(@Nullable BeanDefinitionRegistry source) {
+            if (source instanceof ResourceLoader) {
+                return (ResourceLoader) source;
+            }
+            return new DefaultResourceLoader();
+        }
 
-		@Nullable
-		private ConfigurableListableBeanFactory deduceBeanFactory(@Nullable BeanDefinitionRegistry source) {
-			if (source instanceof ConfigurableListableBeanFactory) {
-				return (ConfigurableListableBeanFactory) source;
-			}
-			if (source instanceof ConfigurableApplicationContext) {
-				return (((ConfigurableApplicationContext) source).getBeanFactory());
-			}
-			return null;
-		}
+        @Nullable
+        private ClassLoader deduceClassLoader(
+                @Nullable ResourceLoader resourceLoader,
+                @Nullable ConfigurableListableBeanFactory beanFactory) {
 
-		private Environment deduceEnvironment(@Nullable BeanDefinitionRegistry source) {
-			if (source instanceof EnvironmentCapable) {
-				return ((EnvironmentCapable) source).getEnvironment();
-			}
-			return new StandardEnvironment();
-		}
+            if (resourceLoader != null) {
+                ClassLoader classLoader = resourceLoader.getClassLoader();
+                if (classLoader != null) {
+                    return classLoader;
+                }
+            }
+            if (beanFactory != null) {
+                return beanFactory.getBeanClassLoader();
+            }
+            return ClassUtils.getDefaultClassLoader();
+        }
 
-		private ResourceLoader deduceResourceLoader(@Nullable BeanDefinitionRegistry source) {
-			if (source instanceof ResourceLoader) {
-				return (ResourceLoader) source;
-			}
-			return new DefaultResourceLoader();
-		}
+        @Override
+        public BeanDefinitionRegistry getRegistry() {
+            Assert.state(this.registry != null, "No BeanDefinitionRegistry available");
+            return this.registry;
+        }
 
-		@Nullable
-		private ClassLoader deduceClassLoader(@Nullable ResourceLoader resourceLoader,
-				@Nullable ConfigurableListableBeanFactory beanFactory) {
+        @Override
+        @Nullable
+        public ConfigurableListableBeanFactory getBeanFactory() {
+            return this.beanFactory;
+        }
 
-			if (resourceLoader != null) {
-				ClassLoader classLoader = resourceLoader.getClassLoader();
-				if (classLoader != null) {
-					return classLoader;
-				}
-			}
-			if (beanFactory != null) {
-				return beanFactory.getBeanClassLoader();
-			}
-			return ClassUtils.getDefaultClassLoader();
-		}
+        @Override
+        public Environment getEnvironment() {
+            return this.environment;
+        }
 
-		@Override
-		public BeanDefinitionRegistry getRegistry() {
-			Assert.state(this.registry != null, "No BeanDefinitionRegistry available");
-			return this.registry;
-		}
+        @Override
+        public ResourceLoader getResourceLoader() {
+            return this.resourceLoader;
+        }
 
-		@Override
-		@Nullable
-		public ConfigurableListableBeanFactory getBeanFactory() {
-			return this.beanFactory;
-		}
-
-		@Override
-		public Environment getEnvironment() {
-			return this.environment;
-		}
-
-		@Override
-		public ResourceLoader getResourceLoader() {
-			return this.resourceLoader;
-		}
-
-		@Override
-		@Nullable
-		public ClassLoader getClassLoader() {
-			return this.classLoader;
-		}
-	}
-
+        @Override
+        @Nullable
+        public ClassLoader getClassLoader() {
+            return this.classLoader;
+        }
+    }
 }

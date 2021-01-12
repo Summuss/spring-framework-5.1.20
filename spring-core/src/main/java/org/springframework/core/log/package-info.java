@@ -1,6 +1,4 @@
-/**
- * Useful delegates for Spring's logging conventions.
- */
+/** Useful delegates for Spring's logging conventions. */
 @NonNullApi
 @NonNullFields
 package org.springframework.core.log;

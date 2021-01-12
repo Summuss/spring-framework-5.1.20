@@ -1,6 +1,4 @@
-/**
- * Useful unit data types.
- */
+/** Useful unit data types. */
 @NonNullApi
 @NonNullFields
 package org.springframework.util.unit;

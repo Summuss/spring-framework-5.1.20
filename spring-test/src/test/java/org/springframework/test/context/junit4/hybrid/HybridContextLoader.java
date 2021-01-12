@@ -29,10 +29,13 @@ import org.springframework.util.Assert;
 import static org.springframework.test.context.support.AnnotationConfigContextLoaderUtils.*;
 
 /**
- * Hybrid {@link SmartContextLoader} that supports path-based and class-based
- * resources simultaneously.
+ * Hybrid {@link SmartContextLoader} that supports path-based and class-based resources
+ * simultaneously.
+ *
  * <p>This test loader is inspired by Spring Boot.
+ *
  * <p>Detects defaults for XML configuration and annotated classes.
+ *
  * <p>Beans from XML configuration always override those from annotated classes.
  *
  * @author Sam Brannen
@@ -40,38 +43,41 @@ import static org.springframework.test.context.support.AnnotationConfigContextLo
  */
 public class HybridContextLoader extends AbstractGenericContextLoader {
 
-	@Override
-	protected void validateMergedContextConfiguration(MergedContextConfiguration mergedConfig) {
-		Assert.isTrue(mergedConfig.hasClasses() || mergedConfig.hasLocations(), getClass().getSimpleName()
-				+ " requires either classes or locations");
-	}
+    @Override
+    protected void validateMergedContextConfiguration(MergedContextConfiguration mergedConfig) {
+        Assert.isTrue(
+                mergedConfig.hasClasses() || mergedConfig.hasLocations(),
+                getClass().getSimpleName() + " requires either classes or locations");
+    }
 
-	@Override
-	public void processContextConfiguration(ContextConfigurationAttributes configAttributes) {
-		// Detect default XML configuration files:
-		super.processContextConfiguration(configAttributes);
+    @Override
+    public void processContextConfiguration(ContextConfigurationAttributes configAttributes) {
+        // Detect default XML configuration files:
+        super.processContextConfiguration(configAttributes);
 
-		// Detect default configuration classes:
-		if (!configAttributes.hasClasses() && isGenerateDefaultLocations()) {
-			configAttributes.setClasses(detectDefaultConfigurationClasses(configAttributes.getDeclaringClass()));
-		}
-	}
+        // Detect default configuration classes:
+        if (!configAttributes.hasClasses() && isGenerateDefaultLocations()) {
+            configAttributes.setClasses(
+                    detectDefaultConfigurationClasses(configAttributes.getDeclaringClass()));
+        }
+    }
 
-	@Override
-	protected void loadBeanDefinitions(GenericApplicationContext context, MergedContextConfiguration mergedConfig) {
-		// Order doesn't matter: <bean> always wins over @Bean.
-		new XmlBeanDefinitionReader(context).loadBeanDefinitions(mergedConfig.getLocations());
-		new AnnotatedBeanDefinitionReader(context).register(mergedConfig.getClasses());
-	}
+    @Override
+    protected void loadBeanDefinitions(
+            GenericApplicationContext context, MergedContextConfiguration mergedConfig) {
+        // Order doesn't matter: <bean> always wins over @Bean.
+        new XmlBeanDefinitionReader(context).loadBeanDefinitions(mergedConfig.getLocations());
+        new AnnotatedBeanDefinitionReader(context).register(mergedConfig.getClasses());
+    }
 
-	@Override
-	protected BeanDefinitionReader createBeanDefinitionReader(GenericApplicationContext context) {
-		throw new UnsupportedOperationException(getClass().getSimpleName() + " doesn't support this");
-	}
+    @Override
+    protected BeanDefinitionReader createBeanDefinitionReader(GenericApplicationContext context) {
+        throw new UnsupportedOperationException(
+                getClass().getSimpleName() + " doesn't support this");
+    }
 
-	@Override
-	protected String getResourceSuffix() {
-		return "-context.xml";
-	}
-
+    @Override
+    protected String getResourceSuffix() {
+        return "-context.xml";
+    }
 }

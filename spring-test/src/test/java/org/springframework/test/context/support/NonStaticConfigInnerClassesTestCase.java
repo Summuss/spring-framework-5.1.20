@@ -27,14 +27,11 @@ import org.springframework.context.annotation.Configuration;
  */
 public class NonStaticConfigInnerClassesTestCase {
 
-	// Intentionally not static
-	@Configuration
-	class FooConfig {
-	}
+    // Intentionally not static
+    @Configuration
+    class FooConfig {}
 
-	// Intentionally not static
-	@Configuration
-	class BarConfig {
-	}
-
+    // Intentionally not static
+    @Configuration
+    class BarConfig {}
 }

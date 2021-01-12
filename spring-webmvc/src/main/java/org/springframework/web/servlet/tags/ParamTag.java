@@ -22,8 +22,8 @@ import javax.servlet.jsp.tagext.BodyTagSupport;
 import org.springframework.lang.Nullable;
 
 /**
- * The {@code <param>} tag collects name-value parameters and passes them to a
- * {@link ParamAware} ancestor in the tag hierarchy.
+ * The {@code <param>} tag collects name-value parameters and passes them to a {@link ParamAware}
+ * ancestor in the tag hierarchy.
  *
  * <p>This tag must be nested under a param aware tag.
  *
@@ -62,59 +62,51 @@ import org.springframework.lang.Nullable;
 @SuppressWarnings("serial")
 public class ParamTag extends BodyTagSupport {
 
-	private String name = "";
+    private String name = "";
 
-	@Nullable
-	private String value;
+    @Nullable private String value;
 
-	private boolean valueSet;
+    private boolean valueSet;
 
+    /** Set the name of the parameter (required). */
+    public void setName(String name) {
+        this.name = name;
+    }
 
-	/**
-	 * Set the name of the parameter (required).
-	 */
-	public void setName(String name) {
-		this.name = name;
-	}
+    /** Set the value of the parameter (optional). */
+    public void setValue(String value) {
+        this.value = value;
+        this.valueSet = true;
+    }
 
-	/**
-	 * Set the value of the parameter (optional).
-	 */
-	public void setValue(String value) {
-		this.value = value;
-		this.valueSet = true;
-	}
+    @Override
+    public int doEndTag() throws JspException {
+        Param param = new Param();
+        param.setName(this.name);
+        if (this.valueSet) {
+            param.setValue(this.value);
+        } else if (getBodyContent() != null) {
+            // Get the value from the tag body
+            param.setValue(getBodyContent().getString().trim());
+        }
 
+        // Find a param aware ancestor
+        ParamAware paramAwareTag = (ParamAware) findAncestorWithClass(this, ParamAware.class);
+        if (paramAwareTag == null) {
+            throw new JspException(
+                    "The param tag must be a descendant of a tag that supports parameters");
+        }
 
-	@Override
-	public int doEndTag() throws JspException {
-		Param param = new Param();
-		param.setName(this.name);
-		if (this.valueSet) {
-			param.setValue(this.value);
-		}
-		else if (getBodyContent() != null) {
-			// Get the value from the tag body
-			param.setValue(getBodyContent().getString().trim());
-		}
+        paramAwareTag.addParam(param);
 
-		// Find a param aware ancestor
-		ParamAware paramAwareTag = (ParamAware) findAncestorWithClass(this, ParamAware.class);
-		if (paramAwareTag == null) {
-			throw new JspException("The param tag must be a descendant of a tag that supports parameters");
-		}
+        return EVAL_PAGE;
+    }
 
-		paramAwareTag.addParam(param);
-
-		return EVAL_PAGE;
-	}
-
-	@Override
-	public void release() {
-		super.release();
-		this.name = "";
-		this.value = null;
-		this.valueSet = false;
-	}
-
+    @Override
+    public void release() {
+        super.release();
+        this.name = "";
+        this.value = null;
+        this.valueSet = false;
+    }
 }

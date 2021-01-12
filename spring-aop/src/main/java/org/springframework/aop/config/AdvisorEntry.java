@@ -26,21 +26,19 @@ import org.springframework.beans.factory.parsing.ParseState;
  */
 public class AdvisorEntry implements ParseState.Entry {
 
-	private final String name;
+    private final String name;
 
+    /**
+     * Create a new {@code AdvisorEntry} instance.
+     *
+     * @param name the bean name of the advisor
+     */
+    public AdvisorEntry(String name) {
+        this.name = name;
+    }
 
-	/**
-	 * Create a new {@code AdvisorEntry} instance.
-	 * @param name the bean name of the advisor
-	 */
-	public AdvisorEntry(String name) {
-		this.name = name;
-	}
-
-
-	@Override
-	public String toString() {
-		return "Advisor '" + this.name + "'";
-	}
-
+    @Override
+    public String toString() {
+        return "Advisor '" + this.name + "'";
+    }
 }

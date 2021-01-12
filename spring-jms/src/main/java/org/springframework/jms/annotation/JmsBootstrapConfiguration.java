@@ -24,9 +24,9 @@ import org.springframework.jms.config.JmsListenerConfigUtils;
 import org.springframework.jms.config.JmsListenerEndpointRegistry;
 
 /**
- * {@code @Configuration} class that registers a {@link JmsListenerAnnotationBeanPostProcessor}
- * bean capable of processing Spring's @{@link JmsListener} annotation. Also register
- * a default {@link JmsListenerEndpointRegistry}.
+ * {@code @Configuration} class that registers a {@link JmsListenerAnnotationBeanPostProcessor} bean
+ * capable of processing Spring's @{@link JmsListener} annotation. Also register a default {@link
+ * JmsListenerEndpointRegistry}.
  *
  * <p>This configuration class is automatically imported when using the @{@link EnableJms}
  * annotation. See the {@link EnableJms} javadocs for complete usage details.
@@ -41,15 +41,14 @@ import org.springframework.jms.config.JmsListenerEndpointRegistry;
 @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
 public class JmsBootstrapConfiguration {
 
-	@Bean(name = JmsListenerConfigUtils.JMS_LISTENER_ANNOTATION_PROCESSOR_BEAN_NAME)
-	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)
-	public JmsListenerAnnotationBeanPostProcessor jmsListenerAnnotationProcessor() {
-		return new JmsListenerAnnotationBeanPostProcessor();
-	}
+    @Bean(name = JmsListenerConfigUtils.JMS_LISTENER_ANNOTATION_PROCESSOR_BEAN_NAME)
+    @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
+    public JmsListenerAnnotationBeanPostProcessor jmsListenerAnnotationProcessor() {
+        return new JmsListenerAnnotationBeanPostProcessor();
+    }
 
-	@Bean(name = JmsListenerConfigUtils.JMS_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME)
-	public JmsListenerEndpointRegistry defaultJmsListenerEndpointRegistry() {
-		return new JmsListenerEndpointRegistry();
-	}
-
+    @Bean(name = JmsListenerConfigUtils.JMS_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME)
+    public JmsListenerEndpointRegistry defaultJmsListenerEndpointRegistry() {
+        return new JmsListenerEndpointRegistry();
+    }
 }

@@ -35,12 +35,12 @@ import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 /**
- * Utility methods for working with {@link ActiveProfiles @ActiveProfiles} and
- * {@link ActiveProfilesResolver ActiveProfilesResolvers}.
+ * Utility methods for working with {@link ActiveProfiles @ActiveProfiles} and {@link
+ * ActiveProfilesResolver ActiveProfilesResolvers}.
  *
- * <p>Although {@code ActiveProfilesUtils} was first introduced in Spring Framework
- * 4.1, the initial implementations of methods in this class were based on the
- * existing code base in {@code ContextLoaderUtils}.
+ * <p>Although {@code ActiveProfilesUtils} was first introduced in Spring Framework 4.1, the initial
+ * implementations of methods in this class were based on the existing code base in {@code
+ * ContextLoaderUtils}.
  *
  * @author Sam Brannen
  * @author Michail Nikolaev
@@ -50,85 +50,93 @@ import org.springframework.util.StringUtils;
  */
 abstract class ActiveProfilesUtils {
 
-	private static final Log logger = LogFactory.getLog(ActiveProfilesUtils.class);
+    private static final Log logger = LogFactory.getLog(ActiveProfilesUtils.class);
 
+    /**
+     * Resolve <em>active bean definition profiles</em> for the supplied {@link Class}.
+     *
+     * <p>Note that the {@link ActiveProfiles#inheritProfiles inheritProfiles} flag of {@link
+     * ActiveProfiles @ActiveProfiles} will be taken into consideration. Specifically, if the {@code
+     * inheritProfiles} flag is set to {@code true}, profiles defined in the test class will be
+     * merged with those defined in superclasses.
+     *
+     * @param testClass the class for which to resolve the active profiles (must not be {@code
+     *     null})
+     * @return the set of active profiles for the specified class, including active profiles from
+     *     superclasses if appropriate (never {@code null})
+     * @see ActiveProfiles
+     * @see ActiveProfilesResolver
+     * @see org.springframework.context.annotation.Profile
+     */
+    static String[] resolveActiveProfiles(Class<?> testClass) {
+        Assert.notNull(testClass, "Class must not be null");
 
-	/**
-	 * Resolve <em>active bean definition profiles</em> for the supplied {@link Class}.
-	 * <p>Note that the {@link ActiveProfiles#inheritProfiles inheritProfiles} flag of
-	 * {@link ActiveProfiles @ActiveProfiles} will be taken into consideration.
-	 * Specifically, if the {@code inheritProfiles} flag is set to {@code true}, profiles
-	 * defined in the test class will be merged with those defined in superclasses.
-	 * @param testClass the class for which to resolve the active profiles (must not be
-	 * {@code null})
-	 * @return the set of active profiles for the specified class, including active
-	 * profiles from superclasses if appropriate (never {@code null})
-	 * @see ActiveProfiles
-	 * @see ActiveProfilesResolver
-	 * @see org.springframework.context.annotation.Profile
-	 */
-	static String[] resolveActiveProfiles(Class<?> testClass) {
-		Assert.notNull(testClass, "Class must not be null");
+        List<String[]> profileArrays = new ArrayList<>();
 
-		List<String[]> profileArrays = new ArrayList<>();
+        Class<ActiveProfiles> annotationType = ActiveProfiles.class;
+        AnnotationDescriptor<ActiveProfiles> descriptor =
+                MetaAnnotationUtils.findAnnotationDescriptor(testClass, annotationType);
+        if (descriptor == null && logger.isDebugEnabled()) {
+            logger.debug(
+                    String.format(
+                            "Could not find an 'annotation declaring class' for annotation type [%s] and class [%s]",
+                            annotationType.getName(), testClass.getName()));
+        }
 
-		Class<ActiveProfiles> annotationType = ActiveProfiles.class;
-		AnnotationDescriptor<ActiveProfiles> descriptor =
-				MetaAnnotationUtils.findAnnotationDescriptor(testClass, annotationType);
-		if (descriptor == null && logger.isDebugEnabled()) {
-			logger.debug(String.format(
-					"Could not find an 'annotation declaring class' for annotation type [%s] and class [%s]",
-					annotationType.getName(), testClass.getName()));
-		}
+        while (descriptor != null) {
+            Class<?> rootDeclaringClass = descriptor.getRootDeclaringClass();
+            Class<?> declaringClass = descriptor.getDeclaringClass();
+            ActiveProfiles annotation = descriptor.synthesizeAnnotation();
 
-		while (descriptor != null) {
-			Class<?> rootDeclaringClass = descriptor.getRootDeclaringClass();
-			Class<?> declaringClass = descriptor.getDeclaringClass();
-			ActiveProfiles annotation = descriptor.synthesizeAnnotation();
+            if (logger.isTraceEnabled()) {
+                logger.trace(
+                        String.format(
+                                "Retrieved @ActiveProfiles [%s] for declaring class [%s]",
+                                annotation, declaringClass.getName()));
+            }
 
-			if (logger.isTraceEnabled()) {
-				logger.trace(String.format("Retrieved @ActiveProfiles [%s] for declaring class [%s]",
-						annotation, declaringClass.getName()));
-			}
+            Class<? extends ActiveProfilesResolver> resolverClass = annotation.resolver();
+            if (ActiveProfilesResolver.class == resolverClass) {
+                resolverClass = DefaultActiveProfilesResolver.class;
+            }
 
-			Class<? extends ActiveProfilesResolver> resolverClass = annotation.resolver();
-			if (ActiveProfilesResolver.class == resolverClass) {
-				resolverClass = DefaultActiveProfilesResolver.class;
-			}
+            ActiveProfilesResolver resolver;
+            try {
+                resolver = BeanUtils.instantiateClass(resolverClass, ActiveProfilesResolver.class);
+            } catch (Exception ex) {
+                String msg =
+                        String.format(
+                                "Could not instantiate ActiveProfilesResolver of type [%s] "
+                                        + "for test class [%s]",
+                                resolverClass.getName(), rootDeclaringClass.getName());
+                logger.error(msg);
+                throw new IllegalStateException(msg, ex);
+            }
 
-			ActiveProfilesResolver resolver;
-			try {
-				resolver = BeanUtils.instantiateClass(resolverClass, ActiveProfilesResolver.class);
-			}
-			catch (Exception ex) {
-				String msg = String.format("Could not instantiate ActiveProfilesResolver of type [%s] " +
-						"for test class [%s]", resolverClass.getName(), rootDeclaringClass.getName());
-				logger.error(msg);
-				throw new IllegalStateException(msg, ex);
-			}
+            String[] profiles = resolver.resolve(rootDeclaringClass);
+            if (!ObjectUtils.isEmpty(profiles)) {
+                profileArrays.add(profiles);
+            }
 
-			String[] profiles = resolver.resolve(rootDeclaringClass);
-			if (!ObjectUtils.isEmpty(profiles)) {
-				profileArrays.add(profiles);
-			}
+            descriptor =
+                    (annotation.inheritProfiles()
+                            ? MetaAnnotationUtils.findAnnotationDescriptor(
+                                    rootDeclaringClass.getSuperclass(), annotationType)
+                            : null);
+        }
 
-			descriptor = (annotation.inheritProfiles() ? MetaAnnotationUtils.findAnnotationDescriptor(
-					rootDeclaringClass.getSuperclass(), annotationType) : null);
-		}
+        // Reverse the list so that we can traverse "down" the hierarchy.
+        Collections.reverse(profileArrays);
 
-		// Reverse the list so that we can traverse "down" the hierarchy.
-		Collections.reverse(profileArrays);
+        Set<String> activeProfiles = new LinkedHashSet<>();
+        for (String[] profiles : profileArrays) {
+            for (String profile : profiles) {
+                if (StringUtils.hasText(profile)) {
+                    activeProfiles.add(profile.trim());
+                }
+            }
+        }
 
-		Set<String> activeProfiles = new LinkedHashSet<>();
-		for (String[] profiles : profileArrays) {
-			for (String profile : profiles) {
-				if (StringUtils.hasText(profile)) {
-					activeProfiles.add(profile.trim());
-				}
-			}
-		}
-
-		return StringUtils.toStringArray(activeProfiles);
-	}
-
+        return StringUtils.toStringArray(activeProfiles);
+    }
 }

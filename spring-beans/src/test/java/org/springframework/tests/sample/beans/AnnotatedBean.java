@@ -16,9 +16,6 @@
 
 package org.springframework.tests.sample.beans;
 
-/**
- * @author Stephane Nicoll
- */
+/** @author Stephane Nicoll */
 @TestAnnotation
-public class AnnotatedBean {
-}
+public class AnnotatedBean {}

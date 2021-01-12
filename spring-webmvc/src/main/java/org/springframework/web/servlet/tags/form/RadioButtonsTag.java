@@ -19,10 +19,11 @@ package org.springframework.web.servlet.tags.form;
 /**
  * The {@code <radiobuttons>} tag renders multiple HTML 'input' tags with type 'radio'.
  *
- * <p>Rendered elements are marked as 'checked' if the configured
- * {@link #setItems(Object) value} matches the bound value.
+ * <p>Rendered elements are marked as 'checked' if the configured {@link #setItems(Object) value}
+ * matches the bound value.
  *
  * <p>
+ *
  * <table>
  * <caption>Attribute Summary</caption>
  * <thead>
@@ -231,9 +232,8 @@ package org.springframework.web.servlet.tags.form;
 @SuppressWarnings("serial")
 public class RadioButtonsTag extends AbstractMultiCheckedElementTag {
 
-	@Override
-	protected String getInputType() {
-		return "radio";
-	}
-
+    @Override
+    protected String getInputType() {
+        return "radio";
+    }
 }

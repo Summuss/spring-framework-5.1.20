@@ -36,35 +36,35 @@ import org.springframework.web.server.ServerWebInputException;
  */
 public class SessionAttributeMethodArgumentResolver extends AbstractNamedValueArgumentResolver {
 
-	public SessionAttributeMethodArgumentResolver(ConfigurableBeanFactory factory, ReactiveAdapterRegistry registry) {
-		super(factory, registry);
-	}
+    public SessionAttributeMethodArgumentResolver(
+            ConfigurableBeanFactory factory, ReactiveAdapterRegistry registry) {
+        super(factory, registry);
+    }
 
+    @Override
+    public boolean supportsParameter(MethodParameter parameter) {
+        return parameter.hasParameterAnnotation(SessionAttribute.class);
+    }
 
-	@Override
-	public boolean supportsParameter(MethodParameter parameter) {
-		return parameter.hasParameterAnnotation(SessionAttribute.class);
-	}
+    @Override
+    protected NamedValueInfo createNamedValueInfo(MethodParameter parameter) {
+        SessionAttribute ann = parameter.getParameterAnnotation(SessionAttribute.class);
+        Assert.state(ann != null, "No SessionAttribute annotation");
+        return new NamedValueInfo(ann.name(), ann.required(), ValueConstants.DEFAULT_NONE);
+    }
 
-	@Override
-	protected NamedValueInfo createNamedValueInfo(MethodParameter parameter) {
-		SessionAttribute ann = parameter.getParameterAnnotation(SessionAttribute.class);
-		Assert.state(ann != null, "No SessionAttribute annotation");
-		return new NamedValueInfo(ann.name(), ann.required(), ValueConstants.DEFAULT_NONE);
-	}
+    @Override
+    protected Mono<Object> resolveName(
+            String name, MethodParameter parameter, ServerWebExchange exchange) {
+        return exchange.getSession()
+                .filter(session -> session.getAttribute(name) != null)
+                .map(session -> session.getAttribute(name));
+    }
 
-	@Override
-	protected Mono<Object> resolveName(String name, MethodParameter parameter, ServerWebExchange exchange) {
-		return exchange.getSession()
-				.filter(session -> session.getAttribute(name) != null)
-				.map(session -> session.getAttribute(name));
-	}
-
-	@Override
-	protected void handleMissingValue(String name, MethodParameter parameter) {
-		String type = parameter.getNestedParameterType().getSimpleName();
-		String reason = "Missing session attribute '" + name + "' of type " + type;
-		throw new ServerWebInputException(reason, parameter);
-	}
-
+    @Override
+    protected void handleMissingValue(String name, MethodParameter parameter) {
+        String type = parameter.getNestedParameterType().getSimpleName();
+        String reason = "Missing session attribute '" + name + "' of type " + type;
+        throw new ServerWebInputException(reason, parameter);
+    }
 }

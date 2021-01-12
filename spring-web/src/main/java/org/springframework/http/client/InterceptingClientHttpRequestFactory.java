@@ -24,8 +24,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.lang.Nullable;
 
 /**
- * {@link ClientHttpRequestFactory} wrapper with support for
- * {@link ClientHttpRequestInterceptor ClientHttpRequestInterceptors}.
+ * {@link ClientHttpRequestFactory} wrapper with support for {@link ClientHttpRequestInterceptor
+ * ClientHttpRequestInterceptors}.
  *
  * @author Arjen Poutsma
  * @since 3.1
@@ -34,25 +34,27 @@ import org.springframework.lang.Nullable;
  */
 public class InterceptingClientHttpRequestFactory extends AbstractClientHttpRequestFactoryWrapper {
 
-	private final List<ClientHttpRequestInterceptor> interceptors;
+    private final List<ClientHttpRequestInterceptor> interceptors;
 
+    /**
+     * Create a new instance of the {@code InterceptingClientHttpRequestFactory} with the given
+     * parameters.
+     *
+     * @param requestFactory the request factory to wrap
+     * @param interceptors the interceptors that are to be applied (can be {@code null})
+     */
+    public InterceptingClientHttpRequestFactory(
+            ClientHttpRequestFactory requestFactory,
+            @Nullable List<ClientHttpRequestInterceptor> interceptors) {
 
-	/**
-	 * Create a new instance of the {@code InterceptingClientHttpRequestFactory} with the given parameters.
-	 * @param requestFactory the request factory to wrap
-	 * @param interceptors the interceptors that are to be applied (can be {@code null})
-	 */
-	public InterceptingClientHttpRequestFactory(ClientHttpRequestFactory requestFactory,
-			@Nullable List<ClientHttpRequestInterceptor> interceptors) {
+        super(requestFactory);
+        this.interceptors = (interceptors != null ? interceptors : Collections.emptyList());
+    }
 
-		super(requestFactory);
-		this.interceptors = (interceptors != null ? interceptors : Collections.emptyList());
-	}
-
-
-	@Override
-	protected ClientHttpRequest createRequest(URI uri, HttpMethod httpMethod, ClientHttpRequestFactory requestFactory) {
-		return new InterceptingClientHttpRequest(requestFactory, this.interceptors, uri, httpMethod);
-	}
-
+    @Override
+    protected ClientHttpRequest createRequest(
+            URI uri, HttpMethod httpMethod, ClientHttpRequestFactory requestFactory) {
+        return new InterceptingClientHttpRequest(
+                requestFactory, this.interceptors, uri, httpMethod);
+    }
 }

@@ -32,56 +32,51 @@ import static org.junit.Assert.*;
  */
 public class HandlerMethodArgumentResolverCompositeTests {
 
-	private HandlerMethodArgumentResolverComposite resolverComposite;
+    private HandlerMethodArgumentResolverComposite resolverComposite;
 
-	private MethodParameter paramInt;
+    private MethodParameter paramInt;
 
-	private MethodParameter paramStr;
+    private MethodParameter paramStr;
 
+    @Before
+    public void setup() throws Exception {
+        this.resolverComposite = new HandlerMethodArgumentResolverComposite();
 
-	@Before
-	public void setup() throws Exception {
-		this.resolverComposite = new HandlerMethodArgumentResolverComposite();
+        Method method = getClass().getDeclaredMethod("handle", Integer.class, String.class);
+        paramInt = new MethodParameter(method, 0);
+        paramStr = new MethodParameter(method, 1);
+    }
 
-		Method method = getClass().getDeclaredMethod("handle", Integer.class, String.class);
-		paramInt = new MethodParameter(method, 0);
-		paramStr = new MethodParameter(method, 1);
-	}
+    @Test
+    public void supportsParameter() throws Exception {
+        this.resolverComposite.addResolver(new StubArgumentResolver(Integer.class));
 
+        assertTrue(this.resolverComposite.supportsParameter(paramInt));
+        assertFalse(this.resolverComposite.supportsParameter(paramStr));
+    }
 
-	@Test
-	public void supportsParameter() throws Exception {
-		this.resolverComposite.addResolver(new StubArgumentResolver(Integer.class));
+    @Test
+    public void resolveArgument() throws Exception {
+        this.resolverComposite.addResolver(new StubArgumentResolver(55));
+        Object resolvedValue = this.resolverComposite.resolveArgument(paramInt, null, null, null);
 
-		assertTrue(this.resolverComposite.supportsParameter(paramInt));
-		assertFalse(this.resolverComposite.supportsParameter(paramStr));
-	}
+        assertEquals(55, resolvedValue);
+    }
 
-	@Test
-	public void resolveArgument() throws Exception {
-		this.resolverComposite.addResolver(new StubArgumentResolver(55));
-		Object resolvedValue = this.resolverComposite.resolveArgument(paramInt, null, null, null);
+    @Test
+    public void checkArgumentResolverOrder() throws Exception {
+        this.resolverComposite.addResolver(new StubArgumentResolver(1));
+        this.resolverComposite.addResolver(new StubArgumentResolver(2));
+        Object resolvedValue = this.resolverComposite.resolveArgument(paramInt, null, null, null);
 
-		assertEquals(55, resolvedValue);
-	}
+        assertEquals("Didn't use the first registered resolver", 1, resolvedValue);
+    }
 
-	@Test
-	public void checkArgumentResolverOrder() throws Exception {
-		this.resolverComposite.addResolver(new StubArgumentResolver(1));
-		this.resolverComposite.addResolver(new StubArgumentResolver(2));
-		Object resolvedValue = this.resolverComposite.resolveArgument(paramInt, null, null, null);
+    @Test(expected = IllegalArgumentException.class)
+    public void noSuitableArgumentResolver() throws Exception {
+        this.resolverComposite.resolveArgument(paramStr, null, null, null);
+    }
 
-		assertEquals("Didn't use the first registered resolver", 1, resolvedValue);
-	}
-
-	@Test(expected = IllegalArgumentException.class)
-	public void noSuitableArgumentResolver() throws Exception {
-		this.resolverComposite.resolveArgument(paramStr, null, null, null);
-	}
-
-
-	@SuppressWarnings("unused")
-	private void handle(Integer arg1, String arg2) {
-	}
-
+    @SuppressWarnings("unused")
+    private void handle(Integer arg1, String arg2) {}
 }

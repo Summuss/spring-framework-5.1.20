@@ -24,8 +24,9 @@ import org.springframework.util.NumberUtils;
 /**
  * Converts from a String any JDK-standard Number implementation.
  *
- * <p>Support Number classes including Byte, Short, Integer, Float, Double, Long, BigInteger, BigDecimal. This class
- * delegates to {@link NumberUtils#parseNumber(String, Class)} to perform the conversion.
+ * <p>Support Number classes including Byte, Short, Integer, Float, Double, Long, BigInteger,
+ * BigDecimal. This class delegates to {@link NumberUtils#parseNumber(String, Class)} to perform the
+ * conversion.
  *
  * @author Keith Donald
  * @since 3.0
@@ -41,28 +42,26 @@ import org.springframework.util.NumberUtils;
  */
 final class StringToNumberConverterFactory implements ConverterFactory<String, Number> {
 
-	@Override
-	public <T extends Number> Converter<String, T> getConverter(Class<T> targetType) {
-		return new StringToNumber<>(targetType);
-	}
+    @Override
+    public <T extends Number> Converter<String, T> getConverter(Class<T> targetType) {
+        return new StringToNumber<>(targetType);
+    }
 
+    private static final class StringToNumber<T extends Number> implements Converter<String, T> {
 
-	private static final class StringToNumber<T extends Number> implements Converter<String, T> {
+        private final Class<T> targetType;
 
-		private final Class<T> targetType;
+        public StringToNumber(Class<T> targetType) {
+            this.targetType = targetType;
+        }
 
-		public StringToNumber(Class<T> targetType) {
-			this.targetType = targetType;
-		}
-
-		@Override
-		@Nullable
-		public T convert(String source) {
-			if (source.isEmpty()) {
-				return null;
-			}
-			return NumberUtils.parseNumber(source, this.targetType);
-		}
-	}
-
+        @Override
+        @Nullable
+        public T convert(String source) {
+            if (source.isEmpty()) {
+                return null;
+            }
+            return NumberUtils.parseNumber(source, this.targetType);
+        }
+    }
 }

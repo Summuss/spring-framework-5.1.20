@@ -22,9 +22,8 @@ package org.springframework.web.servlet.tags;
  */
 public class HtmlEscapeTagOutsideDispatcherServletTests extends HtmlEscapeTagTests {
 
-	@Override
-	protected boolean inDispatcherServlet() {
-		return false;
-	}
-
+    @Override
+    protected boolean inDispatcherServlet() {
+        return false;
+    }
 }

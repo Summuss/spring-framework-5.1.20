@@ -37,14 +37,13 @@ import org.springframework.test.context.support.AnnotationConfigContextLoader;
 import static org.junit.Assert.assertEquals;
 
 /**
- * Integration test that demonstrates how to register one or more {@code @Configuration}
- * classes via an {@link ApplicationContextInitializer} in a composed annotation so
- * that certain {@code @Configuration} classes are always registered whenever the composed
- * annotation is used, even if the composed annotation is used to declare additional
- * {@code @Configuration} classes.
+ * Integration test that demonstrates how to register one or more {@code @Configuration} classes via
+ * an {@link ApplicationContextInitializer} in a composed annotation so that certain
+ * {@code @Configuration} classes are always registered whenever the composed annotation is used,
+ * even if the composed annotation is used to declare additional {@code @Configuration} classes.
  *
- * <p>This class has been implemented in response to the following Stack Overflow question:
- * <a href="https://stackoverflow.com/questions/35733344/can-contextconfiguration-in-a-custom-annotation-be-merged">
+ * <p>This class has been implemented in response to the following Stack Overflow question: <a
+ * href="https://stackoverflow.com/questions/35733344/can-contextconfiguration-in-a-custom-annotation-be-merged">
  * Can {@code @ContextConfiguration} in a custom annotation be merged?</a>
  *
  * @author Sam Brannen
@@ -54,39 +53,36 @@ import static org.junit.Assert.assertEquals;
 @ComposedContextConfiguration(BarConfig.class)
 public class InitializerConfiguredViaMetaAnnotationTests {
 
-	@Autowired
-	String foo;
+    @Autowired String foo;
 
-	@Autowired
-	String bar;
+    @Autowired String bar;
 
-	@Autowired
-	List<String> strings;
+    @Autowired List<String> strings;
 
+    @Test
+    public void beansFromInitializerAndComposedAnnotation() {
+        assertEquals(2, strings.size());
+        assertEquals("foo", foo);
+        assertEquals("bar", bar);
+    }
 
-	@Test
-	public void beansFromInitializerAndComposedAnnotation() {
-		assertEquals(2, strings.size());
-		assertEquals("foo", foo);
-		assertEquals("bar", bar);
-	}
+    static class FooConfigInitializer
+            implements ApplicationContextInitializer<GenericApplicationContext> {
 
+        @Override
+        public void initialize(GenericApplicationContext applicationContext) {
+            new AnnotatedBeanDefinitionReader(applicationContext).register(FooConfig.class);
+        }
+    }
 
-	static class FooConfigInitializer implements ApplicationContextInitializer<GenericApplicationContext> {
+    @ContextConfiguration(
+            loader = AnnotationConfigContextLoader.class,
+            initializers = FooConfigInitializer.class)
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.TYPE)
+    @interface ComposedContextConfiguration {
 
-		@Override
-		public void initialize(GenericApplicationContext applicationContext) {
-			new AnnotatedBeanDefinitionReader(applicationContext).register(FooConfig.class);
-		}
-	}
-
-	@ContextConfiguration(loader = AnnotationConfigContextLoader.class, initializers = FooConfigInitializer.class)
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target(ElementType.TYPE)
-	@interface ComposedContextConfiguration {
-
-		@AliasFor(annotation = ContextConfiguration.class, attribute = "classes")
-		Class<?>[] value() default {};
-	}
-
+        @AliasFor(annotation = ContextConfiguration.class, attribute = "classes")
+        Class<?>[] value() default {};
+    }
 }

@@ -30,41 +30,45 @@ import org.springframework.web.socket.sockjs.SockJsService;
 import org.springframework.web.socket.sockjs.support.SockJsHttpRequestHandler;
 
 /**
- * A helper class for configuring {@link WebSocketHandler} request handling
- * including SockJS fallback options.
+ * A helper class for configuring {@link WebSocketHandler} request handling including SockJS
+ * fallback options.
  *
  * @author Rossen Stoyanchev
  * @since 4.0
  */
 public class ServletWebSocketHandlerRegistration
-		extends AbstractWebSocketHandlerRegistration<MultiValueMap<HttpRequestHandler, String>> {
+        extends AbstractWebSocketHandlerRegistration<MultiValueMap<HttpRequestHandler, String>> {
 
+    @Override
+    protected MultiValueMap<HttpRequestHandler, String> createMappings() {
+        return new LinkedMultiValueMap<>();
+    }
 
-	@Override
-	protected MultiValueMap<HttpRequestHandler, String> createMappings() {
-		return new LinkedMultiValueMap<>();
-	}
+    @Override
+    protected void addSockJsServiceMapping(
+            MultiValueMap<HttpRequestHandler, String> mappings,
+            SockJsService sockJsService,
+            WebSocketHandler handler,
+            String pathPattern) {
 
-	@Override
-	protected void addSockJsServiceMapping(MultiValueMap<HttpRequestHandler, String> mappings,
-			SockJsService sockJsService, WebSocketHandler handler, String pathPattern) {
+        SockJsHttpRequestHandler httpHandler = new SockJsHttpRequestHandler(sockJsService, handler);
+        mappings.add(httpHandler, pathPattern);
+    }
 
-		SockJsHttpRequestHandler httpHandler = new SockJsHttpRequestHandler(sockJsService, handler);
-		mappings.add(httpHandler, pathPattern);
-	}
+    @Override
+    protected void addWebSocketHandlerMapping(
+            MultiValueMap<HttpRequestHandler, String> mappings,
+            WebSocketHandler webSocketHandler,
+            HandshakeHandler handshakeHandler,
+            HandshakeInterceptor[] interceptors,
+            String path) {
 
-	@Override
-	protected void addWebSocketHandlerMapping(MultiValueMap<HttpRequestHandler, String> mappings,
-			WebSocketHandler webSocketHandler, HandshakeHandler handshakeHandler,
-			HandshakeInterceptor[] interceptors, String path) {
+        WebSocketHttpRequestHandler httpHandler =
+                new WebSocketHttpRequestHandler(webSocketHandler, handshakeHandler);
 
-		WebSocketHttpRequestHandler httpHandler =
-				new WebSocketHttpRequestHandler(webSocketHandler, handshakeHandler);
-
-		if (!ObjectUtils.isEmpty(interceptors)) {
-			httpHandler.setHandshakeInterceptors(Arrays.asList(interceptors));
-		}
-		mappings.add(httpHandler, path);
-	}
-
+        if (!ObjectUtils.isEmpty(interceptors)) {
+            httpHandler.setHandshakeInterceptors(Arrays.asList(interceptors));
+        }
+        mappings.add(httpHandler, path);
+    }
 }

@@ -36,61 +36,59 @@ import static org.junit.Assert.*;
  */
 public class DefaultContentTypeResolverTests {
 
-	private DefaultContentTypeResolver resolver;
+    private DefaultContentTypeResolver resolver;
 
+    @Before
+    public void setup() {
+        this.resolver = new DefaultContentTypeResolver();
+    }
 
-	@Before
-	public void setup() {
-		this.resolver = new DefaultContentTypeResolver();
-	}
+    @Test
+    public void resolve() {
+        Map<String, Object> map = new HashMap<>();
+        map.put(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.APPLICATION_JSON);
+        MessageHeaders headers = new MessageHeaders(map);
 
-	@Test
-	public void resolve() {
-		Map<String, Object> map = new HashMap<>();
-		map.put(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.APPLICATION_JSON);
-		MessageHeaders headers = new MessageHeaders(map);
+        assertEquals(MimeTypeUtils.APPLICATION_JSON, this.resolver.resolve(headers));
+    }
 
-		assertEquals(MimeTypeUtils.APPLICATION_JSON, this.resolver.resolve(headers));
-	}
+    @Test
+    public void resolveStringContentType() {
+        Map<String, Object> map = new HashMap<>();
+        map.put(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.APPLICATION_JSON_VALUE);
+        MessageHeaders headers = new MessageHeaders(map);
 
-	@Test
-	public void resolveStringContentType() {
-		Map<String, Object> map = new HashMap<>();
-		map.put(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.APPLICATION_JSON_VALUE);
-		MessageHeaders headers = new MessageHeaders(map);
+        assertEquals(MimeTypeUtils.APPLICATION_JSON, this.resolver.resolve(headers));
+    }
 
-		assertEquals(MimeTypeUtils.APPLICATION_JSON, this.resolver.resolve(headers));
-	}
+    @Test(expected = InvalidMimeTypeException.class)
+    public void resolveInvalidStringContentType() {
+        Map<String, Object> map = new HashMap<>();
+        map.put(MessageHeaders.CONTENT_TYPE, "invalidContentType");
+        MessageHeaders headers = new MessageHeaders(map);
+        this.resolver.resolve(headers);
+    }
 
-	@Test(expected = InvalidMimeTypeException.class)
-	public void resolveInvalidStringContentType() {
-		Map<String, Object> map = new HashMap<>();
-		map.put(MessageHeaders.CONTENT_TYPE, "invalidContentType");
-		MessageHeaders headers = new MessageHeaders(map);
-		this.resolver.resolve(headers);
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void resolveUnknownHeaderType() {
+        Map<String, Object> map = new HashMap<>();
+        map.put(MessageHeaders.CONTENT_TYPE, new Integer(1));
+        MessageHeaders headers = new MessageHeaders(map);
+        this.resolver.resolve(headers);
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void resolveUnknownHeaderType() {
-		Map<String, Object> map = new HashMap<>();
-		map.put(MessageHeaders.CONTENT_TYPE, new Integer(1));
-		MessageHeaders headers = new MessageHeaders(map);
-		this.resolver.resolve(headers);
-	}
+    @Test
+    public void resolveNoContentTypeHeader() {
+        MessageHeaders headers = new MessageHeaders(Collections.<String, Object>emptyMap());
 
-	@Test
-	public void resolveNoContentTypeHeader() {
-		MessageHeaders headers = new MessageHeaders(Collections.<String, Object>emptyMap());
+        assertNull(this.resolver.resolve(headers));
+    }
 
-		assertNull(this.resolver.resolve(headers));
-	}
+    @Test
+    public void resolveDefaultMimeType() {
+        this.resolver.setDefaultMimeType(MimeTypeUtils.APPLICATION_JSON);
+        MessageHeaders headers = new MessageHeaders(Collections.<String, Object>emptyMap());
 
-	@Test
-	public void resolveDefaultMimeType() {
-		this.resolver.setDefaultMimeType(MimeTypeUtils.APPLICATION_JSON);
-		MessageHeaders headers = new MessageHeaders(Collections.<String, Object>emptyMap());
-
-		assertEquals(MimeTypeUtils.APPLICATION_JSON, this.resolver.resolve(headers));
-	}
-
+        assertEquals(MimeTypeUtils.APPLICATION_JSON, this.resolver.resolve(headers));
+    }
 }

@@ -15,8 +15,8 @@
  */
 
 /**
- * Mirrors the structure of beans and environment-specific config files
- * in EnvironmentIntegrationTests-context.xml
+ * Mirrors the structure of beans and environment-specific config files in
+ * EnvironmentIntegrationTests-context.xml
  */
 package org.springframework.core.env.scan2;
 
@@ -30,8 +30,8 @@ import org.springframework.stereotype.Component;
 
 @Profile(DEV_ENV_NAME)
 @Component(DEV_BEAN_NAME)
-class DevBean { }
+class DevBean {}
 
 @Profile(PROD_ENV_NAME)
 @Component(PROD_BEAN_NAME)
-class ProdBean { }
+class ProdBean {}

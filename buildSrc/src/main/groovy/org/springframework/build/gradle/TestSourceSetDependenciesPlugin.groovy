@@ -29,27 +29,27 @@ import org.gradle.api.artifacts.ProjectDependency;
  */
 class TestSourceSetDependenciesPlugin implements Plugin<Project> {
 
-	@Override
-	public void apply(Project project) {
-		project.afterEvaluate {
-			Set<ProjectDependency> projectDependencies = new LinkedHashSet<ProjectDependency>()
-			collectProjectDependencies(projectDependencies, project)
-			projectDependencies.each {
-				project.dependencies.add("testCompile", it.dependencyProject.sourceSets.test.output)
-			}
-		}
-	}
+    @Override
+    public void apply(Project project) {
+        project.afterEvaluate {
+            Set<ProjectDependency> projectDependencies = new LinkedHashSet<ProjectDependency>()
+            collectProjectDependencies(projectDependencies, project)
+            projectDependencies.each {
+                project.dependencies.add("testCompile", it.dependencyProject.sourceSets.test.output)
+            }
+        }
+    }
 
-	private void collectProjectDependencies(Set<ProjectDependency> projectDependencies, Project project) {
-		for (def configurationName in ["compile", "optional", "provided", "testCompile"]) {
-			Configuration configuration = project.getConfigurations().findByName(configurationName)
-			if (configuration) {
-				configuration.dependencies.findAll { it instanceof ProjectDependency }.each {
-					projectDependencies.add(it)
-					collectProjectDependencies(projectDependencies, it.dependencyProject)
-				}
-			}
-		}
-	}
+    private void collectProjectDependencies(Set<ProjectDependency> projectDependencies, Project project) {
+        for (def configurationName in ["compile", "optional", "provided", "testCompile"]) {
+            Configuration configuration = project.getConfigurations().findByName(configurationName)
+            if (configuration) {
+                configuration.dependencies.findAll { it instanceof ProjectDependency }.each {
+                    projectDependencies.add(it)
+                    collectProjectDependencies(projectDependencies, it.dependencyProject)
+                }
+            }
+        }
+    }
 
 }

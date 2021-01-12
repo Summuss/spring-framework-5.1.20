@@ -26,15 +26,15 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * A {@link org.springframework.beans.factory.FactoryBean} implementation that
- * returns a value which is a JSR-330 {@link javax.inject.Provider} that in turn
- * returns a bean sourced from a {@link org.springframework.beans.factory.BeanFactory}.
+ * A {@link org.springframework.beans.factory.FactoryBean} implementation that returns a value which
+ * is a JSR-330 {@link javax.inject.Provider} that in turn returns a bean sourced from a {@link
+ * org.springframework.beans.factory.BeanFactory}.
  *
- * <p>This is basically a JSR-330 compliant variant of Spring's good old
- * {@link ObjectFactoryCreatingFactoryBean}. It can be used for traditional
- * external dependency injection configuration that targets a property or
- * constructor argument of type {@code javax.inject.Provider}, as an
- * alternative to JSR-330's {@code @Inject} annotation-driven approach.
+ * <p>This is basically a JSR-330 compliant variant of Spring's good old {@link
+ * ObjectFactoryCreatingFactoryBean}. It can be used for traditional external dependency injection
+ * configuration that targets a property or constructor argument of type {@code
+ * javax.inject.Provider}, as an alternative to JSR-330's {@code @Inject} annotation-driven
+ * approach.
  *
  * @author Juergen Hoeller
  * @since 3.0.2
@@ -43,61 +43,55 @@ import org.springframework.util.Assert;
  */
 public class ProviderCreatingFactoryBean extends AbstractFactoryBean<Provider<Object>> {
 
-	@Nullable
-	private String targetBeanName;
+    @Nullable private String targetBeanName;
 
+    /**
+     * Set the name of the target bean.
+     *
+     * <p>The target does not <i>have</i> to be a non-singleton bean, but realistically always will
+     * be (because if the target bean were a singleton, then said singleton bean could simply be
+     * injected straight into the dependent object, thus obviating the need for the extra level of
+     * indirection afforded by this factory approach).
+     */
+    public void setTargetBeanName(String targetBeanName) {
+        this.targetBeanName = targetBeanName;
+    }
 
-	/**
-	 * Set the name of the target bean.
-	 * <p>The target does not <i>have</i> to be a non-singleton bean, but realistically
-	 * always will be (because if the target bean were a singleton, then said singleton
-	 * bean could simply be injected straight into the dependent object, thus obviating
-	 * the need for the extra level of indirection afforded by this factory approach).
-	 */
-	public void setTargetBeanName(String targetBeanName) {
-		this.targetBeanName = targetBeanName;
-	}
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        Assert.hasText(this.targetBeanName, "Property 'targetBeanName' is required");
+        super.afterPropertiesSet();
+    }
 
-	@Override
-	public void afterPropertiesSet() throws Exception {
-		Assert.hasText(this.targetBeanName, "Property 'targetBeanName' is required");
-		super.afterPropertiesSet();
-	}
+    @Override
+    public Class<?> getObjectType() {
+        return Provider.class;
+    }
 
+    @Override
+    protected Provider<Object> createInstance() {
+        BeanFactory beanFactory = getBeanFactory();
+        Assert.state(beanFactory != null, "No BeanFactory available");
+        Assert.state(this.targetBeanName != null, "No target bean name specified");
+        return new TargetBeanProvider(beanFactory, this.targetBeanName);
+    }
 
-	@Override
-	public Class<?> getObjectType() {
-		return Provider.class;
-	}
+    /** Independent inner class - for serialization purposes. */
+    @SuppressWarnings("serial")
+    private static class TargetBeanProvider implements Provider<Object>, Serializable {
 
-	@Override
-	protected Provider<Object> createInstance() {
-		BeanFactory beanFactory = getBeanFactory();
-		Assert.state(beanFactory != null, "No BeanFactory available");
-		Assert.state(this.targetBeanName != null, "No target bean name specified");
-		return new TargetBeanProvider(beanFactory, this.targetBeanName);
-	}
+        private final BeanFactory beanFactory;
 
+        private final String targetBeanName;
 
-	/**
-	 * Independent inner class - for serialization purposes.
-	 */
-	@SuppressWarnings("serial")
-	private static class TargetBeanProvider implements Provider<Object>, Serializable {
+        public TargetBeanProvider(BeanFactory beanFactory, String targetBeanName) {
+            this.beanFactory = beanFactory;
+            this.targetBeanName = targetBeanName;
+        }
 
-		private final BeanFactory beanFactory;
-
-		private final String targetBeanName;
-
-		public TargetBeanProvider(BeanFactory beanFactory, String targetBeanName) {
-			this.beanFactory = beanFactory;
-			this.targetBeanName = targetBeanName;
-		}
-
-		@Override
-		public Object get() throws BeansException {
-			return this.beanFactory.getBean(this.targetBeanName);
-		}
-	}
-
+        @Override
+        public Object get() throws BeansException {
+            return this.beanFactory.getBean(this.targetBeanName);
+        }
+    }
 }

@@ -37,15 +37,16 @@ import org.springframework.test.context.support.DependencyInjectionTestExecution
 import static org.junit.Assert.*;
 
 /**
- * Integration tests that investigate the applicability of JSR-250 lifecycle
- * annotations in test classes.
+ * Integration tests that investigate the applicability of JSR-250 lifecycle annotations in test
+ * classes.
  *
- * <p>This class does not really contain actual <em>tests</em> per se. Rather it
- * can be used to empirically verify the expected log output (see below). In
- * order to see the log output, one would naturally need to ensure that the
- * logger category for this class is enabled at {@code INFO} level.
+ * <p>This class does not really contain actual <em>tests</em> per se. Rather it can be used to
+ * empirically verify the expected log output (see below). In order to see the log output, one would
+ * naturally need to ensure that the logger category for this class is enabled at {@code INFO}
+ * level.
  *
  * <h4>Expected Log Output</h4>
+ *
  * <pre>
  * INFO : org.springframework.test.context.junit4.spr4868.LifecycleBean - initializing
  * INFO : org.springframework.test.context.junit4.spr4868.ExampleTest - beforeAllTests()
@@ -63,57 +64,52 @@ import static org.junit.Assert.*;
  * @since 3.2
  */
 @RunWith(SpringJUnit4ClassRunner.class)
-@TestExecutionListeners({ DependencyInjectionTestExecutionListener.class })
+@TestExecutionListeners({DependencyInjectionTestExecutionListener.class})
 @ContextConfiguration
 public class Jsr250LifecycleTests {
 
-	private final Log logger = LogFactory.getLog(Jsr250LifecycleTests.class);
+    private final Log logger = LogFactory.getLog(Jsr250LifecycleTests.class);
 
+    @Configuration
+    static class Config {
 
-	@Configuration
-	static class Config {
+        @Bean
+        public LifecycleBean lifecycleBean() {
+            return new LifecycleBean();
+        }
+    }
 
-		@Bean
-		public LifecycleBean lifecycleBean() {
-			return new LifecycleBean();
-		}
-	}
+    @Autowired private LifecycleBean lifecycleBean;
 
+    @PostConstruct
+    public void beforeAllTests() {
+        logger.info("beforeAllTests()");
+    }
 
-	@Autowired
-	private LifecycleBean lifecycleBean;
+    @PreDestroy
+    public void afterTestSuite() {
+        logger.info("afterTestSuite()");
+    }
 
+    @Before
+    public void setUp() throws Exception {
+        logger.info("setUp()");
+    }
 
-	@PostConstruct
-	public void beforeAllTests() {
-		logger.info("beforeAllTests()");
-	}
+    @After
+    public void tearDown() throws Exception {
+        logger.info("tearDown()");
+    }
 
-	@PreDestroy
-	public void afterTestSuite() {
-		logger.info("afterTestSuite()");
-	}
+    @Test
+    public void test1() {
+        logger.info("test1()");
+        assertNotNull(lifecycleBean);
+    }
 
-	@Before
-	public void setUp() throws Exception {
-		logger.info("setUp()");
-	}
-
-	@After
-	public void tearDown() throws Exception {
-		logger.info("tearDown()");
-	}
-
-	@Test
-	public void test1() {
-		logger.info("test1()");
-		assertNotNull(lifecycleBean);
-	}
-
-	@Test
-	public void test2() {
-		logger.info("test2()");
-		assertNotNull(lifecycleBean);
-	}
-
+    @Test
+    public void test2() {
+        logger.info("test2()");
+        assertNotNull(lifecycleBean);
+    }
 }

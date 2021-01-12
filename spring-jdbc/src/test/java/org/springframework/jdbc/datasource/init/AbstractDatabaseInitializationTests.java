@@ -38,48 +38,51 @@ import static org.junit.Assert.*;
  */
 public abstract class AbstractDatabaseInitializationTests {
 
-	private final ClassRelativeResourceLoader resourceLoader = new ClassRelativeResourceLoader(getClass());
+    private final ClassRelativeResourceLoader resourceLoader =
+            new ClassRelativeResourceLoader(getClass());
 
-	EmbeddedDatabase db;
+    EmbeddedDatabase db;
 
-	JdbcTemplate jdbcTemplate;
+    JdbcTemplate jdbcTemplate;
 
+    @Before
+    public void setUp() {
+        db = new EmbeddedDatabaseBuilder().setType(getEmbeddedDatabaseType()).build();
+        jdbcTemplate = new JdbcTemplate(db);
+    }
 
-	@Before
-	public void setUp() {
-		db = new EmbeddedDatabaseBuilder().setType(getEmbeddedDatabaseType()).build();
-		jdbcTemplate = new JdbcTemplate(db);
-	}
+    @After
+    public void shutDown() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clear();
+            TransactionSynchronizationManager.unbindResource(db);
+        }
+        db.shutdown();
+    }
 
-	@After
-	public void shutDown() {
-		if (TransactionSynchronizationManager.isSynchronizationActive()) {
-			TransactionSynchronizationManager.clear();
-			TransactionSynchronizationManager.unbindResource(db);
-		}
-		db.shutdown();
-	}
+    abstract EmbeddedDatabaseType getEmbeddedDatabaseType();
 
-	abstract EmbeddedDatabaseType getEmbeddedDatabaseType();
+    Resource resource(String path) {
+        return resourceLoader.getResource(path);
+    }
 
-	Resource resource(String path) {
-		return resourceLoader.getResource(path);
-	}
+    Resource defaultSchema() {
+        return resource("db-schema.sql");
+    }
 
-	Resource defaultSchema() {
-		return resource("db-schema.sql");
-	}
+    Resource usersSchema() {
+        return resource("users-schema.sql");
+    }
 
-	Resource usersSchema() {
-		return resource("users-schema.sql");
-	}
-
-	void assertUsersDatabaseCreated(String... lastNames) {
-		for (String lastName : lastNames) {
-			assertThat("Did not find user with last name [" + lastName + "].",
-				jdbcTemplate.queryForObject("select count(0) from users where last_name = ?", Integer.class, lastName),
-				equalTo(1));
-		}
-	}
-
+    void assertUsersDatabaseCreated(String... lastNames) {
+        for (String lastName : lastNames) {
+            assertThat(
+                    "Did not find user with last name [" + lastName + "].",
+                    jdbcTemplate.queryForObject(
+                            "select count(0) from users where last_name = ?",
+                            Integer.class,
+                            lastName),
+                    equalTo(1));
+        }
+    }
 }

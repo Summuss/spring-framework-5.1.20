@@ -36,8 +36,8 @@ import org.springframework.web.reactive.socket.WebSocketMessage.Type;
 import org.springframework.web.reactive.socket.WebSocketSession;
 
 /**
- * Adapter for Java WebSocket API (JSR-356) that delegates events to a reactive
- * {@link WebSocketHandler} and its session.
+ * Adapter for Java WebSocket API (JSR-356) that delegates events to a reactive {@link
+ * WebSocketHandler} and its session.
  *
  * @author Violeta Georgieva
  * @author Rossen Stoyanchev
@@ -45,78 +45,81 @@ import org.springframework.web.reactive.socket.WebSocketSession;
  */
 public class StandardWebSocketHandlerAdapter extends Endpoint {
 
-	private final WebSocketHandler delegateHandler;
+    private final WebSocketHandler delegateHandler;
 
-	private Function<Session, StandardWebSocketSession> sessionFactory;
+    private Function<Session, StandardWebSocketSession> sessionFactory;
 
-	@Nullable
-	private StandardWebSocketSession delegateSession;
+    @Nullable private StandardWebSocketSession delegateSession;
 
+    public StandardWebSocketHandlerAdapter(
+            WebSocketHandler handler, Function<Session, StandardWebSocketSession> sessionFactory) {
 
-	public StandardWebSocketHandlerAdapter(WebSocketHandler handler,
-			Function<Session, StandardWebSocketSession> sessionFactory) {
+        Assert.notNull(handler, "WebSocketHandler is required");
+        Assert.notNull(sessionFactory, "'sessionFactory' is required");
+        this.delegateHandler = handler;
+        this.sessionFactory = sessionFactory;
+    }
 
-		Assert.notNull(handler, "WebSocketHandler is required");
-		Assert.notNull(sessionFactory, "'sessionFactory' is required");
-		this.delegateHandler = handler;
-		this.sessionFactory = sessionFactory;
-	}
+    @Override
+    public void onOpen(Session session, EndpointConfig config) {
+        this.delegateSession = this.sessionFactory.apply(session);
+        Assert.state(this.delegateSession != null, "No delegate session");
 
+        session.addMessageHandler(
+                String.class,
+                message -> {
+                    WebSocketMessage webSocketMessage = toMessage(message);
+                    this.delegateSession.handleMessage(
+                            webSocketMessage.getType(), webSocketMessage);
+                });
+        session.addMessageHandler(
+                ByteBuffer.class,
+                message -> {
+                    WebSocketMessage webSocketMessage = toMessage(message);
+                    this.delegateSession.handleMessage(
+                            webSocketMessage.getType(), webSocketMessage);
+                });
+        session.addMessageHandler(
+                PongMessage.class,
+                message -> {
+                    WebSocketMessage webSocketMessage = toMessage(message);
+                    this.delegateSession.handleMessage(
+                            webSocketMessage.getType(), webSocketMessage);
+                });
 
-	@Override
-	public void onOpen(Session session, EndpointConfig config) {
-		this.delegateSession = this.sessionFactory.apply(session);
-		Assert.state(this.delegateSession != null, "No delegate session");
+        this.delegateHandler.handle(this.delegateSession).subscribe(this.delegateSession);
+    }
 
-		session.addMessageHandler(String.class, message -> {
-			WebSocketMessage webSocketMessage = toMessage(message);
-			this.delegateSession.handleMessage(webSocketMessage.getType(), webSocketMessage);
-		});
-		session.addMessageHandler(ByteBuffer.class, message -> {
-			WebSocketMessage webSocketMessage = toMessage(message);
-			this.delegateSession.handleMessage(webSocketMessage.getType(), webSocketMessage);
-		});
-		session.addMessageHandler(PongMessage.class, message -> {
-			WebSocketMessage webSocketMessage = toMessage(message);
-			this.delegateSession.handleMessage(webSocketMessage.getType(), webSocketMessage);
-		});
+    private <T> WebSocketMessage toMessage(T message) {
+        WebSocketSession session = this.delegateSession;
+        Assert.state(session != null, "Cannot create message without a session");
+        if (message instanceof String) {
+            byte[] bytes = ((String) message).getBytes(StandardCharsets.UTF_8);
+            return new WebSocketMessage(Type.TEXT, session.bufferFactory().wrap(bytes));
+        } else if (message instanceof ByteBuffer) {
+            DataBuffer buffer = session.bufferFactory().wrap((ByteBuffer) message);
+            return new WebSocketMessage(Type.BINARY, buffer);
+        } else if (message instanceof PongMessage) {
+            DataBuffer buffer =
+                    session.bufferFactory().wrap(((PongMessage) message).getApplicationData());
+            return new WebSocketMessage(Type.PONG, buffer);
+        } else {
+            throw new IllegalArgumentException("Unexpected message type: " + message);
+        }
+    }
 
-		this.delegateHandler.handle(this.delegateSession).subscribe(this.delegateSession);
-	}
+    @Override
+    public void onClose(Session session, CloseReason reason) {
+        if (this.delegateSession != null) {
+            int code = reason.getCloseCode().getCode();
+            this.delegateSession.handleClose(new CloseStatus(code, reason.getReasonPhrase()));
+        }
+    }
 
-	private <T> WebSocketMessage toMessage(T message) {
-		WebSocketSession session = this.delegateSession;
-		Assert.state(session != null, "Cannot create message without a session");
-		if (message instanceof String) {
-			byte[] bytes = ((String) message).getBytes(StandardCharsets.UTF_8);
-			return new WebSocketMessage(Type.TEXT, session.bufferFactory().wrap(bytes));
-		}
-		else if (message instanceof ByteBuffer) {
-			DataBuffer buffer = session.bufferFactory().wrap((ByteBuffer) message);
-			return new WebSocketMessage(Type.BINARY, buffer);
-		}
-		else if (message instanceof PongMessage) {
-			DataBuffer buffer = session.bufferFactory().wrap(((PongMessage) message).getApplicationData());
-			return new WebSocketMessage(Type.PONG, buffer);
-		}
-		else {
-			throw new IllegalArgumentException("Unexpected message type: " + message);
-		}
-	}
-
-	@Override
-	public void onClose(Session session, CloseReason reason) {
-		if (this.delegateSession != null) {
-			int code = reason.getCloseCode().getCode();
-			this.delegateSession.handleClose(new CloseStatus(code, reason.getReasonPhrase()));
-		}
-	}
-
-	@Override
-	public void onError(Session session, Throwable exception) {
-		if (this.delegateSession != null) {
-			this.delegateSession.handleError(exception);
-		}
-	}
-
+    @Override
+    public void onError(Session session, Throwable exception) {
+        if (this.delegateSession != null) {
+            this.delegateSession.handleError(exception);
+        }
+    }
 }

@@ -45,50 +45,50 @@ import org.springframework.beans.factory.wiring.BeanConfigurerSupport;
  * @see org.springframework.beans.factory.annotation.AnnotationBeanWiringInfoResolver
  */
 public aspect AnnotationBeanConfigurerAspect extends AbstractInterfaceDrivenDependencyInjectionAspect
-		implements BeanFactoryAware, InitializingBean, DisposableBean {
+        implements BeanFactoryAware, InitializingBean, DisposableBean {
 
-	private final BeanConfigurerSupport beanConfigurerSupport = new BeanConfigurerSupport();
-
-
-	@Override
-	public void setBeanFactory(BeanFactory beanFactory) {
-		this.beanConfigurerSupport.setBeanWiringInfoResolver(new AnnotationBeanWiringInfoResolver());
-		this.beanConfigurerSupport.setBeanFactory(beanFactory);
-	}
-
-	@Override
-	public void afterPropertiesSet() {
-		this.beanConfigurerSupport.afterPropertiesSet();
-	}
-
-	@Override
-	public void configureBean(Object bean) {
-		this.beanConfigurerSupport.configureBean(bean);
-	}
-
-	@Override
-	public void destroy() {
-		this.beanConfigurerSupport.destroy();
-	}
+    private final BeanConfigurerSupport beanConfigurerSupport = new BeanConfigurerSupport();
 
 
-	public pointcut inConfigurableBean() : @this(Configurable);
+    @Override
+    public void setBeanFactory(BeanFactory beanFactory) {
+        this.beanConfigurerSupport.setBeanWiringInfoResolver(new AnnotationBeanWiringInfoResolver());
+        this.beanConfigurerSupport.setBeanFactory(beanFactory);
+    }
 
-	public pointcut preConstructionConfiguration() : preConstructionConfigurationSupport(*);
+    @Override
+    public void afterPropertiesSet() {
+        this.beanConfigurerSupport.afterPropertiesSet();
+    }
 
-	/*
-	 * An intermediary to match preConstructionConfiguration signature (that doesn't expose the annotation object)
-	 */
-	@CodeGenerationHint(ifNameSuffix="bb0")
-	private pointcut preConstructionConfigurationSupport(Configurable c) : @this(c) && if (c.preConstruction());
+    @Override
+    public void configureBean(Object bean) {
+        this.beanConfigurerSupport.configureBean(bean);
+    }
+
+    @Override
+    public void destroy() {
+        this.beanConfigurerSupport.destroy();
+    }
 
 
-	declare parents: @Configurable * implements ConfigurableObject;
+    public pointcut inConfigurableBean(): @this(Configurable);
 
-	/*
-	 * This declaration shouldn't be needed,
-	 * except for an AspectJ bug (https://bugs.eclipse.org/bugs/show_bug.cgi?id=214559)
-	 */
-	declare parents: @Configurable Serializable+ implements ConfigurableDeserializationSupport;
+    public pointcut preConstructionConfiguration(): preConstructionConfigurationSupport(*);
+
+    /*
+     * An intermediary to match preConstructionConfiguration signature (that doesn't expose the annotation object)
+     */
+    @CodeGenerationHint(ifNameSuffix = "bb0")
+    private pointcut preConstructionConfigurationSupport(Configurable c): @this(c) && if (c.preConstruction());
+
+
+    declare parents:@Configurable*implements ConfigurableObject;
+
+    /*
+     * This declaration shouldn't be needed,
+     * except for an AspectJ bug (https://bugs.eclipse.org/bugs/show_bug.cgi?id=214559)
+     */
+    declare parents:@Configurable Serializable+implements ConfigurableDeserializationSupport;
 
 }

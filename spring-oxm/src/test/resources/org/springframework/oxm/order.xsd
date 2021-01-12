@@ -12,7 +12,7 @@
         </complexType>
     </element>
     <complexType name="orderItemType">
-    	<attribute name="id" type="string" />
-    	<attribute name="quantity" type="int" />
+        <attribute name="id" type="string"/>
+        <attribute name="quantity" type="int"/>
     </complexType>
 </schema>

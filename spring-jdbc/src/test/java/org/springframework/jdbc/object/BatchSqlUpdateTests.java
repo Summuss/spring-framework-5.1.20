@@ -36,74 +36,72 @@ import static org.mockito.BDDMockito.*;
  */
 public class BatchSqlUpdateTests {
 
-	@Test
-	public void testBatchUpdateWithExplicitFlush() throws Exception {
-		doTestBatchUpdate(false);
-	}
+    @Test
+    public void testBatchUpdateWithExplicitFlush() throws Exception {
+        doTestBatchUpdate(false);
+    }
 
-	@Test
-	public void testBatchUpdateWithFlushThroughBatchSize() throws Exception {
-		doTestBatchUpdate(true);
-	}
+    @Test
+    public void testBatchUpdateWithFlushThroughBatchSize() throws Exception {
+        doTestBatchUpdate(true);
+    }
 
-	private void doTestBatchUpdate(boolean flushThroughBatchSize) throws Exception {
-		final String sql = "UPDATE NOSUCHTABLE SET DATE_DISPATCHED = SYSDATE WHERE ID = ?";
-		final int[] ids = new int[] { 100, 200 };
-		final int[] rowsAffected = new int[] { 1, 2 };
+    private void doTestBatchUpdate(boolean flushThroughBatchSize) throws Exception {
+        final String sql = "UPDATE NOSUCHTABLE SET DATE_DISPATCHED = SYSDATE WHERE ID = ?";
+        final int[] ids = new int[] {100, 200};
+        final int[] rowsAffected = new int[] {1, 2};
 
-		Connection connection = mock(Connection.class);
-		DataSource dataSource = mock(DataSource.class);
-		given(dataSource.getConnection()).willReturn(connection);
-		PreparedStatement preparedStatement = mock(PreparedStatement.class);
-		given(preparedStatement.getConnection()).willReturn(connection);
-		given(preparedStatement.executeBatch()).willReturn(rowsAffected);
+        Connection connection = mock(Connection.class);
+        DataSource dataSource = mock(DataSource.class);
+        given(dataSource.getConnection()).willReturn(connection);
+        PreparedStatement preparedStatement = mock(PreparedStatement.class);
+        given(preparedStatement.getConnection()).willReturn(connection);
+        given(preparedStatement.executeBatch()).willReturn(rowsAffected);
 
-		DatabaseMetaData mockDatabaseMetaData = mock(DatabaseMetaData.class);
-		given(mockDatabaseMetaData.supportsBatchUpdates()).willReturn(true);
-		given(connection.prepareStatement(sql)).willReturn(preparedStatement);
-		given(connection.getMetaData()).willReturn(mockDatabaseMetaData);
+        DatabaseMetaData mockDatabaseMetaData = mock(DatabaseMetaData.class);
+        given(mockDatabaseMetaData.supportsBatchUpdates()).willReturn(true);
+        given(connection.prepareStatement(sql)).willReturn(preparedStatement);
+        given(connection.getMetaData()).willReturn(mockDatabaseMetaData);
 
-		BatchSqlUpdate update = new BatchSqlUpdate(dataSource, sql);
-		update.declareParameter(new SqlParameter(Types.INTEGER));
-		if (flushThroughBatchSize) {
-			update.setBatchSize(2);
-		}
+        BatchSqlUpdate update = new BatchSqlUpdate(dataSource, sql);
+        update.declareParameter(new SqlParameter(Types.INTEGER));
+        if (flushThroughBatchSize) {
+            update.setBatchSize(2);
+        }
 
-		update.update(ids[0]);
-		update.update(ids[1]);
+        update.update(ids[0]);
+        update.update(ids[1]);
 
-		if (flushThroughBatchSize) {
-			assertEquals(0, update.getQueueCount());
-			assertEquals(2, update.getRowsAffected().length);
-		}
-		else {
-			assertEquals(2, update.getQueueCount());
-			assertEquals(0, update.getRowsAffected().length);
-		}
+        if (flushThroughBatchSize) {
+            assertEquals(0, update.getQueueCount());
+            assertEquals(2, update.getRowsAffected().length);
+        } else {
+            assertEquals(2, update.getQueueCount());
+            assertEquals(0, update.getRowsAffected().length);
+        }
 
-		int[] actualRowsAffected = update.flush();
-		assertEquals(0, update.getQueueCount());
+        int[] actualRowsAffected = update.flush();
+        assertEquals(0, update.getQueueCount());
 
-		if (flushThroughBatchSize) {
-			assertTrue("flush did not execute updates", actualRowsAffected.length == 0);
-		}
-		else {
-			assertTrue("executed 2 updates", actualRowsAffected.length == 2);
-			assertEquals(rowsAffected[0], actualRowsAffected[0]);
-			assertEquals(rowsAffected[1], actualRowsAffected[1]);
-		}
+        if (flushThroughBatchSize) {
+            assertTrue("flush did not execute updates", actualRowsAffected.length == 0);
+        } else {
+            assertTrue("executed 2 updates", actualRowsAffected.length == 2);
+            assertEquals(rowsAffected[0], actualRowsAffected[0]);
+            assertEquals(rowsAffected[1], actualRowsAffected[1]);
+        }
 
-		actualRowsAffected = update.getRowsAffected();
-		assertTrue("executed 2 updates", actualRowsAffected.length == 2);
-		assertEquals(rowsAffected[0], actualRowsAffected[0]);
-		assertEquals(rowsAffected[1], actualRowsAffected[1]);
+        actualRowsAffected = update.getRowsAffected();
+        assertTrue("executed 2 updates", actualRowsAffected.length == 2);
+        assertEquals(rowsAffected[0], actualRowsAffected[0]);
+        assertEquals(rowsAffected[1], actualRowsAffected[1]);
 
-		update.reset();
-		assertEquals(0, update.getRowsAffected().length);
+        update.reset();
+        assertEquals(0, update.getRowsAffected().length);
 
-		verify(preparedStatement).setObject(1, ids[0], Types.INTEGER);
-		verify(preparedStatement).setObject(1, ids[1], Types.INTEGER);
-		verify(preparedStatement, times(2)).addBatch();
-		verify(preparedStatement).close();
-	}
+        verify(preparedStatement).setObject(1, ids[0], Types.INTEGER);
+        verify(preparedStatement).setObject(1, ids[1], Types.INTEGER);
+        verify(preparedStatement, times(2)).addBatch();
+        verify(preparedStatement).close();
+    }
 }

@@ -27,30 +27,29 @@ import org.springframework.test.context.transaction.BeforeTransaction;
 import static org.junit.Assert.*;
 
 /**
- * Transactional integration tests that verify rollback semantics for
- * {@link Sql @Sql} support.
+ * Transactional integration tests that verify rollback semantics for {@link Sql @Sql} support.
  *
  * @author Sam Brannen
  * @since 4.1
  */
 @ContextConfiguration(classes = PopulatedSchemaDatabaseConfig.class)
 @DirtiesContext
-public class PopulatedSchemaTransactionalSqlScriptsTests extends AbstractTransactionalJUnit4SpringContextTests {
+public class PopulatedSchemaTransactionalSqlScriptsTests
+        extends AbstractTransactionalJUnit4SpringContextTests {
 
-	@BeforeTransaction
-	@AfterTransaction
-	public void verifyPreAndPostTransactionDatabaseState() {
-		assertNumUsers(0);
-	}
+    @BeforeTransaction
+    @AfterTransaction
+    public void verifyPreAndPostTransactionDatabaseState() {
+        assertNumUsers(0);
+    }
 
-	@Test
-	@SqlGroup(@Sql("data-add-dogbert.sql"))
-	public void methodLevelScripts() {
-		assertNumUsers(1);
-	}
+    @Test
+    @SqlGroup(@Sql("data-add-dogbert.sql"))
+    public void methodLevelScripts() {
+        assertNumUsers(1);
+    }
 
-	protected void assertNumUsers(int expected) {
-		assertEquals("Number of rows in the 'user' table.", expected, countRowsInTable("user"));
-	}
-
+    protected void assertNumUsers(int expected) {
+        assertEquals("Number of rows in the 'user' table.", expected, countRowsInTable("user"));
+    }
 }

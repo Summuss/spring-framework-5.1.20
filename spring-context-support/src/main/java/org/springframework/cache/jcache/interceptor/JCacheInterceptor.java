@@ -30,12 +30,11 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.function.SingletonSupplier;
 
 /**
- * AOP Alliance MethodInterceptor for declarative cache
- * management using JSR-107 caching annotations.
+ * AOP Alliance MethodInterceptor for declarative cache management using JSR-107 caching
+ * annotations.
  *
- * <p>Derives from the {@link JCacheAspectSupport} class which
- * contains the integration with Spring's underlying caching API.
- * JCacheInterceptor simply calls the relevant superclass method.
+ * <p>Derives from the {@link JCacheAspectSupport} class which contains the integration with
+ * Spring's underlying caching API. JCacheInterceptor simply calls the relevant superclass method.
  *
  * <p>JCacheInterceptors are thread-safe.
  *
@@ -45,45 +44,42 @@ import org.springframework.util.function.SingletonSupplier;
  * @see org.springframework.cache.interceptor.CacheInterceptor
  */
 @SuppressWarnings("serial")
-public class JCacheInterceptor extends JCacheAspectSupport implements MethodInterceptor, Serializable {
+public class JCacheInterceptor extends JCacheAspectSupport
+        implements MethodInterceptor, Serializable {
 
-	/**
-	 * Construct a new {@code JCacheInterceptor} with the default error handler.
-	 */
-	public JCacheInterceptor() {
-	}
+    /** Construct a new {@code JCacheInterceptor} with the default error handler. */
+    public JCacheInterceptor() {}
 
-	/**
-	 * Construct a new {@code JCacheInterceptor} with the given error handler.
-	 * @param errorHandler a supplier for the error handler to use,
-	 * applying the default error handler if the supplier is not resolvable
-	 * @since 5.1
-	 */
-	public JCacheInterceptor(@Nullable Supplier<CacheErrorHandler> errorHandler) {
-		this.errorHandler = new SingletonSupplier<>(errorHandler, SimpleCacheErrorHandler::new);
-	}
+    /**
+     * Construct a new {@code JCacheInterceptor} with the given error handler.
+     *
+     * @param errorHandler a supplier for the error handler to use, applying the default error
+     *     handler if the supplier is not resolvable
+     * @since 5.1
+     */
+    public JCacheInterceptor(@Nullable Supplier<CacheErrorHandler> errorHandler) {
+        this.errorHandler = new SingletonSupplier<>(errorHandler, SimpleCacheErrorHandler::new);
+    }
 
+    @Override
+    @Nullable
+    public Object invoke(final MethodInvocation invocation) throws Throwable {
+        Method method = invocation.getMethod();
 
-	@Override
-	@Nullable
-	public Object invoke(final MethodInvocation invocation) throws Throwable {
-		Method method = invocation.getMethod();
+        CacheOperationInvoker aopAllianceInvoker =
+                () -> {
+                    try {
+                        return invocation.proceed();
+                    } catch (Throwable ex) {
+                        throw new CacheOperationInvoker.ThrowableWrapper(ex);
+                    }
+                };
 
-		CacheOperationInvoker aopAllianceInvoker = () -> {
-			try {
-				return invocation.proceed();
-			}
-			catch (Throwable ex) {
-				throw new CacheOperationInvoker.ThrowableWrapper(ex);
-			}
-		};
-
-		try {
-			return execute(aopAllianceInvoker, invocation.getThis(), method, invocation.getArguments());
-		}
-		catch (CacheOperationInvoker.ThrowableWrapper th) {
-			throw th.getOriginal();
-		}
-	}
-
+        try {
+            return execute(
+                    aopAllianceInvoker, invocation.getThis(), method, invocation.getArguments());
+        } catch (CacheOperationInvoker.ThrowableWrapper th) {
+            throw th.getOriginal();
+        }
+    }
 }

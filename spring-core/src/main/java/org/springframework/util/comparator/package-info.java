@@ -1,6 +1,6 @@
 /**
- * Useful generic {@code java.util.Comparator} implementations,
- * such as an invertible comparator and a compound comparator.
+ * Useful generic {@code java.util.Comparator} implementations, such as an invertible comparator and
+ * a compound comparator.
  */
 @NonNullApi
 @NonNullFields

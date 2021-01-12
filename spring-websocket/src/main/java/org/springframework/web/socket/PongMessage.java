@@ -26,30 +26,27 @@ import java.nio.ByteBuffer;
  */
 public final class PongMessage extends AbstractWebSocketMessage<ByteBuffer> {
 
-	/**
-	 * Create a new pong message with an empty payload.
-	 */
-	public PongMessage() {
-		super(ByteBuffer.allocate(0));
-	}
+    /** Create a new pong message with an empty payload. */
+    public PongMessage() {
+        super(ByteBuffer.allocate(0));
+    }
 
-	/**
-	 * Create a new pong message with the given ByteBuffer payload.
-	 * @param payload the non-null payload
-	 */
-	public PongMessage(ByteBuffer payload) {
-		super(payload);
-	}
+    /**
+     * Create a new pong message with the given ByteBuffer payload.
+     *
+     * @param payload the non-null payload
+     */
+    public PongMessage(ByteBuffer payload) {
+        super(payload);
+    }
 
+    @Override
+    public int getPayloadLength() {
+        return getPayload().remaining();
+    }
 
-	@Override
-	public int getPayloadLength() {
-		return getPayload().remaining();
-	}
-
-	@Override
-	protected String toStringPayload() {
-		return getPayload().toString();
-	}
-
+    @Override
+    protected String toStringPayload() {
+        return getPayload().toString();
+    }
 }

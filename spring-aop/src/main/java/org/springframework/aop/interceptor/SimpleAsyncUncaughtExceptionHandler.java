@@ -30,14 +30,12 @@ import org.apache.commons.logging.LogFactory;
  */
 public class SimpleAsyncUncaughtExceptionHandler implements AsyncUncaughtExceptionHandler {
 
-	private static final Log logger = LogFactory.getLog(SimpleAsyncUncaughtExceptionHandler.class);
+    private static final Log logger = LogFactory.getLog(SimpleAsyncUncaughtExceptionHandler.class);
 
-
-	@Override
-	public void handleUncaughtException(Throwable ex, Method method, Object... params) {
-		if (logger.isErrorEnabled()) {
-			logger.error("Unexpected exception occurred invoking async method: " + method, ex);
-		}
-	}
-
+    @Override
+    public void handleUncaughtException(Throwable ex, Method method, Object... params) {
+        if (logger.isErrorEnabled()) {
+            logger.error("Unexpected exception occurred invoking async method: " + method, ex);
+        }
+    }
 }

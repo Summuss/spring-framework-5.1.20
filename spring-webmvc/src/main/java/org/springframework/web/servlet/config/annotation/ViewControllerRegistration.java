@@ -32,48 +32,47 @@ import org.springframework.web.servlet.mvc.ParameterizableViewController;
  */
 public class ViewControllerRegistration {
 
-	private final String urlPath;
+    private final String urlPath;
 
-	private final ParameterizableViewController controller = new ParameterizableViewController();
+    private final ParameterizableViewController controller = new ParameterizableViewController();
 
+    public ViewControllerRegistration(String urlPath) {
+        Assert.notNull(urlPath, "'urlPath' is required.");
+        this.urlPath = urlPath;
+    }
 
-	public ViewControllerRegistration(String urlPath) {
-		Assert.notNull(urlPath, "'urlPath' is required.");
-		this.urlPath = urlPath;
-	}
+    /**
+     * Set the status code to set on the response. Optional.
+     *
+     * <p>If not set the response status will be 200 (OK).
+     */
+    public ViewControllerRegistration setStatusCode(HttpStatus statusCode) {
+        this.controller.setStatusCode(statusCode);
+        return this;
+    }
 
+    /**
+     * Set the view name to return. Optional.
+     *
+     * <p>If not specified, the view controller will return {@code null} as the view name in which
+     * case the configured {@link RequestToViewNameTranslator} will select the view name. The {@code
+     * DefaultRequestToViewNameTranslator} for example translates "/foo/bar" to "foo/bar".
+     *
+     * @see org.springframework.web.servlet.view.DefaultRequestToViewNameTranslator
+     */
+    public void setViewName(String viewName) {
+        this.controller.setViewName(viewName);
+    }
 
-	/**
-	 * Set the status code to set on the response. Optional.
-	 * <p>If not set the response status will be 200 (OK).
-	 */
-	public ViewControllerRegistration setStatusCode(HttpStatus statusCode) {
-		this.controller.setStatusCode(statusCode);
-		return this;
-	}
+    protected void setApplicationContext(@Nullable ApplicationContext applicationContext) {
+        this.controller.setApplicationContext(applicationContext);
+    }
 
-	/**
-	 * Set the view name to return. Optional.
-	 * <p>If not specified, the view controller will return {@code null} as the
-	 * view name in which case the configured {@link RequestToViewNameTranslator}
-	 * will select the view name. The {@code DefaultRequestToViewNameTranslator}
-	 * for example translates "/foo/bar" to "foo/bar".
-	 * @see org.springframework.web.servlet.view.DefaultRequestToViewNameTranslator
-	 */
-	public void setViewName(String viewName) {
-		this.controller.setViewName(viewName);
-	}
+    protected String getUrlPath() {
+        return this.urlPath;
+    }
 
-	protected void setApplicationContext(@Nullable ApplicationContext applicationContext) {
-		this.controller.setApplicationContext(applicationContext);
-	}
-
-	protected String getUrlPath() {
-		return this.urlPath;
-	}
-
-	protected ParameterizableViewController getViewController() {
-		return this.controller;
-	}
-
+    protected ParameterizableViewController getViewController() {
+        return this.controller;
+    }
 }

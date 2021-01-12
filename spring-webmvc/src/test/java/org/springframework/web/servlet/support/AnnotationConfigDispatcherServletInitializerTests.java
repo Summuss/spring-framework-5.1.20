@@ -53,220 +53,222 @@ import static org.junit.Assert.*;
  */
 public class AnnotationConfigDispatcherServletInitializerTests {
 
-	private static final String SERVLET_NAME = "myservlet";
+    private static final String SERVLET_NAME = "myservlet";
 
-	private static final String ROLE_NAME = "role";
+    private static final String ROLE_NAME = "role";
 
-	private static final String SERVLET_MAPPING = "/myservlet";
+    private static final String SERVLET_MAPPING = "/myservlet";
 
-	private AbstractDispatcherServletInitializer initializer;
+    private AbstractDispatcherServletInitializer initializer;
 
-	private MockServletContext servletContext;
+    private MockServletContext servletContext;
 
-	private Map<String, Servlet> servlets;
+    private Map<String, Servlet> servlets;
 
-	private Map<String, MockServletRegistration> servletRegistrations;
+    private Map<String, MockServletRegistration> servletRegistrations;
 
-	private Map<String, Filter> filters;
+    private Map<String, Filter> filters;
 
-	private Map<String, MockFilterRegistration> filterRegistrations;
+    private Map<String, MockFilterRegistration> filterRegistrations;
 
+    @Before
+    public void setUp() throws Exception {
+        servletContext = new MyMockServletContext();
+        initializer = new MyAnnotationConfigDispatcherServletInitializer();
+        servlets = new LinkedHashMap<>(1);
+        servletRegistrations = new LinkedHashMap<>(1);
+        filters = new LinkedHashMap<>(1);
+        filterRegistrations = new LinkedHashMap<>();
+    }
 
-	@Before
-	public void setUp() throws Exception {
-		servletContext = new MyMockServletContext();
-		initializer = new MyAnnotationConfigDispatcherServletInitializer();
-		servlets = new LinkedHashMap<>(1);
-		servletRegistrations = new LinkedHashMap<>(1);
-		filters = new LinkedHashMap<>(1);
-		filterRegistrations = new LinkedHashMap<>();
-	}
+    @Test
+    public void register() throws ServletException {
+        initializer.onStartup(servletContext);
 
-	@Test
-	public void register() throws ServletException {
-		initializer.onStartup(servletContext);
+        assertEquals(1, servlets.size());
+        assertNotNull(servlets.get(SERVLET_NAME));
 
-		assertEquals(1, servlets.size());
-		assertNotNull(servlets.get(SERVLET_NAME));
+        DispatcherServlet servlet = (DispatcherServlet) servlets.get(SERVLET_NAME);
+        WebApplicationContext wac = servlet.getWebApplicationContext();
+        ((AnnotationConfigWebApplicationContext) wac).refresh();
 
-		DispatcherServlet servlet = (DispatcherServlet) servlets.get(SERVLET_NAME);
-		WebApplicationContext wac = servlet.getWebApplicationContext();
-		((AnnotationConfigWebApplicationContext) wac).refresh();
+        assertTrue(wac.containsBean("bean"));
+        assertTrue(wac.getBean("bean") instanceof MyBean);
 
-		assertTrue(wac.containsBean("bean"));
-		assertTrue(wac.getBean("bean") instanceof MyBean);
+        assertEquals(1, servletRegistrations.size());
+        assertNotNull(servletRegistrations.get(SERVLET_NAME));
 
-		assertEquals(1, servletRegistrations.size());
-		assertNotNull(servletRegistrations.get(SERVLET_NAME));
+        MockServletRegistration servletRegistration = servletRegistrations.get(SERVLET_NAME);
 
-		MockServletRegistration servletRegistration = servletRegistrations.get(SERVLET_NAME);
+        assertEquals(Collections.singleton(SERVLET_MAPPING), servletRegistration.getMappings());
+        assertEquals(1, servletRegistration.getLoadOnStartup());
+        assertEquals(ROLE_NAME, servletRegistration.getRunAsRole());
+        assertTrue(servletRegistration.isAsyncSupported());
 
-		assertEquals(Collections.singleton(SERVLET_MAPPING), servletRegistration.getMappings());
-		assertEquals(1, servletRegistration.getLoadOnStartup());
-		assertEquals(ROLE_NAME, servletRegistration.getRunAsRole());
-		assertTrue(servletRegistration.isAsyncSupported());
+        assertEquals(4, filterRegistrations.size());
+        assertNotNull(filterRegistrations.get("hiddenHttpMethodFilter"));
+        assertNotNull(filterRegistrations.get("delegatingFilterProxy"));
+        assertNotNull(filterRegistrations.get("delegatingFilterProxy#0"));
+        assertNotNull(filterRegistrations.get("delegatingFilterProxy#1"));
 
-		assertEquals(4, filterRegistrations.size());
-		assertNotNull(filterRegistrations.get("hiddenHttpMethodFilter"));
-		assertNotNull(filterRegistrations.get("delegatingFilterProxy"));
-		assertNotNull(filterRegistrations.get("delegatingFilterProxy#0"));
-		assertNotNull(filterRegistrations.get("delegatingFilterProxy#1"));
+        for (MockFilterRegistration filterRegistration : filterRegistrations.values()) {
+            assertTrue(filterRegistration.isAsyncSupported());
+            EnumSet<DispatcherType> enumSet =
+                    EnumSet.of(
+                            DispatcherType.REQUEST,
+                            DispatcherType.FORWARD,
+                            DispatcherType.INCLUDE,
+                            DispatcherType.ASYNC);
+            assertEquals(enumSet, filterRegistration.getMappings().get(SERVLET_NAME));
+        }
+    }
 
-		for (MockFilterRegistration filterRegistration : filterRegistrations.values()) {
-			assertTrue(filterRegistration.isAsyncSupported());
-			EnumSet<DispatcherType> enumSet = EnumSet.of(DispatcherType.REQUEST, DispatcherType.FORWARD,
-					DispatcherType.INCLUDE, DispatcherType.ASYNC);
-			assertEquals(enumSet, filterRegistration.getMappings().get(SERVLET_NAME));
-		}
+    @Test
+    public void asyncSupportedFalse() throws ServletException {
+        initializer =
+                new MyAnnotationConfigDispatcherServletInitializer() {
+                    @Override
+                    protected boolean isAsyncSupported() {
+                        return false;
+                    }
+                };
 
-	}
+        initializer.onStartup(servletContext);
 
-	@Test
-	public void asyncSupportedFalse() throws ServletException {
-		initializer = new MyAnnotationConfigDispatcherServletInitializer() {
-			@Override
-			protected boolean isAsyncSupported() {
-				return false;
-			}
-		};
+        MockServletRegistration servletRegistration = servletRegistrations.get(SERVLET_NAME);
+        assertFalse(servletRegistration.isAsyncSupported());
 
-		initializer.onStartup(servletContext);
+        for (MockFilterRegistration filterRegistration : filterRegistrations.values()) {
+            assertFalse(filterRegistration.isAsyncSupported());
+            assertEquals(
+                    EnumSet.of(
+                            DispatcherType.REQUEST, DispatcherType.FORWARD, DispatcherType.INCLUDE),
+                    filterRegistration.getMappings().get(SERVLET_NAME));
+        }
+    }
 
-		MockServletRegistration servletRegistration = servletRegistrations.get(SERVLET_NAME);
-		assertFalse(servletRegistration.isAsyncSupported());
+    // SPR-11357
+    @Test
+    public void rootContextOnly() throws ServletException {
+        initializer =
+                new MyAnnotationConfigDispatcherServletInitializer() {
+                    @Override
+                    protected Class<?>[] getRootConfigClasses() {
+                        return new Class<?>[] {MyConfiguration.class};
+                    }
 
-		for (MockFilterRegistration filterRegistration : filterRegistrations.values()) {
-			assertFalse(filterRegistration.isAsyncSupported());
-			assertEquals(EnumSet.of(DispatcherType.REQUEST, DispatcherType.FORWARD, DispatcherType.INCLUDE),
-					filterRegistration.getMappings().get(SERVLET_NAME));
-		}
-	}
+                    @Override
+                    protected Class<?>[] getServletConfigClasses() {
+                        return null;
+                    }
+                };
 
-	// SPR-11357
-	@Test
-	public void rootContextOnly() throws ServletException {
-		initializer = new MyAnnotationConfigDispatcherServletInitializer() {
-			@Override
-			protected Class<?>[] getRootConfigClasses() {
-				return new Class<?>[] {MyConfiguration.class};
-			}
-			@Override
-			protected Class<?>[] getServletConfigClasses() {
-				return null;
-			}
-		};
+        initializer.onStartup(servletContext);
 
-		initializer.onStartup(servletContext);
+        DispatcherServlet servlet = (DispatcherServlet) servlets.get(SERVLET_NAME);
+        servlet.init(new MockServletConfig(this.servletContext));
 
-		DispatcherServlet servlet = (DispatcherServlet) servlets.get(SERVLET_NAME);
-		servlet.init(new MockServletConfig(this.servletContext));
+        WebApplicationContext wac = servlet.getWebApplicationContext();
+        ((AnnotationConfigWebApplicationContext) wac).refresh();
 
-		WebApplicationContext wac = servlet.getWebApplicationContext();
-		((AnnotationConfigWebApplicationContext) wac).refresh();
+        assertTrue(wac.containsBean("bean"));
+        assertTrue(wac.getBean("bean") instanceof MyBean);
+    }
 
-		assertTrue(wac.containsBean("bean"));
-		assertTrue(wac.getBean("bean") instanceof MyBean);
-	}
+    @Test
+    public void noFilters() throws ServletException {
+        initializer =
+                new MyAnnotationConfigDispatcherServletInitializer() {
+                    @Override
+                    protected Filter[] getServletFilters() {
+                        return null;
+                    }
+                };
 
-	@Test
-	public void noFilters() throws ServletException {
-		initializer = new MyAnnotationConfigDispatcherServletInitializer() {
-			@Override
-			protected Filter[] getServletFilters() {
-				return null;
-			}
-		};
+        initializer.onStartup(servletContext);
 
-		initializer.onStartup(servletContext);
+        assertEquals(0, filterRegistrations.size());
+    }
 
-		assertEquals(0, filterRegistrations.size());
-	}
+    private class MyMockServletContext extends MockServletContext {
 
+        @Override
+        public <T extends EventListener> void addListener(T t) {
+            if (t instanceof ServletContextListener) {
+                ((ServletContextListener) t).contextInitialized(new ServletContextEvent(this));
+            }
+        }
 
-	private class MyMockServletContext extends MockServletContext {
+        @Override
+        public ServletRegistration.Dynamic addServlet(String servletName, Servlet servlet) {
+            if (servlets.containsKey(servletName)) {
+                return null;
+            }
+            servlets.put(servletName, servlet);
+            MockServletRegistration registration = new MockServletRegistration();
+            servletRegistrations.put(servletName, registration);
+            return registration;
+        }
 
-		@Override
-		public <T extends EventListener> void addListener(T t) {
-			if (t instanceof ServletContextListener) {
-				((ServletContextListener) t).contextInitialized(new ServletContextEvent(this));
-			}
-		}
+        @Override
+        public Dynamic addFilter(String filterName, Filter filter) {
+            if (filters.containsKey(filterName)) {
+                return null;
+            }
+            filters.put(filterName, filter);
+            MockFilterRegistration registration = new MockFilterRegistration();
+            filterRegistrations.put(filterName, registration);
+            return registration;
+        }
+    }
 
-		@Override
-		public ServletRegistration.Dynamic addServlet(String servletName, Servlet servlet) {
-			if (servlets.containsKey(servletName)) {
-				return null;
-			}
-			servlets.put(servletName, servlet);
-			MockServletRegistration registration = new MockServletRegistration();
-			servletRegistrations.put(servletName, registration);
-			return registration;
-		}
+    private static class MyAnnotationConfigDispatcherServletInitializer
+            extends AbstractAnnotationConfigDispatcherServletInitializer {
 
-		@Override
-		public Dynamic addFilter(String filterName, Filter filter) {
-			if (filters.containsKey(filterName)) {
-				return null;
-			}
-			filters.put(filterName, filter);
-			MockFilterRegistration registration = new MockFilterRegistration();
-			filterRegistrations.put(filterName, registration);
-			return registration;
-		}
-	}
+        @Override
+        protected String getServletName() {
+            return SERVLET_NAME;
+        }
 
+        @Override
+        protected Class<?>[] getServletConfigClasses() {
+            return new Class<?>[] {MyConfiguration.class};
+        }
 
-	private static class MyAnnotationConfigDispatcherServletInitializer
-			extends AbstractAnnotationConfigDispatcherServletInitializer {
+        @Override
+        protected String[] getServletMappings() {
+            return new String[] {"/myservlet"};
+        }
 
-		@Override
-		protected String getServletName() {
-			return SERVLET_NAME;
-		}
+        @Override
+        protected Filter[] getServletFilters() {
+            return new Filter[] {
+                new HiddenHttpMethodFilter(),
+                new DelegatingFilterProxy("a"),
+                new DelegatingFilterProxy("b"),
+                new DelegatingFilterProxy("c")
+            };
+        }
 
-		@Override
-		protected Class<?>[] getServletConfigClasses() {
-			return new Class<?>[] {MyConfiguration.class};
-		}
+        @Override
+        protected void customizeRegistration(ServletRegistration.Dynamic registration) {
+            registration.setRunAsRole("role");
+        }
 
-		@Override
-		protected String[] getServletMappings() {
-			return new String[]{"/myservlet"};
-		}
+        @Override
+        protected Class<?>[] getRootConfigClasses() {
+            return null;
+        }
+    }
 
-		@Override
-		protected Filter[] getServletFilters() {
-			return new Filter[] {
-					new HiddenHttpMethodFilter(),
-					new DelegatingFilterProxy("a"),
-					new DelegatingFilterProxy("b"),
-					new DelegatingFilterProxy("c")
-			};
-		}
+    public static class MyBean {}
 
-		@Override
-		protected void customizeRegistration(ServletRegistration.Dynamic registration) {
-			registration.setRunAsRole("role");
-		}
+    @Configuration
+    public static class MyConfiguration {
 
-		@Override
-		protected Class<?>[] getRootConfigClasses() {
-			return null;
-		}
-	}
-
-
-	public static class MyBean {
-	}
-
-
-	@Configuration
-	public static class MyConfiguration {
-
-		@Bean
-		public MyBean bean() {
-			return new MyBean();
-		}
-	}
-
+        @Bean
+        public MyBean bean() {
+            return new MyBean();
+        }
+    }
 }

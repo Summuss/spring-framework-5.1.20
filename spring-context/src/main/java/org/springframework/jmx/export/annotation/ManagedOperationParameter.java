@@ -24,9 +24,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Method-level annotation used to provide metadata about operation parameters,
- * corresponding to a {@code ManagedOperationParameter} attribute.
- * Used as part of a {@link ManagedOperationParameters} annotation.
+ * Method-level annotation used to provide metadata about operation parameters, corresponding to a
+ * {@code ManagedOperationParameter} attribute. Used as part of a {@link ManagedOperationParameters}
+ * annotation.
  *
  * <p>As of Spring Framework 4.2.4, this annotation is declared as repeatable.
  *
@@ -41,8 +41,7 @@ import java.lang.annotation.Target;
 @Repeatable(ManagedOperationParameters.class)
 public @interface ManagedOperationParameter {
 
-	String name();
+    String name();
 
-	String description();
-
+    String description();
 }

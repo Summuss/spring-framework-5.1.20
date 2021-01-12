@@ -53,146 +53,151 @@ import static org.springframework.web.servlet.HandlerMapping.BEST_MATCHING_PATTE
  */
 public class HandlerMappingIntrospectorTests {
 
-	@Test
-	public void detectHandlerMappings() throws Exception {
-		StaticWebApplicationContext cxt = new StaticWebApplicationContext();
-		cxt.registerSingleton("hmA", SimpleUrlHandlerMapping.class);
-		cxt.registerSingleton("hmB", SimpleUrlHandlerMapping.class);
-		cxt.registerSingleton("hmC", SimpleUrlHandlerMapping.class);
-		cxt.refresh();
+    @Test
+    public void detectHandlerMappings() throws Exception {
+        StaticWebApplicationContext cxt = new StaticWebApplicationContext();
+        cxt.registerSingleton("hmA", SimpleUrlHandlerMapping.class);
+        cxt.registerSingleton("hmB", SimpleUrlHandlerMapping.class);
+        cxt.registerSingleton("hmC", SimpleUrlHandlerMapping.class);
+        cxt.refresh();
 
-		List<?> expected = Arrays.asList(cxt.getBean("hmA"), cxt.getBean("hmB"), cxt.getBean("hmC"));
-		List<HandlerMapping> actual = getIntrospector(cxt).getHandlerMappings();
+        List<?> expected =
+                Arrays.asList(cxt.getBean("hmA"), cxt.getBean("hmB"), cxt.getBean("hmC"));
+        List<HandlerMapping> actual = getIntrospector(cxt).getHandlerMappings();
 
-		assertEquals(expected, actual);
-	}
+        assertEquals(expected, actual);
+    }
 
-	@Test
-	public void detectHandlerMappingsOrdered() throws Exception {
-		StaticWebApplicationContext cxt = new StaticWebApplicationContext();
-		MutablePropertyValues pvs = new MutablePropertyValues(Collections.singletonMap("order", "3"));
-		cxt.registerSingleton("hmA", SimpleUrlHandlerMapping.class, pvs);
-		pvs = new MutablePropertyValues(Collections.singletonMap("order", "2"));
-		cxt.registerSingleton("hmB", SimpleUrlHandlerMapping.class, pvs);
-		pvs = new MutablePropertyValues(Collections.singletonMap("order", "1"));
-		cxt.registerSingleton("hmC", SimpleUrlHandlerMapping.class, pvs);
-		cxt.refresh();
+    @Test
+    public void detectHandlerMappingsOrdered() throws Exception {
+        StaticWebApplicationContext cxt = new StaticWebApplicationContext();
+        MutablePropertyValues pvs =
+                new MutablePropertyValues(Collections.singletonMap("order", "3"));
+        cxt.registerSingleton("hmA", SimpleUrlHandlerMapping.class, pvs);
+        pvs = new MutablePropertyValues(Collections.singletonMap("order", "2"));
+        cxt.registerSingleton("hmB", SimpleUrlHandlerMapping.class, pvs);
+        pvs = new MutablePropertyValues(Collections.singletonMap("order", "1"));
+        cxt.registerSingleton("hmC", SimpleUrlHandlerMapping.class, pvs);
+        cxt.refresh();
 
-		List<?> expected = Arrays.asList(cxt.getBean("hmC"), cxt.getBean("hmB"), cxt.getBean("hmA"));
-		List<HandlerMapping> actual = getIntrospector(cxt).getHandlerMappings();
+        List<?> expected =
+                Arrays.asList(cxt.getBean("hmC"), cxt.getBean("hmB"), cxt.getBean("hmA"));
+        List<HandlerMapping> actual = getIntrospector(cxt).getHandlerMappings();
 
-		assertEquals(expected, actual);
-	}
+        assertEquals(expected, actual);
+    }
 
-	public void defaultHandlerMappings() throws Exception {
-		StaticWebApplicationContext cxt = new StaticWebApplicationContext();
-		cxt.refresh();
+    public void defaultHandlerMappings() throws Exception {
+        StaticWebApplicationContext cxt = new StaticWebApplicationContext();
+        cxt.refresh();
 
-		List<HandlerMapping> actual = getIntrospector(cxt).getHandlerMappings();
-		assertEquals(2, actual.size());
-		assertEquals(BeanNameUrlHandlerMapping.class, actual.get(0).getClass());
-		assertEquals(RequestMappingHandlerMapping.class, actual.get(1).getClass());
-	}
+        List<HandlerMapping> actual = getIntrospector(cxt).getHandlerMappings();
+        assertEquals(2, actual.size());
+        assertEquals(BeanNameUrlHandlerMapping.class, actual.get(0).getClass());
+        assertEquals(RequestMappingHandlerMapping.class, actual.get(1).getClass());
+    }
 
-	@Test
-	public void getMatchable() throws Exception {
-		MutablePropertyValues pvs = new MutablePropertyValues(
-				Collections.singletonMap("urlMap", Collections.singletonMap("/path", new Object())));
+    @Test
+    public void getMatchable() throws Exception {
+        MutablePropertyValues pvs =
+                new MutablePropertyValues(
+                        Collections.singletonMap(
+                                "urlMap", Collections.singletonMap("/path", new Object())));
 
-		StaticWebApplicationContext cxt = new StaticWebApplicationContext();
-		cxt.registerSingleton("hm", SimpleUrlHandlerMapping.class, pvs);
-		cxt.refresh();
+        StaticWebApplicationContext cxt = new StaticWebApplicationContext();
+        cxt.registerSingleton("hm", SimpleUrlHandlerMapping.class, pvs);
+        cxt.refresh();
 
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/path");
-		MatchableHandlerMapping hm = getIntrospector(cxt).getMatchableHandlerMapping(request);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/path");
+        MatchableHandlerMapping hm = getIntrospector(cxt).getMatchableHandlerMapping(request);
 
-		assertEquals(cxt.getBean("hm"), hm);
-		assertNull("Attributes changes not ignored", request.getAttribute(BEST_MATCHING_PATTERN_ATTRIBUTE));
-	}
+        assertEquals(cxt.getBean("hm"), hm);
+        assertNull(
+                "Attributes changes not ignored",
+                request.getAttribute(BEST_MATCHING_PATTERN_ATTRIBUTE));
+    }
 
-	@Test(expected = IllegalStateException.class)
-	public void getMatchableWhereHandlerMappingDoesNotImplementMatchableInterface() throws Exception {
-		StaticWebApplicationContext cxt = new StaticWebApplicationContext();
-		cxt.registerSingleton("hm1", TestHandlerMapping.class);
-		cxt.refresh();
+    @Test(expected = IllegalStateException.class)
+    public void getMatchableWhereHandlerMappingDoesNotImplementMatchableInterface()
+            throws Exception {
+        StaticWebApplicationContext cxt = new StaticWebApplicationContext();
+        cxt.registerSingleton("hm1", TestHandlerMapping.class);
+        cxt.refresh();
 
-		MockHttpServletRequest request = new MockHttpServletRequest();
-		getIntrospector(cxt).getMatchableHandlerMapping(request);
-	}
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        getIntrospector(cxt).getMatchableHandlerMapping(request);
+    }
 
-	@Test
-	public void getCorsConfigurationPreFlight() throws Exception {
-		AnnotationConfigWebApplicationContext cxt = new AnnotationConfigWebApplicationContext();
-		cxt.register(TestConfig.class);
-		cxt.refresh();
+    @Test
+    public void getCorsConfigurationPreFlight() throws Exception {
+        AnnotationConfigWebApplicationContext cxt = new AnnotationConfigWebApplicationContext();
+        cxt.register(TestConfig.class);
+        cxt.refresh();
 
-		// PRE-FLIGHT
+        // PRE-FLIGHT
 
-		MockHttpServletRequest request = new MockHttpServletRequest("OPTIONS", "/path");
-		request.addHeader("Origin", "http://localhost:9000");
-		request.addHeader(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST");
-		CorsConfiguration corsConfig = getIntrospector(cxt).getCorsConfiguration(request);
+        MockHttpServletRequest request = new MockHttpServletRequest("OPTIONS", "/path");
+        request.addHeader("Origin", "http://localhost:9000");
+        request.addHeader(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST");
+        CorsConfiguration corsConfig = getIntrospector(cxt).getCorsConfiguration(request);
 
-		assertNotNull(corsConfig);
-		assertEquals(Collections.singletonList("http://localhost:9000"), corsConfig.getAllowedOrigins());
-		assertEquals(Collections.singletonList("POST"), corsConfig.getAllowedMethods());
-	}
+        assertNotNull(corsConfig);
+        assertEquals(
+                Collections.singletonList("http://localhost:9000"), corsConfig.getAllowedOrigins());
+        assertEquals(Collections.singletonList("POST"), corsConfig.getAllowedMethods());
+    }
 
-	@Test
-	public void getCorsConfigurationActual() throws Exception {
-		AnnotationConfigWebApplicationContext cxt = new AnnotationConfigWebApplicationContext();
-		cxt.register(TestConfig.class);
-		cxt.refresh();
+    @Test
+    public void getCorsConfigurationActual() throws Exception {
+        AnnotationConfigWebApplicationContext cxt = new AnnotationConfigWebApplicationContext();
+        cxt.register(TestConfig.class);
+        cxt.refresh();
 
-		MockHttpServletRequest request = new MockHttpServletRequest("POST", "/path");
-		request.addHeader("Origin", "http://localhost:9000");
-		CorsConfiguration corsConfig = getIntrospector(cxt).getCorsConfiguration(request);
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/path");
+        request.addHeader("Origin", "http://localhost:9000");
+        CorsConfiguration corsConfig = getIntrospector(cxt).getCorsConfiguration(request);
 
-		assertNotNull(corsConfig);
-		assertEquals(Collections.singletonList("http://localhost:9000"), corsConfig.getAllowedOrigins());
-		assertEquals(Collections.singletonList("POST"), corsConfig.getAllowedMethods());
-	}
+        assertNotNull(corsConfig);
+        assertEquals(
+                Collections.singletonList("http://localhost:9000"), corsConfig.getAllowedOrigins());
+        assertEquals(Collections.singletonList("POST"), corsConfig.getAllowedMethods());
+    }
 
-	private HandlerMappingIntrospector getIntrospector(WebApplicationContext cxt) {
-		HandlerMappingIntrospector introspector = new HandlerMappingIntrospector();
-		introspector.setApplicationContext(cxt);
-		introspector.afterPropertiesSet();
-		return introspector;
-	}
+    private HandlerMappingIntrospector getIntrospector(WebApplicationContext cxt) {
+        HandlerMappingIntrospector introspector = new HandlerMappingIntrospector();
+        introspector.setApplicationContext(cxt);
+        introspector.afterPropertiesSet();
+        return introspector;
+    }
 
+    private static class TestHandlerMapping implements HandlerMapping {
 
-	private static class TestHandlerMapping implements HandlerMapping {
+        @Override
+        public HandlerExecutionChain getHandler(HttpServletRequest request) throws Exception {
+            return new HandlerExecutionChain(new Object());
+        }
+    }
 
-		@Override
-		public HandlerExecutionChain getHandler(HttpServletRequest request) throws Exception {
-			return new HandlerExecutionChain(new Object());
-		}
-	}
+    @Configuration
+    @SuppressWarnings({"WeakerAccess", "unused"})
+    static class TestConfig {
 
+        @Bean
+        public RequestMappingHandlerMapping handlerMapping() {
+            return new RequestMappingHandlerMapping();
+        }
 
-	@Configuration
-	@SuppressWarnings({"WeakerAccess", "unused"})
-	static class TestConfig {
+        @Bean
+        public TestController testController() {
+            return new TestController();
+        }
+    }
 
-		@Bean
-		public RequestMappingHandlerMapping handlerMapping() {
-			return new RequestMappingHandlerMapping();
-		}
+    @CrossOrigin("http://localhost:9000")
+    @Controller
+    private static class TestController {
 
-		@Bean
-		public TestController testController() {
-			return new TestController();
-		}
-	}
-
-
-	@CrossOrigin("http://localhost:9000")
-	@Controller
-	private static class TestController {
-
-		@PostMapping("/path")
-		public void handle() {
-		}
-	}
-
+        @PostMapping("/path")
+        public void handle() {}
+    }
 }

@@ -24,5 +24,4 @@ import javax.persistence.Converter;
  * @author Stephane Nicoll
  */
 @Converter
-public class SampleConverter {
-}
+public class SampleConverter {}

@@ -16,20 +16,17 @@
 
 package org.springframework.core.task;
 
-/**
- * @author Juergen Hoeller
- */
+/** @author Juergen Hoeller */
 public class MockRunnable implements Runnable {
 
-	private boolean executed = false;
+    private boolean executed = false;
 
-	@Override
-	public void run() {
-		this.executed = true;
-	}
+    @Override
+    public void run() {
+        this.executed = true;
+    }
 
-	public boolean wasExecuted() {
-		return this.executed;
-	}
-
+    public boolean wasExecuted() {
+        return this.executed;
+    }
 }

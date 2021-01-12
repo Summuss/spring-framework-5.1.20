@@ -1,6 +1,5 @@
 /**
- * SockJS client implementation of
- * {@link org.springframework.web.socket.client.WebSocketClient}.
+ * SockJS client implementation of {@link org.springframework.web.socket.client.WebSocketClient}.
  */
 @NonNullApi
 @NonNullFields

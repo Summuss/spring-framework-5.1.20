@@ -1,6 +1,6 @@
 /**
- * Support package for EJB/Java EE-related configuration,
- * with XML schema being the primary configuration format.
+ * Support package for EJB/Java EE-related configuration, with XML schema being the primary
+ * configuration format.
  */
 @NonNullApi
 @NonNullFields

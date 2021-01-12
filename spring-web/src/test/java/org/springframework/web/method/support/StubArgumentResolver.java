@@ -31,44 +31,42 @@ import org.springframework.web.context.request.NativeWebRequest;
  */
 public class StubArgumentResolver implements HandlerMethodArgumentResolver {
 
-	private final Class<?> valueType;
+    private final Class<?> valueType;
 
-	@Nullable
-	private final Object value;
+    @Nullable private final Object value;
 
-	private List<MethodParameter> resolvedParameters = new ArrayList<>();
+    private List<MethodParameter> resolvedParameters = new ArrayList<>();
 
+    public StubArgumentResolver(Object value) {
+        this(value.getClass(), value);
+    }
 
-	public StubArgumentResolver(Object value) {
-		this(value.getClass(), value);
-	}
+    public StubArgumentResolver(Class<?> valueType) {
+        this(valueType, null);
+    }
 
-	public StubArgumentResolver(Class<?> valueType) {
-		this(valueType, null);
-	}
+    public StubArgumentResolver(Class<?> valueType, Object value) {
+        this.valueType = valueType;
+        this.value = value;
+    }
 
-	public StubArgumentResolver(Class<?> valueType, Object value) {
-		this.valueType = valueType;
-		this.value = value;
-	}
+    public List<MethodParameter> getResolvedParameters() {
+        return resolvedParameters;
+    }
 
+    @Override
+    public boolean supportsParameter(MethodParameter parameter) {
+        return parameter.getParameterType().equals(this.valueType);
+    }
 
-	public List<MethodParameter> getResolvedParameters() {
-		return resolvedParameters;
-	}
+    @Override
+    public Object resolveArgument(
+            MethodParameter parameter,
+            ModelAndViewContainer mavContainer,
+            NativeWebRequest webRequest,
+            WebDataBinderFactory binderFactory) {
 
-
-	@Override
-	public boolean supportsParameter(MethodParameter parameter) {
-		return parameter.getParameterType().equals(this.valueType);
-	}
-
-	@Override
-	public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
-			NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
-
-		this.resolvedParameters.add(parameter);
-		return this.value;
-	}
-
+        this.resolvedParameters.add(parameter);
+        return this.value;
+    }
 }

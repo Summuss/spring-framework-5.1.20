@@ -34,80 +34,86 @@ import static org.junit.Assert.*;
 
 /**
  * Base class for tests using on the DispatcherServlet and HandlerMethod infrastructure classes:
+ *
  * <ul>
- * <li>RequestMappingHandlerMapping
- * <li>RequestMappingHandlerAdapter
- * <li>ExceptionHandlerExceptionResolver
+ *   <li>RequestMappingHandlerMapping
+ *   <li>RequestMappingHandlerAdapter
+ *   <li>ExceptionHandlerExceptionResolver
  * </ul>
  *
  * @author Rossen Stoyanchev
  */
 public abstract class AbstractServletHandlerMethodTests {
 
-	private DispatcherServlet servlet;
+    private DispatcherServlet servlet;
 
+    protected DispatcherServlet getServlet() {
+        assertNotNull("DispatcherServlet not initialized", servlet);
+        return servlet;
+    }
 
-	protected DispatcherServlet getServlet() {
-		assertNotNull("DispatcherServlet not initialized", servlet);
-		return servlet;
-	}
+    @After
+    public void tearDown() {
+        this.servlet = null;
+    }
 
-	@After
-	public void tearDown() {
-		this.servlet = null;
-	}
+    /** Initialize a DispatcherServlet instance registering zero or more controller classes. */
+    protected WebApplicationContext initServletWithControllers(final Class<?>... controllerClasses)
+            throws ServletException {
 
-	/**
-	 * Initialize a DispatcherServlet instance registering zero or more controller classes.
-	 */
-	protected WebApplicationContext initServletWithControllers(final Class<?>... controllerClasses)
-			throws ServletException {
+        return initServlet(null, controllerClasses);
+    }
 
-		return initServlet(null, controllerClasses);
-	}
+    /**
+     * Initialize a DispatcherServlet instance registering zero or more controller classes and also
+     * providing additional bean definitions through a callback.
+     */
+    @SuppressWarnings("serial")
+    protected WebApplicationContext initServlet(
+            final ApplicationContextInitializer<GenericWebApplicationContext> initializer,
+            final Class<?>... controllerClasses)
+            throws ServletException {
 
-	/**
-	 * Initialize a DispatcherServlet instance registering zero or more controller classes
-	 * and also providing additional bean definitions through a callback.
-	 */
-	@SuppressWarnings("serial")
-	protected WebApplicationContext initServlet(
-			final ApplicationContextInitializer<GenericWebApplicationContext> initializer,
-			final Class<?>... controllerClasses) throws ServletException {
+        final GenericWebApplicationContext wac = new GenericWebApplicationContext();
 
-		final GenericWebApplicationContext wac = new GenericWebApplicationContext();
+        servlet =
+                new DispatcherServlet() {
+                    @Override
+                    protected WebApplicationContext createWebApplicationContext(
+                            @Nullable WebApplicationContext parent) {
+                        for (Class<?> clazz : controllerClasses) {
+                            wac.registerBeanDefinition(
+                                    clazz.getSimpleName(), new RootBeanDefinition(clazz));
+                        }
 
-		servlet = new DispatcherServlet() {
-			@Override
-			protected WebApplicationContext createWebApplicationContext(@Nullable WebApplicationContext parent) {
-				for (Class<?> clazz : controllerClasses) {
-					wac.registerBeanDefinition(clazz.getSimpleName(), new RootBeanDefinition(clazz));
-				}
+                        RootBeanDefinition mappingDef =
+                                new RootBeanDefinition(RequestMappingHandlerMapping.class);
+                        mappingDef.getPropertyValues().add("removeSemicolonContent", "false");
+                        wac.registerBeanDefinition("handlerMapping", mappingDef);
+                        wac.registerBeanDefinition(
+                                "handlerAdapter",
+                                new RootBeanDefinition(RequestMappingHandlerAdapter.class));
+                        wac.registerBeanDefinition(
+                                "requestMappingResolver",
+                                new RootBeanDefinition(ExceptionHandlerExceptionResolver.class));
+                        wac.registerBeanDefinition(
+                                "responseStatusResolver",
+                                new RootBeanDefinition(ResponseStatusExceptionResolver.class));
+                        wac.registerBeanDefinition(
+                                "defaultResolver",
+                                new RootBeanDefinition(DefaultHandlerExceptionResolver.class));
 
-				RootBeanDefinition mappingDef = new RootBeanDefinition(RequestMappingHandlerMapping.class);
-				mappingDef.getPropertyValues().add("removeSemicolonContent", "false");
-				wac.registerBeanDefinition("handlerMapping", mappingDef);
-				wac.registerBeanDefinition("handlerAdapter",
-						new RootBeanDefinition(RequestMappingHandlerAdapter.class));
-				wac.registerBeanDefinition("requestMappingResolver",
-						new RootBeanDefinition(ExceptionHandlerExceptionResolver.class));
-				wac.registerBeanDefinition("responseStatusResolver",
-						new RootBeanDefinition(ResponseStatusExceptionResolver.class));
-				wac.registerBeanDefinition("defaultResolver",
-						new RootBeanDefinition(DefaultHandlerExceptionResolver.class));
+                        if (initializer != null) {
+                            initializer.initialize(wac);
+                        }
 
-				if (initializer != null) {
-					initializer.initialize(wac);
-				}
+                        wac.refresh();
+                        return wac;
+                    }
+                };
 
-				wac.refresh();
-				return wac;
-			}
-		};
+        servlet.init(new MockServletConfig());
 
-		servlet.init(new MockServletConfig());
-
-		return wac;
-	}
-
+        return wac;
+    }
 }

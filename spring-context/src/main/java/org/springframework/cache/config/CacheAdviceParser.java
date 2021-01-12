@@ -41,8 +41,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.util.xml.DomUtils;
 
 /**
- * {@link org.springframework.beans.factory.xml.BeanDefinitionParser
- * BeanDefinitionParser} for the {@code <tx:advice/>} tag.
+ * {@link org.springframework.beans.factory.xml.BeanDefinitionParser BeanDefinitionParser} for the
+ * {@code <tx:advice/>} tag.
  *
  * @author Costin Leau
  * @author Phillip Webb
@@ -50,211 +50,227 @@ import org.springframework.util.xml.DomUtils;
  */
 class CacheAdviceParser extends AbstractSingleBeanDefinitionParser {
 
-	private static final String CACHEABLE_ELEMENT = "cacheable";
+    private static final String CACHEABLE_ELEMENT = "cacheable";
 
-	private static final String CACHE_EVICT_ELEMENT = "cache-evict";
+    private static final String CACHE_EVICT_ELEMENT = "cache-evict";
 
-	private static final String CACHE_PUT_ELEMENT = "cache-put";
+    private static final String CACHE_PUT_ELEMENT = "cache-put";
 
-	private static final String METHOD_ATTRIBUTE = "method";
+    private static final String METHOD_ATTRIBUTE = "method";
 
-	private static final String DEFS_ELEMENT = "caching";
+    private static final String DEFS_ELEMENT = "caching";
 
+    @Override
+    protected Class<?> getBeanClass(Element element) {
+        return CacheInterceptor.class;
+    }
 
-	@Override
-	protected Class<?> getBeanClass(Element element) {
-		return CacheInterceptor.class;
-	}
+    @Override
+    protected void doParse(
+            Element element, ParserContext parserContext, BeanDefinitionBuilder builder) {
+        builder.addPropertyReference(
+                "cacheManager", CacheNamespaceHandler.extractCacheManager(element));
+        CacheNamespaceHandler.parseKeyGenerator(element, builder.getBeanDefinition());
 
-	@Override
-	protected void doParse(Element element, ParserContext parserContext, BeanDefinitionBuilder builder) {
-		builder.addPropertyReference("cacheManager", CacheNamespaceHandler.extractCacheManager(element));
-		CacheNamespaceHandler.parseKeyGenerator(element, builder.getBeanDefinition());
+        List<Element> cacheDefs = DomUtils.getChildElementsByTagName(element, DEFS_ELEMENT);
+        if (!cacheDefs.isEmpty()) {
+            // Using attributes source.
+            List<RootBeanDefinition> attributeSourceDefinitions =
+                    parseDefinitionsSources(cacheDefs, parserContext);
+            builder.addPropertyValue("cacheOperationSources", attributeSourceDefinitions);
+        } else {
+            // Assume annotations source.
+            builder.addPropertyValue(
+                    "cacheOperationSources",
+                    new RootBeanDefinition(
+                            "org.springframework.cache.annotation.AnnotationCacheOperationSource"));
+        }
+    }
 
-		List<Element> cacheDefs = DomUtils.getChildElementsByTagName(element, DEFS_ELEMENT);
-		if (!cacheDefs.isEmpty()) {
-			// Using attributes source.
-			List<RootBeanDefinition> attributeSourceDefinitions = parseDefinitionsSources(cacheDefs, parserContext);
-			builder.addPropertyValue("cacheOperationSources", attributeSourceDefinitions);
-		}
-		else {
-			// Assume annotations source.
-			builder.addPropertyValue("cacheOperationSources",
-					new RootBeanDefinition("org.springframework.cache.annotation.AnnotationCacheOperationSource"));
-		}
-	}
+    private List<RootBeanDefinition> parseDefinitionsSources(
+            List<Element> definitions, ParserContext parserContext) {
+        ManagedList<RootBeanDefinition> defs = new ManagedList<>(definitions.size());
 
-	private List<RootBeanDefinition> parseDefinitionsSources(List<Element> definitions, ParserContext parserContext) {
-		ManagedList<RootBeanDefinition> defs = new ManagedList<>(definitions.size());
+        // extract default param for the definition
+        for (Element element : definitions) {
+            defs.add(parseDefinitionSource(element, parserContext));
+        }
 
-		// extract default param for the definition
-		for (Element element : definitions) {
-			defs.add(parseDefinitionSource(element, parserContext));
-		}
+        return defs;
+    }
 
-		return defs;
-	}
+    private RootBeanDefinition parseDefinitionSource(
+            Element definition, ParserContext parserContext) {
+        Props prop = new Props(definition);
+        // add cacheable first
 
-	private RootBeanDefinition parseDefinitionSource(Element definition, ParserContext parserContext) {
-		Props prop = new Props(definition);
-		// add cacheable first
+        ManagedMap<TypedStringValue, Collection<CacheOperation>> cacheOpMap = new ManagedMap<>();
+        cacheOpMap.setSource(parserContext.extractSource(definition));
 
-		ManagedMap<TypedStringValue, Collection<CacheOperation>> cacheOpMap = new ManagedMap<>();
-		cacheOpMap.setSource(parserContext.extractSource(definition));
+        List<Element> cacheableCacheMethods =
+                DomUtils.getChildElementsByTagName(definition, CACHEABLE_ELEMENT);
 
-		List<Element> cacheableCacheMethods = DomUtils.getChildElementsByTagName(definition, CACHEABLE_ELEMENT);
+        for (Element opElement : cacheableCacheMethods) {
+            String name = prop.merge(opElement, parserContext.getReaderContext());
+            TypedStringValue nameHolder = new TypedStringValue(name);
+            nameHolder.setSource(parserContext.extractSource(opElement));
+            CacheableOperation.Builder builder =
+                    prop.merge(
+                            opElement,
+                            parserContext.getReaderContext(),
+                            new CacheableOperation.Builder());
+            builder.setUnless(getAttributeValue(opElement, "unless", ""));
+            builder.setSync(Boolean.valueOf(getAttributeValue(opElement, "sync", "false")));
 
-		for (Element opElement : cacheableCacheMethods) {
-			String name = prop.merge(opElement, parserContext.getReaderContext());
-			TypedStringValue nameHolder = new TypedStringValue(name);
-			nameHolder.setSource(parserContext.extractSource(opElement));
-			CacheableOperation.Builder builder = prop.merge(opElement,
-					parserContext.getReaderContext(), new CacheableOperation.Builder());
-			builder.setUnless(getAttributeValue(opElement, "unless", ""));
-			builder.setSync(Boolean.valueOf(getAttributeValue(opElement, "sync", "false")));
+            Collection<CacheOperation> col = cacheOpMap.get(nameHolder);
+            if (col == null) {
+                col = new ArrayList<>(2);
+                cacheOpMap.put(nameHolder, col);
+            }
+            col.add(builder.build());
+        }
 
-			Collection<CacheOperation> col = cacheOpMap.get(nameHolder);
-			if (col == null) {
-				col = new ArrayList<>(2);
-				cacheOpMap.put(nameHolder, col);
-			}
-			col.add(builder.build());
-		}
+        List<Element> evictCacheMethods =
+                DomUtils.getChildElementsByTagName(definition, CACHE_EVICT_ELEMENT);
 
-		List<Element> evictCacheMethods = DomUtils.getChildElementsByTagName(definition, CACHE_EVICT_ELEMENT);
+        for (Element opElement : evictCacheMethods) {
+            String name = prop.merge(opElement, parserContext.getReaderContext());
+            TypedStringValue nameHolder = new TypedStringValue(name);
+            nameHolder.setSource(parserContext.extractSource(opElement));
+            CacheEvictOperation.Builder builder =
+                    prop.merge(
+                            opElement,
+                            parserContext.getReaderContext(),
+                            new CacheEvictOperation.Builder());
 
-		for (Element opElement : evictCacheMethods) {
-			String name = prop.merge(opElement, parserContext.getReaderContext());
-			TypedStringValue nameHolder = new TypedStringValue(name);
-			nameHolder.setSource(parserContext.extractSource(opElement));
-			CacheEvictOperation.Builder builder = prop.merge(opElement,
-					parserContext.getReaderContext(), new CacheEvictOperation.Builder());
+            String wide = opElement.getAttribute("all-entries");
+            if (StringUtils.hasText(wide)) {
+                builder.setCacheWide(Boolean.valueOf(wide.trim()));
+            }
 
-			String wide = opElement.getAttribute("all-entries");
-			if (StringUtils.hasText(wide)) {
-				builder.setCacheWide(Boolean.valueOf(wide.trim()));
-			}
+            String after = opElement.getAttribute("before-invocation");
+            if (StringUtils.hasText(after)) {
+                builder.setBeforeInvocation(Boolean.valueOf(after.trim()));
+            }
 
-			String after = opElement.getAttribute("before-invocation");
-			if (StringUtils.hasText(after)) {
-				builder.setBeforeInvocation(Boolean.valueOf(after.trim()));
-			}
+            Collection<CacheOperation> col = cacheOpMap.get(nameHolder);
+            if (col == null) {
+                col = new ArrayList<>(2);
+                cacheOpMap.put(nameHolder, col);
+            }
+            col.add(builder.build());
+        }
 
-			Collection<CacheOperation> col = cacheOpMap.get(nameHolder);
-			if (col == null) {
-				col = new ArrayList<>(2);
-				cacheOpMap.put(nameHolder, col);
-			}
-			col.add(builder.build());
-		}
+        List<Element> putCacheMethods =
+                DomUtils.getChildElementsByTagName(definition, CACHE_PUT_ELEMENT);
 
-		List<Element> putCacheMethods = DomUtils.getChildElementsByTagName(definition, CACHE_PUT_ELEMENT);
+        for (Element opElement : putCacheMethods) {
+            String name = prop.merge(opElement, parserContext.getReaderContext());
+            TypedStringValue nameHolder = new TypedStringValue(name);
+            nameHolder.setSource(parserContext.extractSource(opElement));
+            CachePutOperation.Builder builder =
+                    prop.merge(
+                            opElement,
+                            parserContext.getReaderContext(),
+                            new CachePutOperation.Builder());
+            builder.setUnless(getAttributeValue(opElement, "unless", ""));
 
-		for (Element opElement : putCacheMethods) {
-			String name = prop.merge(opElement, parserContext.getReaderContext());
-			TypedStringValue nameHolder = new TypedStringValue(name);
-			nameHolder.setSource(parserContext.extractSource(opElement));
-			CachePutOperation.Builder builder = prop.merge(opElement,
-					parserContext.getReaderContext(), new CachePutOperation.Builder());
-			builder.setUnless(getAttributeValue(opElement, "unless", ""));
+            Collection<CacheOperation> col = cacheOpMap.get(nameHolder);
+            if (col == null) {
+                col = new ArrayList<>(2);
+                cacheOpMap.put(nameHolder, col);
+            }
+            col.add(builder.build());
+        }
 
-			Collection<CacheOperation> col = cacheOpMap.get(nameHolder);
-			if (col == null) {
-				col = new ArrayList<>(2);
-				cacheOpMap.put(nameHolder, col);
-			}
-			col.add(builder.build());
-		}
+        RootBeanDefinition attributeSourceDefinition =
+                new RootBeanDefinition(NameMatchCacheOperationSource.class);
+        attributeSourceDefinition.setSource(parserContext.extractSource(definition));
+        attributeSourceDefinition.getPropertyValues().add("nameMap", cacheOpMap);
+        return attributeSourceDefinition;
+    }
 
-		RootBeanDefinition attributeSourceDefinition = new RootBeanDefinition(NameMatchCacheOperationSource.class);
-		attributeSourceDefinition.setSource(parserContext.extractSource(definition));
-		attributeSourceDefinition.getPropertyValues().add("nameMap", cacheOpMap);
-		return attributeSourceDefinition;
-	}
+    private static String getAttributeValue(
+            Element element, String attributeName, String defaultValue) {
+        String attribute = element.getAttribute(attributeName);
+        if (StringUtils.hasText(attribute)) {
+            return attribute.trim();
+        }
+        return defaultValue;
+    }
 
+    /** Simple, reusable class used for overriding defaults. */
+    private static class Props {
 
-	private static String getAttributeValue(Element element, String attributeName, String defaultValue) {
-		String attribute = element.getAttribute(attributeName);
-		if (StringUtils.hasText(attribute)) {
-			return attribute.trim();
-		}
-		return defaultValue;
-	}
+        private String key;
 
+        private String keyGenerator;
 
-	/**
-	 * Simple, reusable class used for overriding defaults.
-	 */
-	private static class Props {
+        private String cacheManager;
 
-		private String key;
+        private String condition;
 
-		private String keyGenerator;
+        private String method;
 
-		private String cacheManager;
+        @Nullable private String[] caches;
 
-		private String condition;
+        Props(Element root) {
+            String defaultCache = root.getAttribute("cache");
+            this.key = root.getAttribute("key");
+            this.keyGenerator = root.getAttribute("key-generator");
+            this.cacheManager = root.getAttribute("cache-manager");
+            this.condition = root.getAttribute("condition");
+            this.method = root.getAttribute(METHOD_ATTRIBUTE);
 
-		private String method;
+            if (StringUtils.hasText(defaultCache)) {
+                this.caches = StringUtils.commaDelimitedListToStringArray(defaultCache.trim());
+            }
+        }
 
-		@Nullable
-		private String[] caches;
+        <T extends CacheOperation.Builder> T merge(
+                Element element, ReaderContext readerCtx, T builder) {
+            String cache = element.getAttribute("cache");
 
-		Props(Element root) {
-			String defaultCache = root.getAttribute("cache");
-			this.key = root.getAttribute("key");
-			this.keyGenerator = root.getAttribute("key-generator");
-			this.cacheManager = root.getAttribute("cache-manager");
-			this.condition = root.getAttribute("condition");
-			this.method = root.getAttribute(METHOD_ATTRIBUTE);
+            // sanity check
+            String[] localCaches = this.caches;
+            if (StringUtils.hasText(cache)) {
+                localCaches = StringUtils.commaDelimitedListToStringArray(cache.trim());
+            }
+            if (localCaches != null) {
+                builder.setCacheNames(localCaches);
+            } else {
+                readerCtx.error("No cache specified for " + element.getNodeName(), element);
+            }
 
-			if (StringUtils.hasText(defaultCache)) {
-				this.caches = StringUtils.commaDelimitedListToStringArray(defaultCache.trim());
-			}
-		}
+            builder.setKey(getAttributeValue(element, "key", this.key));
+            builder.setKeyGenerator(getAttributeValue(element, "key-generator", this.keyGenerator));
+            builder.setCacheManager(getAttributeValue(element, "cache-manager", this.cacheManager));
+            builder.setCondition(getAttributeValue(element, "condition", this.condition));
 
-		<T extends CacheOperation.Builder> T merge(Element element, ReaderContext readerCtx, T builder) {
-			String cache = element.getAttribute("cache");
+            if (StringUtils.hasText(builder.getKey())
+                    && StringUtils.hasText(builder.getKeyGenerator())) {
+                throw new IllegalStateException(
+                        "Invalid cache advice configuration on '"
+                                + element.toString()
+                                + "'. Both 'key' and 'keyGenerator' attributes have been set. "
+                                + "These attributes are mutually exclusive: either set the SpEL expression used to"
+                                + "compute the key at runtime or set the name of the KeyGenerator bean to use.");
+            }
 
-			// sanity check
-			String[] localCaches = this.caches;
-			if (StringUtils.hasText(cache)) {
-				localCaches = StringUtils.commaDelimitedListToStringArray(cache.trim());
-			}
-			if (localCaches != null) {
-				builder.setCacheNames(localCaches);
-			}
-			else {
-				readerCtx.error("No cache specified for " + element.getNodeName(), element);
-			}
+            return builder;
+        }
 
-			builder.setKey(getAttributeValue(element, "key", this.key));
-			builder.setKeyGenerator(getAttributeValue(element, "key-generator", this.keyGenerator));
-			builder.setCacheManager(getAttributeValue(element, "cache-manager", this.cacheManager));
-			builder.setCondition(getAttributeValue(element, "condition", this.condition));
-
-			if (StringUtils.hasText(builder.getKey()) && StringUtils.hasText(builder.getKeyGenerator())) {
-				throw new IllegalStateException("Invalid cache advice configuration on '" +
-						element.toString() + "'. Both 'key' and 'keyGenerator' attributes have been set. " +
-						"These attributes are mutually exclusive: either set the SpEL expression used to" +
-						"compute the key at runtime or set the name of the KeyGenerator bean to use.");
-			}
-
-			return builder;
-		}
-
-		@Nullable
-		String merge(Element element, ReaderContext readerCtx) {
-			String method = element.getAttribute(METHOD_ATTRIBUTE);
-			if (StringUtils.hasText(method)) {
-				return method.trim();
-			}
-			if (StringUtils.hasText(this.method)) {
-				return this.method;
-			}
-			readerCtx.error("No method specified for " + element.getNodeName(), element);
-			return null;
-		}
-	}
-
+        @Nullable
+        String merge(Element element, ReaderContext readerCtx) {
+            String method = element.getAttribute(METHOD_ATTRIBUTE);
+            if (StringUtils.hasText(method)) {
+                return method.trim();
+            }
+            if (StringUtils.hasText(this.method)) {
+                return this.method;
+            }
+            readerCtx.error("No method specified for " + element.getNodeName(), element);
+            return null;
+        }
+    }
 }

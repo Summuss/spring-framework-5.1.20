@@ -23,8 +23,8 @@ import org.springframework.lang.Nullable;
 /**
  * Base class for databinding-aware JSP tags that render HTML form input element.
  *
- * <p>Provides a set of properties corresponding to the set of HTML attributes
- * that are common across form input elements.
+ * <p>Provides a set of properties corresponding to the set of HTML attributes that are common
+ * across form input elements.
  *
  * @author Rob Harrop
  * @author Rick Evans
@@ -34,164 +34,114 @@ import org.springframework.lang.Nullable;
 @SuppressWarnings("serial")
 public abstract class AbstractHtmlInputElementTag extends AbstractHtmlElementTag {
 
-	/**
-	 * The name of the '{@code onfocus}' attribute.
-	 */
-	public static final String ONFOCUS_ATTRIBUTE = "onfocus";
+    /** The name of the '{@code onfocus}' attribute. */
+    public static final String ONFOCUS_ATTRIBUTE = "onfocus";
 
-	/**
-	 * The name of the '{@code onblur}' attribute.
-	 */
-	public static final String ONBLUR_ATTRIBUTE = "onblur";
+    /** The name of the '{@code onblur}' attribute. */
+    public static final String ONBLUR_ATTRIBUTE = "onblur";
 
-	/**
-	 * The name of the '{@code onchange}' attribute.
-	 */
-	public static final String ONCHANGE_ATTRIBUTE = "onchange";
+    /** The name of the '{@code onchange}' attribute. */
+    public static final String ONCHANGE_ATTRIBUTE = "onchange";
 
-	/**
-	 * The name of the '{@code accesskey}' attribute.
-	 */
-	public static final String ACCESSKEY_ATTRIBUTE = "accesskey";
+    /** The name of the '{@code accesskey}' attribute. */
+    public static final String ACCESSKEY_ATTRIBUTE = "accesskey";
 
-	/**
-	 * The name of the '{@code disabled}' attribute.
-	 */
-	public static final String DISABLED_ATTRIBUTE = "disabled";
+    /** The name of the '{@code disabled}' attribute. */
+    public static final String DISABLED_ATTRIBUTE = "disabled";
 
-	/**
-	 * The name of the '{@code readonly}' attribute.
-	 */
-	public static final String READONLY_ATTRIBUTE = "readonly";
+    /** The name of the '{@code readonly}' attribute. */
+    public static final String READONLY_ATTRIBUTE = "readonly";
 
+    @Nullable private String onfocus;
 
-	@Nullable
-	private String onfocus;
+    @Nullable private String onblur;
 
-	@Nullable
-	private String onblur;
+    @Nullable private String onchange;
 
-	@Nullable
-	private String onchange;
+    @Nullable private String accesskey;
 
-	@Nullable
-	private String accesskey;
+    private boolean disabled;
 
-	private boolean disabled;
+    private boolean readonly;
 
-	private boolean readonly;
+    /** Set the value of the '{@code onfocus}' attribute. May be a runtime expression. */
+    public void setOnfocus(String onfocus) {
+        this.onfocus = onfocus;
+    }
 
+    /** Get the value of the '{@code onfocus}' attribute. */
+    @Nullable
+    protected String getOnfocus() {
+        return this.onfocus;
+    }
 
-	/**
-	 * Set the value of the '{@code onfocus}' attribute.
-	 * May be a runtime expression.
-	 */
-	public void setOnfocus(String onfocus) {
-		this.onfocus = onfocus;
-	}
+    /** Set the value of the '{@code onblur}' attribute. May be a runtime expression. */
+    public void setOnblur(String onblur) {
+        this.onblur = onblur;
+    }
 
-	/**
-	 * Get the value of the '{@code onfocus}' attribute.
-	 */
-	@Nullable
-	protected String getOnfocus() {
-		return this.onfocus;
-	}
+    /** Get the value of the '{@code onblur}' attribute. */
+    @Nullable
+    protected String getOnblur() {
+        return this.onblur;
+    }
 
-	/**
-	 * Set the value of the '{@code onblur}' attribute.
-	 * May be a runtime expression.
-	 */
-	public void setOnblur(String onblur) {
-		this.onblur = onblur;
-	}
+    /** Set the value of the '{@code onchange}' attribute. May be a runtime expression. */
+    public void setOnchange(String onchange) {
+        this.onchange = onchange;
+    }
 
-	/**
-	 * Get the value of the '{@code onblur}' attribute.
-	 */
-	@Nullable
-	protected String getOnblur() {
-		return this.onblur;
-	}
+    /** Get the value of the '{@code onchange}' attribute. */
+    @Nullable
+    protected String getOnchange() {
+        return this.onchange;
+    }
 
-	/**
-	 * Set the value of the '{@code onchange}' attribute.
-	 * May be a runtime expression.
-	 */
-	public void setOnchange(String onchange) {
-		this.onchange = onchange;
-	}
+    /** Set the value of the '{@code accesskey}' attribute. May be a runtime expression. */
+    public void setAccesskey(String accesskey) {
+        this.accesskey = accesskey;
+    }
 
-	/**
-	 * Get the value of the '{@code onchange}' attribute.
-	 */
-	@Nullable
-	protected String getOnchange() {
-		return this.onchange;
-	}
+    /** Get the value of the '{@code accesskey}' attribute. */
+    @Nullable
+    protected String getAccesskey() {
+        return this.accesskey;
+    }
 
-	/**
-	 * Set the value of the '{@code accesskey}' attribute.
-	 * May be a runtime expression.
-	 */
-	public void setAccesskey(String accesskey) {
-		this.accesskey = accesskey;
-	}
+    /** Set the value of the '{@code disabled}' attribute. */
+    public void setDisabled(boolean disabled) {
+        this.disabled = disabled;
+    }
 
-	/**
-	 * Get the value of the '{@code accesskey}' attribute.
-	 */
-	@Nullable
-	protected String getAccesskey() {
-		return this.accesskey;
-	}
+    /** Get the value of the '{@code disabled}' attribute. */
+    protected boolean isDisabled() {
+        return this.disabled;
+    }
 
-	/**
-	 * Set the value of the '{@code disabled}' attribute.
-	 */
-	public void setDisabled(boolean disabled) {
-		this.disabled = disabled;
-	}
+    /** Sets the value of the '{@code readonly}' attribute. */
+    public void setReadonly(boolean readonly) {
+        this.readonly = readonly;
+    }
 
-	/**
-	 * Get the value of the '{@code disabled}' attribute.
-	 */
-	protected boolean isDisabled() {
-		return this.disabled;
-	}
+    /** Gets the value of the '{@code readonly}' attribute. */
+    protected boolean isReadonly() {
+        return this.readonly;
+    }
 
-	/**
-	 * Sets the value of the '{@code readonly}' attribute.
-	 */
-	public void setReadonly(boolean readonly) {
-		this.readonly = readonly;
-	}
+    /** Adds input-specific optional attributes as defined by this base class. */
+    @Override
+    protected void writeOptionalAttributes(TagWriter tagWriter) throws JspException {
+        super.writeOptionalAttributes(tagWriter);
 
-	/**
-	 * Gets the value of the '{@code readonly}' attribute.
-	 */
-	protected boolean isReadonly() {
-		return this.readonly;
-	}
-
-
-	/**
-	 * Adds input-specific optional attributes as defined by this base class.
-	 */
-	@Override
-	protected void writeOptionalAttributes(TagWriter tagWriter) throws JspException {
-		super.writeOptionalAttributes(tagWriter);
-
-		writeOptionalAttribute(tagWriter, ONFOCUS_ATTRIBUTE, getOnfocus());
-		writeOptionalAttribute(tagWriter, ONBLUR_ATTRIBUTE, getOnblur());
-		writeOptionalAttribute(tagWriter, ONCHANGE_ATTRIBUTE, getOnchange());
-		writeOptionalAttribute(tagWriter, ACCESSKEY_ATTRIBUTE, getAccesskey());
-		if (isDisabled()) {
-			tagWriter.writeAttribute(DISABLED_ATTRIBUTE, "disabled");
-		}
-		if (isReadonly()) {
-			writeOptionalAttribute(tagWriter, READONLY_ATTRIBUTE, "readonly");
-		}
-	}
-
+        writeOptionalAttribute(tagWriter, ONFOCUS_ATTRIBUTE, getOnfocus());
+        writeOptionalAttribute(tagWriter, ONBLUR_ATTRIBUTE, getOnblur());
+        writeOptionalAttribute(tagWriter, ONCHANGE_ATTRIBUTE, getOnchange());
+        writeOptionalAttribute(tagWriter, ACCESSKEY_ATTRIBUTE, getAccesskey());
+        if (isDisabled()) {
+            tagWriter.writeAttribute(DISABLED_ATTRIBUTE, "disabled");
+        }
+        if (isReadonly()) {
+            writeOptionalAttribute(tagWriter, READONLY_ATTRIBUTE, "readonly");
+        }
+    }
 }

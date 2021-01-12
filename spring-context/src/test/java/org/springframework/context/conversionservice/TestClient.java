@@ -28,66 +28,64 @@ import org.springframework.core.io.Resource;
  */
 public class TestClient {
 
-	private List<Bar> bars;
+    private List<Bar> bars;
 
-	private boolean bool;
+    private boolean bool;
 
-	private List<String> stringList;
+    private List<String> stringList;
 
-	private Resource[] resourceArray;
+    private Resource[] resourceArray;
 
-	private List<Resource> resourceList;
+    private List<Resource> resourceList;
 
-	private Map<String, Resource> resourceMap;
+    private Map<String, Resource> resourceMap;
 
+    public List<Bar> getBars() {
+        return bars;
+    }
 
-	public List<Bar> getBars() {
-		return bars;
-	}
+    @Autowired
+    public void setBars(List<Bar> bars) {
+        this.bars = bars;
+    }
 
-	@Autowired
-	public void setBars(List<Bar> bars) {
-		this.bars = bars;
-	}
+    public boolean isBool() {
+        return bool;
+    }
 
-	public boolean isBool() {
-		return bool;
-	}
+    public void setBool(boolean bool) {
+        this.bool = bool;
+    }
 
-	public void setBool(boolean bool) {
-		this.bool = bool;
-	}
+    public List<String> getStringList() {
+        return stringList;
+    }
 
-	public List<String> getStringList() {
-		return stringList;
-	}
+    public void setStringList(List<String> stringList) {
+        this.stringList = stringList;
+    }
 
-	public void setStringList(List<String> stringList) {
-		this.stringList = stringList;
-	}
+    public Resource[] getResourceArray() {
+        return resourceArray;
+    }
 
-	public Resource[] getResourceArray() {
-		return resourceArray;
-	}
+    public void setResourceArray(Resource[] resourceArray) {
+        this.resourceArray = resourceArray;
+    }
 
-	public void setResourceArray(Resource[] resourceArray) {
-		this.resourceArray = resourceArray;
-	}
+    public List<Resource> getResourceList() {
+        return resourceList;
+    }
 
-	public List<Resource> getResourceList() {
-		return resourceList;
-	}
+    public void setResourceList(List<Resource> resourceList) {
+        this.resourceList = resourceList;
+    }
 
-	public void setResourceList(List<Resource> resourceList) {
-		this.resourceList = resourceList;
-	}
+    public Map<String, Resource> getResourceMap() {
+        return resourceMap;
+    }
 
-	public Map<String, Resource> getResourceMap() {
-		return resourceMap;
-	}
-
-	public void setResourceMap(Map<String, Resource> resourceMap) {
-		this.resourceMap = resourceMap;
-	}
-
+    public void setResourceMap(Map<String, Resource> resourceMap) {
+        this.resourceMap = resourceMap;
+    }
 }

@@ -62,72 +62,69 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ContextHierarchy(@ContextConfiguration(classes = AsyncControllerJavaConfigTests.WebConfig.class))
 public class AsyncControllerJavaConfigTests {
 
-	@Autowired
-	private WebApplicationContext wac;
+    @Autowired private WebApplicationContext wac;
 
-	@Autowired
-	private CallableProcessingInterceptor callableInterceptor;
+    @Autowired private CallableProcessingInterceptor callableInterceptor;
 
-	private MockMvc mockMvc;
+    private MockMvc mockMvc;
 
+    @Before
+    public void setup() {
+        this.mockMvc = MockMvcBuilders.webAppContextSetup(this.wac).build();
+    }
 
-	@Before
-	public void setup() {
-		this.mockMvc = MockMvcBuilders.webAppContextSetup(this.wac).build();
-	}
+    // SPR-13615
 
-	// SPR-13615
+    @Test
+    public void callableInterceptor() throws Exception {
+        MvcResult mvcResult =
+                this.mockMvc
+                        .perform(get("/callable").accept(MediaType.APPLICATION_JSON))
+                        .andExpect(status().isOk())
+                        .andExpect(request().asyncStarted())
+                        .andExpect(request().asyncResult(Collections.singletonMap("key", "value")))
+                        .andReturn();
 
-	@Test
-	public void callableInterceptor() throws Exception {
-		MvcResult mvcResult = this.mockMvc.perform(get("/callable").accept(MediaType.APPLICATION_JSON))
-				.andExpect(status().isOk())
-				.andExpect(request().asyncStarted())
-				.andExpect(request().asyncResult(Collections.singletonMap("key", "value")))
-				.andReturn();
+        Mockito.verify(this.callableInterceptor).beforeConcurrentHandling(any(), any());
+        Mockito.verify(this.callableInterceptor).preProcess(any(), any());
+        Mockito.verify(this.callableInterceptor).postProcess(any(), any(), any());
+        Mockito.verifyNoMoreInteractions(this.callableInterceptor);
 
-		Mockito.verify(this.callableInterceptor).beforeConcurrentHandling(any(), any());
-		Mockito.verify(this.callableInterceptor).preProcess(any(), any());
-		Mockito.verify(this.callableInterceptor).postProcess(any(), any(), any());
-		Mockito.verifyNoMoreInteractions(this.callableInterceptor);
+        this.mockMvc
+                .perform(asyncDispatch(mvcResult))
+                .andExpect(status().isOk())
+                .andExpect(content().string("{\"key\":\"value\"}"));
 
-		this.mockMvc.perform(asyncDispatch(mvcResult))
-				.andExpect(status().isOk())
-				.andExpect(content().string("{\"key\":\"value\"}"));
+        Mockito.verify(this.callableInterceptor).afterCompletion(any(), any());
+        Mockito.verifyNoMoreInteractions(this.callableInterceptor);
+    }
 
-		Mockito.verify(this.callableInterceptor).afterCompletion(any(), any());
-		Mockito.verifyNoMoreInteractions(this.callableInterceptor);
-	}
+    @Configuration
+    @EnableWebMvc
+    static class WebConfig implements WebMvcConfigurer {
 
+        @Override
+        public void configureAsyncSupport(AsyncSupportConfigurer configurer) {
+            configurer.registerCallableInterceptors(callableInterceptor());
+        }
 
-	@Configuration
-	@EnableWebMvc
-	static class WebConfig implements WebMvcConfigurer {
+        @Bean
+        public CallableProcessingInterceptor callableInterceptor() {
+            return Mockito.mock(CallableProcessingInterceptor.class);
+        }
 
-		@Override
-		public void configureAsyncSupport(AsyncSupportConfigurer configurer) {
-			configurer.registerCallableInterceptors(callableInterceptor());
-		}
+        @Bean
+        public AsyncController asyncController() {
+            return new AsyncController();
+        }
+    }
 
-		@Bean
-		public CallableProcessingInterceptor callableInterceptor() {
-			return Mockito.mock(CallableProcessingInterceptor.class);
-		}
+    @RestController
+    static class AsyncController {
 
-		@Bean
-		public AsyncController asyncController() {
-			return new AsyncController();
-		}
-
-	}
-
-	@RestController
-	static class AsyncController {
-
-		@GetMapping("/callable")
-		public Callable<Map<String, String>> getCallable() {
-			return () -> Collections.singletonMap("key", "value");
-		}
-	}
-
+        @GetMapping("/callable")
+        public Callable<Map<String, String>> getCallable() {
+            return () -> Collections.singletonMap("key", "value");
+        }
+    }
 }

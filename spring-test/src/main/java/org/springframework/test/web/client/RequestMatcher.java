@@ -32,12 +32,12 @@ import org.springframework.http.client.ClientHttpRequest;
 @FunctionalInterface
 public interface RequestMatcher {
 
-	/**
-	 * Match the given request against specific expectations.
-	 * @param request the request to make assertions on
-	 * @throws IOException in case of I/O errors
-	 * @throws AssertionError if expectations are not met
-	 */
-	void match(ClientHttpRequest request) throws IOException, AssertionError;
-
+    /**
+     * Match the given request against specific expectations.
+     *
+     * @param request the request to make assertions on
+     * @throws IOException in case of I/O errors
+     * @throws AssertionError if expectations are not met
+     */
+    void match(ClientHttpRequest request) throws IOException, AssertionError;
 }

@@ -1,5 +1,10 @@
-~ Failed DROP can be ignored if necessary 
-drop table T_TEST if exists;
+~ Failed DROP
+can be ignored if necessary
+DROP TABLE T_TEST if EXISTS;
 
-~ Create the test table
-create table T_TEST (NAME varchar(50) not null);
+~ CREATE
+the test TABLE
+CREATE TABLE T_TEST
+(
+    NAME varchar(50) NOT NULL
+);

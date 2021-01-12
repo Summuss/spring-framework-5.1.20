@@ -38,31 +38,29 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 public class ReactiveReturnTypeTests {
 
+    @Test // SPR-16869
+    public void sseWithFlux() throws Exception {
 
-	@Test // SPR-16869
-	public void sseWithFlux() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(ReactiveController.class).build();
 
-		MockMvc mockMvc = MockMvcBuilders.standaloneSetup(ReactiveController.class).build();
+        MvcResult mvcResult =
+                mockMvc.perform(get("/spr16869"))
+                        .andExpect(request().asyncStarted())
+                        .andExpect(status().isOk())
+                        .andReturn();
 
-		MvcResult mvcResult = mockMvc.perform(get("/spr16869"))
-				.andExpect(request().asyncStarted())
-				.andExpect(status().isOk())
-				.andReturn();
+        mockMvc.perform(asyncDispatch(mvcResult))
+                .andExpect(content().string("data:event0\n\ndata:event1\n\ndata:event2\n\n"));
+    }
 
-		mockMvc.perform(asyncDispatch(mvcResult))
-				.andExpect(content().string("data:event0\n\ndata:event1\n\ndata:event2\n\n"));
-	}
+    @RestController
+    static class ReactiveController {
 
-
-
-	@RestController
-	static class ReactiveController {
-
-		@GetMapping(path = "/spr16869", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-		Flux<String> sseFlux() {
-			return Flux.interval(Duration.ofSeconds(1)).take(3)
-					.map(aLong -> String.format("event%d", aLong));
-		}
-	}
-
+        @GetMapping(path = "/spr16869", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+        Flux<String> sseFlux() {
+            return Flux.interval(Duration.ofSeconds(1))
+                    .take(3)
+                    .map(aLong -> String.format("event%d", aLong));
+        }
+    }
 }

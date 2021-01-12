@@ -33,35 +33,40 @@ import static org.junit.Assert.*;
  */
 public class DefaultPersistenceUnitManagerTests {
 
-	private final DefaultPersistenceUnitManager manager = new DefaultPersistenceUnitManager();
+    private final DefaultPersistenceUnitManager manager = new DefaultPersistenceUnitManager();
 
-	@Test
-	public void defaultDomainWithScan() {
-		this.manager.setPackagesToScan("org.springframework.orm.jpa.domain");
-		this.manager.setResourceLoader(new DefaultResourceLoader(
-				CandidateComponentsTestClassLoader.disableIndex(getClass().getClassLoader())));
-		testDefaultDomain();
-	}
+    @Test
+    public void defaultDomainWithScan() {
+        this.manager.setPackagesToScan("org.springframework.orm.jpa.domain");
+        this.manager.setResourceLoader(
+                new DefaultResourceLoader(
+                        CandidateComponentsTestClassLoader.disableIndex(
+                                getClass().getClassLoader())));
+        testDefaultDomain();
+    }
 
-	@Test
-	public void defaultDomainWithIndex() {
-		this.manager.setPackagesToScan("org.springframework.orm.jpa.domain");
-		this.manager.setResourceLoader(new DefaultResourceLoader(
-				CandidateComponentsTestClassLoader.index(getClass().getClassLoader(),
-						new ClassPathResource("spring.components", Person.class))));
-		testDefaultDomain();
-	}
+    @Test
+    public void defaultDomainWithIndex() {
+        this.manager.setPackagesToScan("org.springframework.orm.jpa.domain");
+        this.manager.setResourceLoader(
+                new DefaultResourceLoader(
+                        CandidateComponentsTestClassLoader.index(
+                                getClass().getClassLoader(),
+                                new ClassPathResource("spring.components", Person.class))));
+        testDefaultDomain();
+    }
 
-	private void testDefaultDomain() {
-		SpringPersistenceUnitInfo puInfo = buildDefaultPersistenceUnitInfo();
-		assertThat(puInfo.getManagedClassNames(), containsInAnyOrder(
-				"org.springframework.orm.jpa.domain.Person",
-				"org.springframework.orm.jpa.domain.DriversLicense"));
-	}
+    private void testDefaultDomain() {
+        SpringPersistenceUnitInfo puInfo = buildDefaultPersistenceUnitInfo();
+        assertThat(
+                puInfo.getManagedClassNames(),
+                containsInAnyOrder(
+                        "org.springframework.orm.jpa.domain.Person",
+                        "org.springframework.orm.jpa.domain.DriversLicense"));
+    }
 
-	private SpringPersistenceUnitInfo buildDefaultPersistenceUnitInfo() {
-		this.manager.preparePersistenceUnitInfos();
-		return (SpringPersistenceUnitInfo) this.manager.obtainDefaultPersistenceUnitInfo();
-	}
-
+    private SpringPersistenceUnitInfo buildDefaultPersistenceUnitInfo() {
+        this.manager.preparePersistenceUnitInfos();
+        return (SpringPersistenceUnitInfo) this.manager.obtainDefaultPersistenceUnitInfo();
+    }
 }

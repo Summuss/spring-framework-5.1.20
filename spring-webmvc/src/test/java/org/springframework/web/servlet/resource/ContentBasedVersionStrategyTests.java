@@ -36,44 +36,46 @@ import static org.junit.Assert.*;
  */
 public class ContentBasedVersionStrategyTests {
 
-	private ContentVersionStrategy versionStrategy = new ContentVersionStrategy();
+    private ContentVersionStrategy versionStrategy = new ContentVersionStrategy();
 
+    @Before
+    public void setup() {
+        VersionResourceResolver versionResourceResolver = new VersionResourceResolver();
+        versionResourceResolver.setStrategyMap(
+                Collections.singletonMap("/**", this.versionStrategy));
+    }
 
-	@Before
-	public void setup() {
-		VersionResourceResolver versionResourceResolver = new VersionResourceResolver();
-		versionResourceResolver.setStrategyMap(Collections.singletonMap("/**", this.versionStrategy));
-	}
+    @Test
+    public void extractVersion() {
+        String hash = "7fbe76cdac6093784895bb4989203e5a";
+        String path = "font-awesome/css/font-awesome.min-" + hash + ".css";
 
-	@Test
-	public void extractVersion() {
-		String hash = "7fbe76cdac6093784895bb4989203e5a";
-		String path = "font-awesome/css/font-awesome.min-" + hash + ".css";
+        assertEquals(hash, this.versionStrategy.extractVersion(path));
+        assertNull(this.versionStrategy.extractVersion("foo/bar.css"));
+    }
 
-		assertEquals(hash, this.versionStrategy.extractVersion(path));
-		assertNull(this.versionStrategy.extractVersion("foo/bar.css"));
-	}
+    @Test
+    public void removeVersion() {
+        String hash = "7fbe76cdac6093784895bb4989203e5a";
+        String file = "font-awesome/css/font-awesome.min%s%s.css";
 
-	@Test
-	public void removeVersion() {
-		String hash = "7fbe76cdac6093784895bb4989203e5a";
-		String file = "font-awesome/css/font-awesome.min%s%s.css";
+        assertEquals(
+                String.format(file, "", ""),
+                this.versionStrategy.removeVersion(String.format(file, "-", hash), hash));
+    }
 
-		assertEquals(String.format(file, "", ""),
-				this.versionStrategy.removeVersion(String.format(file, "-", hash), hash));
-	}
+    @Test
+    public void getResourceVersion() throws IOException {
+        Resource expected = new ClassPathResource("test/bar.css", getClass());
+        String hash =
+                DigestUtils.md5DigestAsHex(
+                        FileCopyUtils.copyToByteArray(expected.getInputStream()));
 
-	@Test
-	public void getResourceVersion() throws IOException {
-		Resource expected = new ClassPathResource("test/bar.css", getClass());
-		String hash = DigestUtils.md5DigestAsHex(FileCopyUtils.copyToByteArray(expected.getInputStream()));
+        assertEquals(hash, this.versionStrategy.getResourceVersion(expected));
+    }
 
-		assertEquals(hash, this.versionStrategy.getResourceVersion(expected));
-	}
-
-	@Test
-	public void addVersionToUrl() {
-		assertEquals("test/bar-123.css", this.versionStrategy.addVersion("test/bar.css", "123"));
-	}
-
+    @Test
+    public void addVersionToUrl() {
+        assertEquals("test/bar-123.css", this.versionStrategy.addVersion("test/bar.css", "123"));
+    }
 }

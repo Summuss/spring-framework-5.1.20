@@ -28,11 +28,10 @@ import org.springframework.web.context.ServletContextAware;
  */
 public class ServletContextAwareBean implements ServletContextAware {
 
-	protected ServletContext servletContext;
+    protected ServletContext servletContext;
 
-	@Override
-	public void setServletContext(ServletContext servletContext) {
-		this.servletContext = servletContext;
-	}
-
+    @Override
+    public void setServletContext(ServletContext servletContext) {
+        this.servletContext = servletContext;
+    }
 }

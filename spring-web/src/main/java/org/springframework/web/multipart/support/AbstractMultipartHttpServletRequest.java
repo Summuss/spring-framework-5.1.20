@@ -34,121 +34,117 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 
 /**
- * Abstract base implementation of the MultipartHttpServletRequest interface.
- * Provides management of pre-generated MultipartFile instances.
+ * Abstract base implementation of the MultipartHttpServletRequest interface. Provides management of
+ * pre-generated MultipartFile instances.
  *
  * @author Juergen Hoeller
  * @author Arjen Poutsma
  * @since 06.10.2003
  */
 public abstract class AbstractMultipartHttpServletRequest extends HttpServletRequestWrapper
-		implements MultipartHttpServletRequest {
+        implements MultipartHttpServletRequest {
 
-	@Nullable
-	private MultiValueMap<String, MultipartFile> multipartFiles;
+    @Nullable private MultiValueMap<String, MultipartFile> multipartFiles;
 
+    /**
+     * Wrap the given HttpServletRequest in a MultipartHttpServletRequest.
+     *
+     * @param request the request to wrap
+     */
+    protected AbstractMultipartHttpServletRequest(HttpServletRequest request) {
+        super(request);
+    }
 
-	/**
-	 * Wrap the given HttpServletRequest in a MultipartHttpServletRequest.
-	 * @param request the request to wrap
-	 */
-	protected AbstractMultipartHttpServletRequest(HttpServletRequest request) {
-		super(request);
-	}
+    @Override
+    public HttpServletRequest getRequest() {
+        return (HttpServletRequest) super.getRequest();
+    }
 
+    @Override
+    public HttpMethod getRequestMethod() {
+        return HttpMethod.resolve(getRequest().getMethod());
+    }
 
-	@Override
-	public HttpServletRequest getRequest() {
-		return (HttpServletRequest) super.getRequest();
-	}
+    @Override
+    public HttpHeaders getRequestHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        Enumeration<String> headerNames = getHeaderNames();
+        while (headerNames.hasMoreElements()) {
+            String headerName = headerNames.nextElement();
+            headers.put(headerName, Collections.list(getHeaders(headerName)));
+        }
+        return headers;
+    }
 
-	@Override
-	public HttpMethod getRequestMethod() {
-		return HttpMethod.resolve(getRequest().getMethod());
-	}
+    @Override
+    public Iterator<String> getFileNames() {
+        return getMultipartFiles().keySet().iterator();
+    }
 
-	@Override
-	public HttpHeaders getRequestHeaders() {
-		HttpHeaders headers = new HttpHeaders();
-		Enumeration<String> headerNames = getHeaderNames();
-		while (headerNames.hasMoreElements()) {
-			String headerName = headerNames.nextElement();
-			headers.put(headerName, Collections.list(getHeaders(headerName)));
-		}
-		return headers;
-	}
+    @Override
+    public MultipartFile getFile(String name) {
+        return getMultipartFiles().getFirst(name);
+    }
 
-	@Override
-	public Iterator<String> getFileNames() {
-		return getMultipartFiles().keySet().iterator();
-	}
+    @Override
+    public List<MultipartFile> getFiles(String name) {
+        List<MultipartFile> multipartFiles = getMultipartFiles().get(name);
+        if (multipartFiles != null) {
+            return multipartFiles;
+        } else {
+            return Collections.emptyList();
+        }
+    }
 
-	@Override
-	public MultipartFile getFile(String name) {
-		return getMultipartFiles().getFirst(name);
-	}
+    @Override
+    public Map<String, MultipartFile> getFileMap() {
+        return getMultipartFiles().toSingleValueMap();
+    }
 
-	@Override
-	public List<MultipartFile> getFiles(String name) {
-		List<MultipartFile> multipartFiles = getMultipartFiles().get(name);
-		if (multipartFiles != null) {
-			return multipartFiles;
-		}
-		else {
-			return Collections.emptyList();
-		}
-	}
+    @Override
+    public MultiValueMap<String, MultipartFile> getMultiFileMap() {
+        return getMultipartFiles();
+    }
 
-	@Override
-	public Map<String, MultipartFile> getFileMap() {
-		return getMultipartFiles().toSingleValueMap();
-	}
+    /**
+     * Determine whether the underlying multipart request has been resolved.
+     *
+     * @return {@code true} when eagerly initialized or lazily triggered, {@code false} in case of a
+     *     lazy-resolution request that got aborted before any parameters or multipart files have
+     *     been accessed
+     * @since 4.3.15
+     * @see #getMultipartFiles()
+     */
+    public boolean isResolved() {
+        return (this.multipartFiles != null);
+    }
 
-	@Override
-	public MultiValueMap<String, MultipartFile> getMultiFileMap() {
-		return getMultipartFiles();
-	}
+    /**
+     * Set a Map with parameter names as keys and list of MultipartFile objects as values. To be
+     * invoked by subclasses on initialization.
+     */
+    protected final void setMultipartFiles(MultiValueMap<String, MultipartFile> multipartFiles) {
+        this.multipartFiles =
+                new LinkedMultiValueMap<>(Collections.unmodifiableMap(multipartFiles));
+    }
 
-	/**
-	 * Determine whether the underlying multipart request has been resolved.
-	 * @return {@code true} when eagerly initialized or lazily triggered,
-	 * {@code false} in case of a lazy-resolution request that got aborted
-	 * before any parameters or multipart files have been accessed
-	 * @since 4.3.15
-	 * @see #getMultipartFiles()
-	 */
-	public boolean isResolved() {
-		return (this.multipartFiles != null);
-	}
+    /**
+     * Obtain the MultipartFile Map for retrieval, lazily initializing it if necessary.
+     *
+     * @see #initializeMultipart()
+     */
+    protected MultiValueMap<String, MultipartFile> getMultipartFiles() {
+        if (this.multipartFiles == null) {
+            initializeMultipart();
+        }
+        return this.multipartFiles;
+    }
 
-
-	/**
-	 * Set a Map with parameter names as keys and list of MultipartFile objects as values.
-	 * To be invoked by subclasses on initialization.
-	 */
-	protected final void setMultipartFiles(MultiValueMap<String, MultipartFile> multipartFiles) {
-		this.multipartFiles =
-				new LinkedMultiValueMap<>(Collections.unmodifiableMap(multipartFiles));
-	}
-
-	/**
-	 * Obtain the MultipartFile Map for retrieval,
-	 * lazily initializing it if necessary.
-	 * @see #initializeMultipart()
-	 */
-	protected MultiValueMap<String, MultipartFile> getMultipartFiles() {
-		if (this.multipartFiles == null) {
-			initializeMultipart();
-		}
-		return this.multipartFiles;
-	}
-
-	/**
-	 * Lazily initialize the multipart request, if possible.
-	 * Only called if not already eagerly initialized.
-	 */
-	protected void initializeMultipart() {
-		throw new IllegalStateException("Multipart request not initialized");
-	}
-
+    /**
+     * Lazily initialize the multipart request, if possible. Only called if not already eagerly
+     * initialized.
+     */
+    protected void initializeMultipart() {
+        throw new IllegalStateException("Multipart request not initialized");
+    }
 }

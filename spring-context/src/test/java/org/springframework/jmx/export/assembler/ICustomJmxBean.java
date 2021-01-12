@@ -16,15 +16,12 @@
 
 package org.springframework.jmx.export.assembler;
 
-/**
- * @author Rob Harrop
- */
+/** @author Rob Harrop */
 public interface ICustomJmxBean extends ICustomBase {
 
-	String getName();
+    String getName();
 
-	void setName(String name);
+    void setName(String name);
 
-	int getAge();
-
+    int getAge();
 }

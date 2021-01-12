@@ -26,47 +26,56 @@ import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.lang.Nullable;
 
 /**
- * A convenient base class for {@code ResponseBodyAdvice} implementations
- * that customize the response before JSON serialization with
- * {@link AbstractJackson2HttpMessageConverter}'s concrete subclasses.
+ * A convenient base class for {@code ResponseBodyAdvice} implementations that customize the
+ * response before JSON serialization with {@link AbstractJackson2HttpMessageConverter}'s concrete
+ * subclasses.
  *
  * @author Rossen Stoyanchev
  * @author Sebastien Deleuze
  * @since 4.1
  */
-public abstract class AbstractMappingJacksonResponseBodyAdvice implements ResponseBodyAdvice<Object> {
+public abstract class AbstractMappingJacksonResponseBodyAdvice
+        implements ResponseBodyAdvice<Object> {
 
-	@Override
-	public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
-		return AbstractJackson2HttpMessageConverter.class.isAssignableFrom(converterType);
-	}
+    @Override
+    public boolean supports(
+            MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
+        return AbstractJackson2HttpMessageConverter.class.isAssignableFrom(converterType);
+    }
 
-	@Override
-	@Nullable
-	public final Object beforeBodyWrite(@Nullable Object body, MethodParameter returnType,
-			MediaType contentType, Class<? extends HttpMessageConverter<?>> converterType,
-			ServerHttpRequest request, ServerHttpResponse response) {
+    @Override
+    @Nullable
+    public final Object beforeBodyWrite(
+            @Nullable Object body,
+            MethodParameter returnType,
+            MediaType contentType,
+            Class<? extends HttpMessageConverter<?>> converterType,
+            ServerHttpRequest request,
+            ServerHttpResponse response) {
 
-		if (body == null) {
-			return null;
-		}
-		MappingJacksonValue container = getOrCreateContainer(body);
-		beforeBodyWriteInternal(container, contentType, returnType, request, response);
-		return container;
-	}
+        if (body == null) {
+            return null;
+        }
+        MappingJacksonValue container = getOrCreateContainer(body);
+        beforeBodyWriteInternal(container, contentType, returnType, request, response);
+        return container;
+    }
 
-	/**
-	 * Wrap the body in a {@link MappingJacksonValue} value container (for providing
-	 * additional serialization instructions) or simply cast it if already wrapped.
-	 */
-	protected MappingJacksonValue getOrCreateContainer(Object body) {
-		return (body instanceof MappingJacksonValue ? (MappingJacksonValue) body : new MappingJacksonValue(body));
-	}
+    /**
+     * Wrap the body in a {@link MappingJacksonValue} value container (for providing additional
+     * serialization instructions) or simply cast it if already wrapped.
+     */
+    protected MappingJacksonValue getOrCreateContainer(Object body) {
+        return (body instanceof MappingJacksonValue
+                ? (MappingJacksonValue) body
+                : new MappingJacksonValue(body));
+    }
 
-	/**
-	 * Invoked only if the converter type is {@code MappingJackson2HttpMessageConverter}.
-	 */
-	protected abstract void beforeBodyWriteInternal(MappingJacksonValue bodyContainer, MediaType contentType,
-			MethodParameter returnType, ServerHttpRequest request, ServerHttpResponse response);
-
+    /** Invoked only if the converter type is {@code MappingJackson2HttpMessageConverter}. */
+    protected abstract void beforeBodyWriteInternal(
+            MappingJacksonValue bodyContainer,
+            MediaType contentType,
+            MethodParameter returnType,
+            ServerHttpRequest request,
+            ServerHttpResponse response);
 }

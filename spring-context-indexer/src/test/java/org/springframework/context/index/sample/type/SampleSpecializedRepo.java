@@ -21,5 +21,4 @@ package org.springframework.context.index.sample.type;
  *
  * @author Stephane Nicoll
  */
-public class SampleSpecializedRepo implements SpecializedRepo<SampleEntity> {
-}
+public class SampleSpecializedRepo implements SpecializedRepo<SampleEntity> {}

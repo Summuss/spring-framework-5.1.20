@@ -40,189 +40,190 @@ import static org.mockito.BDDMockito.*;
  */
 public class DefaultResponseErrorHandlerTests {
 
-	private final DefaultResponseErrorHandler handler = new DefaultResponseErrorHandler();
+    private final DefaultResponseErrorHandler handler = new DefaultResponseErrorHandler();
 
-	private final ClientHttpResponse response = mock(ClientHttpResponse.class);
+    private final ClientHttpResponse response = mock(ClientHttpResponse.class);
 
+    @Test
+    public void hasErrorTrue() throws Exception {
+        given(response.getRawStatusCode()).willReturn(HttpStatus.NOT_FOUND.value());
+        assertTrue(handler.hasError(response));
+    }
 
-	@Test
-	public void hasErrorTrue() throws Exception {
-		given(response.getRawStatusCode()).willReturn(HttpStatus.NOT_FOUND.value());
-		assertTrue(handler.hasError(response));
-	}
+    @Test
+    public void hasErrorFalse() throws Exception {
+        given(response.getRawStatusCode()).willReturn(HttpStatus.OK.value());
+        assertFalse(handler.hasError(response));
+    }
 
-	@Test
-	public void hasErrorFalse() throws Exception {
-		given(response.getRawStatusCode()).willReturn(HttpStatus.OK.value());
-		assertFalse(handler.hasError(response));
-	}
+    @Test
+    public void handleError() throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.TEXT_PLAIN);
 
-	@Test
-	public void handleError() throws Exception {
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.TEXT_PLAIN);
+        given(response.getRawStatusCode()).willReturn(HttpStatus.NOT_FOUND.value());
+        given(response.getStatusText()).willReturn("Not Found");
+        given(response.getHeaders()).willReturn(headers);
+        given(response.getBody())
+                .willReturn(
+                        new ByteArrayInputStream("Hello World".getBytes(StandardCharsets.UTF_8)));
 
-		given(response.getRawStatusCode()).willReturn(HttpStatus.NOT_FOUND.value());
-		given(response.getStatusText()).willReturn("Not Found");
-		given(response.getHeaders()).willReturn(headers);
-		given(response.getBody()).willReturn(new ByteArrayInputStream("Hello World".getBytes(StandardCharsets.UTF_8)));
+        try {
+            handler.handleError(response);
+            fail("expected HttpClientErrorException");
+        } catch (HttpClientErrorException ex) {
+            assertSame(headers, ex.getResponseHeaders());
+        }
+    }
 
-		try {
-			handler.handleError(response);
-			fail("expected HttpClientErrorException");
-		}
-		catch (HttpClientErrorException ex) {
-			assertSame(headers, ex.getResponseHeaders());
-		}
-	}
+    @Test(expected = HttpClientErrorException.class)
+    public void handleErrorIOException() throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.TEXT_PLAIN);
 
-	@Test(expected = HttpClientErrorException.class)
-	public void handleErrorIOException() throws Exception {
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.TEXT_PLAIN);
+        given(response.getRawStatusCode()).willReturn(HttpStatus.NOT_FOUND.value());
+        given(response.getStatusText()).willReturn("Not Found");
+        given(response.getHeaders()).willReturn(headers);
+        given(response.getBody()).willThrow(new IOException());
 
-		given(response.getRawStatusCode()).willReturn(HttpStatus.NOT_FOUND.value());
-		given(response.getStatusText()).willReturn("Not Found");
-		given(response.getHeaders()).willReturn(headers);
-		given(response.getBody()).willThrow(new IOException());
+        handler.handleError(response);
+    }
 
-		handler.handleError(response);
-	}
+    @Test(expected = HttpClientErrorException.class)
+    public void handleErrorNullResponse() throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.TEXT_PLAIN);
 
-	@Test(expected = HttpClientErrorException.class)
-	public void handleErrorNullResponse() throws Exception {
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.TEXT_PLAIN);
+        given(response.getRawStatusCode()).willReturn(HttpStatus.NOT_FOUND.value());
+        given(response.getStatusText()).willReturn("Not Found");
+        given(response.getHeaders()).willReturn(headers);
 
-		given(response.getRawStatusCode()).willReturn(HttpStatus.NOT_FOUND.value());
-		given(response.getStatusText()).willReturn("Not Found");
-		given(response.getHeaders()).willReturn(headers);
+        handler.handleError(response);
+    }
 
-		handler.handleError(response);
-	}
+    @Test // SPR-16108
+    public void hasErrorForUnknownStatusCode() throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.TEXT_PLAIN);
 
-	@Test  // SPR-16108
-	public void hasErrorForUnknownStatusCode() throws Exception {
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.TEXT_PLAIN);
+        given(response.getRawStatusCode()).willReturn(999);
+        given(response.getStatusText()).willReturn("Custom status code");
+        given(response.getHeaders()).willReturn(headers);
 
-		given(response.getRawStatusCode()).willReturn(999);
-		given(response.getStatusText()).willReturn("Custom status code");
-		given(response.getHeaders()).willReturn(headers);
+        assertFalse(handler.hasError(response));
+    }
 
-		assertFalse(handler.hasError(response));
-	}
+    @Test(expected = UnknownHttpStatusCodeException.class) // SPR-9406
+    public void handleErrorUnknownStatusCode() throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.TEXT_PLAIN);
 
-	@Test(expected = UnknownHttpStatusCodeException.class)  // SPR-9406
-	public void handleErrorUnknownStatusCode() throws Exception {
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.TEXT_PLAIN);
+        given(response.getRawStatusCode()).willReturn(999);
+        given(response.getStatusText()).willReturn("Custom status code");
+        given(response.getHeaders()).willReturn(headers);
 
-		given(response.getRawStatusCode()).willReturn(999);
-		given(response.getStatusText()).willReturn("Custom status code");
-		given(response.getHeaders()).willReturn(headers);
+        handler.handleError(response);
+    }
 
-		handler.handleError(response);
-	}
+    @Test // SPR-17461
+    public void hasErrorForCustomClientError() throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.TEXT_PLAIN);
 
-	@Test  // SPR-17461
-	public void hasErrorForCustomClientError() throws Exception {
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.TEXT_PLAIN);
+        given(response.getRawStatusCode()).willReturn(499);
+        given(response.getStatusText()).willReturn("Custom status code");
+        given(response.getHeaders()).willReturn(headers);
 
-		given(response.getRawStatusCode()).willReturn(499);
-		given(response.getStatusText()).willReturn("Custom status code");
-		given(response.getHeaders()).willReturn(headers);
+        assertTrue(handler.hasError(response));
+    }
 
-		assertTrue(handler.hasError(response));
-	}
+    @Test(expected = UnknownHttpStatusCodeException.class)
+    public void handleErrorForCustomClientError() throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.TEXT_PLAIN);
 
-	@Test(expected = UnknownHttpStatusCodeException.class)
-	public void handleErrorForCustomClientError() throws Exception {
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.TEXT_PLAIN);
+        given(response.getRawStatusCode()).willReturn(499);
+        given(response.getStatusText()).willReturn("Custom status code");
+        given(response.getHeaders()).willReturn(headers);
 
-		given(response.getRawStatusCode()).willReturn(499);
-		given(response.getStatusText()).willReturn("Custom status code");
-		given(response.getHeaders()).willReturn(headers);
+        handler.handleError(response);
+    }
 
-		handler.handleError(response);
-	}
+    @Test // SPR-17461
+    public void hasErrorForCustomServerError() throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.TEXT_PLAIN);
 
-	@Test  // SPR-17461
-	public void hasErrorForCustomServerError() throws Exception {
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.TEXT_PLAIN);
+        given(response.getRawStatusCode()).willReturn(599);
+        given(response.getStatusText()).willReturn("Custom status code");
+        given(response.getHeaders()).willReturn(headers);
 
-		given(response.getRawStatusCode()).willReturn(599);
-		given(response.getStatusText()).willReturn("Custom status code");
-		given(response.getHeaders()).willReturn(headers);
+        assertTrue(handler.hasError(response));
+    }
 
-		assertTrue(handler.hasError(response));
-	}
+    @Test(expected = UnknownHttpStatusCodeException.class)
+    public void handleErrorForCustomServerError() throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.TEXT_PLAIN);
 
-	@Test(expected = UnknownHttpStatusCodeException.class)
-	public void handleErrorForCustomServerError() throws Exception {
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.TEXT_PLAIN);
+        given(response.getRawStatusCode()).willReturn(599);
+        given(response.getStatusText()).willReturn("Custom status code");
+        given(response.getHeaders()).willReturn(headers);
 
-		given(response.getRawStatusCode()).willReturn(599);
-		given(response.getStatusText()).willReturn("Custom status code");
-		given(response.getHeaders()).willReturn(headers);
+        handler.handleError(response);
+    }
 
-		handler.handleError(response);
-	}
+    @Test // SPR-16604
+    public void bodyAvailableAfterHasErrorForUnknownStatusCode() throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.TEXT_PLAIN);
+        TestByteArrayInputStream body =
+                new TestByteArrayInputStream("Hello World".getBytes(StandardCharsets.UTF_8));
 
-	@Test  // SPR-16604
-	public void bodyAvailableAfterHasErrorForUnknownStatusCode() throws Exception {
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.TEXT_PLAIN);
-		TestByteArrayInputStream body = new TestByteArrayInputStream("Hello World".getBytes(StandardCharsets.UTF_8));
+        given(response.getRawStatusCode()).willReturn(999);
+        given(response.getStatusText()).willReturn("Custom status code");
+        given(response.getHeaders()).willReturn(headers);
+        given(response.getBody()).willReturn(body);
 
-		given(response.getRawStatusCode()).willReturn(999);
-		given(response.getStatusText()).willReturn("Custom status code");
-		given(response.getHeaders()).willReturn(headers);
-		given(response.getBody()).willReturn(body);
+        assertFalse(handler.hasError(response));
+        assertFalse(body.isClosed());
+        assertEquals(
+                "Hello World",
+                StreamUtils.copyToString(response.getBody(), StandardCharsets.UTF_8));
+    }
 
-		assertFalse(handler.hasError(response));
-		assertFalse(body.isClosed());
-		assertEquals("Hello World", StreamUtils.copyToString(response.getBody(), StandardCharsets.UTF_8));
-	}
+    private static class TestByteArrayInputStream extends ByteArrayInputStream {
 
+        private boolean closed;
 
-	private static class TestByteArrayInputStream extends ByteArrayInputStream {
+        public TestByteArrayInputStream(byte[] buf) {
+            super(buf);
+            this.closed = false;
+        }
 
-		private boolean closed;
+        public boolean isClosed() {
+            return closed;
+        }
 
-		public TestByteArrayInputStream(byte[] buf) {
-			super(buf);
-			this.closed = false;
-		}
+        @Override
+        public boolean markSupported() {
+            return false;
+        }
 
-		public boolean isClosed() {
-			return closed;
-		}
+        @Override
+        public synchronized void mark(int readlimit) {
+            throw new UnsupportedOperationException("mark/reset not supported");
+        }
 
-		@Override
-		public boolean markSupported() {
-			return false;
-		}
+        @Override
+        public synchronized void reset() {
+            throw new UnsupportedOperationException("mark/reset not supported");
+        }
 
-		@Override
-		public synchronized void mark(int readlimit) {
-			throw new UnsupportedOperationException("mark/reset not supported");
-		}
-
-		@Override
-		public synchronized void reset() {
-			throw new UnsupportedOperationException("mark/reset not supported");
-		}
-
-		@Override
-		public void close() throws IOException {
-			super.close();
-			this.closed = true;
-		}
-	}
-
+        @Override
+        public void close() throws IOException {
+            super.close();
+            this.closed = true;
+        }
+    }
 }

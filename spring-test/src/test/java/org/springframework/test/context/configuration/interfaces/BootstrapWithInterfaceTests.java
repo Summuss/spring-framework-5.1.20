@@ -31,13 +31,10 @@ import static org.junit.Assert.*;
 @RunWith(SpringRunner.class)
 public class BootstrapWithInterfaceTests implements BootstrapWithTestInterface {
 
-	@Autowired
-	String foo;
+    @Autowired String foo;
 
-
-	@Test
-	public void injectedBean() {
-		assertEquals("foo", foo);
-	}
-
+    @Test
+    public void injectedBean() {
+        assertEquals("foo", foo);
+    }
 }

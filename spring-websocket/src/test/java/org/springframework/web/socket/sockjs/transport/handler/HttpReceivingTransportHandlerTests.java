@@ -30,80 +30,84 @@ import static org.junit.Assert.*;
 import static org.mockito.BDDMockito.*;
 
 /**
- * Test fixture for {@link AbstractHttpReceivingTransportHandler} and sub-classes
- * {@link XhrReceivingTransportHandler}.
+ * Test fixture for {@link AbstractHttpReceivingTransportHandler} and sub-classes {@link
+ * XhrReceivingTransportHandler}.
  *
  * @author Rossen Stoyanchev
  */
 public class HttpReceivingTransportHandlerTests extends AbstractHttpRequestTests {
 
-	@Test
-	public void readMessagesXhr() throws Exception {
-		this.servletRequest.setContent("[\"x\"]".getBytes("UTF-8"));
-		handleRequest(new XhrReceivingTransportHandler());
+    @Test
+    public void readMessagesXhr() throws Exception {
+        this.servletRequest.setContent("[\"x\"]".getBytes("UTF-8"));
+        handleRequest(new XhrReceivingTransportHandler());
 
-		assertEquals(204, this.servletResponse.getStatus());
-	}
+        assertEquals(204, this.servletResponse.getStatus());
+    }
 
-	@Test
-	public void readMessagesBadContent() throws Exception {
-		this.servletRequest.setContent("".getBytes("UTF-8"));
-		handleRequestAndExpectFailure();
+    @Test
+    public void readMessagesBadContent() throws Exception {
+        this.servletRequest.setContent("".getBytes("UTF-8"));
+        handleRequestAndExpectFailure();
 
-		this.servletRequest.setContent("[\"x]".getBytes("UTF-8"));
-		handleRequestAndExpectFailure();
-	}
+        this.servletRequest.setContent("[\"x]".getBytes("UTF-8"));
+        handleRequestAndExpectFailure();
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void readMessagesNoSession() throws Exception {
-		WebSocketHandler webSocketHandler = mock(WebSocketHandler.class);
-		new XhrReceivingTransportHandler().handleRequest(this.request, this.response, webSocketHandler, null);
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void readMessagesNoSession() throws Exception {
+        WebSocketHandler webSocketHandler = mock(WebSocketHandler.class);
+        new XhrReceivingTransportHandler()
+                .handleRequest(this.request, this.response, webSocketHandler, null);
+    }
 
-	@Test
-	public void delegateMessageException() throws Exception {
-		StubSockJsServiceConfig sockJsConfig = new StubSockJsServiceConfig();
-		this.servletRequest.setContent("[\"x\"]".getBytes("UTF-8"));
+    @Test
+    public void delegateMessageException() throws Exception {
+        StubSockJsServiceConfig sockJsConfig = new StubSockJsServiceConfig();
+        this.servletRequest.setContent("[\"x\"]".getBytes("UTF-8"));
 
-		WebSocketHandler wsHandler = mock(WebSocketHandler.class);
-		TestHttpSockJsSession session = new TestHttpSockJsSession("1", sockJsConfig, wsHandler, null);
-		session.delegateConnectionEstablished();
+        WebSocketHandler wsHandler = mock(WebSocketHandler.class);
+        TestHttpSockJsSession session =
+                new TestHttpSockJsSession("1", sockJsConfig, wsHandler, null);
+        session.delegateConnectionEstablished();
 
-		willThrow(new Exception()).given(wsHandler).handleMessage(session, new TextMessage("x"));
+        willThrow(new Exception()).given(wsHandler).handleMessage(session, new TextMessage("x"));
 
-		try {
-			XhrReceivingTransportHandler transportHandler = new XhrReceivingTransportHandler();
-			transportHandler.initialize(sockJsConfig);
-			transportHandler.handleRequest(this.request, this.response, wsHandler, session);
-			fail("Expected exception");
-		}
-		catch (SockJsMessageDeliveryException ex) {
-			assertNull(session.getCloseStatus());
-		}
-	}
+        try {
+            XhrReceivingTransportHandler transportHandler = new XhrReceivingTransportHandler();
+            transportHandler.initialize(sockJsConfig);
+            transportHandler.handleRequest(this.request, this.response, wsHandler, session);
+            fail("Expected exception");
+        } catch (SockJsMessageDeliveryException ex) {
+            assertNull(session.getCloseStatus());
+        }
+    }
 
+    private void handleRequest(AbstractHttpReceivingTransportHandler transportHandler)
+            throws Exception {
+        WebSocketHandler wsHandler = mock(WebSocketHandler.class);
+        AbstractSockJsSession session =
+                new TestHttpSockJsSession("1", new StubSockJsServiceConfig(), wsHandler, null);
 
-	private void handleRequest(AbstractHttpReceivingTransportHandler transportHandler) throws Exception {
-		WebSocketHandler wsHandler = mock(WebSocketHandler.class);
-		AbstractSockJsSession session = new TestHttpSockJsSession("1", new StubSockJsServiceConfig(), wsHandler, null);
+        transportHandler.initialize(new StubSockJsServiceConfig());
+        transportHandler.handleRequest(this.request, this.response, wsHandler, session);
 
-		transportHandler.initialize(new StubSockJsServiceConfig());
-		transportHandler.handleRequest(this.request, this.response, wsHandler, session);
+        assertEquals(
+                "text/plain;charset=UTF-8", this.response.getHeaders().getContentType().toString());
+        verify(wsHandler).handleMessage(session, new TextMessage("x"));
+    }
 
-		assertEquals("text/plain;charset=UTF-8", this.response.getHeaders().getContentType().toString());
-		verify(wsHandler).handleMessage(session, new TextMessage("x"));
-	}
+    private void handleRequestAndExpectFailure() throws Exception {
+        resetResponse();
 
-	private void handleRequestAndExpectFailure() throws Exception {
-		resetResponse();
+        WebSocketHandler wsHandler = mock(WebSocketHandler.class);
+        AbstractSockJsSession session =
+                new TestHttpSockJsSession("1", new StubSockJsServiceConfig(), wsHandler, null);
 
-		WebSocketHandler wsHandler = mock(WebSocketHandler.class);
-		AbstractSockJsSession session = new TestHttpSockJsSession("1", new StubSockJsServiceConfig(), wsHandler, null);
+        new XhrReceivingTransportHandler()
+                .handleRequest(this.request, this.response, wsHandler, session);
 
-		new XhrReceivingTransportHandler().handleRequest(this.request, this.response, wsHandler, session);
-
-		assertEquals(500, this.servletResponse.getStatus());
-		verifyNoMoreInteractions(wsHandler);
-	}
-
+        assertEquals(500, this.servletResponse.getStatus());
+        verifyNoMoreInteractions(wsHandler);
+    }
 }

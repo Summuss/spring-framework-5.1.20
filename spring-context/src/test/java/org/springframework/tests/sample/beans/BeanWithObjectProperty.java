@@ -22,14 +22,13 @@ package org.springframework.tests.sample.beans;
  */
 public class BeanWithObjectProperty {
 
-	private Object object;
+    private Object object;
 
-	public Object getObject() {
-		return object;
-	}
+    public Object getObject() {
+        return object;
+    }
 
-	public void setObject(Object object) {
-		this.object = object;
-	}
-
+    public void setObject(Object object) {
+        this.object = object;
+    }
 }

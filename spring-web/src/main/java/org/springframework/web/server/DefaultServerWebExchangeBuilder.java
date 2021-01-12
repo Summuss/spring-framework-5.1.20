@@ -34,95 +34,90 @@ import org.springframework.util.Assert;
  */
 class DefaultServerWebExchangeBuilder implements ServerWebExchange.Builder {
 
-	private final ServerWebExchange delegate;
+    private final ServerWebExchange delegate;
 
-	@Nullable
-	private ServerHttpRequest request;
+    @Nullable private ServerHttpRequest request;
 
-	@Nullable
-	private ServerHttpResponse response;
+    @Nullable private ServerHttpResponse response;
 
-	@Nullable
-	private Mono<Principal> principalMono;
+    @Nullable private Mono<Principal> principalMono;
 
+    DefaultServerWebExchangeBuilder(ServerWebExchange delegate) {
+        Assert.notNull(delegate, "Delegate is required");
+        this.delegate = delegate;
+    }
 
-	DefaultServerWebExchangeBuilder(ServerWebExchange delegate) {
-		Assert.notNull(delegate, "Delegate is required");
-		this.delegate = delegate;
-	}
+    @Override
+    public ServerWebExchange.Builder request(Consumer<ServerHttpRequest.Builder> consumer) {
+        ServerHttpRequest.Builder builder = this.delegate.getRequest().mutate();
+        consumer.accept(builder);
+        return request(builder.build());
+    }
 
+    @Override
+    public ServerWebExchange.Builder request(ServerHttpRequest request) {
+        this.request = request;
+        return this;
+    }
 
-	@Override
-	public ServerWebExchange.Builder request(Consumer<ServerHttpRequest.Builder> consumer) {
-		ServerHttpRequest.Builder builder = this.delegate.getRequest().mutate();
-		consumer.accept(builder);
-		return request(builder.build());
-	}
+    @Override
+    public ServerWebExchange.Builder response(ServerHttpResponse response) {
+        this.response = response;
+        return this;
+    }
 
-	@Override
-	public ServerWebExchange.Builder request(ServerHttpRequest request) {
-		this.request = request;
-		return this;
-	}
+    @Override
+    public ServerWebExchange.Builder principal(Mono<Principal> principalMono) {
+        this.principalMono = principalMono;
+        return this;
+    }
 
-	@Override
-	public ServerWebExchange.Builder response(ServerHttpResponse response) {
-		this.response = response;
-		return this;
-	}
+    @Override
+    public ServerWebExchange build() {
+        return new MutativeDecorator(
+                this.delegate, this.request, this.response, this.principalMono);
+    }
 
-	@Override
-	public ServerWebExchange.Builder principal(Mono<Principal> principalMono) {
-		this.principalMono = principalMono;
-		return this;
-	}
+    /**
+     * An immutable wrapper of an exchange returning property overrides -- given to the constructor
+     * -- or original values otherwise.
+     */
+    private static class MutativeDecorator extends ServerWebExchangeDecorator {
 
-	@Override
-	public ServerWebExchange build() {
-		return new MutativeDecorator(this.delegate, this.request, this.response, this.principalMono);
-	}
+        @Nullable private final ServerHttpRequest request;
 
+        @Nullable private final ServerHttpResponse response;
 
-	/**
-	 * An immutable wrapper of an exchange returning property overrides -- given
-	 * to the constructor -- or original values otherwise.
-	 */
-	private static class MutativeDecorator extends ServerWebExchangeDecorator {
+        @Nullable private final Mono<Principal> principalMono;
 
-		@Nullable
-		private final ServerHttpRequest request;
+        public MutativeDecorator(
+                ServerWebExchange delegate,
+                @Nullable ServerHttpRequest request,
+                @Nullable ServerHttpResponse response,
+                @Nullable Mono<Principal> principalMono) {
 
-		@Nullable
-		private final ServerHttpResponse response;
+            super(delegate);
+            this.request = request;
+            this.response = response;
+            this.principalMono = principalMono;
+        }
 
-		@Nullable
-		private final Mono<Principal> principalMono;
+        @Override
+        public ServerHttpRequest getRequest() {
+            return (this.request != null ? this.request : getDelegate().getRequest());
+        }
 
-		public MutativeDecorator(ServerWebExchange delegate, @Nullable ServerHttpRequest request,
-				@Nullable ServerHttpResponse response, @Nullable Mono<Principal> principalMono) {
+        @Override
+        public ServerHttpResponse getResponse() {
+            return (this.response != null ? this.response : getDelegate().getResponse());
+        }
 
-			super(delegate);
-			this.request = request;
-			this.response = response;
-			this.principalMono = principalMono;
-		}
-
-		@Override
-		public ServerHttpRequest getRequest() {
-			return (this.request != null ? this.request : getDelegate().getRequest());
-		}
-
-		@Override
-		public ServerHttpResponse getResponse() {
-			return (this.response != null ? this.response : getDelegate().getResponse());
-		}
-
-		@SuppressWarnings("unchecked")
-		@Override
-		public <T extends Principal> Mono<T> getPrincipal() {
-			return (this.principalMono != null ? (Mono<T>) this.principalMono : getDelegate().getPrincipal());
-		}
-	}
-
+        @SuppressWarnings("unchecked")
+        @Override
+        public <T extends Principal> Mono<T> getPrincipal() {
+            return (this.principalMono != null
+                    ? (Mono<T>) this.principalMono
+                    : getDelegate().getPrincipal());
+        }
+    }
 }
-

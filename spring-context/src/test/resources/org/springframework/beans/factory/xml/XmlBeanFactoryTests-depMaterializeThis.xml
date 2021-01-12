@@ -3,20 +3,26 @@
 
 <beans>
 
-	<bean id="dao" class="org.springframework.beans.factory.xml.DummyDao" autowire="constructor"/>
+    <bean id="dao" class="org.springframework.beans.factory.xml.DummyDao" autowire="constructor"/>
 
-	<bean id="boPrototype" autowire="constructor" class="org.springframework.beans.factory.xml.DummyBoImpl"
-			scope="prototype"/>
+    <bean id="boPrototype" autowire="constructor" class="org.springframework.beans.factory.xml.DummyBoImpl"
+          scope="prototype"/>
 
-	<bean id="prototypeTargetSource" class="org.springframework.aop.target.PrototypeTargetSource">
-		<property name="targetBeanName"><value>boPrototype</value></property>
-	</bean>
+    <bean id="prototypeTargetSource" class="org.springframework.aop.target.PrototypeTargetSource">
+        <property name="targetBeanName">
+            <value>boPrototype</value>
+        </property>
+    </bean>
 
-	<bean id="prototypeBenchmark" class="org.springframework.aop.framework.ProxyFactoryBean">
-		<property name="target"><ref bean="prototypeTargetSource"/></property>
-		<property name="proxyInterfaces"><value>org.springframework.beans.factory.xml.DummyBo</value></property>
-	</bean>
+    <bean id="prototypeBenchmark" class="org.springframework.aop.framework.ProxyFactoryBean">
+        <property name="target">
+            <ref bean="prototypeTargetSource"/>
+        </property>
+        <property name="proxyInterfaces">
+            <value>org.springframework.beans.factory.xml.DummyBo</value>
+        </property>
+    </bean>
 
-	<bean id="boSingleton" autowire="constructor" class="org.springframework.beans.factory.xml.DummyBoImpl"/>
+    <bean id="boSingleton" autowire="constructor" class="org.springframework.beans.factory.xml.DummyBoImpl"/>
 
 </beans>

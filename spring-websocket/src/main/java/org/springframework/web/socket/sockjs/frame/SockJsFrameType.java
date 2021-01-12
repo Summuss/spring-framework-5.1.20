@@ -23,7 +23,8 @@ package org.springframework.web.socket.sockjs.frame;
  * @since 4.1
  */
 public enum SockJsFrameType {
-
-	OPEN, HEARTBEAT, MESSAGE, CLOSE
-
+    OPEN,
+    HEARTBEAT,
+    MESSAGE,
+    CLOSE
 }

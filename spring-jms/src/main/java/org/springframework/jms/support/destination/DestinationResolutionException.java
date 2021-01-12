@@ -29,21 +29,22 @@ import org.springframework.lang.Nullable;
 @SuppressWarnings("serial")
 public class DestinationResolutionException extends JmsException {
 
-	/**
-	 * Create a new DestinationResolutionException.
-	 * @param msg the detail message
-	 */
-	public DestinationResolutionException(String msg) {
-		super(msg);
-	}
+    /**
+     * Create a new DestinationResolutionException.
+     *
+     * @param msg the detail message
+     */
+    public DestinationResolutionException(String msg) {
+        super(msg);
+    }
 
-	/**
-	 * Create a new DestinationResolutionException.
-	 * @param msg the detail message
-	 * @param cause the root cause (if any)
-	 */
-	public DestinationResolutionException(String msg, @Nullable Throwable cause) {
-		super(msg, cause);
-	}
-
+    /**
+     * Create a new DestinationResolutionException.
+     *
+     * @param msg the detail message
+     * @param cause the root cause (if any)
+     */
+    public DestinationResolutionException(String msg, @Nullable Throwable cause) {
+        super(msg, cause);
+    }
 }

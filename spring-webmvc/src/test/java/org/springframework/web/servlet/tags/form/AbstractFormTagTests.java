@@ -28,26 +28,24 @@ import org.springframework.tests.sample.beans.TestBean;
  */
 public abstract class AbstractFormTagTests extends AbstractHtmlElementTagTests {
 
-	private FormTag formTag = new FormTag();
+    private FormTag formTag = new FormTag();
 
+    @Override
+    protected void extendRequest(MockHttpServletRequest request) {
+        request.setAttribute(COMMAND_NAME, createTestBean());
+    }
 
-	@Override
-	protected void extendRequest(MockHttpServletRequest request) {
-		request.setAttribute(COMMAND_NAME, createTestBean());
-	}
+    protected abstract TestBean createTestBean();
 
-	protected abstract TestBean createTestBean();
+    @Override
+    protected void extendPageContext(MockPageContext pageContext) throws JspException {
+        this.formTag.setModelAttribute(COMMAND_NAME);
+        this.formTag.setAction("myAction");
+        this.formTag.setPageContext(pageContext);
+        this.formTag.doStartTag();
+    }
 
-	@Override
-	protected void extendPageContext(MockPageContext pageContext) throws JspException {
-		this.formTag.setModelAttribute(COMMAND_NAME);
-		this.formTag.setAction("myAction");
-		this.formTag.setPageContext(pageContext);
-		this.formTag.doStartTag();
-	}
-
-	protected final FormTag getFormTag() {
-		return this.formTag;
-	}
-
+    protected final FormTag getFormTag() {
+        return this.formTag;
+    }
 }

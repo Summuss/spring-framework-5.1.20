@@ -28,13 +28,12 @@ import org.springframework.context.annotation.Configuration;
  */
 public class AnnotatedFooConfigInnerClassTestCase {
 
-	@Configuration
-	static class FooConfig {
+    @Configuration
+    static class FooConfig {
 
-		@Bean
-		public String foo() {
-			return "foo";
-		}
-	}
-
+        @Bean
+        public String foo() {
+            return "foo";
+        }
+    }
 }

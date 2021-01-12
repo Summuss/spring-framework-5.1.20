@@ -33,41 +33,40 @@ import org.springframework.test.context.support.DirtiesContextTestExecutionListe
 import org.springframework.test.context.web.ServletTestExecutionListener;
 
 /**
- * Abstract base test class which integrates the <em>Spring TestContext
- * Framework</em> with explicit {@link ApplicationContext} testing support
- * in a <strong>JUnit</strong> environment.
+ * Abstract base test class which integrates the <em>Spring TestContext Framework</em> with explicit
+ * {@link ApplicationContext} testing support in a <strong>JUnit</strong> environment.
  *
- * <p>Concrete subclasses should typically declare a class-level
- * {@link ContextConfiguration @ContextConfiguration} annotation to
- * configure the {@linkplain ApplicationContext application context} {@link
- * ContextConfiguration#locations() resource locations} or {@link
- * ContextConfiguration#classes() annotated classes}. <em>If your test does not
- * need to load an application context, you may choose to omit the
- * {@link ContextConfiguration @ContextConfiguration} declaration and to configure
- * the appropriate {@link org.springframework.test.context.TestExecutionListener
- * TestExecutionListeners} manually.</em>
+ * <p>Concrete subclasses should typically declare a class-level {@link
+ * ContextConfiguration @ContextConfiguration} annotation to configure the {@linkplain
+ * ApplicationContext application context} {@link ContextConfiguration#locations() resource
+ * locations} or {@link ContextConfiguration#classes() annotated classes}. <em>If your test does not
+ * need to load an application context, you may choose to omit the {@link
+ * ContextConfiguration @ContextConfiguration} declaration and to configure the appropriate {@link
+ * org.springframework.test.context.TestExecutionListener TestExecutionListeners} manually.</em>
  *
  * <p>The following {@link org.springframework.test.context.TestExecutionListener
  * TestExecutionListeners} are configured by default:
  *
  * <ul>
- * <li>{@link org.springframework.test.context.web.ServletTestExecutionListener}
- * <li>{@link org.springframework.test.context.support.DirtiesContextBeforeModesTestExecutionListener}
- * <li>{@link org.springframework.test.context.support.DependencyInjectionTestExecutionListener}
- * <li>{@link org.springframework.test.context.support.DirtiesContextTestExecutionListener}
+ *   <li>{@link org.springframework.test.context.web.ServletTestExecutionListener}
+ *   <li>{@link
+ *       org.springframework.test.context.support.DirtiesContextBeforeModesTestExecutionListener}
+ *   <li>{@link org.springframework.test.context.support.DependencyInjectionTestExecutionListener}
+ *   <li>{@link org.springframework.test.context.support.DirtiesContextTestExecutionListener}
  * </ul>
  *
  * <p>This class serves only as a convenience for extension.
+ *
  * <ul>
- * <li>If you do not wish for your test classes to be tied to a Spring-specific
- * class hierarchy, you may configure your own custom test classes by using
- * {@link SpringRunner}, {@link ContextConfiguration @ContextConfiguration},
- * {@link TestExecutionListeners @TestExecutionListeners}, etc.</li>
- * <li>If you wish to extend this class and use a runner other than the
- * {@link SpringRunner}, as of Spring Framework 4.2 you can use
- * {@link org.springframework.test.context.junit4.rules.SpringClassRule SpringClassRule} and
- * {@link org.springframework.test.context.junit4.rules.SpringMethodRule SpringMethodRule}
- * and specify your runner of choice via {@link RunWith @RunWith(...)}.</li>
+ *   <li>If you do not wish for your test classes to be tied to a Spring-specific class hierarchy,
+ *       you may configure your own custom test classes by using {@link SpringRunner}, {@link
+ *       ContextConfiguration @ContextConfiguration}, {@link
+ *       TestExecutionListeners @TestExecutionListeners}, etc.
+ *   <li>If you wish to extend this class and use a runner other than the {@link SpringRunner}, as
+ *       of Spring Framework 4.2 you can use {@link
+ *       org.springframework.test.context.junit4.rules.SpringClassRule SpringClassRule} and {@link
+ *       org.springframework.test.context.junit4.rules.SpringMethodRule SpringMethodRule} and
+ *       specify your runner of choice via {@link RunWith @RunWith(...)}.
  * </ul>
  *
  * <p><strong>NOTE:</strong> As of Spring Framework 4.3, this class requires JUnit 4.12 or higher.
@@ -86,31 +85,31 @@ import org.springframework.test.context.web.ServletTestExecutionListener;
  * @see org.springframework.test.context.testng.AbstractTestNGSpringContextTests
  */
 @RunWith(SpringRunner.class)
-@TestExecutionListeners({ ServletTestExecutionListener.class, DirtiesContextBeforeModesTestExecutionListener.class,
-	DependencyInjectionTestExecutionListener.class, DirtiesContextTestExecutionListener.class })
+@TestExecutionListeners({
+    ServletTestExecutionListener.class,
+    DirtiesContextBeforeModesTestExecutionListener.class,
+    DependencyInjectionTestExecutionListener.class,
+    DirtiesContextTestExecutionListener.class
+})
 public abstract class AbstractJUnit4SpringContextTests implements ApplicationContextAware {
 
-	/**
-	 * Logger available to subclasses.
-	 */
-	protected final Log logger = LogFactory.getLog(getClass());
+    /** Logger available to subclasses. */
+    protected final Log logger = LogFactory.getLog(getClass());
 
-	/**
-	 * The {@link ApplicationContext} that was injected into this test instance
-	 * via {@link #setApplicationContext(ApplicationContext)}.
-	 */
-	@Nullable
-	protected ApplicationContext applicationContext;
+    /**
+     * The {@link ApplicationContext} that was injected into this test instance via {@link
+     * #setApplicationContext(ApplicationContext)}.
+     */
+    @Nullable protected ApplicationContext applicationContext;
 
-
-	/**
-	 * Set the {@link ApplicationContext} to be used by this test instance,
-	 * provided via {@link ApplicationContextAware} semantics.
-	 * @param applicationContext the ApplicationContext that this test runs in
-	 */
-	@Override
-	public final void setApplicationContext(final ApplicationContext applicationContext) {
-		this.applicationContext = applicationContext;
-	}
-
+    /**
+     * Set the {@link ApplicationContext} to be used by this test instance, provided via {@link
+     * ApplicationContextAware} semantics.
+     *
+     * @param applicationContext the ApplicationContext that this test runs in
+     */
+    @Override
+    public final void setApplicationContext(final ApplicationContext applicationContext) {
+        this.applicationContext = applicationContext;
+    }
 }

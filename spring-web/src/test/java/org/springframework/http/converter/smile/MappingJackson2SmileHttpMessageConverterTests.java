@@ -37,125 +37,127 @@ import org.springframework.http.MockHttpOutputMessage;
  */
 public class MappingJackson2SmileHttpMessageConverterTests {
 
-	private final MappingJackson2SmileHttpMessageConverter converter = new MappingJackson2SmileHttpMessageConverter();
-	private final ObjectMapper mapper = new ObjectMapper(new SmileFactory());
+    private final MappingJackson2SmileHttpMessageConverter converter =
+            new MappingJackson2SmileHttpMessageConverter();
+    private final ObjectMapper mapper = new ObjectMapper(new SmileFactory());
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
+    @Rule public ExpectedException thrown = ExpectedException.none();
 
+    @Test
+    public void canRead() {
+        assertTrue(
+                converter.canRead(MyBean.class, new MediaType("application", "x-jackson-smile")));
+        assertFalse(converter.canRead(MyBean.class, new MediaType("application", "json")));
+        assertFalse(converter.canRead(MyBean.class, new MediaType("application", "xml")));
+    }
 
-	@Test
-	public void canRead() {
-		assertTrue(converter.canRead(MyBean.class, new MediaType("application", "x-jackson-smile")));
-		assertFalse(converter.canRead(MyBean.class, new MediaType("application", "json")));
-		assertFalse(converter.canRead(MyBean.class, new MediaType("application", "xml")));
-	}
+    @Test
+    public void canWrite() {
+        assertTrue(
+                converter.canWrite(MyBean.class, new MediaType("application", "x-jackson-smile")));
+        assertFalse(converter.canWrite(MyBean.class, new MediaType("application", "json")));
+        assertFalse(converter.canWrite(MyBean.class, new MediaType("application", "xml")));
+    }
 
-	@Test
-	public void canWrite() {
-		assertTrue(converter.canWrite(MyBean.class, new MediaType("application", "x-jackson-smile")));
-		assertFalse(converter.canWrite(MyBean.class, new MediaType("application", "json")));
-		assertFalse(converter.canWrite(MyBean.class, new MediaType("application", "xml")));
-	}
+    @Test
+    public void read() throws IOException {
+        MyBean body = new MyBean();
+        body.setString("Foo");
+        body.setNumber(42);
+        body.setFraction(42F);
+        body.setArray(new String[] {"Foo", "Bar"});
+        body.setBool(true);
+        body.setBytes(new byte[] {0x1, 0x2});
+        MockHttpInputMessage inputMessage =
+                new MockHttpInputMessage(mapper.writeValueAsBytes(body));
+        inputMessage.getHeaders().setContentType(new MediaType("application", "x-jackson-smile"));
+        MyBean result = (MyBean) converter.read(MyBean.class, inputMessage);
+        assertEquals("Foo", result.getString());
+        assertEquals(42, result.getNumber());
+        assertEquals(42F, result.getFraction(), 0F);
+        assertArrayEquals(new String[] {"Foo", "Bar"}, result.getArray());
+        assertTrue(result.isBool());
+        assertArrayEquals(new byte[] {0x1, 0x2}, result.getBytes());
+    }
 
-	@Test
-	public void read() throws IOException {
-		MyBean body = new MyBean();
-		body.setString("Foo");
-		body.setNumber(42);
-		body.setFraction(42F);
-		body.setArray(new String[]{"Foo", "Bar"});
-		body.setBool(true);
-		body.setBytes(new byte[]{0x1, 0x2});
-		MockHttpInputMessage inputMessage = new MockHttpInputMessage(mapper.writeValueAsBytes(body));
-		inputMessage.getHeaders().setContentType(new MediaType("application", "x-jackson-smile"));
-		MyBean result = (MyBean) converter.read(MyBean.class, inputMessage);
-		assertEquals("Foo", result.getString());
-		assertEquals(42, result.getNumber());
-		assertEquals(42F, result.getFraction(), 0F);
-		assertArrayEquals(new String[]{"Foo", "Bar"}, result.getArray());
-		assertTrue(result.isBool());
-		assertArrayEquals(new byte[]{0x1, 0x2}, result.getBytes());
-	}
+    @Test
+    public void write() throws IOException {
+        MockHttpOutputMessage outputMessage = new MockHttpOutputMessage();
+        MyBean body = new MyBean();
+        body.setString("Foo");
+        body.setNumber(42);
+        body.setFraction(42F);
+        body.setArray(new String[] {"Foo", "Bar"});
+        body.setBool(true);
+        body.setBytes(new byte[] {0x1, 0x2});
+        converter.write(body, null, outputMessage);
+        assertArrayEquals(mapper.writeValueAsBytes(body), outputMessage.getBodyAsBytes());
+        assertEquals(
+                "Invalid content-type",
+                new MediaType("application", "x-jackson-smile", StandardCharsets.UTF_8),
+                outputMessage.getHeaders().getContentType());
+    }
 
-	@Test
-	public void write() throws IOException {
-		MockHttpOutputMessage outputMessage = new MockHttpOutputMessage();
-		MyBean body = new MyBean();
-		body.setString("Foo");
-		body.setNumber(42);
-		body.setFraction(42F);
-		body.setArray(new String[]{"Foo", "Bar"});
-		body.setBool(true);
-		body.setBytes(new byte[]{0x1, 0x2});
-		converter.write(body, null, outputMessage);
-		assertArrayEquals(mapper.writeValueAsBytes(body), outputMessage.getBodyAsBytes());
-		assertEquals("Invalid content-type", new MediaType("application", "x-jackson-smile", StandardCharsets.UTF_8),
-				outputMessage.getHeaders().getContentType());
-	}
+    public static class MyBean {
 
+        private String string;
 
-	public static class MyBean {
+        private int number;
 
-		private String string;
+        private float fraction;
 
-		private int number;
+        private String[] array;
 
-		private float fraction;
+        private boolean bool;
 
-		private String[] array;
+        private byte[] bytes;
 
-		private boolean bool;
+        public byte[] getBytes() {
+            return bytes;
+        }
 
-		private byte[] bytes;
+        public void setBytes(byte[] bytes) {
+            this.bytes = bytes;
+        }
 
-		public byte[] getBytes() {
-			return bytes;
-		}
+        public boolean isBool() {
+            return bool;
+        }
 
-		public void setBytes(byte[] bytes) {
-			this.bytes = bytes;
-		}
+        public void setBool(boolean bool) {
+            this.bool = bool;
+        }
 
-		public boolean isBool() {
-			return bool;
-		}
+        public String getString() {
+            return string;
+        }
 
-		public void setBool(boolean bool) {
-			this.bool = bool;
-		}
+        public void setString(String string) {
+            this.string = string;
+        }
 
-		public String getString() {
-			return string;
-		}
+        public int getNumber() {
+            return number;
+        }
 
-		public void setString(String string) {
-			this.string = string;
-		}
+        public void setNumber(int number) {
+            this.number = number;
+        }
 
-		public int getNumber() {
-			return number;
-		}
+        public float getFraction() {
+            return fraction;
+        }
 
-		public void setNumber(int number) {
-			this.number = number;
-		}
+        public void setFraction(float fraction) {
+            this.fraction = fraction;
+        }
 
-		public float getFraction() {
-			return fraction;
-		}
+        public String[] getArray() {
+            return array;
+        }
 
-		public void setFraction(float fraction) {
-			this.fraction = fraction;
-		}
-
-		public String[] getArray() {
-			return array;
-		}
-
-		public void setArray(String[] array) {
-			this.array = array;
-		}
-	}
-
+        public void setArray(String[] array) {
+            this.array = array;
+        }
+    }
 }

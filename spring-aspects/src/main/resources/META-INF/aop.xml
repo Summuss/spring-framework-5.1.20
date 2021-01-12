@@ -5,17 +5,17 @@
 -->
 <aspectj>
 
-	<!--
-	<weaver options="-showWeaveInfo"/>
-	-->
+    <!--
+    <weaver options="-showWeaveInfo"/>
+    -->
 
-	<aspects>
-		<aspect name="org.springframework.beans.factory.aspectj.AnnotationBeanConfigurerAspect"/>
-		<aspect name="org.springframework.scheduling.aspectj.AnnotationAsyncExecutionAspect"/>
-		<aspect name="org.springframework.transaction.aspectj.AnnotationTransactionAspect"/>
-		<aspect name="org.springframework.transaction.aspectj.JtaAnnotationTransactionAspect"/>
-		<aspect name="org.springframework.cache.aspectj.AnnotationCacheAspect"/>
-		<aspect name="org.springframework.cache.aspectj.JCacheCacheAspect"/>
-	</aspects>
+    <aspects>
+        <aspect name="org.springframework.beans.factory.aspectj.AnnotationBeanConfigurerAspect"/>
+        <aspect name="org.springframework.scheduling.aspectj.AnnotationAsyncExecutionAspect"/>
+        <aspect name="org.springframework.transaction.aspectj.AnnotationTransactionAspect"/>
+        <aspect name="org.springframework.transaction.aspectj.JtaAnnotationTransactionAspect"/>
+        <aspect name="org.springframework.cache.aspectj.AnnotationCacheAspect"/>
+        <aspect name="org.springframework.cache.aspectj.JCacheCacheAspect"/>
+    </aspects>
 
 </aspectj>

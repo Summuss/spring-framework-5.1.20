@@ -33,78 +33,71 @@ import org.springframework.http.codec.HttpMessageWriter;
  */
 final class DefaultExchangeStrategiesBuilder implements ExchangeStrategies.Builder {
 
-	final static ExchangeStrategies DEFAULT_EXCHANGE_STRATEGIES;
+    static final ExchangeStrategies DEFAULT_EXCHANGE_STRATEGIES;
 
-	static {
-		DefaultExchangeStrategiesBuilder builder = new DefaultExchangeStrategiesBuilder();
-		builder.defaultConfiguration();
-		DEFAULT_EXCHANGE_STRATEGIES = builder.build();
-	}
+    static {
+        DefaultExchangeStrategiesBuilder builder = new DefaultExchangeStrategiesBuilder();
+        builder.defaultConfiguration();
+        DEFAULT_EXCHANGE_STRATEGIES = builder.build();
+    }
 
+    private final ClientCodecConfigurer codecConfigurer;
 
-	private final ClientCodecConfigurer codecConfigurer;
+    public DefaultExchangeStrategiesBuilder() {
+        this.codecConfigurer = ClientCodecConfigurer.create();
+        this.codecConfigurer.registerDefaults(false);
+    }
 
+    private DefaultExchangeStrategiesBuilder(DefaultExchangeStrategies other) {
+        this.codecConfigurer = other.codecConfigurer.clone();
+    }
 
-	public DefaultExchangeStrategiesBuilder() {
-		this.codecConfigurer = ClientCodecConfigurer.create();
-		this.codecConfigurer.registerDefaults(false);
-	}
+    public void defaultConfiguration() {
+        this.codecConfigurer.registerDefaults(true);
+    }
 
-	private DefaultExchangeStrategiesBuilder(DefaultExchangeStrategies other) {
-		this.codecConfigurer = other.codecConfigurer.clone();
-	}
+    @Override
+    public ExchangeStrategies.Builder codecs(Consumer<ClientCodecConfigurer> consumer) {
+        consumer.accept(this.codecConfigurer);
+        return this;
+    }
 
+    @Override
+    public ExchangeStrategies build() {
+        return new DefaultExchangeStrategies(this.codecConfigurer);
+    }
 
-	public void defaultConfiguration() {
-		this.codecConfigurer.registerDefaults(true);
-	}
+    private static class DefaultExchangeStrategies implements ExchangeStrategies {
 
-	@Override
-	public ExchangeStrategies.Builder codecs(Consumer<ClientCodecConfigurer> consumer) {
-		consumer.accept(this.codecConfigurer);
-		return this;
-	}
+        private final ClientCodecConfigurer codecConfigurer;
 
-	@Override
-	public ExchangeStrategies build() {
-		return new DefaultExchangeStrategies(this.codecConfigurer);
-	}
+        private final List<HttpMessageReader<?>> readers;
 
+        private final List<HttpMessageWriter<?>> writers;
 
-	private static class DefaultExchangeStrategies implements ExchangeStrategies {
+        public DefaultExchangeStrategies(ClientCodecConfigurer codecConfigurer) {
+            this.codecConfigurer = codecConfigurer;
+            this.readers = unmodifiableCopy(this.codecConfigurer.getReaders());
+            this.writers = unmodifiableCopy(this.codecConfigurer.getWriters());
+        }
 
-		private final ClientCodecConfigurer codecConfigurer;
+        private static <T> List<T> unmodifiableCopy(List<? extends T> list) {
+            return Collections.unmodifiableList(new ArrayList<>(list));
+        }
 
-		private final List<HttpMessageReader<?>> readers;
+        @Override
+        public List<HttpMessageReader<?>> messageReaders() {
+            return this.readers;
+        }
 
-		private final List<HttpMessageWriter<?>> writers;
+        @Override
+        public List<HttpMessageWriter<?>> messageWriters() {
+            return this.writers;
+        }
 
-
-		public DefaultExchangeStrategies(ClientCodecConfigurer codecConfigurer) {
-			this.codecConfigurer = codecConfigurer;
-			this.readers = unmodifiableCopy(this.codecConfigurer.getReaders());
-			this.writers = unmodifiableCopy(this.codecConfigurer.getWriters());
-		}
-
-		private static <T> List<T> unmodifiableCopy(List<? extends T> list) {
-			return Collections.unmodifiableList(new ArrayList<>(list));
-		}
-
-
-		@Override
-		public List<HttpMessageReader<?>> messageReaders() {
-			return this.readers;
-		}
-
-		@Override
-		public List<HttpMessageWriter<?>> messageWriters() {
-			return this.writers;
-		}
-
-		@Override
-		public Builder mutate() {
-			return new DefaultExchangeStrategiesBuilder(this);
-		}
-	}
-
+        @Override
+        public Builder mutate() {
+            return new DefaultExchangeStrategiesBuilder(this);
+        }
+    }
 }

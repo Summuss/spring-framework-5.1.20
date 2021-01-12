@@ -16,19 +16,16 @@
 
 package org.springframework.aop.aspectj;
 
-/**
- * @author Ramnivas Laddad
- */
+/** @author Ramnivas Laddad */
 interface ICounter {
 
-	void increment();
+    void increment();
 
-	void decrement();
+    void decrement();
 
-	int getCount();
+    int getCount();
 
-	void setCount(int counter);
+    void setCount(int counter);
 
-	void reset();
-
+    void reset();
 }

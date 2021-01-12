@@ -32,186 +32,181 @@ import static org.junit.Assert.*;
  */
 public class GsonFactoryBeanTests {
 
-	private static final String DATE_FORMAT = "yyyy-MM-dd";
+    private static final String DATE_FORMAT = "yyyy-MM-dd";
 
-	private GsonFactoryBean factory = new GsonFactoryBean();
+    private GsonFactoryBean factory = new GsonFactoryBean();
 
+    @Test
+    public void serializeNulls() throws Exception {
+        this.factory.setSerializeNulls(true);
+        this.factory.afterPropertiesSet();
+        Gson gson = this.factory.getObject();
+        StringBean bean = new StringBean();
+        String result = gson.toJson(bean);
+        assertEquals("{\"name\":null}", result);
+    }
 
-	@Test
-	public void serializeNulls() throws Exception {
-		this.factory.setSerializeNulls(true);
-		this.factory.afterPropertiesSet();
-		Gson gson = this.factory.getObject();
-		StringBean bean = new StringBean();
-		String result = gson.toJson(bean);
-		assertEquals("{\"name\":null}", result);
-	}
+    @Test
+    public void serializeNullsFalse() throws Exception {
+        this.factory.setSerializeNulls(false);
+        this.factory.afterPropertiesSet();
+        Gson gson = this.factory.getObject();
+        StringBean bean = new StringBean();
+        String result = gson.toJson(bean);
+        assertEquals("{}", result);
+    }
 
-	@Test
-	public void serializeNullsFalse() throws Exception {
-		this.factory.setSerializeNulls(false);
-		this.factory.afterPropertiesSet();
-		Gson gson = this.factory.getObject();
-		StringBean bean = new StringBean();
-		String result = gson.toJson(bean);
-		assertEquals("{}", result);
-	}
+    @Test
+    public void prettyPrinting() throws Exception {
+        this.factory.setPrettyPrinting(true);
+        this.factory.afterPropertiesSet();
+        Gson gson = this.factory.getObject();
+        StringBean bean = new StringBean();
+        bean.setName("Jason");
+        String result = gson.toJson(bean);
+        assertTrue(result.contains("  \"name\": \"Jason\""));
+    }
 
-	@Test
-	public void prettyPrinting() throws Exception {
-		this.factory.setPrettyPrinting(true);
-		this.factory.afterPropertiesSet();
-		Gson gson = this.factory.getObject();
-		StringBean bean = new StringBean();
-		bean.setName("Jason");
-		String result = gson.toJson(bean);
-		assertTrue(result.contains("  \"name\": \"Jason\""));
-	}
+    @Test
+    public void prettyPrintingFalse() throws Exception {
+        this.factory.setPrettyPrinting(false);
+        this.factory.afterPropertiesSet();
+        Gson gson = this.factory.getObject();
+        StringBean bean = new StringBean();
+        bean.setName("Jason");
+        String result = gson.toJson(bean);
+        assertEquals("{\"name\":\"Jason\"}", result);
+    }
 
-	@Test
-	public void prettyPrintingFalse() throws Exception {
-		this.factory.setPrettyPrinting(false);
-		this.factory.afterPropertiesSet();
-		Gson gson = this.factory.getObject();
-		StringBean bean = new StringBean();
-		bean.setName("Jason");
-		String result = gson.toJson(bean);
-		assertEquals("{\"name\":\"Jason\"}", result);
-	}
+    @Test
+    public void disableHtmlEscaping() throws Exception {
+        this.factory.setDisableHtmlEscaping(true);
+        this.factory.afterPropertiesSet();
+        Gson gson = this.factory.getObject();
+        StringBean bean = new StringBean();
+        bean.setName("Bob=Bob");
+        String result = gson.toJson(bean);
+        assertEquals("{\"name\":\"Bob=Bob\"}", result);
+    }
 
-	@Test
-	public void disableHtmlEscaping() throws Exception {
-		this.factory.setDisableHtmlEscaping(true);
-		this.factory.afterPropertiesSet();
-		Gson gson = this.factory.getObject();
-		StringBean bean = new StringBean();
-		bean.setName("Bob=Bob");
-		String result = gson.toJson(bean);
-		assertEquals("{\"name\":\"Bob=Bob\"}", result);
-	}
+    @Test
+    public void disableHtmlEscapingFalse() throws Exception {
+        this.factory.setDisableHtmlEscaping(false);
+        this.factory.afterPropertiesSet();
+        Gson gson = this.factory.getObject();
+        StringBean bean = new StringBean();
+        bean.setName("Bob=Bob");
+        String result = gson.toJson(bean);
+        assertEquals("{\"name\":\"Bob\\u003dBob\"}", result);
+    }
 
-	@Test
-	public void disableHtmlEscapingFalse() throws Exception {
-		this.factory.setDisableHtmlEscaping(false);
-		this.factory.afterPropertiesSet();
-		Gson gson = this.factory.getObject();
-		StringBean bean = new StringBean();
-		bean.setName("Bob=Bob");
-		String result = gson.toJson(bean);
-		assertEquals("{\"name\":\"Bob\\u003dBob\"}", result);
-	}
+    @Test
+    public void customizeDateFormatPattern() throws Exception {
+        this.factory.setDateFormatPattern(DATE_FORMAT);
+        this.factory.afterPropertiesSet();
+        Gson gson = this.factory.getObject();
+        DateBean bean = new DateBean();
+        Calendar cal = Calendar.getInstance();
+        cal.clear();
+        cal.set(Calendar.YEAR, 2014);
+        cal.set(Calendar.MONTH, Calendar.JANUARY);
+        cal.set(Calendar.DATE, 1);
+        Date date = cal.getTime();
+        bean.setDate(date);
+        String result = gson.toJson(bean);
+        assertEquals("{\"date\":\"2014-01-01\"}", result);
+    }
 
-	@Test
-	public void customizeDateFormatPattern() throws Exception {
-		this.factory.setDateFormatPattern(DATE_FORMAT);
-		this.factory.afterPropertiesSet();
-		Gson gson = this.factory.getObject();
-		DateBean bean = new DateBean();
-		Calendar cal = Calendar.getInstance();
-		cal.clear();
-		cal.set(Calendar.YEAR, 2014);
-		cal.set(Calendar.MONTH, Calendar.JANUARY);
-		cal.set(Calendar.DATE, 1);
-		Date date = cal.getTime();
-		bean.setDate(date);
-		String result = gson.toJson(bean);
-		assertEquals("{\"date\":\"2014-01-01\"}", result);
-	}
+    @Test
+    public void customizeDateFormatNone() throws Exception {
+        this.factory.afterPropertiesSet();
+        Gson gson = this.factory.getObject();
+        DateBean bean = new DateBean();
+        Calendar cal = Calendar.getInstance();
+        cal.clear();
+        cal.set(Calendar.YEAR, 2014);
+        cal.set(Calendar.MONTH, Calendar.JANUARY);
+        cal.set(Calendar.DATE, 1);
+        Date date = cal.getTime();
+        bean.setDate(date);
+        String result = gson.toJson(bean);
+        assertTrue(result.startsWith("{\"date\":\"Jan 1, 2014"));
+        assertTrue(result.endsWith("12:00:00 AM\"}"));
+    }
 
-	@Test
-	public void customizeDateFormatNone() throws Exception {
-		this.factory.afterPropertiesSet();
-		Gson gson = this.factory.getObject();
-		DateBean bean = new DateBean();
-		Calendar cal = Calendar.getInstance();
-		cal.clear();
-		cal.set(Calendar.YEAR, 2014);
-		cal.set(Calendar.MONTH, Calendar.JANUARY);
-		cal.set(Calendar.DATE, 1);
-		Date date = cal.getTime();
-		bean.setDate(date);
-		String result = gson.toJson(bean);
-		assertTrue(result.startsWith("{\"date\":\"Jan 1, 2014"));
-		assertTrue(result.endsWith("12:00:00 AM\"}"));
-	}
+    @Test
+    public void base64EncodeByteArrays() throws Exception {
+        this.factory.setBase64EncodeByteArrays(true);
+        this.factory.afterPropertiesSet();
+        Gson gson = this.factory.getObject();
+        ByteArrayBean bean = new ByteArrayBean();
+        bean.setBytes(new byte[] {0x1, 0x2});
+        String result = gson.toJson(bean);
+        assertEquals("{\"bytes\":\"AQI\\u003d\"}", result);
+    }
 
-	@Test
-	public void base64EncodeByteArrays() throws Exception {
-		this.factory.setBase64EncodeByteArrays(true);
-		this.factory.afterPropertiesSet();
-		Gson gson = this.factory.getObject();
-		ByteArrayBean bean = new ByteArrayBean();
-		bean.setBytes(new byte[] {0x1, 0x2});
-		String result = gson.toJson(bean);
-		assertEquals("{\"bytes\":\"AQI\\u003d\"}", result);
-	}
+    @Test
+    public void base64EncodeByteArraysDisableHtmlEscaping() throws Exception {
+        this.factory.setBase64EncodeByteArrays(true);
+        this.factory.setDisableHtmlEscaping(true);
+        this.factory.afterPropertiesSet();
+        Gson gson = this.factory.getObject();
+        ByteArrayBean bean = new ByteArrayBean();
+        bean.setBytes(new byte[] {0x1, 0x2});
+        String result = gson.toJson(bean);
+        assertEquals("{\"bytes\":\"AQI=\"}", result);
+    }
 
-	@Test
-	public void base64EncodeByteArraysDisableHtmlEscaping() throws Exception {
-		this.factory.setBase64EncodeByteArrays(true);
-		this.factory.setDisableHtmlEscaping(true);
-		this.factory.afterPropertiesSet();
-		Gson gson = this.factory.getObject();
-		ByteArrayBean bean = new ByteArrayBean();
-		bean.setBytes(new byte[] {0x1, 0x2});
-		String result = gson.toJson(bean);
-		assertEquals("{\"bytes\":\"AQI=\"}", result);
-	}
+    @Test
+    public void base64EncodeByteArraysFalse() throws Exception {
+        this.factory.setBase64EncodeByteArrays(false);
+        this.factory.afterPropertiesSet();
+        Gson gson = this.factory.getObject();
+        ByteArrayBean bean = new ByteArrayBean();
+        bean.setBytes(new byte[] {0x1, 0x2});
+        String result = gson.toJson(bean);
+        assertEquals("{\"bytes\":[1,2]}", result);
+    }
 
-	@Test
-	public void base64EncodeByteArraysFalse() throws Exception {
-		this.factory.setBase64EncodeByteArrays(false);
-		this.factory.afterPropertiesSet();
-		Gson gson = this.factory.getObject();
-		ByteArrayBean bean = new ByteArrayBean();
-		bean.setBytes(new byte[] {0x1, 0x2});
-		String result = gson.toJson(bean);
-		assertEquals("{\"bytes\":[1,2]}", result);
-	}
+    private static class StringBean {
 
+        private String name;
 
-	private static class StringBean {
+        @SuppressWarnings("unused")
+        public String getName() {
+            return this.name;
+        }
 
-		private String name;
+        public void setName(String name) {
+            this.name = name;
+        }
+    }
 
-		@SuppressWarnings("unused")
-		public String getName() {
-			return this.name;
-		}
+    private static class DateBean {
 
-		public void setName(String name) {
-			this.name = name;
-		}
-	}
+        private Date date;
 
+        @SuppressWarnings("unused")
+        public Date getDate() {
+            return this.date;
+        }
 
-	private static class DateBean {
+        public void setDate(Date date) {
+            this.date = date;
+        }
+    }
 
-		private Date date;
+    private static class ByteArrayBean {
 
-		@SuppressWarnings("unused")
-		public Date getDate() {
-			return this.date;
-		}
+        private byte[] bytes;
 
-		public void setDate(Date date) {
-			this.date = date;
-		}
-	}
+        @SuppressWarnings("unused")
+        public byte[] getBytes() {
+            return this.bytes;
+        }
 
-
-	private static class ByteArrayBean {
-
-		private byte[] bytes;
-
-		@SuppressWarnings("unused")
-		public byte[] getBytes() {
-			return this.bytes;
-		}
-
-		public void setBytes(byte[] bytes) {
-			this.bytes = bytes;
-		}
-	}
-
+        public void setBytes(byte[] bytes) {
+            this.bytes = bytes;
+        }
+    }
 }

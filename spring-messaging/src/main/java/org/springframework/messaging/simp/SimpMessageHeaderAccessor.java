@@ -30,287 +30,271 @@ import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 
 /**
- * A base class for working with message headers in simple messaging protocols that
- * support basic messaging patterns. Provides uniform access to specific values common
- * across protocols such as a destination, message type (e.g. publish, subscribe, etc),
- * session id, and others.
+ * A base class for working with message headers in simple messaging protocols that support basic
+ * messaging patterns. Provides uniform access to specific values common across protocols such as a
+ * destination, message type (e.g. publish, subscribe, etc), session id, and others.
  *
- * <p>Use one of the static factory method in this class, then call getters and setters,
- * and at the end if necessary call {@link #toMap()} to obtain the updated headers.
+ * <p>Use one of the static factory method in this class, then call getters and setters, and at the
+ * end if necessary call {@link #toMap()} to obtain the updated headers.
  *
  * @author Rossen Stoyanchev
  * @since 4.0
  */
 public class SimpMessageHeaderAccessor extends NativeMessageHeaderAccessor {
 
-	private static final IdTimestampMessageHeaderInitializer headerInitializer;
+    private static final IdTimestampMessageHeaderInitializer headerInitializer;
 
-	static {
-		headerInitializer = new IdTimestampMessageHeaderInitializer();
-		headerInitializer.setDisableIdGeneration();
-		headerInitializer.setEnableTimestamp(false);
-	}
+    static {
+        headerInitializer = new IdTimestampMessageHeaderInitializer();
+        headerInitializer.setDisableIdGeneration();
+        headerInitializer.setEnableTimestamp(false);
+    }
 
-	// SiMP header names
+    // SiMP header names
 
-	public static final String DESTINATION_HEADER = "simpDestination";
+    public static final String DESTINATION_HEADER = "simpDestination";
 
-	public static final String MESSAGE_TYPE_HEADER = "simpMessageType";
+    public static final String MESSAGE_TYPE_HEADER = "simpMessageType";
 
-	public static final String SESSION_ID_HEADER = "simpSessionId";
+    public static final String SESSION_ID_HEADER = "simpSessionId";
 
-	public static final String SESSION_ATTRIBUTES = "simpSessionAttributes";
+    public static final String SESSION_ATTRIBUTES = "simpSessionAttributes";
 
-	public static final String SUBSCRIPTION_ID_HEADER = "simpSubscriptionId";
+    public static final String SUBSCRIPTION_ID_HEADER = "simpSubscriptionId";
 
-	public static final String USER_HEADER = "simpUser";
+    public static final String USER_HEADER = "simpUser";
 
-	public static final String CONNECT_MESSAGE_HEADER = "simpConnectMessage";
+    public static final String CONNECT_MESSAGE_HEADER = "simpConnectMessage";
 
-	public static final String DISCONNECT_MESSAGE_HEADER = "simpDisconnectMessage";
+    public static final String DISCONNECT_MESSAGE_HEADER = "simpDisconnectMessage";
 
-	public static final String HEART_BEAT_HEADER = "simpHeartbeat";
+    public static final String HEART_BEAT_HEADER = "simpHeartbeat";
 
+    /**
+     * A header for internal use with "user" destinations where we need to restore the destination
+     * prior to sending messages to clients.
+     */
+    public static final String ORIGINAL_DESTINATION = "simpOrigDestination";
 
-	/**
-	 * A header for internal use with "user" destinations where we need to
-	 * restore the destination prior to sending messages to clients.
-	 */
-	public static final String ORIGINAL_DESTINATION = "simpOrigDestination";
+    /**
+     * A header that indicates to the broker that the sender will ignore errors. The header is
+     * simply checked for presence or absence.
+     */
+    public static final String IGNORE_ERROR = "simpIgnoreError";
 
-	/**
-	 * A header that indicates to the broker that the sender will ignore errors.
-	 * The header is simply checked for presence or absence.
-	 */
-	public static final String IGNORE_ERROR = "simpIgnoreError";
+    @Nullable private Consumer<Principal> userCallback;
 
+    /**
+     * A constructor for creating new message headers. This constructor is protected. See factory
+     * methods in this and sub-classes.
+     */
+    protected SimpMessageHeaderAccessor(
+            SimpMessageType messageType,
+            @Nullable Map<String, List<String>> externalSourceHeaders) {
 
-	@Nullable
-	private Consumer<Principal> userCallback;
+        super(externalSourceHeaders);
+        Assert.notNull(messageType, "MessageType must not be null");
+        setHeader(MESSAGE_TYPE_HEADER, messageType);
+        headerInitializer.initHeaders(this);
+    }
 
+    /**
+     * A constructor for accessing and modifying existing message headers. This constructor is
+     * protected. See factory methods in this and sub-classes.
+     */
+    protected SimpMessageHeaderAccessor(Message<?> message) {
+        super(message);
+        headerInitializer.initHeaders(this);
+    }
 
-	/**
-	 * A constructor for creating new message headers.
-	 * This constructor is protected. See factory methods in this and sub-classes.
-	 */
-	protected SimpMessageHeaderAccessor(SimpMessageType messageType,
-			@Nullable Map<String, List<String>> externalSourceHeaders) {
+    @Override
+    protected MessageHeaderAccessor createAccessor(Message<?> message) {
+        return wrap(message);
+    }
 
-		super(externalSourceHeaders);
-		Assert.notNull(messageType, "MessageType must not be null");
-		setHeader(MESSAGE_TYPE_HEADER, messageType);
-		headerInitializer.initHeaders(this);
-	}
+    public void setMessageTypeIfNotSet(SimpMessageType messageType) {
+        if (getMessageType() == null) {
+            setHeader(MESSAGE_TYPE_HEADER, messageType);
+        }
+    }
 
-	/**
-	 * A constructor for accessing and modifying existing message headers. This
-	 * constructor is protected. See factory methods in this and sub-classes.
-	 */
-	protected SimpMessageHeaderAccessor(Message<?> message) {
-		super(message);
-		headerInitializer.initHeaders(this);
-	}
+    @Nullable
+    public SimpMessageType getMessageType() {
+        return (SimpMessageType) getHeader(MESSAGE_TYPE_HEADER);
+    }
 
+    public void setDestination(@Nullable String destination) {
+        setHeader(DESTINATION_HEADER, destination);
+    }
 
-	@Override
-	protected MessageHeaderAccessor createAccessor(Message<?> message) {
-		return wrap(message);
-	}
+    @Nullable
+    public String getDestination() {
+        return (String) getHeader(DESTINATION_HEADER);
+    }
 
-	public void setMessageTypeIfNotSet(SimpMessageType messageType) {
-		if (getMessageType() == null) {
-			setHeader(MESSAGE_TYPE_HEADER, messageType);
-		}
-	}
+    public void setSubscriptionId(@Nullable String subscriptionId) {
+        setHeader(SUBSCRIPTION_ID_HEADER, subscriptionId);
+    }
 
-	@Nullable
-	public SimpMessageType getMessageType() {
-		return (SimpMessageType) getHeader(MESSAGE_TYPE_HEADER);
-	}
+    @Nullable
+    public String getSubscriptionId() {
+        return (String) getHeader(SUBSCRIPTION_ID_HEADER);
+    }
 
-	public void setDestination(@Nullable String destination) {
-		setHeader(DESTINATION_HEADER, destination);
-	}
+    public void setSessionId(@Nullable String sessionId) {
+        setHeader(SESSION_ID_HEADER, sessionId);
+    }
 
-	@Nullable
-	public String getDestination() {
-		return (String) getHeader(DESTINATION_HEADER);
-	}
+    /** Return the id of the current session. */
+    @Nullable
+    public String getSessionId() {
+        return (String) getHeader(SESSION_ID_HEADER);
+    }
 
-	public void setSubscriptionId(@Nullable String subscriptionId) {
-		setHeader(SUBSCRIPTION_ID_HEADER, subscriptionId);
-	}
+    /** A static alternative for access to the session attributes header. */
+    public void setSessionAttributes(@Nullable Map<String, Object> attributes) {
+        setHeader(SESSION_ATTRIBUTES, attributes);
+    }
 
-	@Nullable
-	public String getSubscriptionId() {
-		return (String) getHeader(SUBSCRIPTION_ID_HEADER);
-	}
+    /** Return the attributes associated with the current session. */
+    @SuppressWarnings("unchecked")
+    @Nullable
+    public Map<String, Object> getSessionAttributes() {
+        return (Map<String, Object>) getHeader(SESSION_ATTRIBUTES);
+    }
 
-	public void setSessionId(@Nullable String sessionId) {
-		setHeader(SESSION_ID_HEADER, sessionId);
-	}
+    public void setUser(@Nullable Principal principal) {
+        setHeader(USER_HEADER, principal);
+        if (this.userCallback != null) {
+            this.userCallback.accept(principal);
+        }
+    }
 
-	/**
-	 * Return the id of the current session.
-	 */
-	@Nullable
-	public String getSessionId() {
-		return (String) getHeader(SESSION_ID_HEADER);
-	}
+    /** Return the user associated with the current session. */
+    @Nullable
+    public Principal getUser() {
+        return (Principal) getHeader(USER_HEADER);
+    }
 
-	/**
-	 * A static alternative for access to the session attributes header.
-	 */
-	public void setSessionAttributes(@Nullable Map<String, Object> attributes) {
-		setHeader(SESSION_ATTRIBUTES, attributes);
-	}
+    /**
+     * Provide a callback to be invoked if and when {@link #setUser(Principal)} is called. This is
+     * used internally on the inbound channel to detect token-based authentications through an
+     * interceptor.
+     *
+     * @param callback the callback to invoke
+     * @since 5.1.9
+     */
+    public void setUserChangeCallback(Consumer<Principal> callback) {
+        Assert.notNull(callback, "'callback' is required");
+        this.userCallback =
+                this.userCallback != null ? this.userCallback.andThen(callback) : callback;
+    }
 
-	/**
-	 * Return the attributes associated with the current session.
-	 */
-	@SuppressWarnings("unchecked")
-	@Nullable
-	public Map<String, Object> getSessionAttributes() {
-		return (Map<String, Object>) getHeader(SESSION_ATTRIBUTES);
-	}
+    @Override
+    public String getShortLogMessage(Object payload) {
+        if (getMessageType() == null) {
+            return super.getDetailedLogMessage(payload);
+        }
+        StringBuilder sb = getBaseLogMessage();
+        if (!CollectionUtils.isEmpty(getSessionAttributes())) {
+            sb.append(" attributes[").append(getSessionAttributes().size()).append("]");
+        }
+        sb.append(getShortPayloadLogMessage(payload));
+        return sb.toString();
+    }
 
-	public void setUser(@Nullable Principal principal) {
-		setHeader(USER_HEADER, principal);
-		if (this.userCallback != null) {
-			this.userCallback.accept(principal);
-		}
-	}
+    @SuppressWarnings("unchecked")
+    @Override
+    public String getDetailedLogMessage(@Nullable Object payload) {
+        if (getMessageType() == null) {
+            return super.getDetailedLogMessage(payload);
+        }
+        StringBuilder sb = getBaseLogMessage();
+        if (!CollectionUtils.isEmpty(getSessionAttributes())) {
+            sb.append(" attributes=").append(getSessionAttributes());
+        }
+        if (!CollectionUtils.isEmpty((Map<String, List<String>>) getHeader(NATIVE_HEADERS))) {
+            sb.append(" nativeHeaders=").append(getHeader(NATIVE_HEADERS));
+        }
+        sb.append(getDetailedPayloadLogMessage(payload));
+        return sb.toString();
+    }
 
-	/**
-	 * Return the user associated with the current session.
-	 */
-	@Nullable
-	public Principal getUser() {
-		return (Principal) getHeader(USER_HEADER);
-	}
+    private StringBuilder getBaseLogMessage() {
+        StringBuilder sb = new StringBuilder();
+        SimpMessageType messageType = getMessageType();
+        sb.append(messageType != null ? messageType.name() : SimpMessageType.OTHER);
+        String destination = getDestination();
+        if (destination != null) {
+            sb.append(" destination=").append(destination);
+        }
+        String subscriptionId = getSubscriptionId();
+        if (subscriptionId != null) {
+            sb.append(" subscriptionId=").append(subscriptionId);
+        }
+        sb.append(" session=").append(getSessionId());
+        Principal user = getUser();
+        if (user != null) {
+            sb.append(" user=").append(user.getName());
+        }
+        return sb;
+    }
 
-	/**
-	 * Provide a callback to be invoked if and when {@link #setUser(Principal)}
-	 * is called. This is used internally on the inbound channel to detect
-	 * token-based authentications through an interceptor.
-	 * @param callback the callback to invoke
-	 * @since 5.1.9
-	 */
-	public void setUserChangeCallback(Consumer<Principal> callback) {
-		Assert.notNull(callback, "'callback' is required");
-		this.userCallback = this.userCallback != null ? this.userCallback.andThen(callback) : callback;
-	}
+    // Static factory methods and accessors
 
-	@Override
-	public String getShortLogMessage(Object payload) {
-		if (getMessageType() == null) {
-			return super.getDetailedLogMessage(payload);
-		}
-		StringBuilder sb = getBaseLogMessage();
-		if (!CollectionUtils.isEmpty(getSessionAttributes())) {
-			sb.append(" attributes[").append(getSessionAttributes().size()).append("]");
-		}
-		sb.append(getShortPayloadLogMessage(payload));
-		return sb.toString();
-	}
+    /**
+     * Create an instance with {@link org.springframework.messaging.simp.SimpMessageType} {@code
+     * MESSAGE}.
+     */
+    public static SimpMessageHeaderAccessor create() {
+        return new SimpMessageHeaderAccessor(SimpMessageType.MESSAGE, null);
+    }
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public String getDetailedLogMessage(@Nullable Object payload) {
-		if (getMessageType() == null) {
-			return super.getDetailedLogMessage(payload);
-		}
-		StringBuilder sb = getBaseLogMessage();
-		if (!CollectionUtils.isEmpty(getSessionAttributes())) {
-			sb.append(" attributes=").append(getSessionAttributes());
-		}
-		if (!CollectionUtils.isEmpty((Map<String, List<String>>) getHeader(NATIVE_HEADERS))) {
-			sb.append(" nativeHeaders=").append(getHeader(NATIVE_HEADERS));
-		}
-		sb.append(getDetailedPayloadLogMessage(payload));
-		return sb.toString();
-	}
+    /**
+     * Create an instance with the given {@link org.springframework.messaging.simp.SimpMessageType}.
+     */
+    public static SimpMessageHeaderAccessor create(SimpMessageType messageType) {
+        return new SimpMessageHeaderAccessor(messageType, null);
+    }
 
-	private StringBuilder getBaseLogMessage() {
-		StringBuilder sb = new StringBuilder();
-		SimpMessageType messageType = getMessageType();
-		sb.append(messageType != null ? messageType.name() : SimpMessageType.OTHER);
-		String destination = getDestination();
-		if (destination != null) {
-			sb.append(" destination=").append(destination);
-		}
-		String subscriptionId = getSubscriptionId();
-		if (subscriptionId != null) {
-			sb.append(" subscriptionId=").append(subscriptionId);
-		}
-		sb.append(" session=").append(getSessionId());
-		Principal user = getUser();
-		if (user != null) {
-			sb.append(" user=").append(user.getName());
-		}
-		return sb;
-	}
+    /** Create an instance from the payload and headers of the given Message. */
+    public static SimpMessageHeaderAccessor wrap(Message<?> message) {
+        return new SimpMessageHeaderAccessor(message);
+    }
 
+    @Nullable
+    public static SimpMessageType getMessageType(Map<String, Object> headers) {
+        return (SimpMessageType) headers.get(MESSAGE_TYPE_HEADER);
+    }
 
-	// Static factory methods and accessors
+    @Nullable
+    public static String getDestination(Map<String, Object> headers) {
+        return (String) headers.get(DESTINATION_HEADER);
+    }
 
-	/**
-	 * Create an instance with
-	 * {@link org.springframework.messaging.simp.SimpMessageType} {@code MESSAGE}.
-	 */
-	public static SimpMessageHeaderAccessor create() {
-		return new SimpMessageHeaderAccessor(SimpMessageType.MESSAGE, null);
-	}
+    @Nullable
+    public static String getSubscriptionId(Map<String, Object> headers) {
+        return (String) headers.get(SUBSCRIPTION_ID_HEADER);
+    }
 
-	/**
-	 * Create an instance with the given
-	 * {@link org.springframework.messaging.simp.SimpMessageType}.
-	 */
-	public static SimpMessageHeaderAccessor create(SimpMessageType messageType) {
-		return new SimpMessageHeaderAccessor(messageType, null);
-	}
+    @Nullable
+    public static String getSessionId(Map<String, Object> headers) {
+        return (String) headers.get(SESSION_ID_HEADER);
+    }
 
-	/**
-	 * Create an instance from the payload and headers of the given Message.
-	 */
-	public static SimpMessageHeaderAccessor wrap(Message<?> message) {
-		return new SimpMessageHeaderAccessor(message);
-	}
+    @SuppressWarnings("unchecked")
+    @Nullable
+    public static Map<String, Object> getSessionAttributes(Map<String, Object> headers) {
+        return (Map<String, Object>) headers.get(SESSION_ATTRIBUTES);
+    }
 
-	@Nullable
-	public static SimpMessageType getMessageType(Map<String, Object> headers) {
-		return (SimpMessageType) headers.get(MESSAGE_TYPE_HEADER);
-	}
+    @Nullable
+    public static Principal getUser(Map<String, Object> headers) {
+        return (Principal) headers.get(USER_HEADER);
+    }
 
-	@Nullable
-	public static String getDestination(Map<String, Object> headers) {
-		return (String) headers.get(DESTINATION_HEADER);
-	}
-
-	@Nullable
-	public static String getSubscriptionId(Map<String, Object> headers) {
-		return (String) headers.get(SUBSCRIPTION_ID_HEADER);
-	}
-
-	@Nullable
-	public static String getSessionId(Map<String, Object> headers) {
-		return (String) headers.get(SESSION_ID_HEADER);
-	}
-
-	@SuppressWarnings("unchecked")
-	@Nullable
-	public static Map<String, Object> getSessionAttributes(Map<String, Object> headers) {
-		return (Map<String, Object>) headers.get(SESSION_ATTRIBUTES);
-	}
-
-	@Nullable
-	public static Principal getUser(Map<String, Object> headers) {
-		return (Principal) headers.get(USER_HEADER);
-	}
-
-	@Nullable
-	public static long[] getHeartbeat(Map<String, Object> headers) {
-		return (long[]) headers.get(HEART_BEAT_HEADER);
-	}
-
+    @Nullable
+    public static long[] getHeartbeat(Map<String, Object> headers) {
+        return (long[]) headers.get(HEART_BEAT_HEADER);
+    }
 }

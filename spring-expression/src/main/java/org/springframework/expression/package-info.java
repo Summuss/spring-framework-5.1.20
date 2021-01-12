@@ -1,6 +1,4 @@
-/**
- * Core abstractions behind the <em>Spring Expression Language</em>.
- */
+/** Core abstractions behind the <em>Spring Expression Language</em>. */
 @NonNullApi
 @NonNullFields
 package org.springframework.expression;

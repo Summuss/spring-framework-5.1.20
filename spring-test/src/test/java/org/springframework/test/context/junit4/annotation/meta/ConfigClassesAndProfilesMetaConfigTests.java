@@ -28,9 +28,9 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import static org.junit.Assert.*;
 
 /**
- * Integration tests for meta-annotation attribute override support, demonstrating
- * that the test class is used as the <em>declaring class</em> when detecting default
- * configuration classes for the declaration of {@code @ContextConfiguration}.
+ * Integration tests for meta-annotation attribute override support, demonstrating that the test
+ * class is used as the <em>declaring class</em> when detecting default configuration classes for
+ * the declaration of {@code @ContextConfiguration}.
  *
  * @author Sam Brannen
  * @since 4.0.3
@@ -39,33 +39,30 @@ import static org.junit.Assert.*;
 @ConfigClassesAndProfilesMetaConfig(profiles = "dev")
 public class ConfigClassesAndProfilesMetaConfigTests {
 
-	@Configuration
-	@Profile("dev")
-	static class DevConfig {
+    @Configuration
+    @Profile("dev")
+    static class DevConfig {
 
-		@Bean
-		public String foo() {
-			return "Local Dev Foo";
-		}
-	}
+        @Bean
+        public String foo() {
+            return "Local Dev Foo";
+        }
+    }
 
-	@Configuration
-	@Profile("prod")
-	static class ProductionConfig {
+    @Configuration
+    @Profile("prod")
+    static class ProductionConfig {
 
-		@Bean
-		public String foo() {
-			return "Local Production Foo";
-		}
-	}
+        @Bean
+        public String foo() {
+            return "Local Production Foo";
+        }
+    }
 
+    @Autowired private String foo;
 
-	@Autowired
-	private String foo;
-
-
-	@Test
-	public void foo() {
-		assertEquals("Local Dev Foo", foo);
-	}
+    @Test
+    public void foo() {
+        assertEquals("Local Dev Foo", foo);
+    }
 }

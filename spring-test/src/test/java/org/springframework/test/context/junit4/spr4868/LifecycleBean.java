@@ -28,17 +28,15 @@ import org.apache.commons.logging.LogFactory;
  */
 class LifecycleBean {
 
-	private final Log logger = LogFactory.getLog(LifecycleBean.class);
+    private final Log logger = LogFactory.getLog(LifecycleBean.class);
 
+    @PostConstruct
+    public void init() {
+        logger.info("initializing");
+    }
 
-	@PostConstruct
-	public void init() {
-		logger.info("initializing");
-	}
-
-	@PreDestroy
-	public void destroy() {
-		logger.info("destroying");
-	}
-
+    @PreDestroy
+    public void destroy() {
+        logger.info("destroying");
+    }
 }

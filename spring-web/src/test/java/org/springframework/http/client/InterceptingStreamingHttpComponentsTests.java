@@ -20,22 +20,20 @@ import org.junit.Test;
 
 import org.springframework.http.HttpMethod;
 
-/**
- * @author Juergen Hoeller
- */
+/** @author Juergen Hoeller */
 public class InterceptingStreamingHttpComponentsTests extends AbstractHttpRequestFactoryTestCase {
 
-	@Override
-	protected ClientHttpRequestFactory createRequestFactory() {
-		HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory();
-		requestFactory.setBufferRequestBody(false);
-		return new InterceptingClientHttpRequestFactory(requestFactory, null);
-	}
+    @Override
+    protected ClientHttpRequestFactory createRequestFactory() {
+        HttpComponentsClientHttpRequestFactory requestFactory =
+                new HttpComponentsClientHttpRequestFactory();
+        requestFactory.setBufferRequestBody(false);
+        return new InterceptingClientHttpRequestFactory(requestFactory, null);
+    }
 
-	@Override
-	@Test
-	public void httpMethods() throws Exception {
-		assertHttpMethod("patch", HttpMethod.PATCH);
-	}
-
+    @Override
+    @Test
+    public void httpMethods() throws Exception {
+        assertHttpMethod("patch", HttpMethod.PATCH);
+    }
 }

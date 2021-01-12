@@ -42,180 +42,199 @@ import org.springframework.util.StringUtils;
  */
 public class UtilNamespaceHandler extends NamespaceHandlerSupport {
 
-	private static final String SCOPE_ATTRIBUTE = "scope";
+    private static final String SCOPE_ATTRIBUTE = "scope";
 
+    @Override
+    public void init() {
+        registerBeanDefinitionParser("constant", new ConstantBeanDefinitionParser());
+        registerBeanDefinitionParser("property-path", new PropertyPathBeanDefinitionParser());
+        registerBeanDefinitionParser("list", new ListBeanDefinitionParser());
+        registerBeanDefinitionParser("set", new SetBeanDefinitionParser());
+        registerBeanDefinitionParser("map", new MapBeanDefinitionParser());
+        registerBeanDefinitionParser("properties", new PropertiesBeanDefinitionParser());
+    }
 
-	@Override
-	public void init() {
-		registerBeanDefinitionParser("constant", new ConstantBeanDefinitionParser());
-		registerBeanDefinitionParser("property-path", new PropertyPathBeanDefinitionParser());
-		registerBeanDefinitionParser("list", new ListBeanDefinitionParser());
-		registerBeanDefinitionParser("set", new SetBeanDefinitionParser());
-		registerBeanDefinitionParser("map", new MapBeanDefinitionParser());
-		registerBeanDefinitionParser("properties", new PropertiesBeanDefinitionParser());
-	}
+    private static class ConstantBeanDefinitionParser extends AbstractSimpleBeanDefinitionParser {
 
+        @Override
+        protected Class<?> getBeanClass(Element element) {
+            return FieldRetrievingFactoryBean.class;
+        }
 
-	private static class ConstantBeanDefinitionParser extends AbstractSimpleBeanDefinitionParser {
+        @Override
+        protected String resolveId(
+                Element element, AbstractBeanDefinition definition, ParserContext parserContext) {
+            String id = super.resolveId(element, definition, parserContext);
+            if (!StringUtils.hasText(id)) {
+                id = element.getAttribute("static-field");
+            }
+            return id;
+        }
+    }
 
-		@Override
-		protected Class<?> getBeanClass(Element element) {
-			return FieldRetrievingFactoryBean.class;
-		}
+    private static class PropertyPathBeanDefinitionParser
+            extends AbstractSingleBeanDefinitionParser {
 
-		@Override
-		protected String resolveId(Element element, AbstractBeanDefinition definition, ParserContext parserContext) {
-			String id = super.resolveId(element, definition, parserContext);
-			if (!StringUtils.hasText(id)) {
-				id = element.getAttribute("static-field");
-			}
-			return id;
-		}
-	}
+        @Override
+        protected Class<?> getBeanClass(Element element) {
+            return PropertyPathFactoryBean.class;
+        }
 
+        @Override
+        protected void doParse(
+                Element element, ParserContext parserContext, BeanDefinitionBuilder builder) {
+            String path = element.getAttribute("path");
+            if (!StringUtils.hasText(path)) {
+                parserContext
+                        .getReaderContext()
+                        .error("Attribute 'path' must not be empty", element);
+                return;
+            }
+            int dotIndex = path.indexOf('.');
+            if (dotIndex == -1) {
+                parserContext
+                        .getReaderContext()
+                        .error(
+                                "Attribute 'path' must follow pattern 'beanName.propertyName'",
+                                element);
+                return;
+            }
+            String beanName = path.substring(0, dotIndex);
+            String propertyPath = path.substring(dotIndex + 1);
+            builder.addPropertyValue("targetBeanName", beanName);
+            builder.addPropertyValue("propertyPath", propertyPath);
+        }
 
-	private static class PropertyPathBeanDefinitionParser extends AbstractSingleBeanDefinitionParser {
+        @Override
+        protected String resolveId(
+                Element element, AbstractBeanDefinition definition, ParserContext parserContext) {
+            String id = super.resolveId(element, definition, parserContext);
+            if (!StringUtils.hasText(id)) {
+                id = element.getAttribute("path");
+            }
+            return id;
+        }
+    }
 
-		@Override
-		protected Class<?> getBeanClass(Element element) {
-			return PropertyPathFactoryBean.class;
-		}
+    private static class ListBeanDefinitionParser extends AbstractSingleBeanDefinitionParser {
 
-		@Override
-		protected void doParse(Element element, ParserContext parserContext, BeanDefinitionBuilder builder) {
-			String path = element.getAttribute("path");
-			if (!StringUtils.hasText(path)) {
-				parserContext.getReaderContext().error("Attribute 'path' must not be empty", element);
-				return;
-			}
-			int dotIndex = path.indexOf('.');
-			if (dotIndex == -1) {
-				parserContext.getReaderContext().error(
-						"Attribute 'path' must follow pattern 'beanName.propertyName'", element);
-				return;
-			}
-			String beanName = path.substring(0, dotIndex);
-			String propertyPath = path.substring(dotIndex + 1);
-			builder.addPropertyValue("targetBeanName", beanName);
-			builder.addPropertyValue("propertyPath", propertyPath);
-		}
+        @Override
+        protected Class<?> getBeanClass(Element element) {
+            return ListFactoryBean.class;
+        }
 
-		@Override
-		protected String resolveId(Element element, AbstractBeanDefinition definition, ParserContext parserContext) {
-			String id = super.resolveId(element, definition, parserContext);
-			if (!StringUtils.hasText(id)) {
-				id = element.getAttribute("path");
-			}
-			return id;
-		}
-	}
+        @Override
+        protected void doParse(
+                Element element, ParserContext parserContext, BeanDefinitionBuilder builder) {
+            List<Object> parsedList =
+                    parserContext
+                            .getDelegate()
+                            .parseListElement(element, builder.getRawBeanDefinition());
+            builder.addPropertyValue("sourceList", parsedList);
 
+            String listClass = element.getAttribute("list-class");
+            if (StringUtils.hasText(listClass)) {
+                builder.addPropertyValue("targetListClass", listClass);
+            }
 
-	private static class ListBeanDefinitionParser extends AbstractSingleBeanDefinitionParser {
+            String scope = element.getAttribute(SCOPE_ATTRIBUTE);
+            if (StringUtils.hasLength(scope)) {
+                builder.setScope(scope);
+            }
+        }
+    }
 
-		@Override
-		protected Class<?> getBeanClass(Element element) {
-			return ListFactoryBean.class;
-		}
+    private static class SetBeanDefinitionParser extends AbstractSingleBeanDefinitionParser {
 
-		@Override
-		protected void doParse(Element element, ParserContext parserContext, BeanDefinitionBuilder builder) {
-			List<Object> parsedList = parserContext.getDelegate().parseListElement(element, builder.getRawBeanDefinition());
-			builder.addPropertyValue("sourceList", parsedList);
+        @Override
+        protected Class<?> getBeanClass(Element element) {
+            return SetFactoryBean.class;
+        }
 
-			String listClass = element.getAttribute("list-class");
-			if (StringUtils.hasText(listClass)) {
-				builder.addPropertyValue("targetListClass", listClass);
-			}
+        @Override
+        protected void doParse(
+                Element element, ParserContext parserContext, BeanDefinitionBuilder builder) {
+            Set<Object> parsedSet =
+                    parserContext
+                            .getDelegate()
+                            .parseSetElement(element, builder.getRawBeanDefinition());
+            builder.addPropertyValue("sourceSet", parsedSet);
 
-			String scope = element.getAttribute(SCOPE_ATTRIBUTE);
-			if (StringUtils.hasLength(scope)) {
-				builder.setScope(scope);
-			}
-		}
-	}
+            String setClass = element.getAttribute("set-class");
+            if (StringUtils.hasText(setClass)) {
+                builder.addPropertyValue("targetSetClass", setClass);
+            }
 
+            String scope = element.getAttribute(SCOPE_ATTRIBUTE);
+            if (StringUtils.hasLength(scope)) {
+                builder.setScope(scope);
+            }
+        }
+    }
 
-	private static class SetBeanDefinitionParser extends AbstractSingleBeanDefinitionParser {
+    private static class MapBeanDefinitionParser extends AbstractSingleBeanDefinitionParser {
 
-		@Override
-		protected Class<?> getBeanClass(Element element) {
-			return SetFactoryBean.class;
-		}
+        @Override
+        protected Class<?> getBeanClass(Element element) {
+            return MapFactoryBean.class;
+        }
 
-		@Override
-		protected void doParse(Element element, ParserContext parserContext, BeanDefinitionBuilder builder) {
-			Set<Object> parsedSet = parserContext.getDelegate().parseSetElement(element, builder.getRawBeanDefinition());
-			builder.addPropertyValue("sourceSet", parsedSet);
+        @Override
+        protected void doParse(
+                Element element, ParserContext parserContext, BeanDefinitionBuilder builder) {
+            Map<Object, Object> parsedMap =
+                    parserContext
+                            .getDelegate()
+                            .parseMapElement(element, builder.getRawBeanDefinition());
+            builder.addPropertyValue("sourceMap", parsedMap);
 
-			String setClass = element.getAttribute("set-class");
-			if (StringUtils.hasText(setClass)) {
-				builder.addPropertyValue("targetSetClass", setClass);
-			}
+            String mapClass = element.getAttribute("map-class");
+            if (StringUtils.hasText(mapClass)) {
+                builder.addPropertyValue("targetMapClass", mapClass);
+            }
 
-			String scope = element.getAttribute(SCOPE_ATTRIBUTE);
-			if (StringUtils.hasLength(scope)) {
-				builder.setScope(scope);
-			}
-		}
-	}
+            String scope = element.getAttribute(SCOPE_ATTRIBUTE);
+            if (StringUtils.hasLength(scope)) {
+                builder.setScope(scope);
+            }
+        }
+    }
 
+    private static class PropertiesBeanDefinitionParser extends AbstractSingleBeanDefinitionParser {
 
-	private static class MapBeanDefinitionParser extends AbstractSingleBeanDefinitionParser {
+        @Override
+        protected Class<?> getBeanClass(Element element) {
+            return PropertiesFactoryBean.class;
+        }
 
-		@Override
-		protected Class<?> getBeanClass(Element element) {
-			return MapFactoryBean.class;
-		}
+        @Override
+        protected void doParse(
+                Element element, ParserContext parserContext, BeanDefinitionBuilder builder) {
+            Properties parsedProps = parserContext.getDelegate().parsePropsElement(element);
+            builder.addPropertyValue("properties", parsedProps);
 
-		@Override
-		protected void doParse(Element element, ParserContext parserContext, BeanDefinitionBuilder builder) {
-			Map<Object, Object> parsedMap = parserContext.getDelegate().parseMapElement(element, builder.getRawBeanDefinition());
-			builder.addPropertyValue("sourceMap", parsedMap);
+            String location = element.getAttribute("location");
+            if (StringUtils.hasLength(location)) {
+                location =
+                        parserContext
+                                .getReaderContext()
+                                .getEnvironment()
+                                .resolvePlaceholders(location);
+                String[] locations = StringUtils.commaDelimitedListToStringArray(location);
+                builder.addPropertyValue("locations", locations);
+            }
 
-			String mapClass = element.getAttribute("map-class");
-			if (StringUtils.hasText(mapClass)) {
-				builder.addPropertyValue("targetMapClass", mapClass);
-			}
+            builder.addPropertyValue(
+                    "ignoreResourceNotFound",
+                    Boolean.valueOf(element.getAttribute("ignore-resource-not-found")));
 
-			String scope = element.getAttribute(SCOPE_ATTRIBUTE);
-			if (StringUtils.hasLength(scope)) {
-				builder.setScope(scope);
-			}
-		}
-	}
+            builder.addPropertyValue(
+                    "localOverride", Boolean.valueOf(element.getAttribute("local-override")));
 
-
-	private static class PropertiesBeanDefinitionParser extends AbstractSingleBeanDefinitionParser {
-
-		@Override
-		protected Class<?> getBeanClass(Element element) {
-			return PropertiesFactoryBean.class;
-		}
-
-		@Override
-		protected void doParse(Element element, ParserContext parserContext, BeanDefinitionBuilder builder) {
-			Properties parsedProps = parserContext.getDelegate().parsePropsElement(element);
-			builder.addPropertyValue("properties", parsedProps);
-
-			String location = element.getAttribute("location");
-			if (StringUtils.hasLength(location)) {
-				location = parserContext.getReaderContext().getEnvironment().resolvePlaceholders(location);
-				String[] locations = StringUtils.commaDelimitedListToStringArray(location);
-				builder.addPropertyValue("locations", locations);
-			}
-
-			builder.addPropertyValue("ignoreResourceNotFound",
-					Boolean.valueOf(element.getAttribute("ignore-resource-not-found")));
-
-			builder.addPropertyValue("localOverride",
-					Boolean.valueOf(element.getAttribute("local-override")));
-
-			String scope = element.getAttribute(SCOPE_ATTRIBUTE);
-			if (StringUtils.hasLength(scope)) {
-				builder.setScope(scope);
-			}
-		}
-	}
-
+            String scope = element.getAttribute(SCOPE_ATTRIBUTE);
+            if (StringUtils.hasLength(scope)) {
+                builder.setScope(scope);
+            }
+        }
+    }
 }

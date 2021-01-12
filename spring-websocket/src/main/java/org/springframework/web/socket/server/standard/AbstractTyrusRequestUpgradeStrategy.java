@@ -56,8 +56,8 @@ import org.springframework.web.socket.server.HandshakeFailureException;
 import static org.glassfish.tyrus.spi.WebSocketEngine.UpgradeStatus.SUCCESS;
 
 /**
- * A base class for {@code RequestUpgradeStrategy} implementations on top of
- * JSR-356 based servers which include Tyrus as their WebSocket engine.
+ * A base class for {@code RequestUpgradeStrategy} implementations on top of JSR-356 based servers
+ * which include Tyrus as their WebSocket engine.
  *
  * <p>Works with Tyrus 1.11 (WebLogic 12.2.1) and Tyrus 1.12 (GlassFish 4.1.1).
  *
@@ -69,179 +69,212 @@ import static org.glassfish.tyrus.spi.WebSocketEngine.UpgradeStatus.SUCCESS;
  */
 public abstract class AbstractTyrusRequestUpgradeStrategy extends AbstractStandardUpgradeStrategy {
 
-	private static final Random random = new Random();
+    private static final Random random = new Random();
 
-	private static final Constructor<?> constructor;
+    private static final Constructor<?> constructor;
 
-	private static boolean constructorWithBooleanArgument;
+    private static boolean constructorWithBooleanArgument;
 
-	private static final Method registerMethod;
+    private static final Method registerMethod;
 
-	private static final Method unRegisterMethod;
+    private static final Method unRegisterMethod;
 
-	static {
-		try {
-			constructor = getEndpointConstructor();
-			int parameterCount = constructor.getParameterCount();
-			constructorWithBooleanArgument = (parameterCount == 10);
-			if (!constructorWithBooleanArgument && parameterCount != 9) {
-				throw new IllegalStateException("Expected TyrusEndpointWrapper constructor with 9 or 10 arguments");
-			}
-			registerMethod = TyrusWebSocketEngine.class.getDeclaredMethod("register", TyrusEndpointWrapper.class);
-			unRegisterMethod = TyrusWebSocketEngine.class.getDeclaredMethod("unregister", TyrusEndpointWrapper.class);
-			ReflectionUtils.makeAccessible(registerMethod);
-		}
-		catch (Exception ex) {
-			throw new IllegalStateException("No compatible Tyrus version found", ex);
-		}
-	}
+    static {
+        try {
+            constructor = getEndpointConstructor();
+            int parameterCount = constructor.getParameterCount();
+            constructorWithBooleanArgument = (parameterCount == 10);
+            if (!constructorWithBooleanArgument && parameterCount != 9) {
+                throw new IllegalStateException(
+                        "Expected TyrusEndpointWrapper constructor with 9 or 10 arguments");
+            }
+            registerMethod =
+                    TyrusWebSocketEngine.class.getDeclaredMethod(
+                            "register", TyrusEndpointWrapper.class);
+            unRegisterMethod =
+                    TyrusWebSocketEngine.class.getDeclaredMethod(
+                            "unregister", TyrusEndpointWrapper.class);
+            ReflectionUtils.makeAccessible(registerMethod);
+        } catch (Exception ex) {
+            throw new IllegalStateException("No compatible Tyrus version found", ex);
+        }
+    }
 
-	private static Constructor<?> getEndpointConstructor() {
-		for (Constructor<?> current : TyrusEndpointWrapper.class.getConstructors()) {
-			Class<?>[] types = current.getParameterTypes();
-			if (Endpoint.class == types[0] && EndpointConfig.class == types[1]) {
-				return current;
-			}
-		}
-		throw new IllegalStateException("No compatible Tyrus version found");
-	}
+    private static Constructor<?> getEndpointConstructor() {
+        for (Constructor<?> current : TyrusEndpointWrapper.class.getConstructors()) {
+            Class<?>[] types = current.getParameterTypes();
+            if (Endpoint.class == types[0] && EndpointConfig.class == types[1]) {
+                return current;
+            }
+        }
+        throw new IllegalStateException("No compatible Tyrus version found");
+    }
 
+    private final ComponentProviderService componentProvider = ComponentProviderService.create();
 
-	private final ComponentProviderService componentProvider = ComponentProviderService.create();
+    @Override
+    public String[] getSupportedVersions() {
+        return StringUtils.tokenizeToStringArray(Version.getSupportedWireProtocolVersions(), ",");
+    }
 
+    @Override
+    protected List<WebSocketExtension> getInstalledExtensions(WebSocketContainer container) {
+        try {
+            return super.getInstalledExtensions(container);
+        } catch (UnsupportedOperationException ex) {
+            return new ArrayList<>(0);
+        }
+    }
 
-	@Override
-	public String[] getSupportedVersions() {
-		return StringUtils.tokenizeToStringArray(Version.getSupportedWireProtocolVersions(), ",");
-	}
+    @Override
+    public void upgradeInternal(
+            ServerHttpRequest request,
+            ServerHttpResponse response,
+            @Nullable String selectedProtocol,
+            List<Extension> extensions,
+            Endpoint endpoint)
+            throws HandshakeFailureException {
 
-	@Override
-	protected List<WebSocketExtension> getInstalledExtensions(WebSocketContainer container) {
-		try {
-			return super.getInstalledExtensions(container);
-		}
-		catch (UnsupportedOperationException ex) {
-			return new ArrayList<>(0);
-		}
-	}
+        HttpServletRequest servletRequest = getHttpServletRequest(request);
+        HttpServletResponse servletResponse = getHttpServletResponse(response);
 
-	@Override
-	public void upgradeInternal(ServerHttpRequest request, ServerHttpResponse response,
-			@Nullable String selectedProtocol, List<Extension> extensions, Endpoint endpoint)
-			throws HandshakeFailureException {
+        TyrusServerContainer serverContainer = (TyrusServerContainer) getContainer(servletRequest);
+        TyrusWebSocketEngine engine = (TyrusWebSocketEngine) serverContainer.getWebSocketEngine();
+        Object tyrusEndpoint = null;
+        boolean success;
 
-		HttpServletRequest servletRequest = getHttpServletRequest(request);
-		HttpServletResponse servletResponse = getHttpServletResponse(response);
+        try {
+            // Shouldn't matter for processing but must be unique
+            String path = "/" + random.nextLong();
+            tyrusEndpoint =
+                    createTyrusEndpoint(
+                            endpoint, path, selectedProtocol, extensions, serverContainer, engine);
+            register(engine, tyrusEndpoint);
 
-		TyrusServerContainer serverContainer = (TyrusServerContainer) getContainer(servletRequest);
-		TyrusWebSocketEngine engine = (TyrusWebSocketEngine) serverContainer.getWebSocketEngine();
-		Object tyrusEndpoint = null;
-		boolean success;
+            HttpHeaders headers = request.getHeaders();
+            RequestContext requestContext = createRequestContext(servletRequest, path, headers);
+            TyrusUpgradeResponse upgradeResponse = new TyrusUpgradeResponse();
+            UpgradeInfo upgradeInfo = engine.upgrade(requestContext, upgradeResponse);
+            success = SUCCESS.equals(upgradeInfo.getStatus());
+            if (success) {
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Successful request upgrade: " + upgradeResponse.getHeaders());
+                }
+                handleSuccess(servletRequest, servletResponse, upgradeInfo, upgradeResponse);
+            }
+        } catch (Exception ex) {
+            unregisterTyrusEndpoint(engine, tyrusEndpoint);
+            throw new HandshakeFailureException("Error during handshake: " + request.getURI(), ex);
+        }
 
-		try {
-			// Shouldn't matter for processing but must be unique
-			String path = "/" + random.nextLong();
-			tyrusEndpoint = createTyrusEndpoint(endpoint, path, selectedProtocol, extensions, serverContainer, engine);
-			register(engine, tyrusEndpoint);
+        unregisterTyrusEndpoint(engine, tyrusEndpoint);
+        if (!success) {
+            throw new HandshakeFailureException(
+                    "Unexpected handshake failure: " + request.getURI());
+        }
+    }
 
-			HttpHeaders headers = request.getHeaders();
-			RequestContext requestContext = createRequestContext(servletRequest, path, headers);
-			TyrusUpgradeResponse upgradeResponse = new TyrusUpgradeResponse();
-			UpgradeInfo upgradeInfo = engine.upgrade(requestContext, upgradeResponse);
-			success = SUCCESS.equals(upgradeInfo.getStatus());
-			if (success) {
-				if (logger.isTraceEnabled()) {
-					logger.trace("Successful request upgrade: " + upgradeResponse.getHeaders());
-				}
-				handleSuccess(servletRequest, servletResponse, upgradeInfo, upgradeResponse);
-			}
-		}
-		catch (Exception ex) {
-			unregisterTyrusEndpoint(engine, tyrusEndpoint);
-			throw new HandshakeFailureException("Error during handshake: " + request.getURI(), ex);
-		}
+    private Object createTyrusEndpoint(
+            Endpoint endpoint,
+            String endpointPath,
+            @Nullable String protocol,
+            List<Extension> extensions,
+            WebSocketContainer container,
+            TyrusWebSocketEngine engine)
+            throws DeploymentException {
 
-		unregisterTyrusEndpoint(engine, tyrusEndpoint);
-		if (!success) {
-			throw new HandshakeFailureException("Unexpected handshake failure: " + request.getURI());
-		}
-	}
+        ServerEndpointRegistration endpointConfig =
+                new ServerEndpointRegistration(endpointPath, endpoint);
+        endpointConfig.setSubprotocols(Collections.singletonList(protocol));
+        endpointConfig.setExtensions(extensions);
+        return createEndpoint(endpointConfig, this.componentProvider, container, engine);
+    }
 
-	private Object createTyrusEndpoint(Endpoint endpoint, String endpointPath, @Nullable String protocol,
-			List<Extension> extensions, WebSocketContainer container, TyrusWebSocketEngine engine)
-			throws DeploymentException {
+    private RequestContext createRequestContext(
+            HttpServletRequest request, String endpointPath, HttpHeaders headers) {
+        RequestContext context =
+                RequestContext.Builder.create()
+                        .requestURI(URI.create(endpointPath))
+                        .userPrincipal(request.getUserPrincipal())
+                        .secure(request.isSecure())
+                        .remoteAddr(request.getRemoteAddr())
+                        .build();
+        headers.forEach((header, value) -> context.getHeaders().put(header, value));
+        return context;
+    }
 
-		ServerEndpointRegistration endpointConfig = new ServerEndpointRegistration(endpointPath, endpoint);
-		endpointConfig.setSubprotocols(Collections.singletonList(protocol));
-		endpointConfig.setExtensions(extensions);
-		return createEndpoint(endpointConfig, this.componentProvider, container, engine);
-	}
+    private void unregisterTyrusEndpoint(
+            TyrusWebSocketEngine engine, @Nullable Object tyrusEndpoint) {
+        if (tyrusEndpoint != null) {
+            try {
+                unregister(engine, tyrusEndpoint);
+            } catch (Throwable ex) {
+                // ignore
+            }
+        }
+    }
 
-	private RequestContext createRequestContext(HttpServletRequest request, String endpointPath, HttpHeaders headers) {
-		RequestContext context =
-				RequestContext.Builder.create()
-						.requestURI(URI.create(endpointPath))
-						.userPrincipal(request.getUserPrincipal())
-						.secure(request.isSecure())
-						.remoteAddr(request.getRemoteAddr())
-						.build();
-		headers.forEach((header, value) -> context.getHeaders().put(header, value));
-		return context;
-	}
+    private Object createEndpoint(
+            ServerEndpointRegistration registration,
+            ComponentProviderService provider,
+            WebSocketContainer container,
+            TyrusWebSocketEngine engine)
+            throws DeploymentException {
 
-	private void unregisterTyrusEndpoint(TyrusWebSocketEngine engine, @Nullable Object tyrusEndpoint) {
-		if (tyrusEndpoint != null) {
-			try {
-				unregister(engine, tyrusEndpoint);
-			}
-			catch (Throwable ex) {
-				// ignore
-			}
-		}
-	}
+        DirectFieldAccessor accessor = new DirectFieldAccessor(engine);
+        Object sessionListener = accessor.getPropertyValue("sessionListener");
+        Object clusterContext = accessor.getPropertyValue("clusterContext");
+        try {
+            if (constructorWithBooleanArgument) {
+                // Tyrus 1.11+
+                return constructor.newInstance(
+                        registration.getEndpoint(),
+                        registration,
+                        provider,
+                        container,
+                        "/",
+                        registration.getConfigurator(),
+                        sessionListener,
+                        clusterContext,
+                        null,
+                        Boolean.TRUE);
+            } else {
+                return constructor.newInstance(
+                        registration.getEndpoint(),
+                        registration,
+                        provider,
+                        container,
+                        "/",
+                        registration.getConfigurator(),
+                        sessionListener,
+                        clusterContext,
+                        null);
+            }
+        } catch (Exception ex) {
+            throw new HandshakeFailureException("Failed to register " + registration, ex);
+        }
+    }
 
-	private Object createEndpoint(ServerEndpointRegistration registration, ComponentProviderService provider,
-			WebSocketContainer container, TyrusWebSocketEngine engine) throws DeploymentException {
+    private void register(TyrusWebSocketEngine engine, Object endpoint) {
+        try {
+            registerMethod.invoke(engine, endpoint);
+        } catch (Exception ex) {
+            throw new HandshakeFailureException("Failed to register " + endpoint, ex);
+        }
+    }
 
-		DirectFieldAccessor accessor = new DirectFieldAccessor(engine);
-		Object sessionListener = accessor.getPropertyValue("sessionListener");
-		Object clusterContext = accessor.getPropertyValue("clusterContext");
-		try {
-			if (constructorWithBooleanArgument) {
-				// Tyrus 1.11+
-				return constructor.newInstance(registration.getEndpoint(), registration, provider, container,
-						"/", registration.getConfigurator(), sessionListener, clusterContext, null, Boolean.TRUE);
-			}
-			else {
-				return constructor.newInstance(registration.getEndpoint(), registration, provider, container,
-						"/", registration.getConfigurator(), sessionListener, clusterContext, null);
-			}
-		}
-		catch (Exception ex) {
-			throw new HandshakeFailureException("Failed to register " + registration, ex);
-		}
-	}
+    private void unregister(TyrusWebSocketEngine engine, Object endpoint) {
+        try {
+            unRegisterMethod.invoke(engine, endpoint);
+        } catch (Exception ex) {
+            throw new HandshakeFailureException("Failed to unregister " + endpoint, ex);
+        }
+    }
 
-	private void register(TyrusWebSocketEngine engine, Object endpoint) {
-		try {
-			registerMethod.invoke(engine, endpoint);
-		}
-		catch (Exception ex) {
-			throw new HandshakeFailureException("Failed to register " + endpoint, ex);
-		}
-	}
-
-	private void unregister(TyrusWebSocketEngine engine, Object endpoint) {
-		try {
-			unRegisterMethod.invoke(engine, endpoint);
-		}
-		catch (Exception ex) {
-			throw new HandshakeFailureException("Failed to unregister " + endpoint, ex);
-		}
-	}
-
-
-	protected abstract void handleSuccess(HttpServletRequest request, HttpServletResponse response,
-			UpgradeInfo upgradeInfo, TyrusUpgradeResponse upgradeResponse) throws IOException, ServletException;
-
+    protected abstract void handleSuccess(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            UpgradeInfo upgradeInfo,
+            TyrusUpgradeResponse upgradeResponse)
+            throws IOException, ServletException;
 }

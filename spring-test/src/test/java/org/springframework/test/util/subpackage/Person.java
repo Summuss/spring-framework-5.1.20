@@ -19,24 +19,23 @@ package org.springframework.test.util.subpackage;
 /**
  * Interface representing a <em>person</em> entity; intended for use in unit tests.
  *
- * <p>The introduction of an interface is necessary in order to test support for
- * JDK dynamic proxies.
+ * <p>The introduction of an interface is necessary in order to test support for JDK dynamic
+ * proxies.
  *
  * @author Sam Brannen
  * @since 4.3
  */
 public interface Person {
 
-	long getId();
+    long getId();
 
-	String getName();
+    String getName();
 
-	int getAge();
+    int getAge();
 
-	String getEyeColor();
+    String getEyeColor();
 
-	boolean likesPets();
+    boolean likesPets();
 
-	Number getFavoriteNumber();
-
+    Number getFavoriteNumber();
 }

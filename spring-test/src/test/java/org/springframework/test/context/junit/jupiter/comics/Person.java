@@ -24,8 +24,7 @@ package org.springframework.test.context.junit.jupiter.comics;
  */
 public class Person extends Character {
 
-	public Person(String name) {
-		super(name);
-	}
-
+    public Person(String name) {
+        super(name);
+    }
 }

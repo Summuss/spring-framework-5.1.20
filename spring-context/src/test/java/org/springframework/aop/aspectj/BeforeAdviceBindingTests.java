@@ -38,75 +38,70 @@ import static org.mockito.BDDMockito.*;
  */
 public class BeforeAdviceBindingTests {
 
-	private AdviceBindingCollaborator mockCollaborator;
+    private AdviceBindingCollaborator mockCollaborator;
 
-	private ITestBean testBeanProxy;
+    private ITestBean testBeanProxy;
 
-	private TestBean testBeanTarget;
+    private TestBean testBeanTarget;
 
+    @Before
+    public void setup() throws Exception {
+        ClassPathXmlApplicationContext ctx =
+                new ClassPathXmlApplicationContext(getClass().getSimpleName() + ".xml", getClass());
 
-	@Before
-	public void setup() throws Exception {
-		ClassPathXmlApplicationContext ctx =
-				new ClassPathXmlApplicationContext(getClass().getSimpleName() + ".xml", getClass());
+        testBeanProxy = (ITestBean) ctx.getBean("testBean");
+        assertTrue(AopUtils.isAopProxy(testBeanProxy));
 
-		testBeanProxy = (ITestBean) ctx.getBean("testBean");
-		assertTrue(AopUtils.isAopProxy(testBeanProxy));
+        // we need the real target too, not just the proxy...
+        testBeanTarget = (TestBean) ((Advised) testBeanProxy).getTargetSource().getTarget();
 
-		// we need the real target too, not just the proxy...
-		testBeanTarget = (TestBean) ((Advised) testBeanProxy).getTargetSource().getTarget();
+        AdviceBindingTestAspect beforeAdviceAspect =
+                (AdviceBindingTestAspect) ctx.getBean("testAspect");
 
-		AdviceBindingTestAspect beforeAdviceAspect = (AdviceBindingTestAspect) ctx.getBean("testAspect");
+        mockCollaborator = mock(AdviceBindingCollaborator.class);
+        beforeAdviceAspect.setCollaborator(mockCollaborator);
+    }
 
-		mockCollaborator = mock(AdviceBindingCollaborator.class);
-		beforeAdviceAspect.setCollaborator(mockCollaborator);
-	}
+    @Test
+    public void testOneIntArg() {
+        testBeanProxy.setAge(5);
+        verify(mockCollaborator).oneIntArg(5);
+    }
 
+    @Test
+    public void testOneObjectArgBoundToProxyUsingThis() {
+        testBeanProxy.getAge();
+        verify(mockCollaborator).oneObjectArg(this.testBeanProxy);
+    }
 
-	@Test
-	public void testOneIntArg() {
-		testBeanProxy.setAge(5);
-		verify(mockCollaborator).oneIntArg(5);
-	}
+    @Test
+    public void testOneIntAndOneObjectArgs() {
+        testBeanProxy.setAge(5);
+        verify(mockCollaborator).oneIntAndOneObject(5, this.testBeanTarget);
+    }
 
-	@Test
-	public void testOneObjectArgBoundToProxyUsingThis() {
-		testBeanProxy.getAge();
-		verify(mockCollaborator).oneObjectArg(this.testBeanProxy);
-	}
+    @Test
+    public void testNeedsJoinPoint() {
+        testBeanProxy.getAge();
+        verify(mockCollaborator).needsJoinPoint("getAge");
+    }
 
-	@Test
-	public void testOneIntAndOneObjectArgs() {
-		testBeanProxy.setAge(5);
-		verify(mockCollaborator).oneIntAndOneObject(5,this.testBeanTarget);
-	}
-
-	@Test
-	public void testNeedsJoinPoint() {
-		testBeanProxy.getAge();
-		verify(mockCollaborator).needsJoinPoint("getAge");
-	}
-
-	@Test
-	public void testNeedsJoinPointStaticPart() {
-		testBeanProxy.getAge();
-		verify(mockCollaborator).needsJoinPointStaticPart("getAge");
-	}
-
-
+    @Test
+    public void testNeedsJoinPointStaticPart() {
+        testBeanProxy.getAge();
+        verify(mockCollaborator).needsJoinPointStaticPart("getAge");
+    }
 }
-
 
 class AuthenticationLogger {
 
-	public void logAuthenticationAttempt(String username) {
-		System.out.println("User [" + username + "] attempting to authenticate");
-	}
-
+    public void logAuthenticationAttempt(String username) {
+        System.out.println("User [" + username + "] attempting to authenticate");
+    }
 }
 
 class SecurityManager {
-	public boolean authenticate(String username, String password) {
-		return false;
-	}
+    public boolean authenticate(String username, String password) {
+        return false;
+    }
 }

@@ -44,213 +44,207 @@ import static org.mockito.BDDMockito.*;
  */
 public class ExecutorSubscribableChannelTests {
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
+    @Rule public ExpectedException thrown = ExpectedException.none();
 
-	private ExecutorSubscribableChannel channel = new ExecutorSubscribableChannel();
+    private ExecutorSubscribableChannel channel = new ExecutorSubscribableChannel();
 
-	@Mock
-	private MessageHandler handler;
+    @Mock private MessageHandler handler;
 
-	private final Object payload = new Object();
+    private final Object payload = new Object();
 
-	private final Message<Object> message = MessageBuilder.withPayload(this.payload).build();
+    private final Message<Object> message = MessageBuilder.withPayload(this.payload).build();
 
-	@Captor
-	private ArgumentCaptor<Runnable> runnableCaptor;
+    @Captor private ArgumentCaptor<Runnable> runnableCaptor;
 
+    @Before
+    public void setup() {
+        MockitoAnnotations.initMocks(this);
+    }
 
-	@Before
-	public void setup() {
-		MockitoAnnotations.initMocks(this);
-	}
+    @Test
+    public void messageMustNotBeNull() {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("Message must not be null");
+        this.channel.send(null);
+    }
 
+    @Test
+    public void sendWithoutExecutor() {
+        BeforeHandleInterceptor interceptor = new BeforeHandleInterceptor();
+        this.channel.addInterceptor(interceptor);
+        this.channel.subscribe(this.handler);
+        this.channel.send(this.message);
+        verify(this.handler).handleMessage(this.message);
+        assertEquals(1, interceptor.getCounter().get());
+        assertTrue(interceptor.wasAfterHandledInvoked());
+    }
 
-	@Test
-	public void messageMustNotBeNull() {
-		thrown.expect(IllegalArgumentException.class);
-		thrown.expectMessage("Message must not be null");
-		this.channel.send(null);
-	}
+    @Test
+    public void sendWithExecutor() {
+        BeforeHandleInterceptor interceptor = new BeforeHandleInterceptor();
+        TaskExecutor executor = mock(TaskExecutor.class);
+        ExecutorSubscribableChannel testChannel = new ExecutorSubscribableChannel(executor);
+        testChannel.addInterceptor(interceptor);
+        testChannel.subscribe(this.handler);
+        testChannel.send(this.message);
+        verify(executor).execute(this.runnableCaptor.capture());
+        verify(this.handler, never()).handleMessage(this.message);
+        this.runnableCaptor.getValue().run();
+        verify(this.handler).handleMessage(this.message);
+        assertEquals(1, interceptor.getCounter().get());
+        assertTrue(interceptor.wasAfterHandledInvoked());
+    }
 
-	@Test
-	public void sendWithoutExecutor() {
-		BeforeHandleInterceptor interceptor = new BeforeHandleInterceptor();
-		this.channel.addInterceptor(interceptor);
-		this.channel.subscribe(this.handler);
-		this.channel.send(this.message);
-		verify(this.handler).handleMessage(this.message);
-		assertEquals(1, interceptor.getCounter().get());
-		assertTrue(interceptor.wasAfterHandledInvoked());
-	}
+    @Test
+    public void subscribeTwice() {
+        assertThat(this.channel.subscribe(this.handler), equalTo(true));
+        assertThat(this.channel.subscribe(this.handler), equalTo(false));
+        this.channel.send(this.message);
+        verify(this.handler, times(1)).handleMessage(this.message);
+    }
 
-	@Test
-	public void sendWithExecutor() {
-		BeforeHandleInterceptor interceptor = new BeforeHandleInterceptor();
-		TaskExecutor executor = mock(TaskExecutor.class);
-		ExecutorSubscribableChannel testChannel = new ExecutorSubscribableChannel(executor);
-		testChannel.addInterceptor(interceptor);
-		testChannel.subscribe(this.handler);
-		testChannel.send(this.message);
-		verify(executor).execute(this.runnableCaptor.capture());
-		verify(this.handler, never()).handleMessage(this.message);
-		this.runnableCaptor.getValue().run();
-		verify(this.handler).handleMessage(this.message);
-		assertEquals(1, interceptor.getCounter().get());
-		assertTrue(interceptor.wasAfterHandledInvoked());
-	}
+    @Test
+    public void unsubscribeTwice() {
+        this.channel.subscribe(this.handler);
+        assertThat(this.channel.unsubscribe(this.handler), equalTo(true));
+        assertThat(this.channel.unsubscribe(this.handler), equalTo(false));
+        this.channel.send(this.message);
+        verify(this.handler, never()).handleMessage(this.message);
+    }
 
-	@Test
-	public void subscribeTwice()  {
-		assertThat(this.channel.subscribe(this.handler), equalTo(true));
-		assertThat(this.channel.subscribe(this.handler), equalTo(false));
-		this.channel.send(this.message);
-		verify(this.handler, times(1)).handleMessage(this.message);
-	}
+    @Test
+    public void failurePropagates() {
+        RuntimeException ex = new RuntimeException();
+        willThrow(ex).given(this.handler).handleMessage(this.message);
+        MessageHandler secondHandler = mock(MessageHandler.class);
+        this.channel.subscribe(this.handler);
+        this.channel.subscribe(secondHandler);
+        try {
+            this.channel.send(message);
+        } catch (MessageDeliveryException actualException) {
+            assertThat(actualException.getCause(), equalTo(ex));
+        }
+        verifyZeroInteractions(secondHandler);
+    }
 
-	@Test
-	public void unsubscribeTwice()  {
-		this.channel.subscribe(this.handler);
-		assertThat(this.channel.unsubscribe(this.handler), equalTo(true));
-		assertThat(this.channel.unsubscribe(this.handler), equalTo(false));
-		this.channel.send(this.message);
-		verify(this.handler, never()).handleMessage(this.message);
-	}
+    @Test
+    public void concurrentModification() {
+        this.channel.subscribe(message1 -> channel.unsubscribe(handler));
+        this.channel.subscribe(this.handler);
+        this.channel.send(this.message);
+        verify(this.handler).handleMessage(this.message);
+    }
 
-	@Test
-	public void failurePropagates()  {
-		RuntimeException ex = new RuntimeException();
-		willThrow(ex).given(this.handler).handleMessage(this.message);
-		MessageHandler secondHandler = mock(MessageHandler.class);
-		this.channel.subscribe(this.handler);
-		this.channel.subscribe(secondHandler);
-		try {
-			this.channel.send(message);
-		}
-		catch (MessageDeliveryException actualException) {
-			assertThat(actualException.getCause(), equalTo(ex));
-		}
-		verifyZeroInteractions(secondHandler);
-	}
+    @Test
+    public void interceptorWithModifiedMessage() {
+        Message<?> expected = mock(Message.class);
+        BeforeHandleInterceptor interceptor = new BeforeHandleInterceptor();
+        interceptor.setMessageToReturn(expected);
+        this.channel.addInterceptor(interceptor);
+        this.channel.subscribe(this.handler);
+        this.channel.send(this.message);
+        verify(this.handler).handleMessage(expected);
+        assertEquals(1, interceptor.getCounter().get());
+        assertTrue(interceptor.wasAfterHandledInvoked());
+    }
 
-	@Test
-	public void concurrentModification()  {
-		this.channel.subscribe(message1 -> channel.unsubscribe(handler));
-		this.channel.subscribe(this.handler);
-		this.channel.send(this.message);
-		verify(this.handler).handleMessage(this.message);
-	}
+    @Test
+    public void interceptorWithNull() {
+        BeforeHandleInterceptor interceptor1 = new BeforeHandleInterceptor();
+        NullReturningBeforeHandleInterceptor interceptor2 =
+                new NullReturningBeforeHandleInterceptor();
+        this.channel.addInterceptor(interceptor1);
+        this.channel.addInterceptor(interceptor2);
+        this.channel.subscribe(this.handler);
+        this.channel.send(this.message);
+        verifyNoMoreInteractions(this.handler);
+        assertEquals(1, interceptor1.getCounter().get());
+        assertEquals(1, interceptor2.getCounter().get());
+        assertTrue(interceptor1.wasAfterHandledInvoked());
+    }
 
-	@Test
-	public void interceptorWithModifiedMessage() {
-		Message<?> expected = mock(Message.class);
-		BeforeHandleInterceptor interceptor = new BeforeHandleInterceptor();
-		interceptor.setMessageToReturn(expected);
-		this.channel.addInterceptor(interceptor);
-		this.channel.subscribe(this.handler);
-		this.channel.send(this.message);
-		verify(this.handler).handleMessage(expected);
-		assertEquals(1, interceptor.getCounter().get());
-		assertTrue(interceptor.wasAfterHandledInvoked());
-	}
+    @Test
+    public void interceptorWithException() {
+        IllegalStateException expected = new IllegalStateException("Fake exception");
+        willThrow(expected).given(this.handler).handleMessage(this.message);
+        BeforeHandleInterceptor interceptor = new BeforeHandleInterceptor();
+        this.channel.addInterceptor(interceptor);
+        this.channel.subscribe(this.handler);
+        try {
+            this.channel.send(this.message);
+        } catch (MessageDeliveryException actual) {
+            assertSame(expected, actual.getCause());
+        }
+        verify(this.handler).handleMessage(this.message);
+        assertEquals(1, interceptor.getCounter().get());
+        assertTrue(interceptor.wasAfterHandledInvoked());
+    }
 
-	@Test
-	public void interceptorWithNull() {
-		BeforeHandleInterceptor interceptor1 = new BeforeHandleInterceptor();
-		NullReturningBeforeHandleInterceptor interceptor2 = new NullReturningBeforeHandleInterceptor();
-		this.channel.addInterceptor(interceptor1);
-		this.channel.addInterceptor(interceptor2);
-		this.channel.subscribe(this.handler);
-		this.channel.send(this.message);
-		verifyNoMoreInteractions(this.handler);
-		assertEquals(1, interceptor1.getCounter().get());
-		assertEquals(1, interceptor2.getCounter().get());
-		assertTrue(interceptor1.wasAfterHandledInvoked());
-	}
+    private abstract static class AbstractTestInterceptor
+            implements ChannelInterceptor, ExecutorChannelInterceptor {
 
-	@Test
-	public void interceptorWithException() {
-		IllegalStateException expected = new IllegalStateException("Fake exception");
-		willThrow(expected).given(this.handler).handleMessage(this.message);
-		BeforeHandleInterceptor interceptor = new BeforeHandleInterceptor();
-		this.channel.addInterceptor(interceptor);
-		this.channel.subscribe(this.handler);
-		try {
-			this.channel.send(this.message);
-		}
-		catch (MessageDeliveryException actual) {
-			assertSame(expected, actual.getCause());
-		}
-		verify(this.handler).handleMessage(this.message);
-		assertEquals(1, interceptor.getCounter().get());
-		assertTrue(interceptor.wasAfterHandledInvoked());
-	}
+        private AtomicInteger counter = new AtomicInteger();
 
+        private volatile boolean afterHandledInvoked;
 
-	private abstract static class AbstractTestInterceptor implements ChannelInterceptor, ExecutorChannelInterceptor {
+        public AtomicInteger getCounter() {
+            return this.counter;
+        }
 
-		private AtomicInteger counter = new AtomicInteger();
+        public boolean wasAfterHandledInvoked() {
+            return this.afterHandledInvoked;
+        }
 
-		private volatile boolean afterHandledInvoked;
+        @Override
+        public Message<?> beforeHandle(
+                Message<?> message, MessageChannel channel, MessageHandler handler) {
+            assertNotNull(message);
+            counter.incrementAndGet();
+            return message;
+        }
 
-		public AtomicInteger getCounter() {
-			return this.counter;
-		}
+        @Override
+        public void afterMessageHandled(
+                Message<?> message, MessageChannel channel, MessageHandler handler, Exception ex) {
 
-		public boolean wasAfterHandledInvoked() {
-			return this.afterHandledInvoked;
-		}
+            this.afterHandledInvoked = true;
+        }
+    }
 
-		@Override
-		public Message<?> beforeHandle(Message<?> message, MessageChannel channel, MessageHandler handler) {
-			assertNotNull(message);
-			counter.incrementAndGet();
-			return message;
-		}
+    private static class BeforeHandleInterceptor extends AbstractTestInterceptor {
 
-		@Override
-		public void afterMessageHandled(
-				Message<?> message, MessageChannel channel, MessageHandler handler, Exception ex) {
+        private Message<?> messageToReturn;
 
-			this.afterHandledInvoked = true;
-		}
-	}
+        private RuntimeException exceptionToRaise;
 
+        public void setMessageToReturn(Message<?> messageToReturn) {
+            this.messageToReturn = messageToReturn;
+        }
 
-	private static class BeforeHandleInterceptor extends AbstractTestInterceptor {
+        // TODO Determine why setExceptionToRaise() is unused.
+        @SuppressWarnings("unused")
+        public void setExceptionToRaise(RuntimeException exception) {
+            this.exceptionToRaise = exception;
+        }
 
-		private Message<?> messageToReturn;
+        @Override
+        public Message<?> beforeHandle(
+                Message<?> message, MessageChannel channel, MessageHandler handler) {
+            super.beforeHandle(message, channel, handler);
+            if (this.exceptionToRaise != null) {
+                throw this.exceptionToRaise;
+            }
+            return (this.messageToReturn != null ? this.messageToReturn : message);
+        }
+    }
 
-		private RuntimeException exceptionToRaise;
+    private static class NullReturningBeforeHandleInterceptor extends AbstractTestInterceptor {
 
-		public void setMessageToReturn(Message<?> messageToReturn) {
-			this.messageToReturn = messageToReturn;
-		}
-
-		// TODO Determine why setExceptionToRaise() is unused.
-		@SuppressWarnings("unused")
-		public void setExceptionToRaise(RuntimeException exception) {
-			this.exceptionToRaise = exception;
-		}
-
-		@Override
-		public Message<?> beforeHandle(Message<?> message, MessageChannel channel, MessageHandler handler) {
-			super.beforeHandle(message, channel, handler);
-			if (this.exceptionToRaise != null) {
-				throw this.exceptionToRaise;
-			}
-			return (this.messageToReturn != null ? this.messageToReturn : message);
-		}
-	}
-
-
-	private static class NullReturningBeforeHandleInterceptor extends AbstractTestInterceptor {
-
-		@Override
-		public Message<?> beforeHandle(Message<?> message, MessageChannel channel, MessageHandler handler) {
-			super.beforeHandle(message, channel, handler);
-			return null;
-		}
-	}
-
+        @Override
+        public Message<?> beforeHandle(
+                Message<?> message, MessageChannel channel, MessageHandler handler) {
+            super.beforeHandle(message, channel, handler);
+            return null;
+        }
+    }
 }

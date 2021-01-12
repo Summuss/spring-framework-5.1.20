@@ -49,123 +49,146 @@ import static org.hamcrest.Matchers.*;
  */
 public class XmlContentTests {
 
-	private static final String persons_XML =
-			"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
-			+ "<persons>"
-			+ "<person><name>Jane</name></person>"
-			+ "<person><name>Jason</name></person>"
-			+ "<person><name>John</name></person>"
-			+ "</persons>";
+    private static final String persons_XML =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+                    + "<persons>"
+                    + "<person><name>Jane</name></person>"
+                    + "<person><name>Jason</name></person>"
+                    + "<person><name>John</name></person>"
+                    + "</persons>";
 
+    private final WebTestClient client =
+            WebTestClient.bindToController(new PersonController()).build();
 
-	private final WebTestClient client = WebTestClient.bindToController(new PersonController()).build();
+    @Test
+    public void xmlContent() {
+        this.client
+                .get()
+                .uri("/persons")
+                .accept(MediaType.APPLICATION_XML)
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectBody()
+                .xml(persons_XML);
+    }
 
+    @Test
+    public void xpathIsEqualTo() {
+        this.client
+                .get()
+                .uri("/persons")
+                .accept(MediaType.APPLICATION_XML)
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectBody()
+                .xpath("/")
+                .exists()
+                .xpath("/persons")
+                .exists()
+                .xpath("/persons/person")
+                .exists()
+                .xpath("/persons/person")
+                .nodeCount(3)
+                .xpath("/persons/person[1]/name")
+                .isEqualTo("Jane")
+                .xpath("/persons/person[2]/name")
+                .isEqualTo("Jason")
+                .xpath("/persons/person[3]/name")
+                .isEqualTo("John");
+    }
 
-	@Test
-	public void xmlContent() {
-		this.client.get().uri("/persons")
-				.accept(MediaType.APPLICATION_XML)
-				.exchange()
-				.expectStatus().isOk()
-				.expectBody().xml(persons_XML);
-	}
+    @Test
+    public void xpathMatches() {
+        this.client
+                .get()
+                .uri("/persons")
+                .accept(MediaType.APPLICATION_XML)
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectBody()
+                .xpath("//person/name")
+                .string(startsWith("J"));
+    }
 
-	@Test
-	public void xpathIsEqualTo() {
-		this.client.get().uri("/persons")
-				.accept(MediaType.APPLICATION_XML)
-				.exchange()
-				.expectStatus().isOk()
-				.expectBody()
-				.xpath("/").exists()
-				.xpath("/persons").exists()
-				.xpath("/persons/person").exists()
-				.xpath("/persons/person").nodeCount(3)
-				.xpath("/persons/person[1]/name").isEqualTo("Jane")
-				.xpath("/persons/person[2]/name").isEqualTo("Jason")
-				.xpath("/persons/person[3]/name").isEqualTo("John");
-	}
+    @Test
+    public void xpathContainsSubstringViaRegex() {
+        this.client
+                .get()
+                .uri("/persons/John")
+                .accept(MediaType.APPLICATION_XML)
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectBody()
+                .xpath("//name[contains(text(), 'oh')]")
+                .exists();
+    }
 
-	@Test
-	public void xpathMatches() {
-		this.client.get().uri("/persons")
-				.accept(MediaType.APPLICATION_XML)
-				.exchange()
-				.expectStatus().isOk()
-				.expectBody()
-				.xpath("//person/name").string(startsWith("J"));
-	}
+    @Test
+    public void postXmlContent() {
 
-	@Test
-	public void xpathContainsSubstringViaRegex() {
-		this.client.get().uri("/persons/John")
-				.accept(MediaType.APPLICATION_XML)
-				.exchange()
-				.expectStatus().isOk()
-				.expectBody()
-				.xpath("//name[contains(text(), 'oh')]").exists();
-	}
+        String content =
+                "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+                        + "<person><name>John</name></person>";
 
-	@Test
-	public void postXmlContent() {
+        this.client
+                .post()
+                .uri("/persons")
+                .contentType(MediaType.APPLICATION_XML)
+                .syncBody(content)
+                .exchange()
+                .expectStatus()
+                .isCreated()
+                .expectHeader()
+                .valueEquals(HttpHeaders.LOCATION, "/persons/John")
+                .expectBody()
+                .isEmpty();
+    }
 
-		String content =
-				"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
-				"<person><name>John</name></person>";
+    @SuppressWarnings("unused")
+    @XmlRootElement(name = "persons")
+    @XmlAccessorType(XmlAccessType.FIELD)
+    private static class PersonsWrapper {
 
-		this.client.post().uri("/persons")
-				.contentType(MediaType.APPLICATION_XML)
-				.syncBody(content)
-				.exchange()
-				.expectStatus().isCreated()
-				.expectHeader().valueEquals(HttpHeaders.LOCATION, "/persons/John")
-				.expectBody().isEmpty();
-	}
+        @XmlElement(name = "person")
+        private final List<Person> persons = new ArrayList<>();
 
+        public PersonsWrapper() {}
 
-	@SuppressWarnings("unused")
-	@XmlRootElement(name="persons")
-	@XmlAccessorType(XmlAccessType.FIELD)
-	private static class PersonsWrapper {
+        public PersonsWrapper(List<Person> persons) {
+            this.persons.addAll(persons);
+        }
 
-		@XmlElement(name="person")
-		private final List<Person> persons = new ArrayList<>();
+        public PersonsWrapper(Person... persons) {
+            this.persons.addAll(Arrays.asList(persons));
+        }
 
-		public PersonsWrapper() {
-		}
+        public List<Person> getpersons() {
+            return this.persons;
+        }
+    }
 
-		public PersonsWrapper(List<Person> persons) {
-			this.persons.addAll(persons);
-		}
+    @RestController
+    @RequestMapping("/persons")
+    static class PersonController {
 
-		public PersonsWrapper(Person... persons) {
-			this.persons.addAll(Arrays.asList(persons));
-		}
+        @GetMapping(produces = MediaType.APPLICATION_XML_VALUE)
+        PersonsWrapper getPersons() {
+            return new PersonsWrapper(new Person("Jane"), new Person("Jason"), new Person("John"));
+        }
 
-		public List<Person> getpersons() {
-			return this.persons;
-		}
-	}
+        @GetMapping(path = "/{name}", produces = MediaType.APPLICATION_XML_VALUE)
+        Person getPerson(@PathVariable String name) {
+            return new Person(name);
+        }
 
-	@RestController
-	@RequestMapping("/persons")
-	static class PersonController {
-
-		@GetMapping(produces = MediaType.APPLICATION_XML_VALUE)
-		PersonsWrapper getPersons() {
-			return new PersonsWrapper(new Person("Jane"), new Person("Jason"), new Person("John"));
-		}
-
-		@GetMapping(path = "/{name}", produces = MediaType.APPLICATION_XML_VALUE)
-		Person getPerson(@PathVariable String name) {
-			return new Person(name);
-		}
-
-		@PostMapping(consumes = MediaType.APPLICATION_XML_VALUE)
-		ResponseEntity<Object> savepersons(@RequestBody Person person) {
-			URI location = URI.create(String.format("/persons/%s", person.getName()));
-			return ResponseEntity.created(location).build();
-		}
-	}
-
+        @PostMapping(consumes = MediaType.APPLICATION_XML_VALUE)
+        ResponseEntity<Object> savepersons(@RequestBody Person person) {
+            URI location = URI.create(String.format("/persons/%s", person.getName()));
+            return ResponseEntity.created(location).build();
+        }
+    }
 }

@@ -43,72 +43,72 @@ import static org.junit.Assert.*;
 
 /**
  * HTTPS-specific integration test for {@link ServerHttpRequest}.
+ *
  * @author Arjen Poutsma
  */
 @RunWith(Parameterized.class)
 public class ServerHttpsRequestIntegrationTests {
 
-	private int port;
+    private int port;
 
-	@Parameterized.Parameter(0)
-	public HttpServer server;
+    @Parameterized.Parameter(0)
+    public HttpServer server;
 
-	private RestTemplate restTemplate;
+    private RestTemplate restTemplate;
 
-	@Parameterized.Parameters(name = "server [{0}]")
-	public static Object[][] arguments() {
-		return new Object[][]{
-				{new ReactorHttpsServer()},
-		};
-	}
+    @Parameterized.Parameters(name = "server [{0}]")
+    public static Object[][] arguments() {
+        return new Object[][] {
+            {new ReactorHttpsServer()},
+        };
+    }
 
-	@Before
-	public void setup() throws Exception {
-		this.server.setHandler(new CheckRequestHandler());
-		this.server.afterPropertiesSet();
-		this.server.start();
+    @Before
+    public void setup() throws Exception {
+        this.server.setHandler(new CheckRequestHandler());
+        this.server.afterPropertiesSet();
+        this.server.start();
 
-		// Set dynamically chosen port
-		this.port = this.server.getPort();
+        // Set dynamically chosen port
+        this.port = this.server.getPort();
 
-		SSLContextBuilder builder = new SSLContextBuilder();
-		builder.loadTrustMaterial(new TrustSelfSignedStrategy());
-		SSLConnectionSocketFactory socketFactory = new SSLConnectionSocketFactory(
-				builder.build(), NoopHostnameVerifier.INSTANCE);
-		CloseableHttpClient httpclient = HttpClients.custom().setSSLSocketFactory(
-				socketFactory).build();
-		HttpComponentsClientHttpRequestFactory requestFactory =
-				new HttpComponentsClientHttpRequestFactory(httpclient);
-		this.restTemplate = new RestTemplate(requestFactory);
-	}
+        SSLContextBuilder builder = new SSLContextBuilder();
+        builder.loadTrustMaterial(new TrustSelfSignedStrategy());
+        SSLConnectionSocketFactory socketFactory =
+                new SSLConnectionSocketFactory(builder.build(), NoopHostnameVerifier.INSTANCE);
+        CloseableHttpClient httpclient =
+                HttpClients.custom().setSSLSocketFactory(socketFactory).build();
+        HttpComponentsClientHttpRequestFactory requestFactory =
+                new HttpComponentsClientHttpRequestFactory(httpclient);
+        this.restTemplate = new RestTemplate(requestFactory);
+    }
 
-	@After
-	public void tearDown() throws Exception {
-		this.server.stop();
-		this.port = 0;
-	}
+    @After
+    public void tearDown() throws Exception {
+        this.server.stop();
+        this.port = 0;
+    }
 
-	@Test
-	public void checkUri() throws Exception {
-		URI url = new URI("https://localhost:" + port + "/foo?param=bar");
-		RequestEntity<Void> request = RequestEntity.post(url).build();
-		ResponseEntity<Void> response = this.restTemplate.exchange(request, Void.class);
-		assertEquals(HttpStatus.OK, response.getStatusCode());
-	}
+    @Test
+    public void checkUri() throws Exception {
+        URI url = new URI("https://localhost:" + port + "/foo?param=bar");
+        RequestEntity<Void> request = RequestEntity.post(url).build();
+        ResponseEntity<Void> response = this.restTemplate.exchange(request, Void.class);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
 
-	public static class CheckRequestHandler implements HttpHandler {
+    public static class CheckRequestHandler implements HttpHandler {
 
-		@Override
-		public Mono<Void> handle(ServerHttpRequest request, ServerHttpResponse response) {
-			URI uri = request.getURI();
-			assertEquals("https", uri.getScheme());
-			assertNotNull(uri.getHost());
-			assertNotEquals(-1, uri.getPort());
-			assertNotNull(request.getRemoteAddress());
-			assertEquals("/foo", uri.getPath());
-			assertEquals("param=bar", uri.getQuery());
-			return Mono.empty();
-		}
-	}
-
+        @Override
+        public Mono<Void> handle(ServerHttpRequest request, ServerHttpResponse response) {
+            URI uri = request.getURI();
+            assertEquals("https", uri.getScheme());
+            assertNotNull(uri.getHost());
+            assertNotEquals(-1, uri.getPort());
+            assertNotNull(request.getRemoteAddress());
+            assertEquals("/foo", uri.getPath());
+            assertEquals("param=bar", uri.getQuery());
+            return Mono.empty();
+        }
+    }
 }

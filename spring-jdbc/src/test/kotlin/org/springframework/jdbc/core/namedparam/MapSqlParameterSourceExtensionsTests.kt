@@ -27,27 +27,27 @@ import java.sql.JDBCType
  */
 class MapSqlParameterSourceExtensionsTests {
 
-	@Test
-	fun `setter with value`() {
-		val source = MapSqlParameterSource()
-		source["foo"] = 2
-		assertEquals(2, source.getValue("foo"))
-	}
+    @Test
+    fun `setter with value`() {
+        val source = MapSqlParameterSource()
+        source["foo"] = 2
+        assertEquals(2, source.getValue("foo"))
+    }
 
-	@Test
-	fun `setter with value and type`() {
-		val source = MapSqlParameterSource()
-		source["foo", JDBCType.INTEGER.vendorTypeNumber] = 2
-		assertEquals(2, source.getValue("foo"))
-		assertEquals(JDBCType.INTEGER.vendorTypeNumber, source.getSqlType("foo"))
-	}
+    @Test
+    fun `setter with value and type`() {
+        val source = MapSqlParameterSource()
+        source["foo", JDBCType.INTEGER.vendorTypeNumber] = 2
+        assertEquals(2, source.getValue("foo"))
+        assertEquals(JDBCType.INTEGER.vendorTypeNumber, source.getSqlType("foo"))
+    }
 
-	@Test
-	fun `setter with value, type and type name`() {
-		val source = MapSqlParameterSource()
-		source["foo", JDBCType.INTEGER.vendorTypeNumber, "INT"] = 2
-		assertEquals(2, source.getValue("foo"))
-		assertEquals(JDBCType.INTEGER.vendorTypeNumber, source.getSqlType("foo"))
-		assertEquals("INT", source.getTypeName("foo"))
-	}
+    @Test
+    fun `setter with value, type and type name`() {
+        val source = MapSqlParameterSource()
+        source["foo", JDBCType.INTEGER.vendorTypeNumber, "INT"] = 2
+        assertEquals(2, source.getValue("foo"))
+        assertEquals(JDBCType.INTEGER.vendorTypeNumber, source.getSqlType("foo"))
+        assertEquals("INT", source.getTypeName("foo"))
+    }
 }

@@ -32,24 +32,26 @@ import org.springframework.test.context.junit4.orm.repository.PersonRepository;
 @Repository
 public class HibernatePersonRepository implements PersonRepository {
 
-	private final SessionFactory sessionFactory;
+    private final SessionFactory sessionFactory;
 
+    @Autowired
+    public HibernatePersonRepository(SessionFactory sessionFactory) {
+        this.sessionFactory = sessionFactory;
+    }
 
-	@Autowired
-	public HibernatePersonRepository(SessionFactory sessionFactory) {
-		this.sessionFactory = sessionFactory;
-	}
+    @Override
+    public Person save(Person person) {
+        this.sessionFactory.getCurrentSession().save(person);
+        return person;
+    }
 
-	@Override
-	public Person save(Person person) {
-		this.sessionFactory.getCurrentSession().save(person);
-		return person;
-	}
-
-	@Override
-	public Person findByName(String name) {
-		return (Person) this.sessionFactory.getCurrentSession().createQuery(
-			"from Person person where person.name = :name").setParameter("name", name).getSingleResult();
-	}
-
+    @Override
+    public Person findByName(String name) {
+        return (Person)
+                this.sessionFactory
+                        .getCurrentSession()
+                        .createQuery("from Person person where person.name = :name")
+                        .setParameter("name", name)
+                        .getSingleResult();
+    }
 }

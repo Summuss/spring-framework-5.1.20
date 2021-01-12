@@ -23,10 +23,12 @@ import org.springframework.core.convert.converter.ConverterFactory;
 import org.springframework.util.NumberUtils;
 
 /**
- * Converts from any JDK-standard Number implementation to any other JDK-standard Number implementation.
+ * Converts from any JDK-standard Number implementation to any other JDK-standard Number
+ * implementation.
  *
- * <p>Support Number classes including Byte, Short, Integer, Float, Double, Long, BigInteger, BigDecimal. This class
- * delegates to {@link NumberUtils#convertNumberToTargetClass(Number, Class)} to perform the conversion.
+ * <p>Support Number classes including Byte, Short, Integer, Float, Double, Long, BigInteger,
+ * BigDecimal. This class delegates to {@link NumberUtils#convertNumberToTargetClass(Number, Class)}
+ * to perform the conversion.
  *
  * @author Keith Donald
  * @since 3.0
@@ -40,31 +42,30 @@ import org.springframework.util.NumberUtils;
  * @see java.math.BigDecimal
  * @see NumberUtils
  */
-final class NumberToNumberConverterFactory implements ConverterFactory<Number, Number>, ConditionalConverter {
+final class NumberToNumberConverterFactory
+        implements ConverterFactory<Number, Number>, ConditionalConverter {
 
-	@Override
-	public <T extends Number> Converter<Number, T> getConverter(Class<T> targetType) {
-		return new NumberToNumber<>(targetType);
-	}
+    @Override
+    public <T extends Number> Converter<Number, T> getConverter(Class<T> targetType) {
+        return new NumberToNumber<>(targetType);
+    }
 
-	@Override
-	public boolean matches(TypeDescriptor sourceType, TypeDescriptor targetType) {
-		return !sourceType.equals(targetType);
-	}
+    @Override
+    public boolean matches(TypeDescriptor sourceType, TypeDescriptor targetType) {
+        return !sourceType.equals(targetType);
+    }
 
+    private static final class NumberToNumber<T extends Number> implements Converter<Number, T> {
 
-	private static final class NumberToNumber<T extends Number> implements Converter<Number, T> {
+        private final Class<T> targetType;
 
-		private final Class<T> targetType;
+        public NumberToNumber(Class<T> targetType) {
+            this.targetType = targetType;
+        }
 
-		public NumberToNumber(Class<T> targetType) {
-			this.targetType = targetType;
-		}
-
-		@Override
-		public T convert(Number source) {
-			return NumberUtils.convertNumberToTargetClass(source, this.targetType);
-		}
-	}
-
+        @Override
+        public T convert(Number source) {
+            return NumberUtils.convertNumberToTargetClass(source, this.targetType);
+        }
+    }
 }

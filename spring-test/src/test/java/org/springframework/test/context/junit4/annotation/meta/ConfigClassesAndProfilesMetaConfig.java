@@ -25,9 +25,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 
 /**
- * Custom configuration annotation with meta-annotation attribute overrides for
- * {@link ContextConfiguration#classes} and {@link ActiveProfiles#profiles} and
- * <strong>no</strong> default configuration local to the composed annotation.
+ * Custom configuration annotation with meta-annotation attribute overrides for {@link
+ * ContextConfiguration#classes} and {@link ActiveProfiles#profiles} and <strong>no</strong> default
+ * configuration local to the composed annotation.
  *
  * @author Sam Brannen
  * @since 4.0.3
@@ -38,8 +38,7 @@ import org.springframework.test.context.ContextConfiguration;
 @Target(ElementType.TYPE)
 public @interface ConfigClassesAndProfilesMetaConfig {
 
-	Class<?>[] classes() default {};
+    Class<?>[] classes() default {};
 
-	String[] profiles() default {};
-
+    String[] profiles() default {};
 }

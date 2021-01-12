@@ -20,12 +20,10 @@ import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.lang.Nullable;
 
 /**
- * Session-backed {@link org.springframework.beans.factory.config.Scope}
- * implementation.
+ * Session-backed {@link org.springframework.beans.factory.config.Scope} implementation.
  *
- * <p>Relies on a thread-bound {@link RequestAttributes} instance, which
- * can be exported through {@link RequestContextListener},
- * {@link org.springframework.web.filter.RequestContextFilter} or
+ * <p>Relies on a thread-bound {@link RequestAttributes} instance, which can be exported through
+ * {@link RequestContextListener}, {@link org.springframework.web.filter.RequestContextFilter} or
  * {@link org.springframework.web.servlet.DispatcherServlet}.
  *
  * @author Rod Johnson
@@ -40,31 +38,30 @@ import org.springframework.lang.Nullable;
  */
 public class SessionScope extends AbstractRequestAttributesScope {
 
-	@Override
-	protected int getScope() {
-		return RequestAttributes.SCOPE_SESSION;
-	}
+    @Override
+    protected int getScope() {
+        return RequestAttributes.SCOPE_SESSION;
+    }
 
-	@Override
-	public String getConversationId() {
-		return RequestContextHolder.currentRequestAttributes().getSessionId();
-	}
+    @Override
+    public String getConversationId() {
+        return RequestContextHolder.currentRequestAttributes().getSessionId();
+    }
 
-	@Override
-	public Object get(String name, ObjectFactory<?> objectFactory) {
-		Object mutex = RequestContextHolder.currentRequestAttributes().getSessionMutex();
-		synchronized (mutex) {
-			return super.get(name, objectFactory);
-		}
-	}
+    @Override
+    public Object get(String name, ObjectFactory<?> objectFactory) {
+        Object mutex = RequestContextHolder.currentRequestAttributes().getSessionMutex();
+        synchronized (mutex) {
+            return super.get(name, objectFactory);
+        }
+    }
 
-	@Override
-	@Nullable
-	public Object remove(String name) {
-		Object mutex = RequestContextHolder.currentRequestAttributes().getSessionMutex();
-		synchronized (mutex) {
-			return super.remove(name);
-		}
-	}
-
+    @Override
+    @Nullable
+    public Object remove(String name) {
+        Object mutex = RequestContextHolder.currentRequestAttributes().getSessionMutex();
+        synchronized (mutex) {
+            return super.remove(name);
+        }
+    }
 }

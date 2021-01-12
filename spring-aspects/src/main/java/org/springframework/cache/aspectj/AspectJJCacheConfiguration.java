@@ -24,9 +24,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Role;
 
 /**
- * {@code @Configuration} class that registers the Spring infrastructure beans necessary
- * to enable AspectJ-based annotation-driven cache management for standard JSR-107
- * annotations.
+ * {@code @Configuration} class that registers the Spring infrastructure beans necessary to enable
+ * AspectJ-based annotation-driven cache management for standard JSR-107 annotations.
  *
  * @author Stephane Nicoll
  * @since 4.1
@@ -37,12 +36,11 @@ import org.springframework.context.annotation.Role;
 @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
 public class AspectJJCacheConfiguration extends AbstractJCacheConfiguration {
 
-	@Bean(name = CacheManagementConfigUtils.JCACHE_ASPECT_BEAN_NAME)
-	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)
-	public JCacheCacheAspect cacheAspect() {
-		JCacheCacheAspect cacheAspect = JCacheCacheAspect.aspectOf();
-		cacheAspect.setCacheOperationSource(cacheOperationSource());
-		return cacheAspect;
-	}
-
+    @Bean(name = CacheManagementConfigUtils.JCACHE_ASPECT_BEAN_NAME)
+    @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
+    public JCacheCacheAspect cacheAspect() {
+        JCacheCacheAspect cacheAspect = JCacheCacheAspect.aspectOf();
+        cacheAspect.setCacheOperationSource(cacheOperationSource());
+        return cacheAspect;
+    }
 }

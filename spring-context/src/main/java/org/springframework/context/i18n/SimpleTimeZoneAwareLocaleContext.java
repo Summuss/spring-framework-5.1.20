@@ -22,11 +22,11 @@ import java.util.TimeZone;
 import org.springframework.lang.Nullable;
 
 /**
- * Simple implementation of the {@link TimeZoneAwareLocaleContext} interface,
- * always returning a specified {@code Locale} and {@code TimeZone}.
+ * Simple implementation of the {@link TimeZoneAwareLocaleContext} interface, always returning a
+ * specified {@code Locale} and {@code TimeZone}.
  *
- * <p>Note: Prefer the use of {@link SimpleLocaleContext} when only setting
- * a Locale but no TimeZone.
+ * <p>Note: Prefer the use of {@link SimpleLocaleContext} when only setting a Locale but no
+ * TimeZone.
  *
  * @author Juergen Hoeller
  * @author Nicholas Williams
@@ -34,34 +34,32 @@ import org.springframework.lang.Nullable;
  * @see LocaleContextHolder#setLocaleContext
  * @see LocaleContextHolder#getTimeZone()
  */
-public class SimpleTimeZoneAwareLocaleContext extends SimpleLocaleContext implements TimeZoneAwareLocaleContext {
+public class SimpleTimeZoneAwareLocaleContext extends SimpleLocaleContext
+        implements TimeZoneAwareLocaleContext {
 
-	@Nullable
-	private final TimeZone timeZone;
+    @Nullable private final TimeZone timeZone;
 
+    /**
+     * Create a new SimpleTimeZoneAwareLocaleContext that exposes the specified Locale and TimeZone.
+     * Every {@link #getLocale()} call will return the given Locale, and every {@link
+     * #getTimeZone()} call will return the given TimeZone.
+     *
+     * @param locale the Locale to expose
+     * @param timeZone the TimeZone to expose
+     */
+    public SimpleTimeZoneAwareLocaleContext(@Nullable Locale locale, @Nullable TimeZone timeZone) {
+        super(locale);
+        this.timeZone = timeZone;
+    }
 
-	/**
-	 * Create a new SimpleTimeZoneAwareLocaleContext that exposes the specified
-	 * Locale and TimeZone. Every {@link #getLocale()} call will return the given
-	 * Locale, and every {@link #getTimeZone()} call will return the given TimeZone.
-	 * @param locale the Locale to expose
-	 * @param timeZone the TimeZone to expose
-	 */
-	public SimpleTimeZoneAwareLocaleContext(@Nullable Locale locale, @Nullable TimeZone timeZone) {
-		super(locale);
-		this.timeZone = timeZone;
-	}
+    @Override
+    @Nullable
+    public TimeZone getTimeZone() {
+        return this.timeZone;
+    }
 
-
-	@Override
-	@Nullable
-	public TimeZone getTimeZone() {
-		return this.timeZone;
-	}
-
-	@Override
-	public String toString() {
-		return super.toString() + " " + (this.timeZone != null ? this.timeZone.toString() : "-");
-	}
-
+    @Override
+    public String toString() {
+        return super.toString() + " " + (this.timeZone != null ? this.timeZone.toString() : "-");
+    }
 }

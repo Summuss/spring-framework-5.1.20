@@ -31,10 +31,9 @@ import org.springframework.util.StringUtils;
  */
 final class StringToUUIDConverter implements Converter<String, UUID> {
 
-	@Override
-	@Nullable
-	public UUID convert(String source) {
-		return (StringUtils.hasLength(source) ? UUID.fromString(source.trim()) : null);
-	}
-
+    @Override
+    @Nullable
+    public UUID convert(String source) {
+        return (StringUtils.hasLength(source) ? UUID.fromString(source.trim()) : null);
+    }
 }

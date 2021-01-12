@@ -57,182 +57,191 @@ import static org.junit.Assert.*;
 import static org.springframework.http.MediaType.*;
 
 /**
- * Test the effect of exceptions at different stages of request processing by
- * checking the error signals on the completion publisher.
+ * Test the effect of exceptions at different stages of request processing by checking the error
+ * signals on the completion publisher.
  *
  * @author Rossen Stoyanchev
  */
 @SuppressWarnings({"ThrowableResultOfMethodCallIgnored", "ThrowableInstanceNeverThrown"})
 public class DispatcherHandlerErrorTests {
 
-	private static final IllegalStateException EXCEPTION = new IllegalStateException("boo");
+    private static final IllegalStateException EXCEPTION = new IllegalStateException("boo");
 
-	private DispatcherHandler dispatcherHandler;
+    private DispatcherHandler dispatcherHandler;
 
+    @Before
+    public void setup() {
+        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+        ctx.register(TestConfig.class);
+        ctx.refresh();
+        this.dispatcherHandler = new DispatcherHandler(ctx);
+    }
 
-	@Before
-	public void setup() {
-		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
-		ctx.register(TestConfig.class);
-		ctx.refresh();
-		this.dispatcherHandler = new DispatcherHandler(ctx);
-	}
+    @Test
+    public void noHandler() {
+        MockServerWebExchange exchange =
+                MockServerWebExchange.from(MockServerHttpRequest.get("/does-not-exist"));
+        Mono<Void> mono = this.dispatcherHandler.handle(exchange);
 
+        StepVerifier.create(mono)
+                .consumeErrorWith(
+                        ex -> {
+                            assertThat(ex, instanceOf(ResponseStatusException.class));
+                            assertThat(
+                                    ex.getMessage(), is("404 NOT_FOUND \"No matching handler\""));
+                        })
+                .verify();
 
-	@Test
-	public void noHandler() {
-		MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/does-not-exist"));
-		Mono<Void> mono = this.dispatcherHandler.handle(exchange);
+        // SPR-17475
+        AtomicReference<Throwable> exceptionRef = new AtomicReference<>();
+        StepVerifier.create(mono).consumeErrorWith(exceptionRef::set).verify();
+        StepVerifier.create(mono)
+                .consumeErrorWith(ex -> assertNotSame(exceptionRef.get(), ex))
+                .verify();
+    }
 
-		StepVerifier.create(mono)
-				.consumeErrorWith(ex -> {
-					assertThat(ex, instanceOf(ResponseStatusException.class));
-					assertThat(ex.getMessage(), is("404 NOT_FOUND \"No matching handler\""));
-				})
-				.verify();
+    @Test
+    public void controllerReturnsMonoError() {
+        MockServerWebExchange exchange =
+                MockServerWebExchange.from(MockServerHttpRequest.get("/error-signal"));
+        Mono<Void> publisher = this.dispatcherHandler.handle(exchange);
 
-		// SPR-17475
-		AtomicReference<Throwable> exceptionRef = new AtomicReference<>();
-		StepVerifier.create(mono).consumeErrorWith(exceptionRef::set).verify();
-		StepVerifier.create(mono).consumeErrorWith(ex -> assertNotSame(exceptionRef.get(), ex)).verify();
-	}
+        StepVerifier.create(publisher)
+                .consumeErrorWith(error -> assertSame(EXCEPTION, error))
+                .verify();
+    }
 
-	@Test
-	public void controllerReturnsMonoError() {
-		MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/error-signal"));
-		Mono<Void> publisher = this.dispatcherHandler.handle(exchange);
+    @Test
+    public void controllerThrowsException() {
+        MockServerWebExchange exchange =
+                MockServerWebExchange.from(MockServerHttpRequest.get("/raise-exception"));
+        Mono<Void> publisher = this.dispatcherHandler.handle(exchange);
 
-		StepVerifier.create(publisher)
-				.consumeErrorWith(error -> assertSame(EXCEPTION, error))
-				.verify();
-	}
+        StepVerifier.create(publisher)
+                .consumeErrorWith(error -> assertSame(EXCEPTION, error))
+                .verify();
+    }
 
-	@Test
-	public void controllerThrowsException() {
-		MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/raise-exception"));
-		Mono<Void> publisher = this.dispatcherHandler.handle(exchange);
+    @Test
+    public void unknownReturnType() {
+        MockServerWebExchange exchange =
+                MockServerWebExchange.from(MockServerHttpRequest.get("/unknown-return-type"));
+        Mono<Void> publisher = this.dispatcherHandler.handle(exchange);
 
-		StepVerifier.create(publisher)
-				.consumeErrorWith(error -> assertSame(EXCEPTION, error))
-				.verify();
-	}
+        StepVerifier.create(publisher)
+                .consumeErrorWith(
+                        error -> {
+                            assertThat(error, instanceOf(IllegalStateException.class));
+                            assertThat(error.getMessage(), startsWith("No HandlerResultHandler"));
+                        })
+                .verify();
+    }
 
-	@Test
-	public void unknownReturnType() {
-		MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/unknown-return-type"));
-		Mono<Void> publisher = this.dispatcherHandler.handle(exchange);
+    @Test
+    public void responseBodyMessageConversionError() {
+        ServerWebExchange exchange =
+                MockServerWebExchange.from(
+                        MockServerHttpRequest.post("/request-body")
+                                .accept(APPLICATION_JSON)
+                                .body("body"));
 
-		StepVerifier.create(publisher)
-				.consumeErrorWith(error -> {
-					assertThat(error, instanceOf(IllegalStateException.class));
-					assertThat(error.getMessage(), startsWith("No HandlerResultHandler"));
-				})
-				.verify();
-	}
+        Mono<Void> publisher = this.dispatcherHandler.handle(exchange);
 
-	@Test
-	public void responseBodyMessageConversionError() {
-		ServerWebExchange exchange = MockServerWebExchange.from(
-				MockServerHttpRequest.post("/request-body").accept(APPLICATION_JSON).body("body"));
+        StepVerifier.create(publisher)
+                .consumeErrorWith(
+                        error -> assertThat(error, instanceOf(NotAcceptableStatusException.class)))
+                .verify();
+    }
 
-		Mono<Void> publisher = this.dispatcherHandler.handle(exchange);
+    @Test
+    public void requestBodyError() {
+        ServerWebExchange exchange =
+                MockServerWebExchange.from(
+                        MockServerHttpRequest.post("/request-body").body(Mono.error(EXCEPTION)));
 
-		StepVerifier.create(publisher)
-				.consumeErrorWith(error -> assertThat(error, instanceOf(NotAcceptableStatusException.class)))
-				.verify();
-	}
+        Mono<Void> publisher = this.dispatcherHandler.handle(exchange);
 
-	@Test
-	public void requestBodyError() {
-		ServerWebExchange exchange = MockServerWebExchange.from(
-				MockServerHttpRequest.post("/request-body").body(Mono.error(EXCEPTION)));
+        StepVerifier.create(publisher)
+                .consumeErrorWith(error -> assertSame(EXCEPTION, error))
+                .verify();
+    }
 
-		Mono<Void> publisher = this.dispatcherHandler.handle(exchange);
+    @Test
+    public void webExceptionHandler() {
+        ServerWebExchange exchange =
+                MockServerWebExchange.from(MockServerHttpRequest.get("/unknown-argument-type"));
 
-		StepVerifier.create(publisher)
-				.consumeErrorWith(error -> assertSame(EXCEPTION, error))
-				.verify();
-	}
+        List<WebExceptionHandler> handlers =
+                Collections.singletonList(new ServerError500ExceptionHandler());
+        WebHandler webHandler = new ExceptionHandlingWebHandler(this.dispatcherHandler, handlers);
+        webHandler.handle(exchange).block(Duration.ofSeconds(5));
 
-	@Test
-	public void webExceptionHandler() {
-		ServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/unknown-argument-type"));
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, exchange.getResponse().getStatusCode());
+    }
 
-		List<WebExceptionHandler> handlers = Collections.singletonList(new ServerError500ExceptionHandler());
-		WebHandler webHandler = new ExceptionHandlingWebHandler(this.dispatcherHandler, handlers);
-		webHandler.handle(exchange).block(Duration.ofSeconds(5));
+    @Configuration
+    @SuppressWarnings({"unused", "WeakerAccess"})
+    static class TestConfig {
 
-		assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, exchange.getResponse().getStatusCode());
-	}
+        @Bean
+        public RequestMappingHandlerMapping handlerMapping() {
+            return new RequestMappingHandlerMapping();
+        }
 
+        @Bean
+        public RequestMappingHandlerAdapter handlerAdapter() {
+            return new RequestMappingHandlerAdapter();
+        }
 
-	@Configuration
-	@SuppressWarnings({"unused", "WeakerAccess"})
-	static class TestConfig {
+        @Bean
+        public ResponseBodyResultHandler resultHandler() {
+            return new ResponseBodyResultHandler(
+                    Collections.singletonList(
+                            new EncoderHttpMessageWriter<>(CharSequenceEncoder.textPlainOnly())),
+                    new HeaderContentTypeResolver());
+        }
 
-		@Bean
-		public RequestMappingHandlerMapping handlerMapping() {
-			return new RequestMappingHandlerMapping();
-		}
+        @Bean
+        public TestController testController() {
+            return new TestController();
+        }
+    }
 
-		@Bean
-		public RequestMappingHandlerAdapter handlerAdapter() {
-			return new RequestMappingHandlerAdapter();
-		}
+    @Controller
+    @SuppressWarnings("unused")
+    private static class TestController {
 
-		@Bean
-		public ResponseBodyResultHandler resultHandler() {
-			return new ResponseBodyResultHandler(Collections.singletonList(
-					new EncoderHttpMessageWriter<>(CharSequenceEncoder.textPlainOnly())),
-					new HeaderContentTypeResolver());
-		}
+        @RequestMapping("/error-signal")
+        @ResponseBody
+        public Publisher<String> errorSignal() {
+            return Mono.error(EXCEPTION);
+        }
 
-		@Bean
-		public TestController testController() {
-			return new TestController();
-		}
-	}
+        @RequestMapping("/raise-exception")
+        public void raiseException() {
+            throw EXCEPTION;
+        }
 
+        @RequestMapping("/unknown-return-type")
+        public Foo unknownReturnType() {
+            return new Foo();
+        }
 
-	@Controller
-	@SuppressWarnings("unused")
-	private static class TestController {
+        @RequestMapping("/request-body")
+        @ResponseBody
+        public Publisher<String> requestBody(@RequestBody Publisher<String> body) {
+            return Mono.from(body).map(s -> "hello " + s);
+        }
+    }
 
-		@RequestMapping("/error-signal")
-		@ResponseBody
-		public Publisher<String> errorSignal() {
-			return Mono.error(EXCEPTION);
-		}
+    private static class Foo {}
 
-		@RequestMapping("/raise-exception")
-		public void raiseException() {
-			throw EXCEPTION;
-		}
+    private static class ServerError500ExceptionHandler implements WebExceptionHandler {
 
-		@RequestMapping("/unknown-return-type")
-		public Foo unknownReturnType() {
-			return new Foo();
-		}
-
-		@RequestMapping("/request-body")
-		@ResponseBody
-		public Publisher<String> requestBody(@RequestBody Publisher<String> body) {
-			return Mono.from(body).map(s -> "hello " + s);
-		}
-	}
-
-
-	private static class Foo {
-	}
-
-
-	private static class ServerError500ExceptionHandler implements WebExceptionHandler {
-
-		@Override
-		public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
-			exchange.getResponse().setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
-			return Mono.empty();
-		}
-	}
-
+        @Override
+        public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
+            exchange.getResponse().setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
+            return Mono.empty();
+        }
+    }
 }

@@ -43,80 +43,82 @@ import org.springframework.web.reactive.socket.server.RequestUpgradeStrategy;
 import org.springframework.web.server.ServerWebExchange;
 
 /**
-* A {@link RequestUpgradeStrategy} for use with Undertow.
-  *
+ * A {@link RequestUpgradeStrategy} for use with Undertow.
+ *
  * @author Violeta Georgieva
  * @author Rossen Stoyanchev
  * @since 5.0
  */
 public class UndertowRequestUpgradeStrategy implements RequestUpgradeStrategy {
 
-	@Override
-	public Mono<Void> upgrade(ServerWebExchange exchange, WebSocketHandler handler,
-			@Nullable String subProtocol, Supplier<HandshakeInfo> handshakeInfoFactory) {
+    @Override
+    public Mono<Void> upgrade(
+            ServerWebExchange exchange,
+            WebSocketHandler handler,
+            @Nullable String subProtocol,
+            Supplier<HandshakeInfo> handshakeInfoFactory) {
 
-		HttpServerExchange httpExchange = getNativeRequest(exchange.getRequest());
+        HttpServerExchange httpExchange = getNativeRequest(exchange.getRequest());
 
-		Set<String> protocols = (subProtocol != null ? Collections.singleton(subProtocol) : Collections.emptySet());
-		Hybi13Handshake handshake = new Hybi13Handshake(protocols, false);
-		List<Handshake> handshakes = Collections.singletonList(handshake);
+        Set<String> protocols =
+                (subProtocol != null ? Collections.singleton(subProtocol) : Collections.emptySet());
+        Hybi13Handshake handshake = new Hybi13Handshake(protocols, false);
+        List<Handshake> handshakes = Collections.singletonList(handshake);
 
-		HandshakeInfo handshakeInfo = handshakeInfoFactory.get();
-		DataBufferFactory bufferFactory = exchange.getResponse().bufferFactory();
+        HandshakeInfo handshakeInfo = handshakeInfoFactory.get();
+        DataBufferFactory bufferFactory = exchange.getResponse().bufferFactory();
 
-		try {
-			DefaultCallback callback = new DefaultCallback(handshakeInfo, handler, bufferFactory);
-			new WebSocketProtocolHandshakeHandler(handshakes, callback).handleRequest(httpExchange);
-		}
-		catch (Exception ex) {
-			return Mono.error(ex);
-		}
+        try {
+            DefaultCallback callback = new DefaultCallback(handshakeInfo, handler, bufferFactory);
+            new WebSocketProtocolHandshakeHandler(handshakes, callback).handleRequest(httpExchange);
+        } catch (Exception ex) {
+            return Mono.error(ex);
+        }
 
-		return Mono.empty();
-	}
+        return Mono.empty();
+    }
 
-	private static HttpServerExchange getNativeRequest(ServerHttpRequest request) {
-		if (request instanceof AbstractServerHttpRequest) {
-			return ((AbstractServerHttpRequest) request).getNativeRequest();
-		}
-		else if (request instanceof ServerHttpRequestDecorator) {
-			return getNativeRequest(((ServerHttpRequestDecorator) request).getDelegate());
-		}
-		else {
-			throw new IllegalArgumentException(
-					"Couldn't find HttpServerExchange in " + request.getClass().getName());
-		}
-	}
+    private static HttpServerExchange getNativeRequest(ServerHttpRequest request) {
+        if (request instanceof AbstractServerHttpRequest) {
+            return ((AbstractServerHttpRequest) request).getNativeRequest();
+        } else if (request instanceof ServerHttpRequestDecorator) {
+            return getNativeRequest(((ServerHttpRequestDecorator) request).getDelegate());
+        } else {
+            throw new IllegalArgumentException(
+                    "Couldn't find HttpServerExchange in " + request.getClass().getName());
+        }
+    }
 
+    private class DefaultCallback implements WebSocketConnectionCallback {
 
-	private class DefaultCallback implements WebSocketConnectionCallback {
+        private final HandshakeInfo handshakeInfo;
 
-		private final HandshakeInfo handshakeInfo;
+        private final WebSocketHandler handler;
 
-		private final WebSocketHandler handler;
+        private final DataBufferFactory bufferFactory;
 
-		private final DataBufferFactory bufferFactory;
+        public DefaultCallback(
+                HandshakeInfo handshakeInfo,
+                WebSocketHandler handler,
+                DataBufferFactory bufferFactory) {
+            this.handshakeInfo = handshakeInfo;
+            this.handler = handler;
+            this.bufferFactory = bufferFactory;
+        }
 
-		public DefaultCallback(HandshakeInfo handshakeInfo, WebSocketHandler handler, DataBufferFactory bufferFactory) {
-			this.handshakeInfo = handshakeInfo;
-			this.handler = handler;
-			this.bufferFactory = bufferFactory;
-		}
+        @Override
+        public void onConnect(WebSocketHttpExchange httpExchange, WebSocketChannel channel) {
+            UndertowWebSocketSession session = createSession(channel);
+            UndertowWebSocketHandlerAdapter adapter = new UndertowWebSocketHandlerAdapter(session);
 
-		@Override
-		public void onConnect(WebSocketHttpExchange httpExchange, WebSocketChannel channel) {
-			UndertowWebSocketSession session = createSession(channel);
-			UndertowWebSocketHandlerAdapter adapter = new UndertowWebSocketHandlerAdapter(session);
+            channel.getReceiveSetter().set(adapter);
+            channel.resumeReceives();
 
-			channel.getReceiveSetter().set(adapter);
-			channel.resumeReceives();
+            this.handler.handle(session).subscribe(session);
+        }
 
-			this.handler.handle(session).subscribe(session);
-		}
-
-		private UndertowWebSocketSession createSession(WebSocketChannel channel) {
-			return new UndertowWebSocketSession(channel, this.handshakeInfo, this.bufferFactory);
-		}
-	}
-
+        private UndertowWebSocketSession createSession(WebSocketChannel channel) {
+            return new UndertowWebSocketSession(channel, this.handshakeInfo, this.bufferFactory);
+        }
+    }
 }

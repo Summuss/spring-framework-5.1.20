@@ -30,14 +30,14 @@ import org.springframework.util.MimeType;
 @FunctionalInterface
 public interface ContentTypeResolver {
 
-	/**
-	 * Determine the {@link MimeType} of a message from the given MessageHeaders.
-	 * @param headers the headers to use for the resolution
-	 * @return the resolved {@code MimeType}, or {@code null} if none found
-	 * @throws InvalidMimeTypeException if the content type is a String that cannot be parsed
-	 * @throws IllegalArgumentException if there is a content type but its type is unknown
-	 */
-	@Nullable
-	MimeType resolve(@Nullable MessageHeaders headers) throws InvalidMimeTypeException;
-
+    /**
+     * Determine the {@link MimeType} of a message from the given MessageHeaders.
+     *
+     * @param headers the headers to use for the resolution
+     * @return the resolved {@code MimeType}, or {@code null} if none found
+     * @throws InvalidMimeTypeException if the content type is a String that cannot be parsed
+     * @throws IllegalArgumentException if there is a content type but its type is unknown
+     */
+    @Nullable
+    MimeType resolve(@Nullable MessageHeaders headers) throws InvalidMimeTypeException;
 }

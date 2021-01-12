@@ -35,28 +35,33 @@ import org.springframework.web.method.support.ModelAndViewContainer;
  */
 public class HttpHeadersReturnValueHandler implements HandlerMethodReturnValueHandler {
 
-	@Override
-	public boolean supportsReturnType(MethodParameter returnType) {
-		return HttpHeaders.class.isAssignableFrom(returnType.getParameterType());
-	}
+    @Override
+    public boolean supportsReturnType(MethodParameter returnType) {
+        return HttpHeaders.class.isAssignableFrom(returnType.getParameterType());
+    }
 
-	@Override
-	@SuppressWarnings("resource")
-	public void handleReturnValue(@Nullable Object returnValue, MethodParameter returnType,
-			ModelAndViewContainer mavContainer, NativeWebRequest webRequest) throws Exception {
+    @Override
+    @SuppressWarnings("resource")
+    public void handleReturnValue(
+            @Nullable Object returnValue,
+            MethodParameter returnType,
+            ModelAndViewContainer mavContainer,
+            NativeWebRequest webRequest)
+            throws Exception {
 
-		mavContainer.setRequestHandled(true);
+        mavContainer.setRequestHandled(true);
 
-		Assert.state(returnValue instanceof HttpHeaders, "HttpHeaders expected");
-		HttpHeaders headers = (HttpHeaders) returnValue;
+        Assert.state(returnValue instanceof HttpHeaders, "HttpHeaders expected");
+        HttpHeaders headers = (HttpHeaders) returnValue;
 
-		if (!headers.isEmpty()) {
-			HttpServletResponse servletResponse = webRequest.getNativeResponse(HttpServletResponse.class);
-			Assert.state(servletResponse != null, "No HttpServletResponse");
-			ServletServerHttpResponse outputMessage = new ServletServerHttpResponse(servletResponse);
-			outputMessage.getHeaders().putAll(headers);
-			outputMessage.getBody();  // flush headers
-		}
-	}
-
+        if (!headers.isEmpty()) {
+            HttpServletResponse servletResponse =
+                    webRequest.getNativeResponse(HttpServletResponse.class);
+            Assert.state(servletResponse != null, "No HttpServletResponse");
+            ServletServerHttpResponse outputMessage =
+                    new ServletServerHttpResponse(servletResponse);
+            outputMessage.getHeaders().putAll(headers);
+            outputMessage.getBody(); // flush headers
+        }
+    }
 }

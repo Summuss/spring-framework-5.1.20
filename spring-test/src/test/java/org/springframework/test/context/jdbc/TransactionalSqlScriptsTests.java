@@ -43,37 +43,35 @@ import static org.junit.Assert.*;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 @ContextConfiguration(classes = EmptyDatabaseConfig.class)
 @Transactional
-@Sql({ "schema.sql", "data.sql" })
+@Sql({"schema.sql", "data.sql"})
 @DirtiesContext
 public class TransactionalSqlScriptsTests {
 
-	protected JdbcTemplate jdbcTemplate;
+    protected JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    public void setDataSource(DataSource dataSource) {
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
+    }
 
-	@Autowired
-	public void setDataSource(DataSource dataSource) {
-		this.jdbcTemplate = new JdbcTemplate(dataSource);
-	}
+    @Test
+    // test##_ prefix is required for @FixMethodOrder.
+    public void test01_classLevelScripts() {
+        assertNumUsers(1);
+    }
 
-	@Test
-	// test##_ prefix is required for @FixMethodOrder.
-	public void test01_classLevelScripts() {
-		assertNumUsers(1);
-	}
+    @Test
+    @Sql({"drop-schema.sql", "schema.sql", "data.sql", "data-add-dogbert.sql"})
+    // test##_ prefix is required for @FixMethodOrder.
+    public void test02_methodLevelScripts() {
+        assertNumUsers(2);
+    }
 
-	@Test
-	@Sql({ "drop-schema.sql", "schema.sql", "data.sql", "data-add-dogbert.sql" })
-	// test##_ prefix is required for @FixMethodOrder.
-	public void test02_methodLevelScripts() {
-		assertNumUsers(2);
-	}
+    protected int countRowsInTable(String tableName) {
+        return JdbcTestUtils.countRowsInTable(this.jdbcTemplate, tableName);
+    }
 
-	protected int countRowsInTable(String tableName) {
-		return JdbcTestUtils.countRowsInTable(this.jdbcTemplate, tableName);
-	}
-
-	protected void assertNumUsers(int expected) {
-		assertEquals("Number of rows in the 'user' table.", expected, countRowsInTable("user"));
-	}
-
+    protected void assertNumUsers(int expected) {
+        assertEquals("Number of rows in the 'user' table.", expected, countRowsInTable("user"));
+    }
 }

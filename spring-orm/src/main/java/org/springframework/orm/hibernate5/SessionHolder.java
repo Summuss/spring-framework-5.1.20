@@ -27,9 +27,9 @@ import org.springframework.orm.jpa.EntityManagerHolder;
 
 /**
  * Resource holder wrapping a Hibernate {@link Session} (plus an optional {@link Transaction}).
- * {@link HibernateTransactionManager} binds instances of this class to the thread,
- * for a given {@link org.hibernate.SessionFactory}. Extends {@link EntityManagerHolder}
- * as of 5.1, automatically exposing an {@code EntityManager} handle on Hibernate 5.2+.
+ * {@link HibernateTransactionManager} binds instances of this class to the thread, for a given
+ * {@link org.hibernate.SessionFactory}. Extends {@link EntityManagerHolder} as of 5.1,
+ * automatically exposing an {@code EntityManager} handle on Hibernate 5.2+.
  *
  * <p>Note: This is an SPI class, not intended to be used by applications.
  *
@@ -40,51 +40,45 @@ import org.springframework.orm.jpa.EntityManagerHolder;
  */
 public class SessionHolder extends EntityManagerHolder {
 
-	private final Session session;
+    private final Session session;
 
-	@Nullable
-	private Transaction transaction;
+    @Nullable private Transaction transaction;
 
-	@Nullable
-	private FlushMode previousFlushMode;
+    @Nullable private FlushMode previousFlushMode;
 
+    public SessionHolder(Session session) {
+        // Check below is always true against Hibernate >= 5.2 but not against 5.0/5.1 at runtime
+        super(EntityManager.class.isInstance(session) ? session : null);
+        this.session = session;
+    }
 
-	public SessionHolder(Session session) {
-		// Check below is always true against Hibernate >= 5.2 but not against 5.0/5.1 at runtime
-		super(EntityManager.class.isInstance(session) ? session : null);
-		this.session = session;
-	}
+    public Session getSession() {
+        return this.session;
+    }
 
+    public void setTransaction(@Nullable Transaction transaction) {
+        this.transaction = transaction;
+        setTransactionActive(transaction != null);
+    }
 
-	public Session getSession() {
-		return this.session;
-	}
+    @Nullable
+    public Transaction getTransaction() {
+        return this.transaction;
+    }
 
-	public void setTransaction(@Nullable Transaction transaction) {
-		this.transaction = transaction;
-		setTransactionActive(transaction != null);
-	}
+    public void setPreviousFlushMode(@Nullable FlushMode previousFlushMode) {
+        this.previousFlushMode = previousFlushMode;
+    }
 
-	@Nullable
-	public Transaction getTransaction() {
-		return this.transaction;
-	}
+    @Nullable
+    public FlushMode getPreviousFlushMode() {
+        return this.previousFlushMode;
+    }
 
-	public void setPreviousFlushMode(@Nullable FlushMode previousFlushMode) {
-		this.previousFlushMode = previousFlushMode;
-	}
-
-	@Nullable
-	public FlushMode getPreviousFlushMode() {
-		return this.previousFlushMode;
-	}
-
-
-	@Override
-	public void clear() {
-		super.clear();
-		this.transaction = null;
-		this.previousFlushMode = null;
-	}
-
+    @Override
+    public void clear() {
+        super.clear();
+        this.transaction = null;
+        this.previousFlushMode = null;
+    }
 }

@@ -40,70 +40,77 @@ import static org.junit.Assert.*;
  */
 public class ServletResponseMethodArgumentResolverTests {
 
-	private ServletResponseMethodArgumentResolver resolver;
+    private ServletResponseMethodArgumentResolver resolver;
 
-	private ModelAndViewContainer mavContainer;
+    private ModelAndViewContainer mavContainer;
 
-	private MockHttpServletResponse servletResponse;
+    private MockHttpServletResponse servletResponse;
 
-	private ServletWebRequest webRequest;
+    private ServletWebRequest webRequest;
 
-	private Method method;
+    private Method method;
 
+    @Before
+    public void setup() throws Exception {
+        resolver = new ServletResponseMethodArgumentResolver();
+        mavContainer = new ModelAndViewContainer();
+        servletResponse = new MockHttpServletResponse();
+        webRequest = new ServletWebRequest(new MockHttpServletRequest(), servletResponse);
 
-	@Before
-	public void setup() throws Exception {
-		resolver = new ServletResponseMethodArgumentResolver();
-		mavContainer = new ModelAndViewContainer();
-		servletResponse = new MockHttpServletResponse();
-		webRequest = new ServletWebRequest(new MockHttpServletRequest(), servletResponse);
+        method =
+                getClass()
+                        .getMethod(
+                                "supportedParams",
+                                ServletResponse.class,
+                                OutputStream.class,
+                                Writer.class);
+    }
 
-		method = getClass().getMethod("supportedParams", ServletResponse.class, OutputStream.class, Writer.class);
-	}
+    @Test
+    public void servletResponse() throws Exception {
+        MethodParameter servletResponseParameter = new MethodParameter(method, 0);
+        assertTrue(
+                "ServletResponse not supported",
+                resolver.supportsParameter(servletResponseParameter));
 
+        Object result =
+                resolver.resolveArgument(servletResponseParameter, mavContainer, webRequest, null);
+        assertSame("Invalid result", servletResponse, result);
+        assertTrue(mavContainer.isRequestHandled());
+    }
 
-	@Test
-	public void servletResponse() throws Exception {
-		MethodParameter servletResponseParameter = new MethodParameter(method, 0);
-		assertTrue("ServletResponse not supported", resolver.supportsParameter(servletResponseParameter));
+    @Test // SPR-8983
+    public void servletResponseNoMavContainer() throws Exception {
+        MethodParameter servletResponseParameter = new MethodParameter(method, 0);
+        assertTrue(
+                "ServletResponse not supported",
+                resolver.supportsParameter(servletResponseParameter));
 
-		Object result = resolver.resolveArgument(servletResponseParameter, mavContainer, webRequest, null);
-		assertSame("Invalid result", servletResponse, result);
-		assertTrue(mavContainer.isRequestHandled());
-	}
+        Object result = resolver.resolveArgument(servletResponseParameter, null, webRequest, null);
+        assertSame("Invalid result", servletResponse, result);
+    }
 
-	@Test  // SPR-8983
-	public void servletResponseNoMavContainer() throws Exception {
-		MethodParameter servletResponseParameter = new MethodParameter(method, 0);
-		assertTrue("ServletResponse not supported", resolver.supportsParameter(servletResponseParameter));
+    @Test
+    public void outputStream() throws Exception {
+        MethodParameter outputStreamParameter = new MethodParameter(method, 1);
+        assertTrue("OutputStream not supported", resolver.supportsParameter(outputStreamParameter));
 
-		Object result = resolver.resolveArgument(servletResponseParameter, null, webRequest, null);
-		assertSame("Invalid result", servletResponse, result);
-	}
+        Object result =
+                resolver.resolveArgument(outputStreamParameter, mavContainer, webRequest, null);
+        assertSame("Invalid result", servletResponse.getOutputStream(), result);
+        assertTrue(mavContainer.isRequestHandled());
+    }
 
-	@Test
-	public void outputStream() throws Exception {
-		MethodParameter outputStreamParameter = new MethodParameter(method, 1);
-		assertTrue("OutputStream not supported", resolver.supportsParameter(outputStreamParameter));
+    @Test
+    public void writer() throws Exception {
+        MethodParameter writerParameter = new MethodParameter(method, 2);
+        assertTrue("Writer not supported", resolver.supportsParameter(writerParameter));
 
-		Object result = resolver.resolveArgument(outputStreamParameter, mavContainer, webRequest, null);
-		assertSame("Invalid result", servletResponse.getOutputStream(), result);
-		assertTrue(mavContainer.isRequestHandled());
-	}
+        Object result = resolver.resolveArgument(writerParameter, mavContainer, webRequest, null);
+        assertSame("Invalid result", servletResponse.getWriter(), result);
+        assertTrue(mavContainer.isRequestHandled());
+    }
 
-	@Test
-	public void writer() throws Exception {
-		MethodParameter writerParameter = new MethodParameter(method, 2);
-		assertTrue("Writer not supported", resolver.supportsParameter(writerParameter));
-
-		Object result = resolver.resolveArgument(writerParameter, mavContainer, webRequest, null);
-		assertSame("Invalid result", servletResponse.getWriter(), result);
-		assertTrue(mavContainer.isRequestHandled());
-	}
-
-
-	@SuppressWarnings("unused")
-	public void supportedParams(ServletResponse p0, OutputStream p1, Writer p2) {
-	}
-
+    @SuppressWarnings("unused")
+    public void supportedParams(ServletResponse p0, OutputStream p1, Writer p2) {}
 }

@@ -17,8 +17,8 @@
 package org.springframework.context.annotation;
 
 /**
- * Enumeration of the type filters that may be used in conjunction with
- * {@link ComponentScan @ComponentScan}.
+ * Enumeration of the type filters that may be used in conjunction with {@link
+ * ComponentScan @ComponentScan}.
  *
  * @author Mark Fisher
  * @author Juergen Hoeller
@@ -31,33 +31,37 @@ package org.springframework.context.annotation;
  */
 public enum FilterType {
 
-	/**
-	 * Filter candidates marked with a given annotation.
-	 * @see org.springframework.core.type.filter.AnnotationTypeFilter
-	 */
-	ANNOTATION,
+    /**
+     * Filter candidates marked with a given annotation.
+     *
+     * @see org.springframework.core.type.filter.AnnotationTypeFilter
+     */
+    ANNOTATION,
 
-	/**
-	 * Filter candidates assignable to a given type.
-	 * @see org.springframework.core.type.filter.AssignableTypeFilter
-	 */
-	ASSIGNABLE_TYPE,
+    /**
+     * Filter candidates assignable to a given type.
+     *
+     * @see org.springframework.core.type.filter.AssignableTypeFilter
+     */
+    ASSIGNABLE_TYPE,
 
-	/**
-	 * Filter candidates matching a given AspectJ type pattern expression.
-	 * @see org.springframework.core.type.filter.AspectJTypeFilter
-	 */
-	ASPECTJ,
+    /**
+     * Filter candidates matching a given AspectJ type pattern expression.
+     *
+     * @see org.springframework.core.type.filter.AspectJTypeFilter
+     */
+    ASPECTJ,
 
-	/**
-	 * Filter candidates matching a given regex pattern.
-	 * @see org.springframework.core.type.filter.RegexPatternTypeFilter
-	 */
-	REGEX,
+    /**
+     * Filter candidates matching a given regex pattern.
+     *
+     * @see org.springframework.core.type.filter.RegexPatternTypeFilter
+     */
+    REGEX,
 
-	/** Filter candidates using a given custom
-	 * {@link org.springframework.core.type.filter.TypeFilter} implementation.
-	 */
-	CUSTOM
-
+    /**
+     * Filter candidates using a given custom {@link
+     * org.springframework.core.type.filter.TypeFilter} implementation.
+     */
+    CUSTOM
 }

@@ -30,136 +30,137 @@ import org.springframework.transaction.interceptor.DefaultTransactionAttribute;
 
 import static org.junit.Assert.*;
 
-/**
- * @author Stephane Nicoll
- */
+/** @author Stephane Nicoll */
 public class TransactionAwareCacheDecoratorTests {
 
-	@Rule
-	public final ExpectedException thrown = ExpectedException.none();
+    @Rule public final ExpectedException thrown = ExpectedException.none();
 
-	private final PlatformTransactionManager txManager = new CallCountingTransactionManager();
+    private final PlatformTransactionManager txManager = new CallCountingTransactionManager();
 
-	@Test
-	public void createWithNullTarget() {
-		this.thrown.expect(IllegalArgumentException.class);
-		new TransactionAwareCacheDecorator(null);
-	}
+    @Test
+    public void createWithNullTarget() {
+        this.thrown.expect(IllegalArgumentException.class);
+        new TransactionAwareCacheDecorator(null);
+    }
 
-	@Test
-	public void getTargetCache() {
-		Cache target = new ConcurrentMapCache("testCache");
-		TransactionAwareCacheDecorator cache = new TransactionAwareCacheDecorator(target);
-		assertSame(target, cache.getTargetCache());
-	}
+    @Test
+    public void getTargetCache() {
+        Cache target = new ConcurrentMapCache("testCache");
+        TransactionAwareCacheDecorator cache = new TransactionAwareCacheDecorator(target);
+        assertSame(target, cache.getTargetCache());
+    }
 
-	@Test
-	public void regularOperationsOnTarget() {
-		Cache target = new ConcurrentMapCache("testCache");
-		Cache cache = new TransactionAwareCacheDecorator(target);
-		assertEquals(target.getName(), cache.getName());
-		assertEquals(target.getNativeCache(), cache.getNativeCache());
+    @Test
+    public void regularOperationsOnTarget() {
+        Cache target = new ConcurrentMapCache("testCache");
+        Cache cache = new TransactionAwareCacheDecorator(target);
+        assertEquals(target.getName(), cache.getName());
+        assertEquals(target.getNativeCache(), cache.getNativeCache());
 
-		Object key = new Object();
-		target.put(key, "123");
-		assertEquals("123", cache.get(key).get());
-		assertEquals("123", cache.get(key, String.class));
+        Object key = new Object();
+        target.put(key, "123");
+        assertEquals("123", cache.get(key).get());
+        assertEquals("123", cache.get(key, String.class));
 
-		cache.clear();
-		assertNull(target.get(key));
-	}
+        cache.clear();
+        assertNull(target.get(key));
+    }
 
-	@Test
-	public void putNonTransactional() {
-		Cache target = new ConcurrentMapCache("testCache");
-		Cache cache = new TransactionAwareCacheDecorator(target);
+    @Test
+    public void putNonTransactional() {
+        Cache target = new ConcurrentMapCache("testCache");
+        Cache cache = new TransactionAwareCacheDecorator(target);
 
-		Object key = new Object();
-		cache.put(key, "123");
-		assertEquals("123", target.get(key, String.class));
-	}
+        Object key = new Object();
+        cache.put(key, "123");
+        assertEquals("123", target.get(key, String.class));
+    }
 
-	@Test
-	public void putTransactional() {
-		Cache target = new ConcurrentMapCache("testCache");
-		Cache cache = new TransactionAwareCacheDecorator(target);
+    @Test
+    public void putTransactional() {
+        Cache target = new ConcurrentMapCache("testCache");
+        Cache cache = new TransactionAwareCacheDecorator(target);
 
-		TransactionStatus status = this.txManager.getTransaction(
-				new DefaultTransactionAttribute(TransactionDefinition.PROPAGATION_REQUIRED));
+        TransactionStatus status =
+                this.txManager.getTransaction(
+                        new DefaultTransactionAttribute(
+                                TransactionDefinition.PROPAGATION_REQUIRED));
 
-		Object key = new Object();
-		cache.put(key, "123");
-		assertNull(target.get(key));
-		this.txManager.commit(status);
+        Object key = new Object();
+        cache.put(key, "123");
+        assertNull(target.get(key));
+        this.txManager.commit(status);
 
-		assertEquals("123", target.get(key, String.class));
-	}
+        assertEquals("123", target.get(key, String.class));
+    }
 
-	@Test
-	public void putIfAbsent() { // no transactional support for putIfAbsent
-		Cache target = new ConcurrentMapCache("testCache");
-		Cache cache = new TransactionAwareCacheDecorator(target);
+    @Test
+    public void putIfAbsent() { // no transactional support for putIfAbsent
+        Cache target = new ConcurrentMapCache("testCache");
+        Cache cache = new TransactionAwareCacheDecorator(target);
 
-		Object key = new Object();
-		assertNull(cache.putIfAbsent(key, "123"));
-		assertEquals("123", target.get(key, String.class));
-		assertEquals("123", cache.putIfAbsent(key, "456").get());
-		assertEquals("123", target.get(key, String.class)); // unchanged
-	}
+        Object key = new Object();
+        assertNull(cache.putIfAbsent(key, "123"));
+        assertEquals("123", target.get(key, String.class));
+        assertEquals("123", cache.putIfAbsent(key, "456").get());
+        assertEquals("123", target.get(key, String.class)); // unchanged
+    }
 
-	@Test
-	public void evictNonTransactional() {
-		Cache target = new ConcurrentMapCache("testCache");
-		Cache cache = new TransactionAwareCacheDecorator(target);
-		Object key = new Object();
-		cache.put(key, "123");
+    @Test
+    public void evictNonTransactional() {
+        Cache target = new ConcurrentMapCache("testCache");
+        Cache cache = new TransactionAwareCacheDecorator(target);
+        Object key = new Object();
+        cache.put(key, "123");
 
-		cache.evict(key);
-		assertNull(target.get(key));
-	}
+        cache.evict(key);
+        assertNull(target.get(key));
+    }
 
-	@Test
-	public void evictTransactional() {
-		Cache target = new ConcurrentMapCache("testCache");
-		Cache cache = new TransactionAwareCacheDecorator(target);
-		Object key = new Object();
-		cache.put(key, "123");
+    @Test
+    public void evictTransactional() {
+        Cache target = new ConcurrentMapCache("testCache");
+        Cache cache = new TransactionAwareCacheDecorator(target);
+        Object key = new Object();
+        cache.put(key, "123");
 
+        TransactionStatus status =
+                this.txManager.getTransaction(
+                        new DefaultTransactionAttribute(
+                                TransactionDefinition.PROPAGATION_REQUIRED));
+        cache.evict(key);
+        assertEquals("123", target.get(key, String.class));
+        this.txManager.commit(status);
 
-		TransactionStatus status = this.txManager.getTransaction(
-				new DefaultTransactionAttribute(TransactionDefinition.PROPAGATION_REQUIRED));
-		cache.evict(key);
-		assertEquals("123", target.get(key, String.class));
-		this.txManager.commit(status);
+        assertNull(target.get(key));
+    }
 
-		assertNull(target.get(key));
-	}
+    @Test
+    public void clearNonTransactional() {
+        Cache target = new ConcurrentMapCache("testCache");
+        Cache cache = new TransactionAwareCacheDecorator(target);
+        Object key = new Object();
+        cache.put(key, "123");
 
-	@Test
-	public void clearNonTransactional() {
-		Cache target = new ConcurrentMapCache("testCache");
-		Cache cache = new TransactionAwareCacheDecorator(target);
-		Object key = new Object();
-		cache.put(key, "123");
+        cache.clear();
+        assertNull(target.get(key));
+    }
 
-		cache.clear();
-		assertNull(target.get(key));
-	}
+    @Test
+    public void clearTransactional() {
+        Cache target = new ConcurrentMapCache("testCache");
+        Cache cache = new TransactionAwareCacheDecorator(target);
+        Object key = new Object();
+        cache.put(key, "123");
 
-	@Test
-	public void clearTransactional() {
-		Cache target = new ConcurrentMapCache("testCache");
-		Cache cache = new TransactionAwareCacheDecorator(target);
-		Object key = new Object();
-		cache.put(key, "123");
+        TransactionStatus status =
+                this.txManager.getTransaction(
+                        new DefaultTransactionAttribute(
+                                TransactionDefinition.PROPAGATION_REQUIRED));
+        cache.clear();
+        assertEquals("123", target.get(key, String.class));
+        this.txManager.commit(status);
 
-
-		TransactionStatus status = this.txManager.getTransaction(
-				new DefaultTransactionAttribute(TransactionDefinition.PROPAGATION_REQUIRED));
-		cache.clear();
-		assertEquals("123", target.get(key, String.class));
-		this.txManager.commit(status);
-
-		assertNull(target.get(key));
-	}
+        assertNull(target.get(key));
+    }
 }

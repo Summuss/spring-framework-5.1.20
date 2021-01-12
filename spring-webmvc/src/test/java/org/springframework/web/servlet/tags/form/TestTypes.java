@@ -5,37 +5,35 @@ package org.springframework.web.servlet.tags.form;
  *
  * @author Scott Andrews
  */
-public class TestTypes { }
+public class TestTypes {}
 
 class BeanWithEnum {
 
-	private TestEnum testEnum;
+    private TestEnum testEnum;
 
-	public TestEnum getTestEnum() {
-		return testEnum;
-	}
+    public TestEnum getTestEnum() {
+        return testEnum;
+    }
 
-	public void setTestEnum(TestEnum customEnum) {
-		this.testEnum = customEnum;
-	}
-
+    public void setTestEnum(TestEnum customEnum) {
+        this.testEnum = customEnum;
+    }
 }
 
 enum TestEnum {
+    VALUE_1,
+    VALUE_2;
 
-	VALUE_1, VALUE_2;
+    public String getEnumLabel() {
+        return "Label: " + name();
+    }
 
-	public String getEnumLabel() {
-		return "Label: " + name();
-	}
+    public String getEnumValue() {
+        return "Value: " + name();
+    }
 
-	public String getEnumValue() {
-		return "Value: " + name();
-	}
-
-	@Override
-	public String toString() {
-		return "TestEnum: " + name();
-	}
-
+    @Override
+    public String toString() {
+        return "TestEnum: " + name();
+    }
 }

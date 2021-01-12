@@ -30,47 +30,51 @@ import org.springframework.cache.interceptor.CacheOperationInvoker;
  * @since 4.1
  */
 @SuppressWarnings("serial")
-class CacheRemoveEntryInterceptor extends AbstractKeyCacheInterceptor<CacheRemoveOperation, CacheRemove> {
+class CacheRemoveEntryInterceptor
+        extends AbstractKeyCacheInterceptor<CacheRemoveOperation, CacheRemove> {
 
-	protected CacheRemoveEntryInterceptor(CacheErrorHandler errorHandler) {
-		super(errorHandler);
-	}
+    protected CacheRemoveEntryInterceptor(CacheErrorHandler errorHandler) {
+        super(errorHandler);
+    }
 
+    @Override
+    protected Object invoke(
+            CacheOperationInvocationContext<CacheRemoveOperation> context,
+            CacheOperationInvoker invoker) {
 
-	@Override
-	protected Object invoke(
-			CacheOperationInvocationContext<CacheRemoveOperation> context, CacheOperationInvoker invoker) {
+        CacheRemoveOperation operation = context.getOperation();
+        boolean earlyRemove = operation.isEarlyRemove();
+        if (earlyRemove) {
+            removeValue(context);
+        }
 
-		CacheRemoveOperation operation = context.getOperation();
-		boolean earlyRemove = operation.isEarlyRemove();
-		if (earlyRemove) {
-			removeValue(context);
-		}
+        try {
+            Object result = invoker.invoke();
+            if (!earlyRemove) {
+                removeValue(context);
+            }
+            return result;
+        } catch (CacheOperationInvoker.ThrowableWrapper wrapperException) {
+            Throwable ex = wrapperException.getOriginal();
+            if (!earlyRemove && operation.getExceptionTypeFilter().match(ex.getClass())) {
+                removeValue(context);
+            }
+            throw wrapperException;
+        }
+    }
 
-		try {
-			Object result = invoker.invoke();
-			if (!earlyRemove) {
-				removeValue(context);
-			}
-			return result;
-		}
-		catch (CacheOperationInvoker.ThrowableWrapper wrapperException) {
-			Throwable ex = wrapperException.getOriginal();
-			if (!earlyRemove && operation.getExceptionTypeFilter().match(ex.getClass())) {
-				removeValue(context);
-			}
-			throw wrapperException;
-		}
-	}
-
-	private void removeValue(CacheOperationInvocationContext<CacheRemoveOperation> context) {
-		Object key = generateKey(context);
-		Cache cache = resolveCache(context);
-		if (logger.isTraceEnabled()) {
-			logger.trace("Invalidating key [" + key + "] on cache '" + cache.getName() +
-					"' for operation " + context.getOperation());
-		}
-		doEvict(cache, key);
-	}
-
+    private void removeValue(CacheOperationInvocationContext<CacheRemoveOperation> context) {
+        Object key = generateKey(context);
+        Cache cache = resolveCache(context);
+        if (logger.isTraceEnabled()) {
+            logger.trace(
+                    "Invalidating key ["
+                            + key
+                            + "] on cache '"
+                            + cache.getName()
+                            + "' for operation "
+                            + context.getOperation());
+        }
+        doEvict(cache, key);
+    }
 }

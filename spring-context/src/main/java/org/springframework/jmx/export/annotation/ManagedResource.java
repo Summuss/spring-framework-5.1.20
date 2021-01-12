@@ -26,13 +26,12 @@ import java.lang.annotation.Target;
 import org.springframework.core.annotation.AliasFor;
 
 /**
- * Class-level annotation that indicates to register instances of a class
- * with a JMX server, corresponding to the {@code ManagedResource} attribute.
+ * Class-level annotation that indicates to register instances of a class with a JMX server,
+ * corresponding to the {@code ManagedResource} attribute.
  *
- * <p><b>Note:</b> This annotation is marked as inherited, allowing for generic
- * management-aware base classes. In such a scenario, it is recommended to
- * <i>not</i> specify an object name value since this would lead to naming
- * collisions in case of multiple subclasses getting registered.
+ * <p><b>Note:</b> This annotation is marked as inherited, allowing for generic management-aware
+ * base classes. In such a scenario, it is recommended to <i>not</i> specify an object name value
+ * since this would lead to naming collisions in case of multiple subclasses getting registered.
  *
  * @author Rob Harrop
  * @author Juergen Hoeller
@@ -46,29 +45,26 @@ import org.springframework.core.annotation.AliasFor;
 @Documented
 public @interface ManagedResource {
 
-	/**
-	 * Alias for the {@link #objectName} attribute, for simple default usage.
-	 */
-	@AliasFor("objectName")
-	String value() default "";
+    /** Alias for the {@link #objectName} attribute, for simple default usage. */
+    @AliasFor("objectName")
+    String value() default "";
 
-	@AliasFor("value")
-	String objectName() default "";
+    @AliasFor("value")
+    String objectName() default "";
 
-	String description() default "";
+    String description() default "";
 
-	int currencyTimeLimit() default -1;
+    int currencyTimeLimit() default -1;
 
-	boolean log() default false;
+    boolean log() default false;
 
-	String logFile() default "";
+    String logFile() default "";
 
-	String persistPolicy() default "";
+    String persistPolicy() default "";
 
-	int persistPeriod() default -1;
+    int persistPeriod() default -1;
 
-	String persistName() default "";
+    String persistName() default "";
 
-	String persistLocation() default "";
-
+    String persistLocation() default "";
 }

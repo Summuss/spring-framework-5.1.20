@@ -1,6 +1,4 @@
-/**
- * SpEL's abstract syntax tree.
- */
+/** SpEL's abstract syntax tree. */
 @NonNullApi
 @NonNullFields
 package org.springframework.expression.spel.ast;

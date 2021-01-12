@@ -24,5 +24,4 @@ import org.springframework.stereotype.Component;
 @Component("componentWithRole")
 @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
 @Description("A Component with a role")
-public class ComponentWithRole {
-}
+public class ComponentWithRole {}

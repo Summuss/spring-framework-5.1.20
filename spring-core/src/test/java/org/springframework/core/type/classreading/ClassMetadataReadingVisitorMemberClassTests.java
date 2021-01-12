@@ -27,18 +27,16 @@ import org.springframework.core.type.ClassMetadata;
  * @see AbstractClassMetadataMemberClassTests
  */
 public class ClassMetadataReadingVisitorMemberClassTests
-		extends AbstractClassMetadataMemberClassTests {
+        extends AbstractClassMetadataMemberClassTests {
 
-	@Override
-	public ClassMetadata getClassMetadataFor(Class<?> clazz) {
-		try {
-			MetadataReader reader =
-				new SimpleMetadataReaderFactory().getMetadataReader(clazz.getName());
-			return reader.getAnnotationMetadata();
-		}
-		catch (IOException ex) {
-			throw new IllegalStateException(ex);
-		}
-	}
-
+    @Override
+    public ClassMetadata getClassMetadataFor(Class<?> clazz) {
+        try {
+            MetadataReader reader =
+                    new SimpleMetadataReaderFactory().getMetadataReader(clazz.getName());
+            return reader.getAnnotationMetadata();
+        } catch (IOException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
 }

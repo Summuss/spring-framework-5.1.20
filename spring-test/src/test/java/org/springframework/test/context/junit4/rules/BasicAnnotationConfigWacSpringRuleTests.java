@@ -24,9 +24,8 @@ import org.junit.runners.JUnit4;
 import org.springframework.test.context.web.BasicAnnotationConfigWacTests;
 
 /**
- * This class is an extension of {@link BasicAnnotationConfigWacTests}
- * that has been modified to use {@link SpringClassRule} and
- * {@link SpringMethodRule}.
+ * This class is an extension of {@link BasicAnnotationConfigWacTests} that has been modified to use
+ * {@link SpringClassRule} and {@link SpringMethodRule}.
  *
  * @author Sam Brannen
  * @since 4.2
@@ -34,12 +33,9 @@ import org.springframework.test.context.web.BasicAnnotationConfigWacTests;
 @RunWith(JUnit4.class)
 public class BasicAnnotationConfigWacSpringRuleTests extends BasicAnnotationConfigWacTests {
 
-	// All tests are in superclass.
+    // All tests are in superclass.
 
-	@ClassRule
-	public static final SpringClassRule springClassRule = new SpringClassRule();
+    @ClassRule public static final SpringClassRule springClassRule = new SpringClassRule();
 
-	@Rule
-	public final SpringMethodRule springMethodRule = new SpringMethodRule();
-
+    @Rule public final SpringMethodRule springMethodRule = new SpringMethodRule();
 }

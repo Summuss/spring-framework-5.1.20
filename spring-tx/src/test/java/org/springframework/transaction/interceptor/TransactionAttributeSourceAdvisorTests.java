@@ -22,17 +22,14 @@ import org.junit.Test;
 
 import org.springframework.util.SerializationTestUtils;
 
-/**
- * @author Rod Johnson
- */
+/** @author Rod Johnson */
 public class TransactionAttributeSourceAdvisorTests {
 
-	@Test
-	public void serializability() throws Exception {
-		TransactionInterceptor ti = new TransactionInterceptor();
-		ti.setTransactionAttributes(new Properties());
-		TransactionAttributeSourceAdvisor tas = new TransactionAttributeSourceAdvisor(ti);
-		SerializationTestUtils.serializeAndDeserialize(tas);
-	}
-
+    @Test
+    public void serializability() throws Exception {
+        TransactionInterceptor ti = new TransactionInterceptor();
+        ti.setTransactionAttributes(new Properties());
+        TransactionAttributeSourceAdvisor tas = new TransactionAttributeSourceAdvisor(ti);
+        SerializationTestUtils.serializeAndDeserialize(tas);
+    }
 }

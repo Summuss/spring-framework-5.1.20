@@ -25,9 +25,9 @@ import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.WebSocketSession;
 
 /**
- * Contract for initiating a WebSocket request. As an alternative considering using the
- * declarative style {@link WebSocketConnectionManager} that starts a WebSocket connection
- * to a pre-configured URI when the application starts.
+ * Contract for initiating a WebSocket request. As an alternative considering using the declarative
+ * style {@link WebSocketConnectionManager} that starts a WebSocket connection to a pre-configured
+ * URI when the application starts.
  *
  * @author Rossen Stoyanchev
  * @since 4.0
@@ -35,10 +35,9 @@ import org.springframework.web.socket.WebSocketSession;
  */
 public interface WebSocketClient {
 
-	ListenableFuture<WebSocketSession> doHandshake(WebSocketHandler webSocketHandler,
-			String uriTemplate, Object... uriVariables);
+    ListenableFuture<WebSocketSession> doHandshake(
+            WebSocketHandler webSocketHandler, String uriTemplate, Object... uriVariables);
 
-	ListenableFuture<WebSocketSession> doHandshake(WebSocketHandler webSocketHandler,
-			@Nullable WebSocketHttpHeaders headers, URI uri);
-
+    ListenableFuture<WebSocketSession> doHandshake(
+            WebSocketHandler webSocketHandler, @Nullable WebSocketHttpHeaders headers, URI uri);
 }

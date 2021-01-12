@@ -18,13 +18,10 @@ package org.springframework.scripting;
 
 import org.springframework.tests.sample.beans.TestBean;
 
-/**
- * @author Juergen Hoeller
- */
+/** @author Juergen Hoeller */
 public interface TestBeanAwareMessenger extends ConfigurableMessenger {
 
-	TestBean getTestBean();
+    TestBean getTestBean();
 
-	void setTestBean(TestBean testBean);
-
+    void setTestBean(TestBean testBean);
 }

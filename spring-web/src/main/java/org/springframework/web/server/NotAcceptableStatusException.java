@@ -34,56 +34,51 @@ import org.springframework.util.CollectionUtils;
 @SuppressWarnings("serial")
 public class NotAcceptableStatusException extends ResponseStatusException {
 
-	private final List<MediaType> supportedMediaTypes;
+    private final List<MediaType> supportedMediaTypes;
 
+    /** Constructor for when the requested Content-Type is invalid. */
+    public NotAcceptableStatusException(String reason) {
+        super(HttpStatus.NOT_ACCEPTABLE, reason);
+        this.supportedMediaTypes = Collections.emptyList();
+    }
 
-	/**
-	 * Constructor for when the requested Content-Type is invalid.
-	 */
-	public NotAcceptableStatusException(String reason) {
-		super(HttpStatus.NOT_ACCEPTABLE, reason);
-		this.supportedMediaTypes = Collections.emptyList();
-	}
+    /** Constructor for when the requested Content-Type is not supported. */
+    public NotAcceptableStatusException(List<MediaType> supportedMediaTypes) {
+        super(HttpStatus.NOT_ACCEPTABLE, "Could not find acceptable representation");
+        this.supportedMediaTypes = Collections.unmodifiableList(supportedMediaTypes);
+    }
 
-	/**
-	 * Constructor for when the requested Content-Type is not supported.
-	 */
-	public NotAcceptableStatusException(List<MediaType> supportedMediaTypes) {
-		super(HttpStatus.NOT_ACCEPTABLE, "Could not find acceptable representation");
-		this.supportedMediaTypes = Collections.unmodifiableList(supportedMediaTypes);
-	}
+    /**
+     * Return a Map with an "Accept" header, or an empty map.
+     *
+     * @since 5.1.11
+     */
+    @SuppressWarnings("deprecation")
+    @Override
+    public Map<String, String> getHeaders() {
+        return getResponseHeaders().toSingleValueMap();
+    }
 
+    /**
+     * Return HttpHeaders with an "Accept" header, or an empty instance.
+     *
+     * @since 5.1.13
+     */
+    @Override
+    public HttpHeaders getResponseHeaders() {
+        if (CollectionUtils.isEmpty(this.supportedMediaTypes)) {
+            return HttpHeaders.EMPTY;
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(this.supportedMediaTypes);
+        return headers;
+    }
 
-	/**
-	 * Return a Map with an "Accept" header, or an empty map.
-	 * @since 5.1.11
-	 */
-	@SuppressWarnings("deprecation")
-	@Override
-	public Map<String, String> getHeaders() {
-		return getResponseHeaders().toSingleValueMap();
-	}
-
-	/**
-	 * Return HttpHeaders with an "Accept" header, or an empty instance.
-	 * @since 5.1.13
-	 */
-	@Override
-	public HttpHeaders getResponseHeaders() {
-		if (CollectionUtils.isEmpty(this.supportedMediaTypes)) {
-			return HttpHeaders.EMPTY;
-		}
-		HttpHeaders headers = new HttpHeaders();
-		headers.setAccept(this.supportedMediaTypes);
-		return headers;
-	}
-
-	/**
-	 * Return the list of supported content types in cases when the Accept
-	 * header is parsed but not supported, or an empty list otherwise.
-	 */
-	public List<MediaType> getSupportedMediaTypes() {
-		return this.supportedMediaTypes;
-	}
-
+    /**
+     * Return the list of supported content types in cases when the Accept header is parsed but not
+     * supported, or an empty list otherwise.
+     */
+    public List<MediaType> getSupportedMediaTypes() {
+        return this.supportedMediaTypes;
+    }
 }

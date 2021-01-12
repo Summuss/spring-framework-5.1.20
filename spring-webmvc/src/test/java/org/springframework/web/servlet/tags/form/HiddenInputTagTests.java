@@ -26,117 +26,114 @@ import org.springframework.validation.BeanPropertyBindingResult;
 
 import static org.junit.Assert.*;
 
-/**
- * @author Rob Harrop
- */
+/** @author Rob Harrop */
 public class HiddenInputTagTests extends AbstractFormTagTests {
 
-	private HiddenInputTag tag;
+    private HiddenInputTag tag;
 
-	private TestBean bean;
+    private TestBean bean;
 
-	@Override
-	@SuppressWarnings("serial")
-	protected void onSetUp() {
-		this.tag = new HiddenInputTag() {
-			@Override
-			protected TagWriter createTagWriter() {
-				return new TagWriter(getWriter());
-			}
-		};
-		this.tag.setPageContext(getPageContext());
-	}
+    @Override
+    @SuppressWarnings("serial")
+    protected void onSetUp() {
+        this.tag =
+                new HiddenInputTag() {
+                    @Override
+                    protected TagWriter createTagWriter() {
+                        return new TagWriter(getWriter());
+                    }
+                };
+        this.tag.setPageContext(getPageContext());
+    }
 
-	@Test
-	public void render() throws Exception {
-		this.tag.setPath("name");
-		int result = this.tag.doStartTag();
-		assertEquals(Tag.SKIP_BODY, result);
+    @Test
+    public void render() throws Exception {
+        this.tag.setPath("name");
+        int result = this.tag.doStartTag();
+        assertEquals(Tag.SKIP_BODY, result);
 
-		String output = getOutput();
+        String output = getOutput();
 
-		assertTagOpened(output);
-		assertTagClosed(output);
+        assertTagOpened(output);
+        assertTagClosed(output);
 
-		assertContainsAttribute(output, "type", "hidden");
-		assertContainsAttribute(output, "value", "Sally Greenwood");
-		assertAttributeNotPresent(output, "disabled");
-	}
+        assertContainsAttribute(output, "type", "hidden");
+        assertContainsAttribute(output, "value", "Sally Greenwood");
+        assertAttributeNotPresent(output, "disabled");
+    }
 
-	@Test
-	public void withCustomBinder() throws Exception {
-		this.tag.setPath("myFloat");
+    @Test
+    public void withCustomBinder() throws Exception {
+        this.tag.setPath("myFloat");
 
-		BeanPropertyBindingResult errors = new BeanPropertyBindingResult(this.bean, COMMAND_NAME);
-		errors.getPropertyAccessor().registerCustomEditor(Float.class, new SimpleFloatEditor());
-		exposeBindingResult(errors);
+        BeanPropertyBindingResult errors = new BeanPropertyBindingResult(this.bean, COMMAND_NAME);
+        errors.getPropertyAccessor().registerCustomEditor(Float.class, new SimpleFloatEditor());
+        exposeBindingResult(errors);
 
-		assertEquals(Tag.SKIP_BODY, this.tag.doStartTag());
+        assertEquals(Tag.SKIP_BODY, this.tag.doStartTag());
 
-		String output = getOutput();
+        String output = getOutput();
 
-		assertTagOpened(output);
-		assertTagClosed(output);
+        assertTagOpened(output);
+        assertTagClosed(output);
 
-		assertContainsAttribute(output, "type", "hidden");
-		assertContainsAttribute(output, "value", "12.34f");
-	}
+        assertContainsAttribute(output, "type", "hidden");
+        assertContainsAttribute(output, "value", "12.34f");
+    }
 
-	@Test
-	public void dynamicTypeAttribute() throws JspException {
-		try {
-			this.tag.setDynamicAttribute(null, "type", "email");
-			fail("Expected exception");
-		}
-		catch (IllegalArgumentException e) {
-			assertEquals("Attribute type=\"email\" is not allowed", e.getMessage());
-		}
-	}
+    @Test
+    public void dynamicTypeAttribute() throws JspException {
+        try {
+            this.tag.setDynamicAttribute(null, "type", "email");
+            fail("Expected exception");
+        } catch (IllegalArgumentException e) {
+            assertEquals("Attribute type=\"email\" is not allowed", e.getMessage());
+        }
+    }
 
-	@Test
-	public void disabledTrue() throws Exception {
-		this.tag.setDisabled(true);
+    @Test
+    public void disabledTrue() throws Exception {
+        this.tag.setDisabled(true);
 
-		this.tag.doStartTag();
-		this.tag.doEndTag();
+        this.tag.doStartTag();
+        this.tag.doEndTag();
 
-		String output = getOutput();
-		assertTagOpened(output);
-		assertTagClosed(output);
+        String output = getOutput();
+        assertTagOpened(output);
+        assertTagClosed(output);
 
-		assertContainsAttribute(output, "disabled", "disabled");
-	}
+        assertContainsAttribute(output, "disabled", "disabled");
+    }
 
-	// SPR-8661
+    // SPR-8661
 
-	@Test
-	public void disabledFalse() throws Exception {
-		this.tag.setDisabled(false);
+    @Test
+    public void disabledFalse() throws Exception {
+        this.tag.setDisabled(false);
 
-		this.tag.doStartTag();
-		this.tag.doEndTag();
+        this.tag.doStartTag();
+        this.tag.doEndTag();
 
-		String output = getOutput();
-		assertTagOpened(output);
-		assertTagClosed(output);
+        String output = getOutput();
+        assertTagOpened(output);
+        assertTagClosed(output);
 
-		assertAttributeNotPresent(output, "disabled");
-	}
+        assertAttributeNotPresent(output, "disabled");
+    }
 
-	private void assertTagClosed(String output) {
-		assertTrue(output.endsWith("/>"));
-	}
+    private void assertTagClosed(String output) {
+        assertTrue(output.endsWith("/>"));
+    }
 
-	private void assertTagOpened(String output) {
-		assertTrue(output.startsWith("<input "));
-	}
+    private void assertTagOpened(String output) {
+        assertTrue(output.startsWith("<input "));
+    }
 
-	@Override
-	protected TestBean createTestBean() {
-		this.bean = new TestBean();
-		bean.setName("Sally Greenwood");
-		bean.setMyFloat(new Float("12.34"));
-		return bean;
-	}
-
+    @Override
+    protected TestBean createTestBean() {
+        this.bean = new TestBean();
+        bean.setName("Sally Greenwood");
+        bean.setMyFloat(new Float("12.34"));
+        return bean;
+    }
 }

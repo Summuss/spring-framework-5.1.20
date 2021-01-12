@@ -31,84 +31,79 @@ import org.springframework.util.Assert;
 import org.springframework.util.MultiValueMap;
 
 /**
- * Wraps another {@link ClientHttpRequest} and delegates all methods to it.
- * Sub-classes can override specific methods selectively.
+ * Wraps another {@link ClientHttpRequest} and delegates all methods to it. Sub-classes can override
+ * specific methods selectively.
  *
  * @author Rossen Stoyanchev
  * @since 5.0
  */
 public class ClientHttpRequestDecorator implements ClientHttpRequest {
 
-	private final ClientHttpRequest delegate;
+    private final ClientHttpRequest delegate;
 
+    public ClientHttpRequestDecorator(ClientHttpRequest delegate) {
+        Assert.notNull(delegate, "Delegate is required");
+        this.delegate = delegate;
+    }
 
-	public ClientHttpRequestDecorator(ClientHttpRequest delegate) {
-		Assert.notNull(delegate, "Delegate is required");
-		this.delegate = delegate;
-	}
+    public ClientHttpRequest getDelegate() {
+        return this.delegate;
+    }
 
+    // ClientHttpRequest delegation methods...
 
-	public ClientHttpRequest getDelegate() {
-		return this.delegate;
-	}
+    @Override
+    public HttpMethod getMethod() {
+        return this.delegate.getMethod();
+    }
 
+    @Override
+    public URI getURI() {
+        return this.delegate.getURI();
+    }
 
-	// ClientHttpRequest delegation methods...
+    @Override
+    public HttpHeaders getHeaders() {
+        return this.delegate.getHeaders();
+    }
 
-	@Override
-	public HttpMethod getMethod() {
-		return this.delegate.getMethod();
-	}
+    @Override
+    public MultiValueMap<String, HttpCookie> getCookies() {
+        return this.delegate.getCookies();
+    }
 
-	@Override
-	public URI getURI() {
-		return this.delegate.getURI();
-	}
+    @Override
+    public DataBufferFactory bufferFactory() {
+        return this.delegate.bufferFactory();
+    }
 
-	@Override
-	public HttpHeaders getHeaders() {
-		return this.delegate.getHeaders();
-	}
+    @Override
+    public void beforeCommit(Supplier<? extends Mono<Void>> action) {
+        this.delegate.beforeCommit(action);
+    }
 
-	@Override
-	public MultiValueMap<String, HttpCookie> getCookies() {
-		return this.delegate.getCookies();
-	}
+    @Override
+    public boolean isCommitted() {
+        return this.delegate.isCommitted();
+    }
 
-	@Override
-	public DataBufferFactory bufferFactory() {
-		return this.delegate.bufferFactory();
-	}
+    @Override
+    public Mono<Void> writeWith(Publisher<? extends DataBuffer> body) {
+        return this.delegate.writeWith(body);
+    }
 
-	@Override
-	public void beforeCommit(Supplier<? extends Mono<Void>> action) {
-		this.delegate.beforeCommit(action);
-	}
+    @Override
+    public Mono<Void> writeAndFlushWith(Publisher<? extends Publisher<? extends DataBuffer>> body) {
+        return this.delegate.writeAndFlushWith(body);
+    }
 
-	@Override
-	public boolean isCommitted() {
-		return this.delegate.isCommitted();
-	}
+    @Override
+    public Mono<Void> setComplete() {
+        return this.delegate.setComplete();
+    }
 
-	@Override
-	public Mono<Void> writeWith(Publisher<? extends DataBuffer> body) {
-		return this.delegate.writeWith(body);
-	}
-
-	@Override
-	public Mono<Void> writeAndFlushWith(Publisher<? extends Publisher<? extends DataBuffer>> body) {
-		return this.delegate.writeAndFlushWith(body);
-	}
-
-	@Override
-	public Mono<Void> setComplete() {
-		return this.delegate.setComplete();
-	}
-
-
-	@Override
-	public String toString() {
-		return getClass().getSimpleName() + " [delegate=" + getDelegate() + "]";
-	}
-
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " [delegate=" + getDelegate() + "]";
+    }
 }

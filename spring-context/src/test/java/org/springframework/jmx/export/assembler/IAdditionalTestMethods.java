@@ -1,13 +1,9 @@
-
 package org.springframework.jmx.export.assembler;
 
-/**
- * @author Rob Harrop
- */
+/** @author Rob Harrop */
 public interface IAdditionalTestMethods {
 
-	String getNickName();
+    String getNickName();
 
-	void setNickName(String nickName);
-
+    void setNickName(String nickName);
 }

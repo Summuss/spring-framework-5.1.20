@@ -20,16 +20,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
-/**
- * @author Phillip Webb
- */
+/** @author Phillip Webb */
 @Configuration
 @ComponentScan
 public class ComponentScanAnnotatedConfigWithImplicitBasePackage {
 
-	@Bean  // override of scanned class
-	public ConfigurableComponent configurableComponent() {
-		return new ConfigurableComponent(true);
-	}
-
+    @Bean // override of scanned class
+    public ConfigurableComponent configurableComponent() {
+        return new ConfigurableComponent(true);
+    }
 }

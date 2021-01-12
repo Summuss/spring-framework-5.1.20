@@ -36,48 +36,51 @@ import static org.junit.Assert.*;
  */
 public class ParameterizableViewControllerTests {
 
-	private ParameterizableViewController controller;
+    private ParameterizableViewController controller;
 
-	private MockHttpServletRequest request;
+    private MockHttpServletRequest request;
 
-	@Before
-	public void setup() {
-		this.controller = new ParameterizableViewController();
-		this.request = new MockHttpServletRequest("GET", "/");
-	}
+    @Before
+    public void setup() {
+        this.controller = new ParameterizableViewController();
+        this.request = new MockHttpServletRequest("GET", "/");
+    }
 
-	@Test
-	public void handleRequestWithViewName() throws Exception {
-		String viewName = "testView";
-		this.controller.setViewName(viewName);
-		ModelAndView mav = this.controller.handleRequest(this.request, new MockHttpServletResponse());
-		assertEquals(viewName, mav.getViewName());
-		assertTrue(mav.getModel().isEmpty());
-	}
+    @Test
+    public void handleRequestWithViewName() throws Exception {
+        String viewName = "testView";
+        this.controller.setViewName(viewName);
+        ModelAndView mav =
+                this.controller.handleRequest(this.request, new MockHttpServletResponse());
+        assertEquals(viewName, mav.getViewName());
+        assertTrue(mav.getModel().isEmpty());
+    }
 
-	@Test
-	public void handleRequestWithoutViewName() throws Exception {
-		ModelAndView mav = this.controller.handleRequest(this.request, new MockHttpServletResponse());
-		assertNull(mav.getViewName());
-		assertTrue(mav.getModel().isEmpty());
-	}
+    @Test
+    public void handleRequestWithoutViewName() throws Exception {
+        ModelAndView mav =
+                this.controller.handleRequest(this.request, new MockHttpServletResponse());
+        assertNull(mav.getViewName());
+        assertTrue(mav.getModel().isEmpty());
+    }
 
-	@Test
-	public void handleRequestWithFlashAttributes() throws Exception {
-		this.request.setAttribute(DispatcherServlet.INPUT_FLASH_MAP_ATTRIBUTE, new ModelMap("name", "value"));
-		ModelAndView mav = this.controller.handleRequest(this.request, new MockHttpServletResponse());
-		assertEquals(1, mav.getModel().size());
-		assertEquals("value", mav.getModel().get("name"));
-	}
+    @Test
+    public void handleRequestWithFlashAttributes() throws Exception {
+        this.request.setAttribute(
+                DispatcherServlet.INPUT_FLASH_MAP_ATTRIBUTE, new ModelMap("name", "value"));
+        ModelAndView mav =
+                this.controller.handleRequest(this.request, new MockHttpServletResponse());
+        assertEquals(1, mav.getModel().size());
+        assertEquals("value", mav.getModel().get("name"));
+    }
 
-	@Test
-	public void handleRequestHttpOptions() throws Exception {
-		this.request.setMethod(HttpMethod.OPTIONS.name());
-		MockHttpServletResponse response = new MockHttpServletResponse();
-		ModelAndView mav = this.controller.handleRequest(this.request, response);
+    @Test
+    public void handleRequestHttpOptions() throws Exception {
+        this.request.setMethod(HttpMethod.OPTIONS.name());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        ModelAndView mav = this.controller.handleRequest(this.request, response);
 
-		assertNull(mav);
-		assertEquals("GET,HEAD,OPTIONS", response.getHeader("Allow"));
-	}
-
+        assertNull(mav);
+        assertEquals("GET,HEAD,OPTIONS", response.getHeader("Allow"));
+    }
 }

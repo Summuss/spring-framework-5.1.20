@@ -20,8 +20,8 @@ import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 
 /**
- * SAP HANA specific implementation for the {@link CallMetaDataProvider} interface.
- * This class is intended for internal use by the Simple JDBC classes.
+ * SAP HANA specific implementation for the {@link CallMetaDataProvider} interface. This class is
+ * intended for internal use by the Simple JDBC classes.
  *
  * @author Subhobrata Dey
  * @author Juergen Hoeller
@@ -29,15 +29,13 @@ import java.sql.SQLException;
  */
 public class HanaCallMetaDataProvider extends GenericCallMetaDataProvider {
 
-	public HanaCallMetaDataProvider(DatabaseMetaData databaseMetaData) throws SQLException {
-		super(databaseMetaData);
-	}
+    public HanaCallMetaDataProvider(DatabaseMetaData databaseMetaData) throws SQLException {
+        super(databaseMetaData);
+    }
 
-
-	@Override
-	public void initializeWithMetaData(DatabaseMetaData databaseMetaData) throws SQLException {
-		super.initializeWithMetaData(databaseMetaData);
-		setStoresUpperCaseIdentifiers(false);
-	}
-
+    @Override
+    public void initializeWithMetaData(DatabaseMetaData databaseMetaData) throws SQLException {
+        super.initializeWithMetaData(databaseMetaData);
+        setStoresUpperCaseIdentifiers(false);
+    }
 }

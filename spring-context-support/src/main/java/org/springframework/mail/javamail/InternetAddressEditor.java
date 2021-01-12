@@ -24,11 +24,11 @@ import javax.mail.internet.InternetAddress;
 import org.springframework.util.StringUtils;
 
 /**
- * Editor for {@code java.mail.internet.InternetAddress},
- * to directly populate an InternetAddress property.
+ * Editor for {@code java.mail.internet.InternetAddress}, to directly populate an InternetAddress
+ * property.
  *
- * <p>Expects the same syntax as InternetAddress's constructor with
- * a String argument. Converts empty Strings into null values.
+ * <p>Expects the same syntax as InternetAddress's constructor with a String argument. Converts
+ * empty Strings into null values.
  *
  * @author Juergen Hoeller
  * @since 1.2.3
@@ -36,25 +36,23 @@ import org.springframework.util.StringUtils;
  */
 public class InternetAddressEditor extends PropertyEditorSupport {
 
-	@Override
-	public void setAsText(String text) throws IllegalArgumentException {
-		if (StringUtils.hasText(text)) {
-			try {
-				setValue(new InternetAddress(text));
-			}
-			catch (AddressException ex) {
-				throw new IllegalArgumentException("Could not parse mail address: " + ex.getMessage());
-			}
-		}
-		else {
-			setValue(null);
-		}
-	}
+    @Override
+    public void setAsText(String text) throws IllegalArgumentException {
+        if (StringUtils.hasText(text)) {
+            try {
+                setValue(new InternetAddress(text));
+            } catch (AddressException ex) {
+                throw new IllegalArgumentException(
+                        "Could not parse mail address: " + ex.getMessage());
+            }
+        } else {
+            setValue(null);
+        }
+    }
 
-	@Override
-	public String getAsText() {
-		InternetAddress value = (InternetAddress) getValue();
-		return (value != null ? value.toUnicodeString() : "");
-	}
-
+    @Override
+    public String getAsText() {
+        InternetAddress value = (InternetAddress) getValue();
+        return (value != null ? value.toUnicodeString() : "");
+    }
 }

@@ -25,8 +25,8 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebHandler;
 
 /**
- * {@link HandlerAdapter} that allows using the plain {@link WebHandler} contract
- * with the generic {@link DispatcherHandler}.
+ * {@link HandlerAdapter} that allows using the plain {@link WebHandler} contract with the generic
+ * {@link DispatcherHandler}.
  *
  * @author Rossen Stoyanchev
  * @author Sebastien Deleuze
@@ -34,16 +34,15 @@ import org.springframework.web.server.WebHandler;
  */
 public class SimpleHandlerAdapter implements HandlerAdapter {
 
-	@Override
-	public boolean supports(Object handler) {
-		return WebHandler.class.isAssignableFrom(handler.getClass());
-	}
+    @Override
+    public boolean supports(Object handler) {
+        return WebHandler.class.isAssignableFrom(handler.getClass());
+    }
 
-	@Override
-	public Mono<HandlerResult> handle(ServerWebExchange exchange, Object handler) {
-		WebHandler webHandler = (WebHandler) handler;
-		Mono<Void> mono = webHandler.handle(exchange);
-		return mono.then(Mono.empty());
-	}
-
+    @Override
+    public Mono<HandlerResult> handle(ServerWebExchange exchange, Object handler) {
+        WebHandler webHandler = (WebHandler) handler;
+        Mono<Void> mono = webHandler.handle(exchange);
+        return mono.then(Mono.empty());
+    }
 }

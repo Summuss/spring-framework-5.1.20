@@ -35,112 +35,118 @@ import static org.junit.Assert.*;
 import static org.mockito.BDDMockito.*;
 
 /**
- * Unit tests for
- * {@link org.springframework.web.socket.sockjs.client.AbstractXhrTransport}.
+ * Unit tests for {@link org.springframework.web.socket.sockjs.client.AbstractXhrTransport}.
  *
  * @author Rossen Stoyanchev
  */
 public class XhrTransportTests {
 
-	@Test
-	public void infoResponse() throws Exception {
-		TestXhrTransport transport = new TestXhrTransport();
-		transport.infoResponseToReturn = new ResponseEntity<>("body", HttpStatus.OK);
-		assertEquals("body", transport.executeInfoRequest(new URI("https://example.com/info"), null));
-	}
+    @Test
+    public void infoResponse() throws Exception {
+        TestXhrTransport transport = new TestXhrTransport();
+        transport.infoResponseToReturn = new ResponseEntity<>("body", HttpStatus.OK);
+        assertEquals(
+                "body", transport.executeInfoRequest(new URI("https://example.com/info"), null));
+    }
 
-	@Test(expected = HttpServerErrorException.class)
-	public void infoResponseError() throws Exception {
-		TestXhrTransport transport = new TestXhrTransport();
-		transport.infoResponseToReturn = new ResponseEntity<>("body", HttpStatus.BAD_REQUEST);
-		assertEquals("body", transport.executeInfoRequest(new URI("https://example.com/info"), null));
-	}
+    @Test(expected = HttpServerErrorException.class)
+    public void infoResponseError() throws Exception {
+        TestXhrTransport transport = new TestXhrTransport();
+        transport.infoResponseToReturn = new ResponseEntity<>("body", HttpStatus.BAD_REQUEST);
+        assertEquals(
+                "body", transport.executeInfoRequest(new URI("https://example.com/info"), null));
+    }
 
-	@Test
-	public void sendMessage() throws Exception {
-		HttpHeaders requestHeaders = new HttpHeaders();
-		requestHeaders.set("foo", "bar");
-		requestHeaders.setContentType(MediaType.APPLICATION_JSON);
-		TestXhrTransport transport = new TestXhrTransport();
-		transport.sendMessageResponseToReturn = new ResponseEntity<>(HttpStatus.NO_CONTENT);
-		URI url = new URI("https://example.com");
-		transport.executeSendRequest(url, requestHeaders, new TextMessage("payload"));
-		assertEquals(2, transport.actualSendRequestHeaders.size());
-		assertEquals("bar", transport.actualSendRequestHeaders.getFirst("foo"));
-		assertEquals(MediaType.APPLICATION_JSON, transport.actualSendRequestHeaders.getContentType());
-	}
+    @Test
+    public void sendMessage() throws Exception {
+        HttpHeaders requestHeaders = new HttpHeaders();
+        requestHeaders.set("foo", "bar");
+        requestHeaders.setContentType(MediaType.APPLICATION_JSON);
+        TestXhrTransport transport = new TestXhrTransport();
+        transport.sendMessageResponseToReturn = new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        URI url = new URI("https://example.com");
+        transport.executeSendRequest(url, requestHeaders, new TextMessage("payload"));
+        assertEquals(2, transport.actualSendRequestHeaders.size());
+        assertEquals("bar", transport.actualSendRequestHeaders.getFirst("foo"));
+        assertEquals(
+                MediaType.APPLICATION_JSON, transport.actualSendRequestHeaders.getContentType());
+    }
 
-	@Test(expected = HttpServerErrorException.class)
-	public void sendMessageError() throws Exception {
-		TestXhrTransport transport = new TestXhrTransport();
-		transport.sendMessageResponseToReturn = new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-		URI url = new URI("https://example.com");
-		transport.executeSendRequest(url, new HttpHeaders(), new TextMessage("payload"));
-	}
+    @Test(expected = HttpServerErrorException.class)
+    public void sendMessageError() throws Exception {
+        TestXhrTransport transport = new TestXhrTransport();
+        transport.sendMessageResponseToReturn = new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        URI url = new URI("https://example.com");
+        transport.executeSendRequest(url, new HttpHeaders(), new TextMessage("payload"));
+    }
 
-	@Test
-	public void connect() throws Exception {
-		HttpHeaders handshakeHeaders = new HttpHeaders();
-		handshakeHeaders.setOrigin("foo");
+    @Test
+    public void connect() throws Exception {
+        HttpHeaders handshakeHeaders = new HttpHeaders();
+        handshakeHeaders.setOrigin("foo");
 
-		TransportRequest request = mock(TransportRequest.class);
-		given(request.getSockJsUrlInfo()).willReturn(new SockJsUrlInfo(new URI("https://example.com")));
-		given(request.getHandshakeHeaders()).willReturn(handshakeHeaders);
-		given(request.getHttpRequestHeaders()).willReturn(new HttpHeaders());
+        TransportRequest request = mock(TransportRequest.class);
+        given(request.getSockJsUrlInfo())
+                .willReturn(new SockJsUrlInfo(new URI("https://example.com")));
+        given(request.getHandshakeHeaders()).willReturn(handshakeHeaders);
+        given(request.getHttpRequestHeaders()).willReturn(new HttpHeaders());
 
-		TestXhrTransport transport = new TestXhrTransport();
-		WebSocketHandler handler = mock(WebSocketHandler.class);
-		transport.connect(request, handler);
+        TestXhrTransport transport = new TestXhrTransport();
+        WebSocketHandler handler = mock(WebSocketHandler.class);
+        transport.connect(request, handler);
 
-		ArgumentCaptor<Runnable> captor = ArgumentCaptor.forClass(Runnable.class);
-		verify(request).getSockJsUrlInfo();
-		verify(request).addTimeoutTask(captor.capture());
-		verify(request).getTransportUrl();
-		verify(request).getHandshakeHeaders();
-		verify(request).getHttpRequestHeaders();
-		verifyNoMoreInteractions(request);
+        ArgumentCaptor<Runnable> captor = ArgumentCaptor.forClass(Runnable.class);
+        verify(request).getSockJsUrlInfo();
+        verify(request).addTimeoutTask(captor.capture());
+        verify(request).getTransportUrl();
+        verify(request).getHandshakeHeaders();
+        verify(request).getHttpRequestHeaders();
+        verifyNoMoreInteractions(request);
 
-		assertEquals(1, transport.actualHandshakeHeaders.size());
-		assertEquals("foo", transport.actualHandshakeHeaders.getOrigin());
+        assertEquals(1, transport.actualHandshakeHeaders.size());
+        assertEquals("foo", transport.actualHandshakeHeaders.getOrigin());
 
-		assertFalse(transport.actualSession.isDisconnected());
-		captor.getValue().run();
-		assertTrue(transport.actualSession.isDisconnected());
-	}
+        assertFalse(transport.actualSession.isDisconnected());
+        captor.getValue().run();
+        assertTrue(transport.actualSession.isDisconnected());
+    }
 
+    private static class TestXhrTransport extends AbstractXhrTransport {
 
-	private static class TestXhrTransport extends AbstractXhrTransport {
+        private ResponseEntity<String> infoResponseToReturn;
 
-		private ResponseEntity<String> infoResponseToReturn;
+        private ResponseEntity<String> sendMessageResponseToReturn;
 
-		private ResponseEntity<String> sendMessageResponseToReturn;
+        private HttpHeaders actualSendRequestHeaders;
 
-		private HttpHeaders actualSendRequestHeaders;
+        private HttpHeaders actualHandshakeHeaders;
 
-		private HttpHeaders actualHandshakeHeaders;
+        private XhrClientSockJsSession actualSession;
 
-		private XhrClientSockJsSession actualSession;
+        @Override
+        protected ResponseEntity<String> executeInfoRequestInternal(
+                URI infoUrl, HttpHeaders headers) {
+            return this.infoResponseToReturn;
+        }
 
+        @Override
+        protected ResponseEntity<String> executeSendRequestInternal(
+                URI url, HttpHeaders headers, TextMessage message) {
+            this.actualSendRequestHeaders = headers;
+            return this.sendMessageResponseToReturn;
+        }
 
-		@Override
-		protected ResponseEntity<String> executeInfoRequestInternal(URI infoUrl, HttpHeaders headers) {
-			return this.infoResponseToReturn;
-		}
+        @Override
+        protected void connectInternal(
+                TransportRequest request,
+                WebSocketHandler handler,
+                URI receiveUrl,
+                HttpHeaders handshakeHeaders,
+                XhrClientSockJsSession session,
+                SettableListenableFuture<WebSocketSession> connectFuture) {
 
-		@Override
-		protected ResponseEntity<String> executeSendRequestInternal(URI url, HttpHeaders headers, TextMessage message) {
-			this.actualSendRequestHeaders = headers;
-			return this.sendMessageResponseToReturn;
-		}
-
-		@Override
-		protected void connectInternal(TransportRequest request, WebSocketHandler handler, URI receiveUrl,
-				HttpHeaders handshakeHeaders, XhrClientSockJsSession session,
-				SettableListenableFuture<WebSocketSession> connectFuture) {
-
-			this.actualHandshakeHeaders = handshakeHeaders;
-			this.actualSession = session;
-		}
-	}
-
+            this.actualHandshakeHeaders = handshakeHeaders;
+            this.actualSession = session;
+        }
+    }
 }

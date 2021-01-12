@@ -24,9 +24,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.util.CollectionUtils;
 
 /**
- * A variation of {@link WebSocketConfigurationSupport} that detects implementations of
- * {@link WebSocketConfigurer} in Spring configuration and invokes them in order to
- * configure WebSocket request handling.
+ * A variation of {@link WebSocketConfigurationSupport} that detects implementations of {@link
+ * WebSocketConfigurer} in Spring configuration and invokes them in order to configure WebSocket
+ * request handling.
  *
  * @author Rossen Stoyanchev
  * @since 4.0
@@ -34,22 +34,19 @@ import org.springframework.util.CollectionUtils;
 @Configuration
 public class DelegatingWebSocketConfiguration extends WebSocketConfigurationSupport {
 
-	private final List<WebSocketConfigurer> configurers = new ArrayList<>();
+    private final List<WebSocketConfigurer> configurers = new ArrayList<>();
 
+    @Autowired(required = false)
+    public void setConfigurers(List<WebSocketConfigurer> configurers) {
+        if (!CollectionUtils.isEmpty(configurers)) {
+            this.configurers.addAll(configurers);
+        }
+    }
 
-	@Autowired(required = false)
-	public void setConfigurers(List<WebSocketConfigurer> configurers) {
-		if (!CollectionUtils.isEmpty(configurers)) {
-			this.configurers.addAll(configurers);
-		}
-	}
-
-
-	@Override
-	protected void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-		for (WebSocketConfigurer configurer : this.configurers) {
-			configurer.registerWebSocketHandlers(registry);
-		}
-	}
-
+    @Override
+    protected void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+        for (WebSocketConfigurer configurer : this.configurers) {
+            configurer.registerWebSocketHandlers(registry);
+        }
+    }
 }

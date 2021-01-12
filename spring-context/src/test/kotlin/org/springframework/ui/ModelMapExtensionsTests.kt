@@ -27,12 +27,12 @@ import org.junit.Test
  */
 class ModelMapExtensionsTests {
 
-	@Test
-	fun setAttribute() {
-		val model = ModelMap()
-		model["foo"] = "bing"
-		assertTrue(model.containsAttribute("foo"))
-		assertEquals("bing", model["foo"])
-	}
+    @Test
+    fun setAttribute() {
+        val model = ModelMap()
+        model["foo"] = "bing"
+        assertTrue(model.containsAttribute("foo"))
+        assertEquals("bing", model["foo"])
+    }
 
 }

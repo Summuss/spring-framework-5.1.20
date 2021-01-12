@@ -35,18 +35,17 @@ import org.springframework.web.util.JavaScriptUtils;
 import org.springframework.web.util.TagUtils;
 
 /**
- * The {@code <message>} tag looks up a message in the scope of this page.
- * Messages are resolved using the ApplicationContext and thus support
- * internationalization.
+ * The {@code <message>} tag looks up a message in the scope of this page. Messages are resolved
+ * using the ApplicationContext and thus support internationalization.
  *
- * <p>Detects an HTML escaping setting, either on this tag instance, the page level,
- * or the {@code web.xml} level. Can also apply JavaScript escaping.
+ * <p>Detects an HTML escaping setting, either on this tag instance, the page level, or the {@code
+ * web.xml} level. Can also apply JavaScript escaping.
  *
- * <p>If "code" isn't set or cannot be resolved, "text" will be used as default
- * message. Thus, this tag can also be used for HTML escaping of any texts.
+ * <p>If "code" isn't set or cannot be resolved, "text" will be used as default message. Thus, this
+ * tag can also be used for HTML escaping of any texts.
  *
- * <p>Message arguments can be specified via the {@link #setArguments(Object) arguments}
- * attribute or by using nested {@code <spring:argument>} tags.
+ * <p>Message arguments can be specified via the {@link #setArguments(Object) arguments} attribute
+ * or by using nested {@code <spring:argument>} tags.
  *
  * <table>
  * <caption>Attribute Summary</caption>
@@ -147,256 +146,242 @@ import org.springframework.web.util.TagUtils;
 @SuppressWarnings("serial")
 public class MessageTag extends HtmlEscapingAwareTag implements ArgumentAware {
 
-	/**
-	 * Default separator for splitting an arguments String: a comma (",").
-	 */
-	public static final String DEFAULT_ARGUMENT_SEPARATOR = ",";
+    /** Default separator for splitting an arguments String: a comma (","). */
+    public static final String DEFAULT_ARGUMENT_SEPARATOR = ",";
 
+    @Nullable private MessageSourceResolvable message;
 
-	@Nullable
-	private MessageSourceResolvable message;
+    @Nullable private String code;
 
-	@Nullable
-	private String code;
+    @Nullable private Object arguments;
 
-	@Nullable
-	private Object arguments;
+    private String argumentSeparator = DEFAULT_ARGUMENT_SEPARATOR;
 
-	private String argumentSeparator = DEFAULT_ARGUMENT_SEPARATOR;
+    private List<Object> nestedArguments = Collections.emptyList();
 
-	private List<Object> nestedArguments = Collections.emptyList();
+    @Nullable private String text;
 
-	@Nullable
-	private String text;
+    @Nullable private String var;
 
-	@Nullable
-	private String var;
+    private String scope = TagUtils.SCOPE_PAGE;
 
-	private String scope = TagUtils.SCOPE_PAGE;
+    private boolean javaScriptEscape = false;
 
-	private boolean javaScriptEscape = false;
+    /**
+     * Set the MessageSourceResolvable for this tag.
+     *
+     * <p>If a MessageSourceResolvable is specified, it effectively overrides any code, arguments or
+     * text specified on this tag.
+     */
+    public void setMessage(MessageSourceResolvable message) {
+        this.message = message;
+    }
 
+    /** Set the message code for this tag. */
+    public void setCode(String code) {
+        this.code = code;
+    }
 
-	/**
-	 * Set the MessageSourceResolvable for this tag.
-	 * <p>If a MessageSourceResolvable is specified, it effectively overrides
-	 * any code, arguments or text specified on this tag.
-	 */
-	public void setMessage(MessageSourceResolvable message) {
-		this.message = message;
-	}
+    /**
+     * Set optional message arguments for this tag, as a comma-delimited String (each String
+     * argument can contain JSP EL), an Object array (used as argument array), or a single Object
+     * (used as single argument).
+     */
+    public void setArguments(Object arguments) {
+        this.arguments = arguments;
+    }
 
-	/**
-	 * Set the message code for this tag.
-	 */
-	public void setCode(String code) {
-		this.code = code;
-	}
+    /**
+     * Set the separator to use for splitting an arguments String. Default is a comma (",").
+     *
+     * @see #setArguments
+     */
+    public void setArgumentSeparator(String argumentSeparator) {
+        this.argumentSeparator = argumentSeparator;
+    }
 
-	/**
-	 * Set optional message arguments for this tag, as a comma-delimited
-	 * String (each String argument can contain JSP EL), an Object array
-	 * (used as argument array), or a single Object (used as single argument).
-	 */
-	public void setArguments(Object arguments) {
-		this.arguments = arguments;
-	}
+    @Override
+    public void addArgument(@Nullable Object argument) throws JspTagException {
+        this.nestedArguments.add(argument);
+    }
 
-	/**
-	 * Set the separator to use for splitting an arguments String.
-	 * Default is a comma (",").
-	 * @see #setArguments
-	 */
-	public void setArgumentSeparator(String argumentSeparator) {
-		this.argumentSeparator = argumentSeparator;
-	}
+    /** Set the message text for this tag. */
+    public void setText(String text) {
+        this.text = text;
+    }
 
-	@Override
-	public void addArgument(@Nullable Object argument) throws JspTagException {
-		this.nestedArguments.add(argument);
-	}
+    /**
+     * Set PageContext attribute name under which to expose a variable that contains the resolved
+     * message.
+     *
+     * @see #setScope
+     * @see javax.servlet.jsp.PageContext#setAttribute
+     */
+    public void setVar(String var) {
+        this.var = var;
+    }
 
-	/**
-	 * Set the message text for this tag.
-	 */
-	public void setText(String text) {
-		this.text = text;
-	}
+    /**
+     * Set the scope to export the variable to. Default is SCOPE_PAGE ("page").
+     *
+     * @see #setVar
+     * @see org.springframework.web.util.TagUtils#SCOPE_PAGE
+     * @see javax.servlet.jsp.PageContext#setAttribute
+     */
+    public void setScope(String scope) {
+        this.scope = scope;
+    }
 
-	/**
-	 * Set PageContext attribute name under which to expose
-	 * a variable that contains the resolved message.
-	 * @see #setScope
-	 * @see javax.servlet.jsp.PageContext#setAttribute
-	 */
-	public void setVar(String var) {
-		this.var = var;
-	}
+    /** Set JavaScript escaping for this tag, as boolean value. Default is "false". */
+    public void setJavaScriptEscape(boolean javaScriptEscape) throws JspException {
+        this.javaScriptEscape = javaScriptEscape;
+    }
 
-	/**
-	 * Set the scope to export the variable to.
-	 * Default is SCOPE_PAGE ("page").
-	 * @see #setVar
-	 * @see org.springframework.web.util.TagUtils#SCOPE_PAGE
-	 * @see javax.servlet.jsp.PageContext#setAttribute
-	 */
-	public void setScope(String scope) {
-		this.scope = scope;
-	}
+    @Override
+    protected final int doStartTagInternal() throws JspException, IOException {
+        this.nestedArguments = new ArrayList<>();
+        return EVAL_BODY_INCLUDE;
+    }
 
-	/**
-	 * Set JavaScript escaping for this tag, as boolean value.
-	 * Default is "false".
-	 */
-	public void setJavaScriptEscape(boolean javaScriptEscape) throws JspException {
-		this.javaScriptEscape = javaScriptEscape;
-	}
+    /**
+     * Resolves the message, escapes it if demanded, and writes it to the page (or exposes it as
+     * variable).
+     *
+     * @see #resolveMessage()
+     * @see org.springframework.web.util.HtmlUtils#htmlEscape(String)
+     * @see org.springframework.web.util.JavaScriptUtils#javaScriptEscape(String)
+     * @see #writeMessage(String)
+     */
+    @Override
+    public int doEndTag() throws JspException {
+        try {
+            // Resolve the unescaped message.
+            String msg = resolveMessage();
 
+            // HTML and/or JavaScript escape, if demanded.
+            msg = htmlEscape(msg);
+            msg = this.javaScriptEscape ? JavaScriptUtils.javaScriptEscape(msg) : msg;
 
-	@Override
-	protected final int doStartTagInternal() throws JspException, IOException {
-		this.nestedArguments = new ArrayList<>();
-		return EVAL_BODY_INCLUDE;
-	}
+            // Expose as variable, if demanded, else write to the page.
+            if (this.var != null) {
+                this.pageContext.setAttribute(this.var, msg, TagUtils.getScope(this.scope));
+            } else {
+                writeMessage(msg);
+            }
 
-	/**
-	 * Resolves the message, escapes it if demanded,
-	 * and writes it to the page (or exposes it as variable).
-	 * @see #resolveMessage()
-	 * @see org.springframework.web.util.HtmlUtils#htmlEscape(String)
-	 * @see org.springframework.web.util.JavaScriptUtils#javaScriptEscape(String)
-	 * @see #writeMessage(String)
-	 */
-	@Override
-	public int doEndTag() throws JspException {
-		try {
-			// Resolve the unescaped message.
-			String msg = resolveMessage();
+            return EVAL_PAGE;
+        } catch (IOException ex) {
+            throw new JspTagException(ex.getMessage(), ex);
+        } catch (NoSuchMessageException ex) {
+            throw new JspTagException(getNoSuchMessageExceptionDescription(ex));
+        }
+    }
 
-			// HTML and/or JavaScript escape, if demanded.
-			msg = htmlEscape(msg);
-			msg = this.javaScriptEscape ? JavaScriptUtils.javaScriptEscape(msg) : msg;
+    @Override
+    public void release() {
+        super.release();
+        this.arguments = null;
+    }
 
-			// Expose as variable, if demanded, else write to the page.
-			if (this.var != null) {
-				this.pageContext.setAttribute(this.var, msg, TagUtils.getScope(this.scope));
-			}
-			else {
-				writeMessage(msg);
-			}
+    /**
+     * Resolve the specified message into a concrete message String. The returned message String
+     * should be unescaped.
+     */
+    protected String resolveMessage() throws JspException, NoSuchMessageException {
+        MessageSource messageSource = getMessageSource();
 
-			return EVAL_PAGE;
-		}
-		catch (IOException ex) {
-			throw new JspTagException(ex.getMessage(), ex);
-		}
-		catch (NoSuchMessageException ex) {
-			throw new JspTagException(getNoSuchMessageExceptionDescription(ex));
-		}
-	}
+        // Evaluate the specified MessageSourceResolvable, if any.
+        if (this.message != null) {
+            // We have a given MessageSourceResolvable.
+            return messageSource.getMessage(this.message, getRequestContext().getLocale());
+        }
 
-	@Override
-	public void release() {
-		super.release();
-		this.arguments = null;
-	}
+        if (this.code != null || this.text != null) {
+            // We have a code or default text that we need to resolve.
+            Object[] argumentsArray = resolveArguments(this.arguments);
+            if (!this.nestedArguments.isEmpty()) {
+                argumentsArray = appendArguments(argumentsArray, this.nestedArguments.toArray());
+            }
 
+            if (this.text != null) {
+                // We have a fallback text to consider.
+                String msg =
+                        messageSource.getMessage(
+                                this.code,
+                                argumentsArray,
+                                this.text,
+                                getRequestContext().getLocale());
+                return (msg != null ? msg : "");
+            } else {
+                // We have no fallback text to consider.
+                return messageSource.getMessage(
+                        this.code, argumentsArray, getRequestContext().getLocale());
+            }
+        }
 
-	/**
-	 * Resolve the specified message into a concrete message String.
-	 * The returned message String should be unescaped.
-	 */
-	protected String resolveMessage() throws JspException, NoSuchMessageException {
-		MessageSource messageSource = getMessageSource();
+        throw new JspTagException("No resolvable message");
+    }
 
-		// Evaluate the specified MessageSourceResolvable, if any.
-		if (this.message != null) {
-			// We have a given MessageSourceResolvable.
-			return messageSource.getMessage(this.message, getRequestContext().getLocale());
-		}
+    private Object[] appendArguments(
+            @Nullable Object[] sourceArguments, Object[] additionalArguments) {
+        if (ObjectUtils.isEmpty(sourceArguments)) {
+            return additionalArguments;
+        }
+        Object[] arguments = new Object[sourceArguments.length + additionalArguments.length];
+        System.arraycopy(sourceArguments, 0, arguments, 0, sourceArguments.length);
+        System.arraycopy(
+                additionalArguments,
+                0,
+                arguments,
+                sourceArguments.length,
+                additionalArguments.length);
+        return arguments;
+    }
 
-		if (this.code != null || this.text != null) {
-			// We have a code or default text that we need to resolve.
-			Object[] argumentsArray = resolveArguments(this.arguments);
-			if (!this.nestedArguments.isEmpty()) {
-				argumentsArray = appendArguments(argumentsArray, this.nestedArguments.toArray());
-			}
+    /**
+     * Resolve the given arguments Object into an arguments array.
+     *
+     * @param arguments the specified arguments Object
+     * @return the resolved arguments as array
+     * @throws JspException if argument conversion failed
+     * @see #setArguments
+     */
+    @Nullable
+    protected Object[] resolveArguments(@Nullable Object arguments) throws JspException {
+        if (arguments instanceof String) {
+            return StringUtils.delimitedListToStringArray(
+                    (String) arguments, this.argumentSeparator);
+        } else if (arguments instanceof Object[]) {
+            return (Object[]) arguments;
+        } else if (arguments instanceof Collection) {
+            return ((Collection<?>) arguments).toArray();
+        } else if (arguments != null) {
+            // Assume a single argument object.
+            return new Object[] {arguments};
+        } else {
+            return null;
+        }
+    }
 
-			if (this.text != null) {
-				// We have a fallback text to consider.
-				String msg = messageSource.getMessage(
-						this.code, argumentsArray, this.text, getRequestContext().getLocale());
-				return (msg != null ? msg : "");
-			}
-			else {
-				// We have no fallback text to consider.
-				return messageSource.getMessage(
-						this.code, argumentsArray, getRequestContext().getLocale());
-			}
-		}
+    /**
+     * Write the message to the page.
+     *
+     * <p>Can be overridden in subclasses, e.g. for testing purposes.
+     *
+     * @param msg the message to write
+     * @throws IOException if writing failed
+     */
+    protected void writeMessage(String msg) throws IOException {
+        this.pageContext.getOut().write(msg);
+    }
 
-		throw new JspTagException("No resolvable message");
-	}
+    /** Use the current RequestContext's application context as MessageSource. */
+    protected MessageSource getMessageSource() {
+        return getRequestContext().getMessageSource();
+    }
 
-	private Object[] appendArguments(@Nullable Object[] sourceArguments, Object[] additionalArguments) {
-		if (ObjectUtils.isEmpty(sourceArguments)) {
-			return additionalArguments;
-		}
-		Object[] arguments = new Object[sourceArguments.length + additionalArguments.length];
-		System.arraycopy(sourceArguments, 0, arguments, 0, sourceArguments.length);
-		System.arraycopy(additionalArguments, 0, arguments, sourceArguments.length, additionalArguments.length);
-		return arguments;
-	}
-
-	/**
-	 * Resolve the given arguments Object into an arguments array.
-	 * @param arguments the specified arguments Object
-	 * @return the resolved arguments as array
-	 * @throws JspException if argument conversion failed
-	 * @see #setArguments
-	 */
-	@Nullable
-	protected Object[] resolveArguments(@Nullable Object arguments) throws JspException {
-		if (arguments instanceof String) {
-			return StringUtils.delimitedListToStringArray((String) arguments, this.argumentSeparator);
-		}
-		else if (arguments instanceof Object[]) {
-			return (Object[]) arguments;
-		}
-		else if (arguments instanceof Collection) {
-			return ((Collection<?>) arguments).toArray();
-		}
-		else if (arguments != null) {
-			// Assume a single argument object.
-			return new Object[] {arguments};
-		}
-		else {
-			return null;
-		}
-	}
-
-	/**
-	 * Write the message to the page.
-	 * <p>Can be overridden in subclasses, e.g. for testing purposes.
-	 * @param msg the message to write
-	 * @throws IOException if writing failed
-	 */
-	protected void writeMessage(String msg) throws IOException {
-		this.pageContext.getOut().write(msg);
-	}
-
-	/**
-	 * Use the current RequestContext's application context as MessageSource.
-	 */
-	protected MessageSource getMessageSource() {
-		return getRequestContext().getMessageSource();
-	}
-
-	/**
-	 * Return default exception message.
-	 */
-	protected String getNoSuchMessageExceptionDescription(NoSuchMessageException ex) {
-		return ex.getMessage();
-	}
-
+    /** Return default exception message. */
+    protected String getNoSuchMessageExceptionDescription(NoSuchMessageException ex) {
+        return ex.getMessage();
+    }
 }

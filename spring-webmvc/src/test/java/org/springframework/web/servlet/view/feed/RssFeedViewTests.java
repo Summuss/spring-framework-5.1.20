@@ -35,60 +35,58 @@ import org.springframework.mock.web.test.MockHttpServletResponse;
 import static org.junit.Assert.*;
 import static org.xmlunit.matchers.CompareMatcher.*;
 
-/**
- * @author Arjen Poutsma
- */
+/** @author Arjen Poutsma */
 public class RssFeedViewTests {
 
-	private final AbstractRssFeedView view = new MyRssFeedView();
+    private final AbstractRssFeedView view = new MyRssFeedView();
 
+    @Test
+    public void render() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
 
-	@Test
-	public void render() throws Exception {
-		MockHttpServletRequest request = new MockHttpServletRequest();
-		MockHttpServletResponse response = new MockHttpServletResponse();
+        Map<String, String> model = new LinkedHashMap<>();
+        model.put("2", "This is entry 2");
+        model.put("1", "This is entry 1");
 
-		Map<String, String> model = new LinkedHashMap<>();
-		model.put("2", "This is entry 2");
-		model.put("1", "This is entry 1");
+        view.render(model, request, response);
+        assertEquals("Invalid content-type", "application/rss+xml", response.getContentType());
+        String expected =
+                "<rss version=\"2.0\">"
+                        + "<channel><title>Test Feed</title>"
+                        + "<link>https://example.com</link>"
+                        + "<description>Test feed description</description>"
+                        + "<item><title>2</title><description>This is entry 2</description></item>"
+                        + "<item><title>1</title><description>This is entry 1</description></item>"
+                        + "</channel></rss>";
+        assertThat(response.getContentAsString(), isSimilarTo(expected).ignoreWhitespace());
+    }
 
-		view.render(model, request, response);
-		assertEquals("Invalid content-type", "application/rss+xml", response.getContentType());
-		String expected = "<rss version=\"2.0\">" +
-				"<channel><title>Test Feed</title>" +
-				"<link>https://example.com</link>" +
-				"<description>Test feed description</description>" +
-				"<item><title>2</title><description>This is entry 2</description></item>" +
-				"<item><title>1</title><description>This is entry 1</description></item>" +
-				"</channel></rss>";
-		assertThat(response.getContentAsString(), isSimilarTo(expected).ignoreWhitespace());
-	}
+    private static class MyRssFeedView extends AbstractRssFeedView {
 
+        @Override
+        protected void buildFeedMetadata(
+                Map<String, Object> model, Channel channel, HttpServletRequest request) {
+            channel.setTitle("Test Feed");
+            channel.setDescription("Test feed description");
+            channel.setLink("https://example.com");
+        }
 
-	private static class MyRssFeedView extends AbstractRssFeedView {
+        @Override
+        protected List<Item> buildFeedItems(
+                Map<String, Object> model, HttpServletRequest request, HttpServletResponse response)
+                throws Exception {
 
-		@Override
-		protected void buildFeedMetadata(Map<String, Object> model, Channel channel, HttpServletRequest request) {
-			channel.setTitle("Test Feed");
-			channel.setDescription("Test feed description");
-			channel.setLink("https://example.com");
-		}
-
-		@Override
-		protected List<Item> buildFeedItems(Map<String, Object> model,
-				HttpServletRequest request, HttpServletResponse response) throws Exception {
-
-			List<Item> items = new ArrayList<>();
-			for (String name : model.keySet()) {
-				Item item = new Item();
-				item.setTitle(name);
-				Description description = new Description();
-				description.setValue((String) model.get(name));
-				item.setDescription(description);
-				items.add(item);
-			}
-			return items;
-		}
-	}
-
+            List<Item> items = new ArrayList<>();
+            for (String name : model.keySet()) {
+                Item item = new Item();
+                item.setTitle(name);
+                Description description = new Description();
+                description.setValue((String) model.get(name));
+                item.setDescription(description);
+                items.add(item);
+            }
+            return items;
+        }
+    }
 }

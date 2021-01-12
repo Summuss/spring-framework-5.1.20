@@ -34,57 +34,52 @@ import org.springframework.messaging.support.MessageBuilder;
 import static org.junit.Assert.*;
 import static org.mockito.BDDMockito.*;
 
-/**
- * @author Stephane Nicoll
- */
+/** @author Stephane Nicoll */
 public class MessagingMessageConverterTests {
 
-	private final MessagingMessageConverter converter = new MessagingMessageConverter();
+    private final MessagingMessageConverter converter = new MessagingMessageConverter();
 
-	@Rule
-	public final ExpectedException thrown = ExpectedException.none();
+    @Rule public final ExpectedException thrown = ExpectedException.none();
 
+    @Test
+    public void onlyHandlesMessage() throws JMSException {
+        this.thrown.expect(IllegalArgumentException.class);
+        this.converter.toMessage(new Object(), mock(Session.class));
+    }
 
-	@Test
-	public void onlyHandlesMessage() throws JMSException {
-		this.thrown.expect(IllegalArgumentException.class);
-		this.converter.toMessage(new Object(), mock(Session.class));
-	}
+    @Test
+    public void simpleObject() throws Exception {
+        Session session = mock(Session.class);
+        Serializable payload = mock(Serializable.class);
+        ObjectMessage jmsMessage = mock(ObjectMessage.class);
+        given(session.createObjectMessage(payload)).willReturn(jmsMessage);
 
-	@Test
-	public void simpleObject() throws Exception {
-		Session session = mock(Session.class);
-		Serializable payload = mock(Serializable.class);
-		ObjectMessage jmsMessage = mock(ObjectMessage.class);
-		given(session.createObjectMessage(payload)).willReturn(jmsMessage);
+        this.converter.toMessage(MessageBuilder.withPayload(payload).build(), session);
+        verify(session).createObjectMessage(payload);
+    }
 
-		this.converter.toMessage(MessageBuilder.withPayload(payload).build(), session);
-		verify(session).createObjectMessage(payload);
-	}
+    @Test
+    public void customPayloadConverter() throws JMSException {
+        TextMessage jmsMsg = new StubTextMessage("1224");
 
-	@Test
-	public void customPayloadConverter() throws JMSException {
-		TextMessage jmsMsg = new StubTextMessage("1224");
+        this.converter.setPayloadConverter(new TestMessageConverter());
+        Message<?> msg = (Message<?>) this.converter.fromMessage(jmsMsg);
+        assertEquals(1224L, msg.getPayload());
+    }
 
-		this.converter.setPayloadConverter(new TestMessageConverter());
-		Message<?> msg = (Message<?>) this.converter.fromMessage(jmsMsg);
-		assertEquals(1224L, msg.getPayload());
-	}
+    static class TestMessageConverter extends SimpleMessageConverter {
 
+        private boolean called;
 
-	static class TestMessageConverter extends SimpleMessageConverter {
-
-		private boolean called;
-
-		@Override
-		public Object fromMessage(javax.jms.Message message) throws JMSException, MessageConversionException {
-			if (this.called) {
-				throw new java.lang.IllegalStateException("Converter called twice");
-			}
-			this.called = true;
-			TextMessage textMessage = (TextMessage) message;
-			return Long.parseLong(textMessage.getText());
-		}
-	}
-
+        @Override
+        public Object fromMessage(javax.jms.Message message)
+                throws JMSException, MessageConversionException {
+            if (this.called) {
+                throw new java.lang.IllegalStateException("Converter called twice");
+            }
+            this.called = true;
+            TextMessage textMessage = (TextMessage) message;
+            return Long.parseLong(textMessage.getText());
+        }
+    }
 }

@@ -24,8 +24,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Role;
 
 /**
- * {@code @Configuration} class that registers the Spring infrastructure beans
- * necessary to enable AspectJ-based annotation-driven cache management.
+ * {@code @Configuration} class that registers the Spring infrastructure beans necessary to enable
+ * AspectJ-based annotation-driven cache management.
  *
  * @author Chris Beams
  * @author Stephane Nicoll
@@ -38,12 +38,12 @@ import org.springframework.context.annotation.Role;
 @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
 public class AspectJCachingConfiguration extends AbstractCachingConfiguration {
 
-	@Bean(name = CacheManagementConfigUtils.CACHE_ASPECT_BEAN_NAME)
-	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)
-	public AnnotationCacheAspect cacheAspect() {
-		AnnotationCacheAspect cacheAspect = AnnotationCacheAspect.aspectOf();
-		cacheAspect.configure(this.errorHandler, this.keyGenerator, this.cacheResolver, this.cacheManager);
-		return cacheAspect;
-	}
-
+    @Bean(name = CacheManagementConfigUtils.CACHE_ASPECT_BEAN_NAME)
+    @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
+    public AnnotationCacheAspect cacheAspect() {
+        AnnotationCacheAspect cacheAspect = AnnotationCacheAspect.aspectOf();
+        cacheAspect.configure(
+                this.errorHandler, this.keyGenerator, this.cacheResolver, this.cacheManager);
+        return cacheAspect;
+    }
 }

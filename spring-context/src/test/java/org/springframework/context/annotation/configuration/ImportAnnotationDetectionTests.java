@@ -33,9 +33,8 @@ import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.*;
 
 /**
- * Tests that @Import may be used both as a locally declared and meta-declared
- * annotation, that all declarations are processed, and that any local declaration
- * is processed last.
+ * Tests that @Import may be used both as a locally declared and meta-declared annotation, that all
+ * declarations are processed, and that any local declaration is processed last.
  *
  * @author Chris Beams
  * @since 3.1
@@ -43,114 +42,104 @@ import static org.junit.Assert.*;
 @SuppressWarnings("resource")
 public class ImportAnnotationDetectionTests {
 
-	@Test
-	public void multipleMetaImportsAreProcessed() {
-		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
-		ctx.register(MultiMetaImportConfig.class);
-		ctx.refresh();
-		assertThat(ctx.containsBean("testBean1"), is(true));
-		assertThat(ctx.containsBean("testBean2"), is(true));
-	}
+    @Test
+    public void multipleMetaImportsAreProcessed() {
+        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+        ctx.register(MultiMetaImportConfig.class);
+        ctx.refresh();
+        assertThat(ctx.containsBean("testBean1"), is(true));
+        assertThat(ctx.containsBean("testBean2"), is(true));
+    }
 
-	@Test
-	public void localAndMetaImportsAreProcessed() {
-		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
-		ctx.register(MultiMetaImportConfigWithLocalImport.class);
-		ctx.refresh();
-		assertThat(ctx.containsBean("testBean1"), is(true));
-		assertThat(ctx.containsBean("testBean2"), is(true));
-		assertThat(ctx.containsBean("testBean3"), is(true));
-	}
+    @Test
+    public void localAndMetaImportsAreProcessed() {
+        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+        ctx.register(MultiMetaImportConfigWithLocalImport.class);
+        ctx.refresh();
+        assertThat(ctx.containsBean("testBean1"), is(true));
+        assertThat(ctx.containsBean("testBean2"), is(true));
+        assertThat(ctx.containsBean("testBean3"), is(true));
+    }
 
-	@Test
-	public void localImportIsProcessedLast() {
-		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
-		ctx.register(MultiMetaImportConfigWithLocalImportWithBeanOverride.class);
-		ctx.refresh();
-		assertThat(ctx.containsBean("testBean1"), is(true));
-		assertThat(ctx.containsBean("testBean2"), is(true));
-		assertThat(ctx.getBean("testBean2", TestBean.class).getName(), is("2a"));
-	}
+    @Test
+    public void localImportIsProcessedLast() {
+        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+        ctx.register(MultiMetaImportConfigWithLocalImportWithBeanOverride.class);
+        ctx.refresh();
+        assertThat(ctx.containsBean("testBean1"), is(true));
+        assertThat(ctx.containsBean("testBean2"), is(true));
+        assertThat(ctx.getBean("testBean2", TestBean.class).getName(), is("2a"));
+    }
 
-	@Test
-	public void importFromBean() throws Exception {
-		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
-		ctx.register(ImportFromBean.class);
-		ctx.refresh();
-		assertThat(ctx.containsBean("importAnnotationDetectionTests.ImportFromBean"), is(true));
-		assertThat(ctx.containsBean("testBean1"), is(true));
-		assertThat(ctx.getBean("testBean1", TestBean.class).getName(), is("1"));
-	}
+    @Test
+    public void importFromBean() throws Exception {
+        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+        ctx.register(ImportFromBean.class);
+        ctx.refresh();
+        assertThat(ctx.containsBean("importAnnotationDetectionTests.ImportFromBean"), is(true));
+        assertThat(ctx.containsBean("testBean1"), is(true));
+        assertThat(ctx.getBean("testBean1", TestBean.class).getName(), is("1"));
+    }
 
-	@Configuration
-	@MetaImport1
-	@MetaImport2
-	static class MultiMetaImportConfig {
-	}
+    @Configuration
+    @MetaImport1
+    @MetaImport2
+    static class MultiMetaImportConfig {}
 
-	@Configuration
-	@MetaImport1
-	@MetaImport2
-	@Import(Config3.class)
-	static class MultiMetaImportConfigWithLocalImport {
-	}
+    @Configuration
+    @MetaImport1
+    @MetaImport2
+    @Import(Config3.class)
+    static class MultiMetaImportConfigWithLocalImport {}
 
-	@Configuration
-	@MetaImport1
-	@MetaImport2
-	@Import(Config2a.class)
-	static class MultiMetaImportConfigWithLocalImportWithBeanOverride {
-	}
+    @Configuration
+    @MetaImport1
+    @MetaImport2
+    @Import(Config2a.class)
+    static class MultiMetaImportConfigWithLocalImportWithBeanOverride {}
 
+    @Target(ElementType.TYPE)
+    @Retention(RetentionPolicy.RUNTIME)
+    @Import(Config1.class)
+    @interface MetaImport1 {}
 
-	@Target(ElementType.TYPE)
-	@Retention(RetentionPolicy.RUNTIME)
-	@Import(Config1.class)
-	@interface MetaImport1 {
-	}
+    @Target(ElementType.TYPE)
+    @Retention(RetentionPolicy.RUNTIME)
+    @Import(Config2.class)
+    @interface MetaImport2 {}
 
+    @Configuration
+    static class Config1 {
+        @Bean
+        TestBean testBean1() {
+            return new TestBean("1");
+        }
+    }
 
-	@Target(ElementType.TYPE)
-	@Retention(RetentionPolicy.RUNTIME)
-	@Import(Config2.class)
-	@interface MetaImport2 {
-	}
+    @Configuration
+    static class Config2 {
+        @Bean
+        TestBean testBean2() {
+            return new TestBean("2");
+        }
+    }
 
+    @Configuration
+    static class Config2a {
+        @Bean
+        TestBean testBean2() {
+            return new TestBean("2a");
+        }
+    }
 
-	@Configuration
-	static class Config1 {
-		@Bean
-		TestBean testBean1() {
-			return new TestBean("1");
-		}
-	}
+    @Configuration
+    static class Config3 {
+        @Bean
+        TestBean testBean3() {
+            return new TestBean("3");
+        }
+    }
 
-	@Configuration
-	static class Config2 {
-		@Bean
-		TestBean testBean2() {
-			return new TestBean("2");
-		}
-	}
-
-	@Configuration
-	static class Config2a {
-		@Bean
-		TestBean testBean2() {
-			return new TestBean("2a");
-		}
-	}
-
-	@Configuration
-	static class Config3 {
-		@Bean
-		TestBean testBean3() {
-			return new TestBean("3");
-		}
-	}
-
-	@MetaImport1
-	static class ImportFromBean {
-
-	}
+    @MetaImport1
+    static class ImportFromBean {}
 }

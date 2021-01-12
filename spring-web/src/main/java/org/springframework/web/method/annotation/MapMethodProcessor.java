@@ -30,48 +30,57 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 /**
  * Resolves {@link Map} method arguments and handles {@link Map} return values.
  *
- * <p>A Map return value can be interpreted in more than one ways depending
- * on the presence of annotations like {@code @ModelAttribute} or
- * {@code @ResponseBody}. Therefore this handler should be configured after
- * the handlers that support these annotations.
+ * <p>A Map return value can be interpreted in more than one ways depending on the presence of
+ * annotations like {@code @ModelAttribute} or {@code @ResponseBody}. Therefore this handler should
+ * be configured after the handlers that support these annotations.
  *
  * @author Rossen Stoyanchev
  * @since 3.1
  */
-public class MapMethodProcessor implements HandlerMethodArgumentResolver, HandlerMethodReturnValueHandler {
+public class MapMethodProcessor
+        implements HandlerMethodArgumentResolver, HandlerMethodReturnValueHandler {
 
-	@Override
-	public boolean supportsParameter(MethodParameter parameter) {
-		return Map.class.isAssignableFrom(parameter.getParameterType());
-	}
+    @Override
+    public boolean supportsParameter(MethodParameter parameter) {
+        return Map.class.isAssignableFrom(parameter.getParameterType());
+    }
 
-	@Override
-	@Nullable
-	public Object resolveArgument(MethodParameter parameter, @Nullable ModelAndViewContainer mavContainer,
-			NativeWebRequest webRequest, @Nullable WebDataBinderFactory binderFactory) throws Exception {
+    @Override
+    @Nullable
+    public Object resolveArgument(
+            MethodParameter parameter,
+            @Nullable ModelAndViewContainer mavContainer,
+            NativeWebRequest webRequest,
+            @Nullable WebDataBinderFactory binderFactory)
+            throws Exception {
 
-		Assert.state(mavContainer != null, "ModelAndViewContainer is required for model exposure");
-		return mavContainer.getModel();
-	}
+        Assert.state(mavContainer != null, "ModelAndViewContainer is required for model exposure");
+        return mavContainer.getModel();
+    }
 
-	@Override
-	public boolean supportsReturnType(MethodParameter returnType) {
-		return Map.class.isAssignableFrom(returnType.getParameterType());
-	}
+    @Override
+    public boolean supportsReturnType(MethodParameter returnType) {
+        return Map.class.isAssignableFrom(returnType.getParameterType());
+    }
 
-	@Override
-	@SuppressWarnings({"rawtypes", "unchecked"})
-	public void handleReturnValue(@Nullable Object returnValue, MethodParameter returnType,
-			ModelAndViewContainer mavContainer, NativeWebRequest webRequest) throws Exception {
+    @Override
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public void handleReturnValue(
+            @Nullable Object returnValue,
+            MethodParameter returnType,
+            ModelAndViewContainer mavContainer,
+            NativeWebRequest webRequest)
+            throws Exception {
 
-		if (returnValue instanceof Map){
-			mavContainer.addAllAttributes((Map) returnValue);
-		}
-		else if (returnValue != null) {
-			// should not happen
-			throw new UnsupportedOperationException("Unexpected return type: " +
-					returnType.getParameterType().getName() + " in method: " + returnType.getMethod());
-		}
-	}
-
+        if (returnValue instanceof Map) {
+            mavContainer.addAllAttributes((Map) returnValue);
+        } else if (returnValue != null) {
+            // should not happen
+            throw new UnsupportedOperationException(
+                    "Unexpected return type: "
+                            + returnType.getParameterType().getName()
+                            + " in method: "
+                            + returnType.getMethod());
+        }
+    }
 }

@@ -29,24 +29,25 @@ import org.springframework.web.context.WebApplicationContext;
  */
 public interface WebSocketTestServer {
 
-	void setup();
+    void setup();
 
-	void deployConfig(WebApplicationContext cxt, Filter... filters);
+    void deployConfig(WebApplicationContext cxt, Filter... filters);
 
-	void undeployConfig();
+    void undeployConfig();
 
-	void start() throws Exception;
+    void start() throws Exception;
 
-	void stop() throws Exception;
+    void stop() throws Exception;
 
-	int getPort();
+    int getPort();
 
-	/**
-	 * Get the {@link ServletContext} created by the underlying server.
-	 * <p>The {@code ServletContext} is only guaranteed to be available
-	 * after {@link #deployConfig} has been invoked.
-	 * @since 4.2
-	 */
-	ServletContext getServletContext();
-
+    /**
+     * Get the {@link ServletContext} created by the underlying server.
+     *
+     * <p>The {@code ServletContext} is only guaranteed to be available after {@link #deployConfig}
+     * has been invoked.
+     *
+     * @since 4.2
+     */
+    ServletContext getServletContext();
 }

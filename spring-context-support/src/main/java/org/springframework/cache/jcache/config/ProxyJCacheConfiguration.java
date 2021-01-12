@@ -25,8 +25,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Role;
 
 /**
- * {@code @Configuration} class that registers the Spring infrastructure beans necessary
- * to enable proxy-based annotation-driven JSR-107 cache management.
+ * {@code @Configuration} class that registers the Spring infrastructure beans necessary to enable
+ * proxy-based annotation-driven JSR-107 cache management.
  *
  * <p>Can safely be used alongside Spring's caching support.
  *
@@ -40,25 +40,24 @@ import org.springframework.context.annotation.Role;
 @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
 public class ProxyJCacheConfiguration extends AbstractJCacheConfiguration {
 
-	@Bean(name = CacheManagementConfigUtils.JCACHE_ADVISOR_BEAN_NAME)
-	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)
-	public BeanFactoryJCacheOperationSourceAdvisor cacheAdvisor() {
-		BeanFactoryJCacheOperationSourceAdvisor advisor =
-				new BeanFactoryJCacheOperationSourceAdvisor();
-		advisor.setCacheOperationSource(cacheOperationSource());
-		advisor.setAdvice(cacheInterceptor());
-		if (this.enableCaching != null) {
-			advisor.setOrder(this.enableCaching.<Integer>getNumber("order"));
-		}
-		return advisor;
-	}
+    @Bean(name = CacheManagementConfigUtils.JCACHE_ADVISOR_BEAN_NAME)
+    @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
+    public BeanFactoryJCacheOperationSourceAdvisor cacheAdvisor() {
+        BeanFactoryJCacheOperationSourceAdvisor advisor =
+                new BeanFactoryJCacheOperationSourceAdvisor();
+        advisor.setCacheOperationSource(cacheOperationSource());
+        advisor.setAdvice(cacheInterceptor());
+        if (this.enableCaching != null) {
+            advisor.setOrder(this.enableCaching.<Integer>getNumber("order"));
+        }
+        return advisor;
+    }
 
-	@Bean(name = "jCacheInterceptor")
-	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)
-	public JCacheInterceptor cacheInterceptor() {
-		JCacheInterceptor interceptor = new JCacheInterceptor(this.errorHandler);
-		interceptor.setCacheOperationSource(cacheOperationSource());
-		return interceptor;
-	}
-
+    @Bean(name = "jCacheInterceptor")
+    @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
+    public JCacheInterceptor cacheInterceptor() {
+        JCacheInterceptor interceptor = new JCacheInterceptor(this.errorHandler);
+        interceptor.setCacheOperationSource(cacheOperationSource());
+        return interceptor;
+    }
 }

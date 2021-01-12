@@ -47,242 +47,259 @@ import org.springframework.tests.MockitoUtils.InvocationArgumentsAdapter;
 import static org.junit.Assert.*;
 import static org.mockito.BDDMockito.*;
 
-/**
- * @author Arjen Poutsma
- */
+/** @author Arjen Poutsma */
 public abstract class AbstractStaxXMLReaderTestCase {
 
-	protected static XMLInputFactory inputFactory;
+    protected static XMLInputFactory inputFactory;
 
-	private XMLReader standardReader;
+    private XMLReader standardReader;
 
-	private ContentHandler standardContentHandler;
+    private ContentHandler standardContentHandler;
 
+    @Before
+    @SuppressWarnings("deprecation") // on JDK 9
+    public void setUp() throws Exception {
+        inputFactory = XMLInputFactory.newInstance();
+        standardReader = org.xml.sax.helpers.XMLReaderFactory.createXMLReader();
+        standardContentHandler = mockContentHandler();
+        standardReader.setContentHandler(standardContentHandler);
+    }
 
-	@Before
-	@SuppressWarnings("deprecation")  // on JDK 9
-	public void setUp() throws Exception {
-		inputFactory = XMLInputFactory.newInstance();
-		standardReader = org.xml.sax.helpers.XMLReaderFactory.createXMLReader();
-		standardContentHandler = mockContentHandler();
-		standardReader.setContentHandler(standardContentHandler);
-	}
+    @Test
+    public void contentHandlerNamespacesNoPrefixes() throws Exception {
+        standardReader.setFeature("http://xml.org/sax/features/namespaces", true);
+        standardReader.setFeature("http://xml.org/sax/features/namespace-prefixes", false);
+        standardReader.parse(new InputSource(createTestInputStream()));
 
+        AbstractStaxXMLReader staxXmlReader = createStaxXmlReader(createTestInputStream());
+        ContentHandler contentHandler = mockContentHandler();
+        staxXmlReader.setFeature("http://xml.org/sax/features/namespaces", true);
+        staxXmlReader.setFeature("http://xml.org/sax/features/namespace-prefixes", false);
+        staxXmlReader.setContentHandler(contentHandler);
+        staxXmlReader.parse(new InputSource());
 
-	@Test
-	public void contentHandlerNamespacesNoPrefixes() throws Exception {
-		standardReader.setFeature("http://xml.org/sax/features/namespaces", true);
-		standardReader.setFeature("http://xml.org/sax/features/namespace-prefixes", false);
-		standardReader.parse(new InputSource(createTestInputStream()));
+        verifyIdenticalInvocations(standardContentHandler, contentHandler);
+    }
 
-		AbstractStaxXMLReader staxXmlReader = createStaxXmlReader(createTestInputStream());
-		ContentHandler contentHandler = mockContentHandler();
-		staxXmlReader.setFeature("http://xml.org/sax/features/namespaces", true);
-		staxXmlReader.setFeature("http://xml.org/sax/features/namespace-prefixes", false);
-		staxXmlReader.setContentHandler(contentHandler);
-		staxXmlReader.parse(new InputSource());
+    @Test
+    public void contentHandlerNamespacesPrefixes() throws Exception {
+        standardReader.setFeature("http://xml.org/sax/features/namespaces", true);
+        standardReader.setFeature("http://xml.org/sax/features/namespace-prefixes", true);
+        standardReader.parse(new InputSource(createTestInputStream()));
 
-		verifyIdenticalInvocations(standardContentHandler, contentHandler);
-	}
+        AbstractStaxXMLReader staxXmlReader = createStaxXmlReader(createTestInputStream());
+        ContentHandler contentHandler = mockContentHandler();
+        staxXmlReader.setFeature("http://xml.org/sax/features/namespaces", true);
+        staxXmlReader.setFeature("http://xml.org/sax/features/namespace-prefixes", true);
+        staxXmlReader.setContentHandler(contentHandler);
+        staxXmlReader.parse(new InputSource());
 
-	@Test
-	public void contentHandlerNamespacesPrefixes() throws Exception {
-		standardReader.setFeature("http://xml.org/sax/features/namespaces", true);
-		standardReader.setFeature("http://xml.org/sax/features/namespace-prefixes", true);
-		standardReader.parse(new InputSource(createTestInputStream()));
+        verifyIdenticalInvocations(standardContentHandler, contentHandler);
+    }
 
-		AbstractStaxXMLReader staxXmlReader = createStaxXmlReader(createTestInputStream());
-		ContentHandler contentHandler = mockContentHandler();
-		staxXmlReader.setFeature("http://xml.org/sax/features/namespaces", true);
-		staxXmlReader.setFeature("http://xml.org/sax/features/namespace-prefixes", true);
-		staxXmlReader.setContentHandler(contentHandler);
-		staxXmlReader.parse(new InputSource());
+    @Test
+    public void contentHandlerNoNamespacesPrefixes() throws Exception {
+        standardReader.setFeature("http://xml.org/sax/features/namespaces", false);
+        standardReader.setFeature("http://xml.org/sax/features/namespace-prefixes", true);
+        standardReader.parse(new InputSource(createTestInputStream()));
 
-		verifyIdenticalInvocations(standardContentHandler, contentHandler);
-	}
+        AbstractStaxXMLReader staxXmlReader = createStaxXmlReader(createTestInputStream());
+        ContentHandler contentHandler = mockContentHandler();
+        staxXmlReader.setFeature("http://xml.org/sax/features/namespaces", false);
+        staxXmlReader.setFeature("http://xml.org/sax/features/namespace-prefixes", true);
+        staxXmlReader.setContentHandler(contentHandler);
+        staxXmlReader.parse(new InputSource());
 
-	@Test
-	public void contentHandlerNoNamespacesPrefixes() throws Exception {
-		standardReader.setFeature("http://xml.org/sax/features/namespaces", false);
-		standardReader.setFeature("http://xml.org/sax/features/namespace-prefixes", true);
-		standardReader.parse(new InputSource(createTestInputStream()));
+        verifyIdenticalInvocations(standardContentHandler, contentHandler);
+    }
 
-		AbstractStaxXMLReader staxXmlReader = createStaxXmlReader(createTestInputStream());
-		ContentHandler contentHandler = mockContentHandler();
-		staxXmlReader.setFeature("http://xml.org/sax/features/namespaces", false);
-		staxXmlReader.setFeature("http://xml.org/sax/features/namespace-prefixes", true);
-		staxXmlReader.setContentHandler(contentHandler);
-		staxXmlReader.parse(new InputSource());
+    @Test
+    public void whitespace() throws Exception {
+        String xml =
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?><test><node1> </node1><node2> Some text </node2></test>";
 
-		verifyIdenticalInvocations(standardContentHandler, contentHandler);
-	}
+        Transformer transformer = TransformerFactory.newInstance().newTransformer();
 
-	@Test
-	public void whitespace() throws Exception {
-		String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><test><node1> </node1><node2> Some text </node2></test>";
+        AbstractStaxXMLReader staxXmlReader =
+                createStaxXmlReader(new ByteArrayInputStream(xml.getBytes("UTF-8")));
 
-		Transformer transformer = TransformerFactory.newInstance().newTransformer();
+        SAXSource source = new SAXSource(staxXmlReader, new InputSource());
+        DOMResult result = new DOMResult();
 
-		AbstractStaxXMLReader staxXmlReader = createStaxXmlReader(
-				new ByteArrayInputStream(xml.getBytes("UTF-8")));
+        transformer.transform(source, result);
 
-		SAXSource source = new SAXSource(staxXmlReader, new InputSource());
-		DOMResult result = new DOMResult();
+        Node node1 = result.getNode().getFirstChild().getFirstChild();
+        assertEquals(" ", node1.getTextContent());
+        assertEquals(" Some text ", node1.getNextSibling().getTextContent());
+    }
 
-		transformer.transform(source, result);
+    @Test
+    public void lexicalHandler() throws Exception {
+        Resource testLexicalHandlerXml =
+                new ClassPathResource("testLexicalHandler.xml", getClass());
 
-		Node node1 = result.getNode().getFirstChild().getFirstChild();
-		assertEquals(" ", node1.getTextContent());
-		assertEquals(" Some text ", node1.getNextSibling().getTextContent());
-	}
+        LexicalHandler expectedLexicalHandler = mockLexicalHandler();
+        standardReader.setContentHandler(null);
+        standardReader.setProperty(
+                "http://xml.org/sax/properties/lexical-handler", expectedLexicalHandler);
+        standardReader.parse(new InputSource(testLexicalHandlerXml.getInputStream()));
+        inputFactory.setProperty("javax.xml.stream.isCoalescing", Boolean.FALSE);
+        inputFactory.setProperty(
+                "http://java.sun.com/xml/stream/properties/report-cdata-event", Boolean.TRUE);
+        inputFactory.setProperty("javax.xml.stream.isReplacingEntityReferences", Boolean.FALSE);
+        inputFactory.setProperty("javax.xml.stream.isSupportingExternalEntities", Boolean.FALSE);
 
-	@Test
-	public void lexicalHandler() throws Exception {
-		Resource testLexicalHandlerXml = new ClassPathResource("testLexicalHandler.xml", getClass());
+        LexicalHandler actualLexicalHandler = mockLexicalHandler();
+        willAnswer(invocation -> invocation.getArguments()[0] = "element")
+                .given(actualLexicalHandler)
+                .startDTD(anyString(), anyString(), anyString());
+        AbstractStaxXMLReader staxXmlReader =
+                createStaxXmlReader(testLexicalHandlerXml.getInputStream());
+        staxXmlReader.setProperty(
+                "http://xml.org/sax/properties/lexical-handler", actualLexicalHandler);
+        staxXmlReader.parse(new InputSource());
 
-		LexicalHandler expectedLexicalHandler = mockLexicalHandler();
-		standardReader.setContentHandler(null);
-		standardReader.setProperty("http://xml.org/sax/properties/lexical-handler", expectedLexicalHandler);
-		standardReader.parse(new InputSource(testLexicalHandlerXml.getInputStream()));
-		inputFactory.setProperty("javax.xml.stream.isCoalescing", Boolean.FALSE);
-		inputFactory.setProperty("http://java.sun.com/xml/stream/properties/report-cdata-event", Boolean.TRUE);
-		inputFactory.setProperty("javax.xml.stream.isReplacingEntityReferences", Boolean.FALSE);
-		inputFactory.setProperty("javax.xml.stream.isSupportingExternalEntities", Boolean.FALSE);
+        // TODO: broken comparison since Mockito 2.2 upgrade
+        // verifyIdenticalInvocations(expectedLexicalHandler, actualLexicalHandler);
+    }
 
-		LexicalHandler actualLexicalHandler = mockLexicalHandler();
-		willAnswer(invocation -> invocation.getArguments()[0] = "element").
-				given(actualLexicalHandler).startDTD(anyString(), anyString(), anyString());
-		AbstractStaxXMLReader staxXmlReader = createStaxXmlReader(testLexicalHandlerXml.getInputStream());
-		staxXmlReader.setProperty("http://xml.org/sax/properties/lexical-handler", actualLexicalHandler);
-		staxXmlReader.parse(new InputSource());
+    private LexicalHandler mockLexicalHandler() throws Exception {
+        LexicalHandler lexicalHandler = mock(LexicalHandler.class);
+        willAnswer(new CopyCharsAnswer())
+                .given(lexicalHandler)
+                .comment(any(char[].class), anyInt(), anyInt());
+        return lexicalHandler;
+    }
 
-		// TODO: broken comparison since Mockito 2.2 upgrade
-		// verifyIdenticalInvocations(expectedLexicalHandler, actualLexicalHandler);
-	}
+    private InputStream createTestInputStream() {
+        return getClass().getResourceAsStream("testContentHandler.xml");
+    }
 
+    protected final ContentHandler mockContentHandler() throws Exception {
+        ContentHandler contentHandler = mock(ContentHandler.class);
+        willAnswer(new CopyCharsAnswer())
+                .given(contentHandler)
+                .characters(any(char[].class), anyInt(), anyInt());
+        willAnswer(new CopyCharsAnswer())
+                .given(contentHandler)
+                .ignorableWhitespace(any(char[].class), anyInt(), anyInt());
+        willAnswer(
+                        new Answer<Object>() {
+                            @Override
+                            public Object answer(InvocationOnMock invocation) throws Throwable {
+                                invocation.getArguments()[3] =
+                                        new AttributesImpl(
+                                                (Attributes) invocation.getArguments()[3]);
+                                return null;
+                            }
+                        })
+                .given(contentHandler)
+                .startElement(anyString(), anyString(), anyString(), any(Attributes.class));
+        return contentHandler;
+    }
 
-	private LexicalHandler mockLexicalHandler() throws Exception {
-		LexicalHandler lexicalHandler = mock(LexicalHandler.class);
-		willAnswer(new CopyCharsAnswer()).given(lexicalHandler).comment(any(char[].class), anyInt(), anyInt());
-		return lexicalHandler;
-	}
+    protected <T> void verifyIdenticalInvocations(T expected, T actual) {
+        MockitoUtils.verifySameInvocations(
+                expected,
+                actual,
+                new SkipLocatorArgumentsAdapter(),
+                new CharArrayToStringAdapter(),
+                new PartialAttributesAdapter());
+    }
 
-	private InputStream createTestInputStream() {
-		return getClass().getResourceAsStream("testContentHandler.xml");
-	}
+    protected abstract AbstractStaxXMLReader createStaxXmlReader(InputStream inputStream)
+            throws XMLStreamException;
 
-	protected final ContentHandler mockContentHandler() throws Exception {
-		ContentHandler contentHandler = mock(ContentHandler.class);
-		willAnswer(new CopyCharsAnswer()).given(contentHandler).characters(any(char[].class), anyInt(), anyInt());
-		willAnswer(new CopyCharsAnswer()).given(contentHandler).ignorableWhitespace(any(char[].class), anyInt(), anyInt());
-		willAnswer(new Answer<Object>() {
-			@Override
-			public Object answer(InvocationOnMock invocation) throws Throwable {
-				invocation.getArguments()[3] = new AttributesImpl((Attributes) invocation.getArguments()[3]);
-				return null;
-			}
-		}).given(contentHandler).startElement(anyString(), anyString(), anyString(), any(Attributes.class));
-		return contentHandler;
-	}
+    private static class SkipLocatorArgumentsAdapter implements InvocationArgumentsAdapter {
 
-	protected <T> void verifyIdenticalInvocations(T expected, T actual) {
-		MockitoUtils.verifySameInvocations(expected, actual,
-				new SkipLocatorArgumentsAdapter(), new CharArrayToStringAdapter(), new PartialAttributesAdapter());
-	}
+        @Override
+        public Object[] adaptArguments(Object[] arguments) {
+            for (int i = 0; i < arguments.length; i++) {
+                if (arguments[i] instanceof Locator) {
+                    arguments[i] = null;
+                }
+            }
+            return arguments;
+        }
+    }
 
-	protected abstract AbstractStaxXMLReader createStaxXmlReader(InputStream inputStream) throws XMLStreamException;
+    private static class CharArrayToStringAdapter implements InvocationArgumentsAdapter {
 
+        @Override
+        public Object[] adaptArguments(Object[] arguments) {
+            if (arguments.length == 3
+                    && arguments[0] instanceof char[]
+                    && arguments[1] instanceof Integer
+                    && arguments[2] instanceof Integer) {
+                return new Object[] {
+                    new String(
+                            (char[]) arguments[0], (Integer) arguments[1], (Integer) arguments[2])
+                };
+            }
+            return arguments;
+        }
+    }
 
-	private static class SkipLocatorArgumentsAdapter implements InvocationArgumentsAdapter {
+    private static class PartialAttributesAdapter implements InvocationArgumentsAdapter {
 
-		@Override
-		public Object[] adaptArguments(Object[] arguments) {
-			for (int i = 0; i < arguments.length; i++) {
-				if (arguments[i] instanceof Locator) {
-					arguments[i] = null;
-				}
-			}
-			return arguments;
-		}
-	}
+        @Override
+        public Object[] adaptArguments(Object[] arguments) {
+            for (int i = 0; i < arguments.length; i++) {
+                if (arguments[i] instanceof Attributes) {
+                    arguments[i] = new PartialAttributes((Attributes) arguments[i]);
+                }
+            }
+            return arguments;
+        }
+    }
 
+    private static class CopyCharsAnswer implements Answer<Object> {
 
-	private static class CharArrayToStringAdapter implements InvocationArgumentsAdapter {
+        @Override
+        public Object answer(InvocationOnMock invocation) throws Throwable {
+            char[] chars = (char[]) invocation.getArguments()[0];
+            char[] copy = new char[chars.length];
+            System.arraycopy(chars, 0, copy, 0, chars.length);
+            invocation.getArguments()[0] = copy;
+            return null;
+        }
+    }
 
-		@Override
-		public Object[] adaptArguments(Object[] arguments) {
-			if (arguments.length == 3 && arguments[0] instanceof char[]
-					&& arguments[1] instanceof Integer && arguments[2] instanceof Integer) {
-				return new Object[] {new String((char[]) arguments[0], (Integer) arguments[1], (Integer) arguments[2])};
-			}
-			return arguments;
-		}
-	}
+    private static class PartialAttributes {
 
+        private final Attributes attributes;
 
-	private static class PartialAttributesAdapter implements InvocationArgumentsAdapter {
+        public PartialAttributes(Attributes attributes) {
+            this.attributes = attributes;
+        }
 
-		@Override
-		public Object[] adaptArguments(Object[] arguments) {
-			for (int i = 0; i < arguments.length; i++) {
-				if (arguments[i] instanceof Attributes) {
-					arguments[i] = new PartialAttributes((Attributes) arguments[i]);
-				}
-			}
-			return arguments;
-		}
-	}
+        @Override
+        public boolean equals(Object obj) {
+            Attributes other = ((PartialAttributes) obj).attributes;
+            if (this.attributes.getLength() != other.getLength()) {
+                return false;
+            }
+            for (int i = 0; i < other.getLength(); i++) {
+                boolean found = false;
+                for (int j = 0; j < attributes.getLength(); j++) {
+                    if (other.getURI(i).equals(attributes.getURI(j))
+                            && other.getQName(i).equals(attributes.getQName(j))
+                            && other.getType(i).equals(attributes.getType(j))
+                            && other.getValue(i).equals(attributes.getValue(j))) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    return false;
+                }
+            }
+            return true;
+        }
 
-
-	private static class CopyCharsAnswer implements Answer<Object> {
-
-		@Override
-		public Object answer(InvocationOnMock invocation) throws Throwable {
-			char[] chars = (char[]) invocation.getArguments()[0];
-			char[] copy = new char[chars.length];
-			System.arraycopy(chars, 0, copy, 0, chars.length);
-			invocation.getArguments()[0] = copy;
-			return null;
-		}
-	}
-
-
-	private static class PartialAttributes {
-
-		private final Attributes attributes;
-
-		public PartialAttributes(Attributes attributes) {
-			this.attributes = attributes;
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			Attributes other = ((PartialAttributes) obj).attributes;
-			if (this.attributes.getLength() != other.getLength()) {
-				return false;
-			}
-			for (int i = 0; i < other.getLength(); i++) {
-				boolean found = false;
-				for (int j = 0; j < attributes.getLength(); j++) {
-					if (other.getURI(i).equals(attributes.getURI(j))
-							&& other.getQName(i).equals(attributes.getQName(j))
-							&& other.getType(i).equals(attributes.getType(j))
-							&& other.getValue(i).equals(attributes.getValue(j))) {
-						found = true;
-						break;
-					}
-				}
-				if (!found) {
-					return false;
-				}
-			}
-			return true;
-		}
-
-		@Override
-		public int hashCode() {
-			return 1;
-		}
-	}
-
+        @Override
+        public int hashCode() {
+            return 1;
+        }
+    }
 }

@@ -58,177 +58,190 @@ import org.springframework.format.annotation.DateTimeFormat.ISO;
  */
 public class JodaTimeFormatterRegistrar implements FormatterRegistrar {
 
-	private enum Type {DATE, TIME, DATE_TIME}
+    private enum Type {
+        DATE,
+        TIME,
+        DATE_TIME
+    }
 
+    /** User defined formatters. */
+    private final Map<Type, DateTimeFormatter> formatters = new EnumMap<>(Type.class);
 
-	/**
-	 * User defined formatters.
-	 */
-	private final Map<Type, DateTimeFormatter> formatters = new EnumMap<>(Type.class);
+    /** Factories used when specific formatters have not been specified. */
+    private final Map<Type, DateTimeFormatterFactory> factories;
 
-	/**
-	 * Factories used when specific formatters have not been specified.
-	 */
-	private final Map<Type, DateTimeFormatterFactory> factories;
+    public JodaTimeFormatterRegistrar() {
+        this.factories = new EnumMap<>(Type.class);
+        for (Type type : Type.values()) {
+            this.factories.put(type, new DateTimeFormatterFactory());
+        }
+    }
 
+    /**
+     * Set whether standard ISO formatting should be applied to all date/time types. Default is
+     * "false" (no).
+     *
+     * <p>If set to "true", the "dateStyle", "timeStyle" and "dateTimeStyle" properties are
+     * effectively ignored.
+     */
+    public void setUseIsoFormat(boolean useIsoFormat) {
+        this.factories.get(Type.DATE).setIso(useIsoFormat ? ISO.DATE : ISO.NONE);
+        this.factories.get(Type.TIME).setIso(useIsoFormat ? ISO.TIME : ISO.NONE);
+        this.factories.get(Type.DATE_TIME).setIso(useIsoFormat ? ISO.DATE_TIME : ISO.NONE);
+    }
 
-	public JodaTimeFormatterRegistrar() {
-		this.factories = new EnumMap<>(Type.class);
-		for (Type type : Type.values()) {
-			this.factories.put(type, new DateTimeFormatterFactory());
-		}
-	}
+    /**
+     * Set the default format style of Joda {@link LocalDate} objects. Default is {@link
+     * DateTimeFormat#shortDate()}.
+     */
+    public void setDateStyle(String dateStyle) {
+        this.factories.get(Type.DATE).setStyle(dateStyle + "-");
+    }
 
+    /**
+     * Set the default format style of Joda {@link LocalTime} objects. Default is {@link
+     * DateTimeFormat#shortTime()}.
+     */
+    public void setTimeStyle(String timeStyle) {
+        this.factories.get(Type.TIME).setStyle("-" + timeStyle);
+    }
 
-	/**
-	 * Set whether standard ISO formatting should be applied to all date/time types.
-	 * Default is "false" (no).
-	 * <p>If set to "true", the "dateStyle", "timeStyle" and "dateTimeStyle"
-	 * properties are effectively ignored.
-	 */
-	public void setUseIsoFormat(boolean useIsoFormat) {
-		this.factories.get(Type.DATE).setIso(useIsoFormat ? ISO.DATE : ISO.NONE);
-		this.factories.get(Type.TIME).setIso(useIsoFormat ? ISO.TIME : ISO.NONE);
-		this.factories.get(Type.DATE_TIME).setIso(useIsoFormat ? ISO.DATE_TIME : ISO.NONE);
-	}
+    /**
+     * Set the default format style of Joda {@link LocalDateTime} and {@link DateTime} objects, as
+     * well as JDK {@link Date} and {@link Calendar} objects. Default is {@link
+     * DateTimeFormat#shortDateTime()}.
+     */
+    public void setDateTimeStyle(String dateTimeStyle) {
+        this.factories.get(Type.DATE_TIME).setStyle(dateTimeStyle);
+    }
 
-	/**
-	 * Set the default format style of Joda {@link LocalDate} objects.
-	 * Default is {@link DateTimeFormat#shortDate()}.
-	 */
-	public void setDateStyle(String dateStyle) {
-		this.factories.get(Type.DATE).setStyle(dateStyle + "-");
-	}
+    /**
+     * Set the formatter that will be used for objects representing date values.
+     *
+     * <p>This formatter will be used for the {@link LocalDate} type. When specified the {@link
+     * #setDateStyle(String) dateStyle} and {@link #setUseIsoFormat(boolean) useIsoFormat}
+     * properties will be ignored.
+     *
+     * @param formatter the formatter to use
+     * @since 3.2
+     * @see #setTimeFormatter
+     * @see #setDateTimeFormatter
+     */
+    public void setDateFormatter(DateTimeFormatter formatter) {
+        this.formatters.put(Type.DATE, formatter);
+    }
 
-	/**
-	 * Set the default format style of Joda {@link LocalTime} objects.
-	 * Default is {@link DateTimeFormat#shortTime()}.
-	 */
-	public void setTimeStyle(String timeStyle) {
-		this.factories.get(Type.TIME).setStyle("-" + timeStyle);
-	}
+    /**
+     * Set the formatter that will be used for objects representing time values.
+     *
+     * <p>This formatter will be used for the {@link LocalTime} type. When specified the {@link
+     * #setTimeStyle(String) timeStyle} and {@link #setUseIsoFormat(boolean) useIsoFormat}
+     * properties will be ignored.
+     *
+     * @param formatter the formatter to use
+     * @since 3.2
+     * @see #setDateFormatter
+     * @see #setDateTimeFormatter
+     */
+    public void setTimeFormatter(DateTimeFormatter formatter) {
+        this.formatters.put(Type.TIME, formatter);
+    }
 
-	/**
-	 * Set the default format style of Joda {@link LocalDateTime} and {@link DateTime} objects,
-	 * as well as JDK {@link Date} and {@link Calendar} objects.
-	 * Default is {@link DateTimeFormat#shortDateTime()}.
-	 */
-	public void setDateTimeStyle(String dateTimeStyle) {
-		this.factories.get(Type.DATE_TIME).setStyle(dateTimeStyle);
-	}
+    /**
+     * Set the formatter that will be used for objects representing date and time values.
+     *
+     * <p>This formatter will be used for {@link LocalDateTime}, {@link ReadableInstant}, {@link
+     * Date} and {@link Calendar} types. When specified the {@link #setDateTimeStyle(String)
+     * dateTimeStyle} and {@link #setUseIsoFormat(boolean) useIsoFormat} properties will be ignored.
+     *
+     * @param formatter the formatter to use
+     * @since 3.2
+     * @see #setDateFormatter
+     * @see #setTimeFormatter
+     */
+    public void setDateTimeFormatter(DateTimeFormatter formatter) {
+        this.formatters.put(Type.DATE_TIME, formatter);
+    }
 
-	/**
-	 * Set the formatter that will be used for objects representing date values.
-	 * <p>This formatter will be used for the {@link LocalDate} type. When specified
-	 * the {@link #setDateStyle(String) dateStyle} and
-	 * {@link #setUseIsoFormat(boolean) useIsoFormat} properties will be ignored.
-	 * @param formatter the formatter to use
-	 * @since 3.2
-	 * @see #setTimeFormatter
-	 * @see #setDateTimeFormatter
-	 */
-	public void setDateFormatter(DateTimeFormatter formatter) {
-		this.formatters.put(Type.DATE, formatter);
-	}
+    @Override
+    public void registerFormatters(FormatterRegistry registry) {
+        JodaTimeConverters.registerConverters(registry);
 
-	/**
-	 * Set the formatter that will be used for objects representing time values.
-	 * <p>This formatter will be used for the {@link LocalTime} type. When specified
-	 * the {@link #setTimeStyle(String) timeStyle} and
-	 * {@link #setUseIsoFormat(boolean) useIsoFormat} properties will be ignored.
-	 * @param formatter the formatter to use
-	 * @since 3.2
-	 * @see #setDateFormatter
-	 * @see #setDateTimeFormatter
-	 */
-	public void setTimeFormatter(DateTimeFormatter formatter) {
-		this.formatters.put(Type.TIME, formatter);
-	}
+        DateTimeFormatter dateFormatter = getFormatter(Type.DATE);
+        DateTimeFormatter timeFormatter = getFormatter(Type.TIME);
+        DateTimeFormatter dateTimeFormatter = getFormatter(Type.DATE_TIME);
 
-	/**
-	 * Set the formatter that will be used for objects representing date and time values.
-	 * <p>This formatter will be used for {@link LocalDateTime}, {@link ReadableInstant},
-	 * {@link Date} and {@link Calendar} types. When specified
-	 * the {@link #setDateTimeStyle(String) dateTimeStyle} and
-	 * {@link #setUseIsoFormat(boolean) useIsoFormat} properties will be ignored.
-	 * @param formatter the formatter to use
-	 * @since 3.2
-	 * @see #setDateFormatter
-	 * @see #setTimeFormatter
-	 */
-	public void setDateTimeFormatter(DateTimeFormatter formatter) {
-		this.formatters.put(Type.DATE_TIME, formatter);
-	}
+        addFormatterForFields(
+                registry,
+                new ReadablePartialPrinter(dateFormatter),
+                new LocalDateParser(dateFormatter),
+                LocalDate.class);
 
+        addFormatterForFields(
+                registry,
+                new ReadablePartialPrinter(timeFormatter),
+                new LocalTimeParser(timeFormatter),
+                LocalTime.class);
 
-	@Override
-	public void registerFormatters(FormatterRegistry registry) {
-		JodaTimeConverters.registerConverters(registry);
+        addFormatterForFields(
+                registry,
+                new ReadablePartialPrinter(dateTimeFormatter),
+                new LocalDateTimeParser(dateTimeFormatter),
+                LocalDateTime.class);
 
-		DateTimeFormatter dateFormatter = getFormatter(Type.DATE);
-		DateTimeFormatter timeFormatter = getFormatter(Type.TIME);
-		DateTimeFormatter dateTimeFormatter = getFormatter(Type.DATE_TIME);
+        addFormatterForFields(
+                registry,
+                new ReadableInstantPrinter(dateTimeFormatter),
+                new DateTimeParser(dateTimeFormatter),
+                ReadableInstant.class);
 
-		addFormatterForFields(registry,
-				new ReadablePartialPrinter(dateFormatter),
-				new LocalDateParser(dateFormatter),
-				LocalDate.class);
+        // In order to retain backwards compatibility we only register Date/Calendar
+        // types when a user defined formatter is specified (see SPR-10105)
+        if (this.formatters.containsKey(Type.DATE_TIME)) {
+            addFormatterForFields(
+                    registry,
+                    new ReadableInstantPrinter(dateTimeFormatter),
+                    new DateTimeParser(dateTimeFormatter),
+                    Date.class,
+                    Calendar.class);
+        }
 
-		addFormatterForFields(registry,
-				new ReadablePartialPrinter(timeFormatter),
-				new LocalTimeParser(timeFormatter),
-				LocalTime.class);
+        registry.addFormatterForFieldType(Period.class, new PeriodFormatter());
+        registry.addFormatterForFieldType(Duration.class, new DurationFormatter());
+        registry.addFormatterForFieldType(YearMonth.class, new YearMonthFormatter());
+        registry.addFormatterForFieldType(MonthDay.class, new MonthDayFormatter());
 
-		addFormatterForFields(registry,
-				new ReadablePartialPrinter(dateTimeFormatter),
-				new LocalDateTimeParser(dateTimeFormatter),
-				LocalDateTime.class);
+        registry.addFormatterForFieldAnnotation(new JodaDateTimeFormatAnnotationFormatterFactory());
+    }
 
-		addFormatterForFields(registry,
-				new ReadableInstantPrinter(dateTimeFormatter),
-				new DateTimeParser(dateTimeFormatter),
-				ReadableInstant.class);
+    private DateTimeFormatter getFormatter(Type type) {
+        DateTimeFormatter formatter = this.formatters.get(type);
+        if (formatter != null) {
+            return formatter;
+        }
+        DateTimeFormatter fallbackFormatter = getFallbackFormatter(type);
+        return this.factories.get(type).createDateTimeFormatter(fallbackFormatter);
+    }
 
-		// In order to retain backwards compatibility we only register Date/Calendar
-		// types when a user defined formatter is specified (see SPR-10105)
-		if (this.formatters.containsKey(Type.DATE_TIME)) {
-			addFormatterForFields(registry,
-					new ReadableInstantPrinter(dateTimeFormatter),
-					new DateTimeParser(dateTimeFormatter),
-					Date.class, Calendar.class);
-		}
+    private DateTimeFormatter getFallbackFormatter(Type type) {
+        switch (type) {
+            case DATE:
+                return DateTimeFormat.shortDate();
+            case TIME:
+                return DateTimeFormat.shortTime();
+            default:
+                return DateTimeFormat.shortDateTime();
+        }
+    }
 
-		registry.addFormatterForFieldType(Period.class, new PeriodFormatter());
-		registry.addFormatterForFieldType(Duration.class, new DurationFormatter());
-		registry.addFormatterForFieldType(YearMonth.class, new YearMonthFormatter());
-		registry.addFormatterForFieldType(MonthDay.class, new MonthDayFormatter());
+    private void addFormatterForFields(
+            FormatterRegistry registry,
+            Printer<?> printer,
+            Parser<?> parser,
+            Class<?>... fieldTypes) {
 
-		registry.addFormatterForFieldAnnotation(new JodaDateTimeFormatAnnotationFormatterFactory());
-	}
-
-	private DateTimeFormatter getFormatter(Type type) {
-		DateTimeFormatter formatter = this.formatters.get(type);
-		if (formatter != null) {
-			return formatter;
-		}
-		DateTimeFormatter fallbackFormatter = getFallbackFormatter(type);
-		return this.factories.get(type).createDateTimeFormatter(fallbackFormatter);
-	}
-
-	private DateTimeFormatter getFallbackFormatter(Type type) {
-		switch (type) {
-			case DATE: return DateTimeFormat.shortDate();
-			case TIME: return DateTimeFormat.shortTime();
-			default: return DateTimeFormat.shortDateTime();
-		}
-	}
-
-	private void addFormatterForFields(FormatterRegistry registry, Printer<?> printer,
-			Parser<?> parser, Class<?>... fieldTypes) {
-
-		for (Class<?> fieldType : fieldTypes) {
-			registry.addFormatterForFieldType(fieldType, printer, parser);
-		}
-	}
-
+        for (Class<?> fieldType : fieldTypes) {
+            registry.addFormatterForFieldType(fieldType, printer, parser);
+        }
+    }
 }

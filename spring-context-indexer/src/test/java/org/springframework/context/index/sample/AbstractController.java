@@ -24,6 +24,4 @@ import org.springframework.stereotype.Component;
  * @author Stephane Nicoll
  */
 @Component
-public abstract class AbstractController {
-
-}
+public abstract class AbstractController {}

@@ -35,182 +35,193 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.util.UriUtils;
 
 /**
- * A simple {@code ResourceResolver} that tries to find a resource under the given
- * locations matching to the request path.
+ * A simple {@code ResourceResolver} that tries to find a resource under the given locations
+ * matching to the request path.
  *
- * <p>This resolver does not delegate to the {@code ResourceResolverChain} and is
- * expected to be configured at the end in a chain of resolvers.
+ * <p>This resolver does not delegate to the {@code ResourceResolverChain} and is expected to be
+ * configured at the end in a chain of resolvers.
  *
  * @author Rossen Stoyanchev
  * @since 5.0
  */
 public class PathResourceResolver extends AbstractResourceResolver {
 
-	@Nullable
-	private Resource[] allowedLocations;
+    @Nullable private Resource[] allowedLocations;
 
+    /**
+     * By default when a Resource is found, the path of the resolved resource is compared to ensure
+     * it's under the input location where it was found. However sometimes that may not be the case,
+     * e.g. when {@link CssLinkResourceTransformer} resolves public URLs of links it contains, the
+     * CSS file is the location and the resources being resolved are css files, images, fonts and
+     * others located in adjacent or parent directories.
+     *
+     * <p>This property allows configuring a complete list of locations under which resources must
+     * be so that if a resource is not under the location relative to which it was found, this list
+     * may be checked as well.
+     *
+     * <p>By default {@link ResourceWebHandler} initializes this property to match its list of
+     * locations.
+     *
+     * @param locations the list of allowed locations
+     */
+    public void setAllowedLocations(@Nullable Resource... locations) {
+        this.allowedLocations = locations;
+    }
 
-	/**
-	 * By default when a Resource is found, the path of the resolved resource is
-	 * compared to ensure it's under the input location where it was found.
-	 * However sometimes that may not be the case, e.g. when
-	 * {@link CssLinkResourceTransformer}
-	 * resolves public URLs of links it contains, the CSS file is the location
-	 * and the resources being resolved are css files, images, fonts and others
-	 * located in adjacent or parent directories.
-	 * <p>This property allows configuring a complete list of locations under
-	 * which resources must be so that if a resource is not under the location
-	 * relative to which it was found, this list may be checked as well.
-	 * <p>By default {@link ResourceWebHandler} initializes this property
-	 * to match its list of locations.
-	 * @param locations the list of allowed locations
-	 */
-	public void setAllowedLocations(@Nullable Resource... locations) {
-		this.allowedLocations = locations;
-	}
+    @Nullable
+    public Resource[] getAllowedLocations() {
+        return this.allowedLocations;
+    }
 
-	@Nullable
-	public Resource[] getAllowedLocations() {
-		return this.allowedLocations;
-	}
+    @Override
+    protected Mono<Resource> resolveResourceInternal(
+            @Nullable ServerWebExchange exchange,
+            String requestPath,
+            List<? extends Resource> locations,
+            ResourceResolverChain chain) {
 
+        return getResource(requestPath, locations);
+    }
 
-	@Override
-	protected Mono<Resource> resolveResourceInternal(@Nullable ServerWebExchange exchange,
-			String requestPath, List<? extends Resource> locations, ResourceResolverChain chain) {
+    @Override
+    protected Mono<String> resolveUrlPathInternal(
+            String path, List<? extends Resource> locations, ResourceResolverChain chain) {
 
-		return getResource(requestPath, locations);
-	}
+        if (StringUtils.hasText(path)) {
+            return getResource(path, locations).map(resource -> path);
+        } else {
+            return Mono.empty();
+        }
+    }
 
-	@Override
-	protected Mono<String> resolveUrlPathInternal(String path, List<? extends Resource> locations,
-			ResourceResolverChain chain) {
+    private Mono<Resource> getResource(String resourcePath, List<? extends Resource> locations) {
+        return Flux.fromIterable(locations)
+                .concatMap(location -> getResource(resourcePath, location))
+                .next();
+    }
 
-		if (StringUtils.hasText(path)) {
-			return getResource(path, locations).map(resource -> path);
-		}
-		else {
-			return Mono.empty();
-		}
-	}
+    /**
+     * Find the resource under the given location.
+     *
+     * <p>The default implementation checks if there is a readable {@code Resource} for the given
+     * path relative to the location.
+     *
+     * @param resourcePath the path to the resource
+     * @param location the location to check
+     * @return the resource, or empty {@link Mono} if none found
+     */
+    protected Mono<Resource> getResource(String resourcePath, Resource location) {
+        try {
+            if (location instanceof ClassPathResource) {
+                resourcePath = UriUtils.decode(resourcePath, StandardCharsets.UTF_8);
+            }
+            Resource resource = location.createRelative(resourcePath);
+            if (resource.isReadable()) {
+                if (checkResource(resource, location)) {
+                    return Mono.just(resource);
+                } else if (logger.isWarnEnabled()) {
+                    Resource[] allowedLocations = getAllowedLocations();
+                    logger.warn(
+                            "Resource path \""
+                                    + resourcePath
+                                    + "\" was successfully resolved "
+                                    + "but resource \""
+                                    + resource.getURL()
+                                    + "\" is neither under the "
+                                    + "current location \""
+                                    + location.getURL()
+                                    + "\" nor under any of the "
+                                    + "allowed locations "
+                                    + (allowedLocations != null
+                                            ? Arrays.asList(allowedLocations)
+                                            : "[]"));
+                }
+            }
+            return Mono.empty();
+        } catch (IOException ex) {
+            if (logger.isDebugEnabled()) {
+                String error = "Skip location [" + location + "] due to error";
+                if (logger.isTraceEnabled()) {
+                    logger.trace(error, ex);
+                } else {
+                    logger.debug(error + ": " + ex.getMessage());
+                }
+            }
+            return Mono.error(ex);
+        }
+    }
 
-	private Mono<Resource> getResource(String resourcePath, List<? extends Resource> locations) {
-		return Flux.fromIterable(locations)
-				.concatMap(location -> getResource(resourcePath, location))
-				.next();
-	}
+    /**
+     * Perform additional checks on a resolved resource beyond checking whether the resources exists
+     * and is readable. The default implementation also verifies the resource is either under the
+     * location relative to which it was found or is under one of the {@link #setAllowedLocations
+     * allowed locations}.
+     *
+     * @param resource the resource to check
+     * @param location the location relative to which the resource was found
+     * @return "true" if resource is in a valid location, "false" otherwise.
+     */
+    protected boolean checkResource(Resource resource, Resource location) throws IOException {
+        if (isResourceUnderLocation(resource, location)) {
+            return true;
+        }
+        if (getAllowedLocations() != null) {
+            for (Resource current : getAllowedLocations()) {
+                if (isResourceUnderLocation(resource, current)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 
-	/**
-	 * Find the resource under the given location.
-	 * <p>The default implementation checks if there is a readable
-	 * {@code Resource} for the given path relative to the location.
-	 * @param resourcePath the path to the resource
-	 * @param location the location to check
-	 * @return the resource, or empty {@link Mono} if none found
-	 */
-	protected Mono<Resource> getResource(String resourcePath, Resource location) {
-		try {
-			if (location instanceof ClassPathResource) {
-				resourcePath = UriUtils.decode(resourcePath, StandardCharsets.UTF_8);
-			}
-			Resource resource = location.createRelative(resourcePath);
-			if (resource.isReadable()) {
-				if (checkResource(resource, location)) {
-					return Mono.just(resource);
-				}
-				else if (logger.isWarnEnabled()) {
-					Resource[] allowedLocations = getAllowedLocations();
-					logger.warn("Resource path \"" + resourcePath + "\" was successfully resolved " +
-							"but resource \"" + resource.getURL() + "\" is neither under the " +
-							"current location \"" + location.getURL() + "\" nor under any of the " +
-							"allowed locations " + (allowedLocations != null ? Arrays.asList(allowedLocations) : "[]"));
-				}
-			}
-			return Mono.empty();
-		}
-		catch (IOException ex) {
-			if (logger.isDebugEnabled()) {
-				String error = "Skip location [" + location + "] due to error";
-				if (logger.isTraceEnabled()) {
-					logger.trace(error, ex);
-				}
-				else {
-					logger.debug(error + ": " + ex.getMessage());
-				}
-			}
-			return Mono.error(ex);
-		}
-	}
+    private boolean isResourceUnderLocation(Resource resource, Resource location)
+            throws IOException {
+        if (resource.getClass() != location.getClass()) {
+            return false;
+        }
 
-	/**
-	 * Perform additional checks on a resolved resource beyond checking whether the
-	 * resources exists and is readable. The default implementation also verifies
-	 * the resource is either under the location relative to which it was found or
-	 * is under one of the {@link #setAllowedLocations allowed locations}.
-	 * @param resource the resource to check
-	 * @param location the location relative to which the resource was found
-	 * @return "true" if resource is in a valid location, "false" otherwise.
-	 */
-	protected boolean checkResource(Resource resource, Resource location) throws IOException {
-		if (isResourceUnderLocation(resource, location)) {
-			return true;
-		}
-		if (getAllowedLocations() != null) {
-			for (Resource current : getAllowedLocations()) {
-				if (isResourceUnderLocation(resource, current)) {
-					return true;
-				}
-			}
-		}
-		return false;
-	}
+        String resourcePath;
+        String locationPath;
 
-	private boolean isResourceUnderLocation(Resource resource, Resource location) throws IOException {
-		if (resource.getClass() != location.getClass()) {
-			return false;
-		}
+        if (resource instanceof UrlResource) {
+            resourcePath = resource.getURL().toExternalForm();
+            locationPath = StringUtils.cleanPath(location.getURL().toString());
+        } else if (resource instanceof ClassPathResource) {
+            resourcePath = ((ClassPathResource) resource).getPath();
+            locationPath = StringUtils.cleanPath(((ClassPathResource) location).getPath());
+        } else {
+            resourcePath = resource.getURL().getPath();
+            locationPath = StringUtils.cleanPath(location.getURL().getPath());
+        }
 
-		String resourcePath;
-		String locationPath;
+        if (locationPath.equals(resourcePath)) {
+            return true;
+        }
+        locationPath =
+                (locationPath.endsWith("/") || locationPath.isEmpty()
+                        ? locationPath
+                        : locationPath + "/");
+        return (resourcePath.startsWith(locationPath) && !isInvalidEncodedPath(resourcePath));
+    }
 
-		if (resource instanceof UrlResource) {
-			resourcePath = resource.getURL().toExternalForm();
-			locationPath = StringUtils.cleanPath(location.getURL().toString());
-		}
-		else if (resource instanceof ClassPathResource) {
-			resourcePath = ((ClassPathResource) resource).getPath();
-			locationPath = StringUtils.cleanPath(((ClassPathResource) location).getPath());
-		}
-		else {
-			resourcePath = resource.getURL().getPath();
-			locationPath = StringUtils.cleanPath(location.getURL().getPath());
-		}
-
-		if (locationPath.equals(resourcePath)) {
-			return true;
-		}
-		locationPath = (locationPath.endsWith("/") || locationPath.isEmpty() ? locationPath : locationPath + "/");
-		return (resourcePath.startsWith(locationPath) && !isInvalidEncodedPath(resourcePath));
-	}
-
-	private boolean isInvalidEncodedPath(String resourcePath) {
-		if (resourcePath.contains("%")) {
-			// Use URLDecoder (vs UriUtils) to preserve potentially decoded UTF-8 chars...
-			try {
-				String decodedPath = URLDecoder.decode(resourcePath, "UTF-8");
-				if (decodedPath.contains("../") || decodedPath.contains("..\\")) {
-					logger.warn("Resolved resource path contains encoded \"../\" or \"..\\\": " + resourcePath);
-					return true;
-				}
-			}
-			catch (IllegalArgumentException ex) {
-				// May not be possible to decode...
-			}
-			catch (UnsupportedEncodingException ex) {
-				// Should never happen...
-			}
-		}
-		return false;
-	}
-
+    private boolean isInvalidEncodedPath(String resourcePath) {
+        if (resourcePath.contains("%")) {
+            // Use URLDecoder (vs UriUtils) to preserve potentially decoded UTF-8 chars...
+            try {
+                String decodedPath = URLDecoder.decode(resourcePath, "UTF-8");
+                if (decodedPath.contains("../") || decodedPath.contains("..\\")) {
+                    logger.warn(
+                            "Resolved resource path contains encoded \"../\" or \"..\\\": "
+                                    + resourcePath);
+                    return true;
+                }
+            } catch (IllegalArgumentException ex) {
+                // May not be possible to decode...
+            } catch (UnsupportedEncodingException ex) {
+                // Should never happen...
+            }
+        }
+        return false;
+    }
 }

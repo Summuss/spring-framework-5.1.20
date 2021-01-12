@@ -1,7 +1,6 @@
 /**
- * {@link org.springframework.web.socket.sockjs.transport.TransportHandler}
- * implementation classes as well as a concrete
- * {@link org.springframework.web.socket.sockjs.SockJsService}.
+ * {@link org.springframework.web.socket.sockjs.transport.TransportHandler} implementation classes
+ * as well as a concrete {@link org.springframework.web.socket.sockjs.SockJsService}.
  */
 @NonNullApi
 @NonNullFields

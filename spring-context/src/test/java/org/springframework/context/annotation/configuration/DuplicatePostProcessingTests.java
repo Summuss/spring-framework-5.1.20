@@ -35,103 +35,95 @@ import org.springframework.context.annotation.Bean;
  */
 public class DuplicatePostProcessingTests {
 
-	@Test
-	public void testWithFactoryBeanAndEventListener() {
-		new AnnotationConfigApplicationContext(Config.class).getBean(ExampleBean.class);
-	}
+    @Test
+    public void testWithFactoryBeanAndEventListener() {
+        new AnnotationConfigApplicationContext(Config.class).getBean(ExampleBean.class);
+    }
 
+    static class Config {
 
+        @Bean
+        public ExampleFactoryBean exampleFactory() {
+            return new ExampleFactoryBean();
+        }
 
-	static class Config {
+        @Bean
+        public static ExampleBeanPostProcessor exampleBeanPostProcessor() {
+            return new ExampleBeanPostProcessor();
+        }
 
-		@Bean
-		public ExampleFactoryBean exampleFactory() {
-			return new ExampleFactoryBean();
-		}
+        @Bean
+        public ExampleApplicationEventListener exampleApplicationEventListener() {
+            return new ExampleApplicationEventListener();
+        }
+    }
 
-		@Bean
-		public static ExampleBeanPostProcessor exampleBeanPostProcessor() {
-			return new ExampleBeanPostProcessor();
-		}
+    static class ExampleFactoryBean implements FactoryBean<ExampleBean> {
 
-		@Bean
-		public ExampleApplicationEventListener exampleApplicationEventListener() {
-			return new ExampleApplicationEventListener();
-		}
-	}
+        private final ExampleBean exampleBean = new ExampleBean();
 
+        @Override
+        public ExampleBean getObject() {
+            return this.exampleBean;
+        }
 
-	static class ExampleFactoryBean implements FactoryBean<ExampleBean> {
+        @Override
+        public Class<?> getObjectType() {
+            return ExampleBean.class;
+        }
 
-		private final ExampleBean exampleBean = new ExampleBean();
+        @Override
+        public boolean isSingleton() {
+            return true;
+        }
+    }
 
-		@Override
-		public ExampleBean getObject() {
-			return this.exampleBean;
-		}
+    static class ExampleBeanPostProcessor implements BeanPostProcessor, ApplicationContextAware {
 
-		@Override
-		public Class<?> getObjectType() {
-			return ExampleBean.class;
-		}
+        private ApplicationContext applicationContext;
 
-		@Override
-		public boolean isSingleton() {
-			return true;
-		}
-	}
+        @Override
+        public Object postProcessBeforeInitialization(Object bean, String beanName) {
+            return bean;
+        }
 
+        @Override
+        public Object postProcessAfterInitialization(Object bean, String beanName) {
+            if (bean instanceof ExampleBean) {
+                this.applicationContext.publishEvent(new ExampleApplicationEvent(this));
+            }
+            return bean;
+        }
 
-	static class ExampleBeanPostProcessor implements BeanPostProcessor, ApplicationContextAware {
+        @Override
+        public void setApplicationContext(ApplicationContext applicationContext) {
+            this.applicationContext = applicationContext;
+        }
+    }
 
-		private ApplicationContext applicationContext;
+    @SuppressWarnings("serial")
+    static class ExampleApplicationEvent extends ApplicationEvent {
 
-		@Override
-		public Object postProcessBeforeInitialization(Object bean, String beanName) {
-			return bean;
-		}
+        public ExampleApplicationEvent(Object source) {
+            super(source);
+        }
+    }
 
-		@Override
-		public Object postProcessAfterInitialization(Object bean, String beanName) {
-			if (bean instanceof ExampleBean) {
-				this.applicationContext.publishEvent(new ExampleApplicationEvent(this));
-			}
-			return bean;
-		}
+    static class ExampleApplicationEventListener
+            implements ApplicationListener<ExampleApplicationEvent>, BeanFactoryAware {
 
-		@Override
-		public void setApplicationContext(ApplicationContext applicationContext) {
-			this.applicationContext = applicationContext;
-		}
-	}
+        private BeanFactory beanFactory;
 
+        @Override
+        public void onApplicationEvent(ExampleApplicationEvent event) {
+            this.beanFactory.getBean(ExampleBean.class);
+        }
 
-	@SuppressWarnings("serial")
-	static class ExampleApplicationEvent extends ApplicationEvent {
+        @Override
+        public void setBeanFactory(BeanFactory beanFactory) {
+            this.beanFactory = beanFactory;
+        }
+    }
 
-		public ExampleApplicationEvent(Object source) {
-			super(source);
-		}
-	}
-
-
-	static class ExampleApplicationEventListener implements ApplicationListener<ExampleApplicationEvent>, BeanFactoryAware {
-
-		private BeanFactory beanFactory;
-
-		@Override
-		public void onApplicationEvent(ExampleApplicationEvent event) {
-			this.beanFactory.getBean(ExampleBean.class);
-		}
-
-		@Override
-		public void setBeanFactory(BeanFactory beanFactory) {
-			this.beanFactory = beanFactory;
-		}
-	}
-
-
-	static class ExampleBean {
-	}
-
+    static class ExampleBean {}
 }

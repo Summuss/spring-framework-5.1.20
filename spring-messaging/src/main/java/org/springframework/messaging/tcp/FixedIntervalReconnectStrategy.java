@@ -24,21 +24,19 @@ package org.springframework.messaging.tcp;
  */
 public class FixedIntervalReconnectStrategy implements ReconnectStrategy {
 
-	private final long interval;
+    private final long interval;
 
+    /**
+     * Create a new {@link FixedIntervalReconnectStrategy} instance.
+     *
+     * @param interval the frequency, in millisecond, at which to try to reconnect
+     */
+    public FixedIntervalReconnectStrategy(long interval) {
+        this.interval = interval;
+    }
 
-	/**
-	 * Create a new {@link FixedIntervalReconnectStrategy} instance.
-	 * @param interval the frequency, in millisecond, at which to try to reconnect
-	 */
-	public FixedIntervalReconnectStrategy(long interval) {
-		this.interval = interval;
-	}
-
-
-	@Override
-	public Long getTimeToNextAttempt(int attemptCount) {
-		return this.interval;
-	}
-
+    @Override
+    public Long getTimeToNextAttempt(int attemptCount) {
+        return this.interval;
+    }
 }

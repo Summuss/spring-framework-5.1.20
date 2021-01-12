@@ -3,10 +3,10 @@
 
 <beans>
 
-	<bean id="themeSource" class="org.springframework.ui.context.support.ResourceBundleThemeSource">
-		<property name="basenamePrefix">
-			<value>${theme-base}</value>
-		</property>
-	</bean>
+    <bean id="themeSource" class="org.springframework.ui.context.support.ResourceBundleThemeSource">
+        <property name="basenamePrefix">
+            <value>${theme-base}</value>
+        </property>
+    </bean>
 
 </beans>

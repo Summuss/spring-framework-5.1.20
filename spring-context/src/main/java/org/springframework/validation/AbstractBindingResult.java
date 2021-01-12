@@ -34,9 +34,9 @@ import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 /**
- * Abstract implementation of the {@link BindingResult} interface and
- * its super-interface {@link Errors}. Encapsulates common management of
- * {@link ObjectError ObjectErrors} and {@link FieldError FieldErrors}.
+ * Abstract implementation of the {@link BindingResult} interface and its super-interface {@link
+ * Errors}. Encapsulates common management of {@link ObjectError ObjectErrors} and {@link FieldError
+ * FieldErrors}.
  *
  * @author Juergen Hoeller
  * @author Rob Harrop
@@ -44,371 +44,386 @@ import org.springframework.util.StringUtils;
  * @see Errors
  */
 @SuppressWarnings("serial")
-public abstract class AbstractBindingResult extends AbstractErrors implements BindingResult, Serializable {
+public abstract class AbstractBindingResult extends AbstractErrors
+        implements BindingResult, Serializable {
 
-	private final String objectName;
+    private final String objectName;
 
-	private MessageCodesResolver messageCodesResolver = new DefaultMessageCodesResolver();
+    private MessageCodesResolver messageCodesResolver = new DefaultMessageCodesResolver();
 
-	private final List<ObjectError> errors = new LinkedList<>();
+    private final List<ObjectError> errors = new LinkedList<>();
 
-	private final Map<String, Class<?>> fieldTypes = new HashMap<>();
+    private final Map<String, Class<?>> fieldTypes = new HashMap<>();
 
-	private final Map<String, Object> fieldValues = new HashMap<>();
+    private final Map<String, Object> fieldValues = new HashMap<>();
 
-	private final Set<String> suppressedFields = new HashSet<>();
+    private final Set<String> suppressedFields = new HashSet<>();
 
+    /**
+     * Create a new AbstractBindingResult instance.
+     *
+     * @param objectName the name of the target object
+     * @see DefaultMessageCodesResolver
+     */
+    protected AbstractBindingResult(String objectName) {
+        this.objectName = objectName;
+    }
 
-	/**
-	 * Create a new AbstractBindingResult instance.
-	 * @param objectName the name of the target object
-	 * @see DefaultMessageCodesResolver
-	 */
-	protected AbstractBindingResult(String objectName) {
-		this.objectName = objectName;
-	}
+    /**
+     * Set the strategy to use for resolving errors into message codes. Default is
+     * DefaultMessageCodesResolver.
+     *
+     * @see DefaultMessageCodesResolver
+     */
+    public void setMessageCodesResolver(MessageCodesResolver messageCodesResolver) {
+        Assert.notNull(messageCodesResolver, "MessageCodesResolver must not be null");
+        this.messageCodesResolver = messageCodesResolver;
+    }
 
+    /** Return the strategy to use for resolving errors into message codes. */
+    public MessageCodesResolver getMessageCodesResolver() {
+        return this.messageCodesResolver;
+    }
 
-	/**
-	 * Set the strategy to use for resolving errors into message codes.
-	 * Default is DefaultMessageCodesResolver.
-	 * @see DefaultMessageCodesResolver
-	 */
-	public void setMessageCodesResolver(MessageCodesResolver messageCodesResolver) {
-		Assert.notNull(messageCodesResolver, "MessageCodesResolver must not be null");
-		this.messageCodesResolver = messageCodesResolver;
-	}
+    // ---------------------------------------------------------------------
+    // Implementation of the Errors interface
+    // ---------------------------------------------------------------------
 
-	/**
-	 * Return the strategy to use for resolving errors into message codes.
-	 */
-	public MessageCodesResolver getMessageCodesResolver() {
-		return this.messageCodesResolver;
-	}
+    @Override
+    public String getObjectName() {
+        return this.objectName;
+    }
 
+    @Override
+    public void reject(
+            String errorCode, @Nullable Object[] errorArgs, @Nullable String defaultMessage) {
+        addError(
+                new ObjectError(
+                        getObjectName(),
+                        resolveMessageCodes(errorCode),
+                        errorArgs,
+                        defaultMessage));
+    }
 
-	//---------------------------------------------------------------------
-	// Implementation of the Errors interface
-	//---------------------------------------------------------------------
+    @Override
+    public void rejectValue(
+            @Nullable String field,
+            String errorCode,
+            @Nullable Object[] errorArgs,
+            @Nullable String defaultMessage) {
 
-	@Override
-	public String getObjectName() {
-		return this.objectName;
-	}
+        if ("".equals(getNestedPath()) && !StringUtils.hasLength(field)) {
+            // We're at the top of the nested object hierarchy,
+            // so the present level is not a field but rather the top object.
+            // The best we can do is register a global error here...
+            reject(errorCode, errorArgs, defaultMessage);
+            return;
+        }
 
-	@Override
-	public void reject(String errorCode, @Nullable Object[] errorArgs, @Nullable String defaultMessage) {
-		addError(new ObjectError(getObjectName(), resolveMessageCodes(errorCode), errorArgs, defaultMessage));
-	}
+        String fixedField = fixedField(field);
+        Object newVal = getActualFieldValue(fixedField);
+        FieldError fe =
+                new FieldError(
+                        getObjectName(),
+                        fixedField,
+                        newVal,
+                        false,
+                        resolveMessageCodes(errorCode, field),
+                        errorArgs,
+                        defaultMessage);
+        addError(fe);
+    }
 
-	@Override
-	public void rejectValue(@Nullable String field, String errorCode, @Nullable Object[] errorArgs,
-			@Nullable String defaultMessage) {
+    @Override
+    public void addAllErrors(Errors errors) {
+        if (!errors.getObjectName().equals(getObjectName())) {
+            throw new IllegalArgumentException("Errors object needs to have same object name");
+        }
+        this.errors.addAll(errors.getAllErrors());
+    }
 
-		if ("".equals(getNestedPath()) && !StringUtils.hasLength(field)) {
-			// We're at the top of the nested object hierarchy,
-			// so the present level is not a field but rather the top object.
-			// The best we can do is register a global error here...
-			reject(errorCode, errorArgs, defaultMessage);
-			return;
-		}
+    @Override
+    public boolean hasErrors() {
+        return !this.errors.isEmpty();
+    }
 
-		String fixedField = fixedField(field);
-		Object newVal = getActualFieldValue(fixedField);
-		FieldError fe = new FieldError(getObjectName(), fixedField, newVal, false,
-				resolveMessageCodes(errorCode, field), errorArgs, defaultMessage);
-		addError(fe);
-	}
+    @Override
+    public int getErrorCount() {
+        return this.errors.size();
+    }
 
-	@Override
-	public void addAllErrors(Errors errors) {
-		if (!errors.getObjectName().equals(getObjectName())) {
-			throw new IllegalArgumentException("Errors object needs to have same object name");
-		}
-		this.errors.addAll(errors.getAllErrors());
-	}
+    @Override
+    public List<ObjectError> getAllErrors() {
+        return Collections.unmodifiableList(this.errors);
+    }
 
-	@Override
-	public boolean hasErrors() {
-		return !this.errors.isEmpty();
-	}
+    @Override
+    public List<ObjectError> getGlobalErrors() {
+        List<ObjectError> result = new LinkedList<>();
+        for (ObjectError objectError : this.errors) {
+            if (!(objectError instanceof FieldError)) {
+                result.add(objectError);
+            }
+        }
+        return Collections.unmodifiableList(result);
+    }
 
-	@Override
-	public int getErrorCount() {
-		return this.errors.size();
-	}
+    @Override
+    @Nullable
+    public ObjectError getGlobalError() {
+        for (ObjectError objectError : this.errors) {
+            if (!(objectError instanceof FieldError)) {
+                return objectError;
+            }
+        }
+        return null;
+    }
 
-	@Override
-	public List<ObjectError> getAllErrors() {
-		return Collections.unmodifiableList(this.errors);
-	}
+    @Override
+    public List<FieldError> getFieldErrors() {
+        List<FieldError> result = new LinkedList<>();
+        for (ObjectError objectError : this.errors) {
+            if (objectError instanceof FieldError) {
+                result.add((FieldError) objectError);
+            }
+        }
+        return Collections.unmodifiableList(result);
+    }
 
-	@Override
-	public List<ObjectError> getGlobalErrors() {
-		List<ObjectError> result = new LinkedList<>();
-		for (ObjectError objectError : this.errors) {
-			if (!(objectError instanceof FieldError)) {
-				result.add(objectError);
-			}
-		}
-		return Collections.unmodifiableList(result);
-	}
+    @Override
+    @Nullable
+    public FieldError getFieldError() {
+        for (ObjectError objectError : this.errors) {
+            if (objectError instanceof FieldError) {
+                return (FieldError) objectError;
+            }
+        }
+        return null;
+    }
 
-	@Override
-	@Nullable
-	public ObjectError getGlobalError() {
-		for (ObjectError objectError : this.errors) {
-			if (!(objectError instanceof FieldError)) {
-				return objectError;
-			}
-		}
-		return null;
-	}
+    @Override
+    public List<FieldError> getFieldErrors(String field) {
+        List<FieldError> result = new LinkedList<>();
+        String fixedField = fixedField(field);
+        for (ObjectError objectError : this.errors) {
+            if (objectError instanceof FieldError
+                    && isMatchingFieldError(fixedField, (FieldError) objectError)) {
+                result.add((FieldError) objectError);
+            }
+        }
+        return Collections.unmodifiableList(result);
+    }
 
-	@Override
-	public List<FieldError> getFieldErrors() {
-		List<FieldError> result = new LinkedList<>();
-		for (ObjectError objectError : this.errors) {
-			if (objectError instanceof FieldError) {
-				result.add((FieldError) objectError);
-			}
-		}
-		return Collections.unmodifiableList(result);
-	}
+    @Override
+    @Nullable
+    public FieldError getFieldError(String field) {
+        String fixedField = fixedField(field);
+        for (ObjectError objectError : this.errors) {
+            if (objectError instanceof FieldError) {
+                FieldError fieldError = (FieldError) objectError;
+                if (isMatchingFieldError(fixedField, fieldError)) {
+                    return fieldError;
+                }
+            }
+        }
+        return null;
+    }
 
-	@Override
-	@Nullable
-	public FieldError getFieldError() {
-		for (ObjectError objectError : this.errors) {
-			if (objectError instanceof FieldError) {
-				return (FieldError) objectError;
-			}
-		}
-		return null;
-	}
+    @Override
+    @Nullable
+    public Object getFieldValue(String field) {
+        FieldError fieldError = getFieldError(field);
+        // Use rejected value in case of error, current field value otherwise.
+        if (fieldError != null) {
+            Object value = fieldError.getRejectedValue();
+            // Do not apply formatting on binding failures like type mismatches.
+            return (fieldError.isBindingFailure() || getTarget() == null
+                    ? value
+                    : formatFieldValue(field, value));
+        } else if (getTarget() != null) {
+            Object value = getActualFieldValue(fixedField(field));
+            return formatFieldValue(field, value);
+        } else {
+            return this.fieldValues.get(field);
+        }
+    }
 
-	@Override
-	public List<FieldError> getFieldErrors(String field) {
-		List<FieldError> result = new LinkedList<>();
-		String fixedField = fixedField(field);
-		for (ObjectError objectError : this.errors) {
-			if (objectError instanceof FieldError && isMatchingFieldError(fixedField, (FieldError) objectError)) {
-				result.add((FieldError) objectError);
-			}
-		}
-		return Collections.unmodifiableList(result);
-	}
+    /**
+     * This default implementation determines the type based on the actual field value, if any.
+     * Subclasses should override this to determine the type from a descriptor, even for {@code
+     * null} values.
+     *
+     * @see #getActualFieldValue
+     */
+    @Override
+    @Nullable
+    public Class<?> getFieldType(@Nullable String field) {
+        if (getTarget() != null) {
+            Object value = getActualFieldValue(fixedField(field));
+            if (value != null) {
+                return value.getClass();
+            }
+        }
+        return this.fieldTypes.get(field);
+    }
 
-	@Override
-	@Nullable
-	public FieldError getFieldError(String field) {
-		String fixedField = fixedField(field);
-		for (ObjectError objectError : this.errors) {
-			if (objectError instanceof FieldError) {
-				FieldError fieldError = (FieldError) objectError;
-				if (isMatchingFieldError(fixedField, fieldError)) {
-					return fieldError;
-				}
-			}
-		}
-		return null;
-	}
+    // ---------------------------------------------------------------------
+    // Implementation of BindingResult interface
+    // ---------------------------------------------------------------------
 
-	@Override
-	@Nullable
-	public Object getFieldValue(String field) {
-		FieldError fieldError = getFieldError(field);
-		// Use rejected value in case of error, current field value otherwise.
-		if (fieldError != null) {
-			Object value = fieldError.getRejectedValue();
-			// Do not apply formatting on binding failures like type mismatches.
-			return (fieldError.isBindingFailure() || getTarget() == null ? value : formatFieldValue(field, value));
-		}
-		else if (getTarget() != null) {
-			Object value = getActualFieldValue(fixedField(field));
-			return formatFieldValue(field, value);
-		}
-		else {
-			return this.fieldValues.get(field);
-		}
-	}
+    /**
+     * Return a model Map for the obtained state, exposing an Errors instance as '{@link
+     * #MODEL_KEY_PREFIX MODEL_KEY_PREFIX} + objectName' and the object itself.
+     *
+     * <p>Note that the Map is constructed every time you're calling this method. Adding things to
+     * the map and then re-calling this method will not work.
+     *
+     * <p>The attributes in the model Map returned by this method are usually included in the
+     * ModelAndView for a form view that uses Spring's bind tag, which needs access to the Errors
+     * instance.
+     *
+     * @see #getObjectName
+     * @see #MODEL_KEY_PREFIX
+     */
+    @Override
+    public Map<String, Object> getModel() {
+        Map<String, Object> model = new LinkedHashMap<>(2);
+        // Mapping from name to target object.
+        model.put(getObjectName(), getTarget());
+        // Errors instance, even if no errors.
+        model.put(MODEL_KEY_PREFIX + getObjectName(), this);
+        return model;
+    }
 
-	/**
-	 * This default implementation determines the type based on the actual
-	 * field value, if any. Subclasses should override this to determine
-	 * the type from a descriptor, even for {@code null} values.
-	 * @see #getActualFieldValue
-	 */
-	@Override
-	@Nullable
-	public Class<?> getFieldType(@Nullable String field) {
-		if (getTarget() != null) {
-			Object value = getActualFieldValue(fixedField(field));
-			if (value != null) {
-				return value.getClass();
-			}
-		}
-		return this.fieldTypes.get(field);
-	}
+    @Override
+    @Nullable
+    public Object getRawFieldValue(String field) {
+        return (getTarget() != null ? getActualFieldValue(fixedField(field)) : null);
+    }
 
+    /**
+     * This implementation delegates to the {@link #getPropertyEditorRegistry()
+     * PropertyEditorRegistry}'s editor lookup facility, if available.
+     */
+    @Override
+    @Nullable
+    public PropertyEditor findEditor(@Nullable String field, @Nullable Class<?> valueType) {
+        PropertyEditorRegistry editorRegistry = getPropertyEditorRegistry();
+        if (editorRegistry != null) {
+            Class<?> valueTypeToUse = valueType;
+            if (valueTypeToUse == null) {
+                valueTypeToUse = getFieldType(field);
+            }
+            return editorRegistry.findCustomEditor(valueTypeToUse, fixedField(field));
+        } else {
+            return null;
+        }
+    }
 
-	//---------------------------------------------------------------------
-	// Implementation of BindingResult interface
-	//---------------------------------------------------------------------
+    /** This implementation returns {@code null}. */
+    @Override
+    @Nullable
+    public PropertyEditorRegistry getPropertyEditorRegistry() {
+        return null;
+    }
 
-	/**
-	 * Return a model Map for the obtained state, exposing an Errors
-	 * instance as '{@link #MODEL_KEY_PREFIX MODEL_KEY_PREFIX} + objectName'
-	 * and the object itself.
-	 * <p>Note that the Map is constructed every time you're calling this method.
-	 * Adding things to the map and then re-calling this method will not work.
-	 * <p>The attributes in the model Map returned by this method are usually
-	 * included in the ModelAndView for a form view that uses Spring's bind tag,
-	 * which needs access to the Errors instance.
-	 * @see #getObjectName
-	 * @see #MODEL_KEY_PREFIX
-	 */
-	@Override
-	public Map<String, Object> getModel() {
-		Map<String, Object> model = new LinkedHashMap<>(2);
-		// Mapping from name to target object.
-		model.put(getObjectName(), getTarget());
-		// Errors instance, even if no errors.
-		model.put(MODEL_KEY_PREFIX + getObjectName(), this);
-		return model;
-	}
+    @Override
+    public String[] resolveMessageCodes(String errorCode) {
+        return getMessageCodesResolver().resolveMessageCodes(errorCode, getObjectName());
+    }
 
-	@Override
-	@Nullable
-	public Object getRawFieldValue(String field) {
-		return (getTarget() != null ? getActualFieldValue(fixedField(field)) : null);
-	}
+    @Override
+    public String[] resolveMessageCodes(String errorCode, @Nullable String field) {
+        return getMessageCodesResolver()
+                .resolveMessageCodes(
+                        errorCode, getObjectName(), fixedField(field), getFieldType(field));
+    }
 
-	/**
-	 * This implementation delegates to the
-	 * {@link #getPropertyEditorRegistry() PropertyEditorRegistry}'s
-	 * editor lookup facility, if available.
-	 */
-	@Override
-	@Nullable
-	public PropertyEditor findEditor(@Nullable String field, @Nullable Class<?> valueType) {
-		PropertyEditorRegistry editorRegistry = getPropertyEditorRegistry();
-		if (editorRegistry != null) {
-			Class<?> valueTypeToUse = valueType;
-			if (valueTypeToUse == null) {
-				valueTypeToUse = getFieldType(field);
-			}
-			return editorRegistry.findCustomEditor(valueTypeToUse, fixedField(field));
-		}
-		else {
-			return null;
-		}
-	}
+    @Override
+    public void addError(ObjectError error) {
+        this.errors.add(error);
+    }
 
-	/**
-	 * This implementation returns {@code null}.
-	 */
-	@Override
-	@Nullable
-	public PropertyEditorRegistry getPropertyEditorRegistry() {
-		return null;
-	}
+    @Override
+    public void recordFieldValue(String field, Class<?> type, @Nullable Object value) {
+        this.fieldTypes.put(field, type);
+        this.fieldValues.put(field, value);
+    }
 
-	@Override
-	public String[] resolveMessageCodes(String errorCode) {
-		return getMessageCodesResolver().resolveMessageCodes(errorCode, getObjectName());
-	}
+    /**
+     * Mark the specified disallowed field as suppressed.
+     *
+     * <p>The data binder invokes this for each field value that was detected to target a disallowed
+     * field.
+     *
+     * @see DataBinder#setAllowedFields
+     */
+    @Override
+    public void recordSuppressedField(String field) {
+        this.suppressedFields.add(field);
+    }
 
-	@Override
-	public String[] resolveMessageCodes(String errorCode, @Nullable String field) {
-		return getMessageCodesResolver().resolveMessageCodes(
-				errorCode, getObjectName(), fixedField(field), getFieldType(field));
-	}
+    /**
+     * Return the list of fields that were suppressed during the bind process.
+     *
+     * <p>Can be used to determine whether any field values were targeting disallowed fields.
+     *
+     * @see DataBinder#setAllowedFields
+     */
+    @Override
+    public String[] getSuppressedFields() {
+        return StringUtils.toStringArray(this.suppressedFields);
+    }
 
-	@Override
-	public void addError(ObjectError error) {
-		this.errors.add(error);
-	}
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof BindingResult)) {
+            return false;
+        }
+        BindingResult otherResult = (BindingResult) other;
+        return (getObjectName().equals(otherResult.getObjectName())
+                && ObjectUtils.nullSafeEquals(getTarget(), otherResult.getTarget())
+                && getAllErrors().equals(otherResult.getAllErrors()));
+    }
 
-	@Override
-	public void recordFieldValue(String field, Class<?> type, @Nullable Object value) {
-		this.fieldTypes.put(field, type);
-		this.fieldValues.put(field, value);
-	}
+    @Override
+    public int hashCode() {
+        return getObjectName().hashCode();
+    }
 
-	/**
-	 * Mark the specified disallowed field as suppressed.
-	 * <p>The data binder invokes this for each field value that was
-	 * detected to target a disallowed field.
-	 * @see DataBinder#setAllowedFields
-	 */
-	@Override
-	public void recordSuppressedField(String field) {
-		this.suppressedFields.add(field);
-	}
+    // ---------------------------------------------------------------------
+    // Template methods to be implemented/overridden by subclasses
+    // ---------------------------------------------------------------------
 
-	/**
-	 * Return the list of fields that were suppressed during the bind process.
-	 * <p>Can be used to determine whether any field values were targeting
-	 * disallowed fields.
-	 * @see DataBinder#setAllowedFields
-	 */
-	@Override
-	public String[] getSuppressedFields() {
-		return StringUtils.toStringArray(this.suppressedFields);
-	}
+    /** Return the wrapped target object. */
+    @Override
+    @Nullable
+    public abstract Object getTarget();
 
+    /**
+     * Extract the actual field value for the given field.
+     *
+     * @param field the field to check
+     * @return the current value of the field
+     */
+    @Nullable
+    protected abstract Object getActualFieldValue(String field);
 
-	@Override
-	public boolean equals(Object other) {
-		if (this == other) {
-			return true;
-		}
-		if (!(other instanceof BindingResult)) {
-			return false;
-		}
-		BindingResult otherResult = (BindingResult) other;
-		return (getObjectName().equals(otherResult.getObjectName()) &&
-				ObjectUtils.nullSafeEquals(getTarget(), otherResult.getTarget()) &&
-				getAllErrors().equals(otherResult.getAllErrors()));
-	}
-
-	@Override
-	public int hashCode() {
-		return getObjectName().hashCode();
-	}
-
-
-	//---------------------------------------------------------------------
-	// Template methods to be implemented/overridden by subclasses
-	//---------------------------------------------------------------------
-
-	/**
-	 * Return the wrapped target object.
-	 */
-	@Override
-	@Nullable
-	public abstract Object getTarget();
-
-	/**
-	 * Extract the actual field value for the given field.
-	 * @param field the field to check
-	 * @return the current value of the field
-	 */
-	@Nullable
-	protected abstract Object getActualFieldValue(String field);
-
-	/**
-	 * Format the given value for the specified field.
-	 * <p>The default implementation simply returns the field value as-is.
-	 * @param field the field to check
-	 * @param value the value of the field (either a rejected value
-	 * other than from a binding error, or an actual field value)
-	 * @return the formatted value
-	 */
-	@Nullable
-	protected Object formatFieldValue(String field, @Nullable Object value) {
-		return value;
-	}
-
+    /**
+     * Format the given value for the specified field.
+     *
+     * <p>The default implementation simply returns the field value as-is.
+     *
+     * @param field the field to check
+     * @param value the value of the field (either a rejected value other than from a binding error,
+     *     or an actual field value)
+     * @return the formatted value
+     */
+    @Nullable
+    protected Object formatFieldValue(String field, @Nullable Object value) {
+        return value;
+    }
 }

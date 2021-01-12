@@ -36,82 +36,87 @@ import org.springframework.web.method.support.HandlerMethodReturnValueHandler;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
 /**
- * Supports return values of type
- * {@link org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody}
- * and also {@code ResponseEntity<StreamingResponseBody>}.
+ * Supports return values of type {@link
+ * org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody} and also {@code
+ * ResponseEntity<StreamingResponseBody>}.
  *
  * @author Rossen Stoyanchev
  * @since 4.2
  */
 public class StreamingResponseBodyReturnValueHandler implements HandlerMethodReturnValueHandler {
 
-	@Override
-	public boolean supportsReturnType(MethodParameter returnType) {
-		if (StreamingResponseBody.class.isAssignableFrom(returnType.getParameterType())) {
-			return true;
-		}
-		else if (ResponseEntity.class.isAssignableFrom(returnType.getParameterType())) {
-			Class<?> bodyType = ResolvableType.forMethodParameter(returnType).getGeneric().resolve();
-			return (bodyType != null && StreamingResponseBody.class.isAssignableFrom(bodyType));
-		}
-		return false;
-	}
+    @Override
+    public boolean supportsReturnType(MethodParameter returnType) {
+        if (StreamingResponseBody.class.isAssignableFrom(returnType.getParameterType())) {
+            return true;
+        } else if (ResponseEntity.class.isAssignableFrom(returnType.getParameterType())) {
+            Class<?> bodyType =
+                    ResolvableType.forMethodParameter(returnType).getGeneric().resolve();
+            return (bodyType != null && StreamingResponseBody.class.isAssignableFrom(bodyType));
+        }
+        return false;
+    }
 
-	@Override
-	@SuppressWarnings("resource")
-	public void handleReturnValue(@Nullable Object returnValue, MethodParameter returnType,
-			ModelAndViewContainer mavContainer, NativeWebRequest webRequest) throws Exception {
+    @Override
+    @SuppressWarnings("resource")
+    public void handleReturnValue(
+            @Nullable Object returnValue,
+            MethodParameter returnType,
+            ModelAndViewContainer mavContainer,
+            NativeWebRequest webRequest)
+            throws Exception {
 
-		if (returnValue == null) {
-			mavContainer.setRequestHandled(true);
-			return;
-		}
+        if (returnValue == null) {
+            mavContainer.setRequestHandled(true);
+            return;
+        }
 
-		HttpServletResponse response = webRequest.getNativeResponse(HttpServletResponse.class);
-		Assert.state(response != null, "No HttpServletResponse");
-		ServerHttpResponse outputMessage = new ServletServerHttpResponse(response);
+        HttpServletResponse response = webRequest.getNativeResponse(HttpServletResponse.class);
+        Assert.state(response != null, "No HttpServletResponse");
+        ServerHttpResponse outputMessage = new ServletServerHttpResponse(response);
 
-		if (returnValue instanceof ResponseEntity) {
-			ResponseEntity<?> responseEntity = (ResponseEntity<?>) returnValue;
-			response.setStatus(responseEntity.getStatusCodeValue());
-			outputMessage.getHeaders().putAll(responseEntity.getHeaders());
-			returnValue = responseEntity.getBody();
-			if (returnValue == null) {
-				mavContainer.setRequestHandled(true);
-				outputMessage.flush();
-				return;
-			}
-		}
+        if (returnValue instanceof ResponseEntity) {
+            ResponseEntity<?> responseEntity = (ResponseEntity<?>) returnValue;
+            response.setStatus(responseEntity.getStatusCodeValue());
+            outputMessage.getHeaders().putAll(responseEntity.getHeaders());
+            returnValue = responseEntity.getBody();
+            if (returnValue == null) {
+                mavContainer.setRequestHandled(true);
+                outputMessage.flush();
+                return;
+            }
+        }
 
-		ServletRequest request = webRequest.getNativeRequest(ServletRequest.class);
-		Assert.state(request != null, "No ServletRequest");
-		ShallowEtagHeaderFilter.disableContentCaching(request);
+        ServletRequest request = webRequest.getNativeRequest(ServletRequest.class);
+        Assert.state(request != null, "No ServletRequest");
+        ShallowEtagHeaderFilter.disableContentCaching(request);
 
-		Assert.isInstanceOf(StreamingResponseBody.class, returnValue, "StreamingResponseBody expected");
-		StreamingResponseBody streamingBody = (StreamingResponseBody) returnValue;
+        Assert.isInstanceOf(
+                StreamingResponseBody.class, returnValue, "StreamingResponseBody expected");
+        StreamingResponseBody streamingBody = (StreamingResponseBody) returnValue;
 
-		Callable<Void> callable = new StreamingResponseBodyTask(outputMessage.getBody(), streamingBody);
-		WebAsyncUtils.getAsyncManager(webRequest).startCallableProcessing(callable, mavContainer);
-	}
+        Callable<Void> callable =
+                new StreamingResponseBodyTask(outputMessage.getBody(), streamingBody);
+        WebAsyncUtils.getAsyncManager(webRequest).startCallableProcessing(callable, mavContainer);
+    }
 
+    private static class StreamingResponseBodyTask implements Callable<Void> {
 
-	private static class StreamingResponseBodyTask implements Callable<Void> {
+        private final OutputStream outputStream;
 
-		private final OutputStream outputStream;
+        private final StreamingResponseBody streamingBody;
 
-		private final StreamingResponseBody streamingBody;
+        public StreamingResponseBodyTask(
+                OutputStream outputStream, StreamingResponseBody streamingBody) {
+            this.outputStream = outputStream;
+            this.streamingBody = streamingBody;
+        }
 
-		public StreamingResponseBodyTask(OutputStream outputStream, StreamingResponseBody streamingBody) {
-			this.outputStream = outputStream;
-			this.streamingBody = streamingBody;
-		}
-
-		@Override
-		public Void call() throws Exception {
-			this.streamingBody.writeTo(this.outputStream);
-			this.outputStream.flush();
-			return null;
-		}
-	}
-
+        @Override
+        public Void call() throws Exception {
+            this.streamingBody.writeTo(this.outputStream);
+            this.outputStream.flush();
+            return null;
+        }
+    }
 }

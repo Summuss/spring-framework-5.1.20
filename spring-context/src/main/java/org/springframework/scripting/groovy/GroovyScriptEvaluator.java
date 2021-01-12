@@ -41,89 +41,88 @@ import org.springframework.scripting.support.ResourceScriptSource;
  */
 public class GroovyScriptEvaluator implements ScriptEvaluator, BeanClassLoaderAware {
 
-	@Nullable
-	private ClassLoader classLoader;
+    @Nullable private ClassLoader classLoader;
 
-	private CompilerConfiguration compilerConfiguration = new CompilerConfiguration();
+    private CompilerConfiguration compilerConfiguration = new CompilerConfiguration();
 
+    /** Construct a new GroovyScriptEvaluator. */
+    public GroovyScriptEvaluator() {}
 
-	/**
-	 * Construct a new GroovyScriptEvaluator.
-	 */
-	public GroovyScriptEvaluator() {
-	}
+    /**
+     * Construct a new GroovyScriptEvaluator.
+     *
+     * @param classLoader the ClassLoader to use as a parent for the {@link GroovyShell}
+     */
+    public GroovyScriptEvaluator(@Nullable ClassLoader classLoader) {
+        this.classLoader = classLoader;
+    }
 
-	/**
-	 * Construct a new GroovyScriptEvaluator.
-	 * @param classLoader the ClassLoader to use as a parent for the {@link GroovyShell}
-	 */
-	public GroovyScriptEvaluator(@Nullable ClassLoader classLoader) {
-		this.classLoader = classLoader;
-	}
+    /**
+     * Set a custom compiler configuration for this evaluator.
+     *
+     * @since 4.3.3
+     * @see #setCompilationCustomizers
+     */
+    public void setCompilerConfiguration(@Nullable CompilerConfiguration compilerConfiguration) {
+        this.compilerConfiguration =
+                (compilerConfiguration != null
+                        ? compilerConfiguration
+                        : new CompilerConfiguration());
+    }
 
+    /**
+     * Return this evaluator's compiler configuration (never {@code null}).
+     *
+     * @since 4.3.3
+     * @see #setCompilerConfiguration
+     */
+    public CompilerConfiguration getCompilerConfiguration() {
+        return this.compilerConfiguration;
+    }
 
-	/**
-	 * Set a custom compiler configuration for this evaluator.
-	 * @since 4.3.3
-	 * @see #setCompilationCustomizers
-	 */
-	public void setCompilerConfiguration(@Nullable CompilerConfiguration compilerConfiguration) {
-		this.compilerConfiguration =
-				(compilerConfiguration != null ? compilerConfiguration : new CompilerConfiguration());
-	}
+    /**
+     * Set one or more customizers to be applied to this evaluator's compiler configuration.
+     *
+     * <p>Note that this modifies the shared compiler configuration held by this evaluator.
+     *
+     * @since 4.3.3
+     * @see #setCompilerConfiguration
+     */
+    public void setCompilationCustomizers(CompilationCustomizer... compilationCustomizers) {
+        this.compilerConfiguration.addCompilationCustomizers(compilationCustomizers);
+    }
 
-	/**
-	 * Return this evaluator's compiler configuration (never {@code null}).
-	 * @since 4.3.3
-	 * @see #setCompilerConfiguration
-	 */
-	public CompilerConfiguration getCompilerConfiguration() {
-		return this.compilerConfiguration;
-	}
+    @Override
+    public void setBeanClassLoader(ClassLoader classLoader) {
+        this.classLoader = classLoader;
+    }
 
-	/**
-	 * Set one or more customizers to be applied to this evaluator's compiler configuration.
-	 * <p>Note that this modifies the shared compiler configuration held by this evaluator.
-	 * @since 4.3.3
-	 * @see #setCompilerConfiguration
-	 */
-	public void setCompilationCustomizers(CompilationCustomizer... compilationCustomizers) {
-		this.compilerConfiguration.addCompilationCustomizers(compilationCustomizers);
-	}
+    @Override
+    @Nullable
+    public Object evaluate(ScriptSource script) {
+        return evaluate(script, null);
+    }
 
-	@Override
-	public void setBeanClassLoader(ClassLoader classLoader) {
-		this.classLoader = classLoader;
-	}
-
-
-	@Override
-	@Nullable
-	public Object evaluate(ScriptSource script) {
-		return evaluate(script, null);
-	}
-
-	@Override
-	@Nullable
-	public Object evaluate(ScriptSource script, @Nullable Map<String, Object> arguments) {
-		GroovyShell groovyShell = new GroovyShell(
-				this.classLoader, new Binding(arguments), this.compilerConfiguration);
-		try {
-			String filename = (script instanceof ResourceScriptSource ?
-					((ResourceScriptSource) script).getResource().getFilename() : null);
-			if (filename != null) {
-				return groovyShell.evaluate(script.getScriptAsString(), filename);
-			}
-			else {
-				return groovyShell.evaluate(script.getScriptAsString());
-			}
-		}
-		catch (IOException ex) {
-			throw new ScriptCompilationException(script, "Cannot access Groovy script", ex);
-		}
-		catch (GroovyRuntimeException ex) {
-			throw new ScriptCompilationException(script, ex);
-		}
-	}
-
+    @Override
+    @Nullable
+    public Object evaluate(ScriptSource script, @Nullable Map<String, Object> arguments) {
+        GroovyShell groovyShell =
+                new GroovyShell(
+                        this.classLoader, new Binding(arguments), this.compilerConfiguration);
+        try {
+            String filename =
+                    (script instanceof ResourceScriptSource
+                            ? ((ResourceScriptSource) script).getResource().getFilename()
+                            : null);
+            if (filename != null) {
+                return groovyShell.evaluate(script.getScriptAsString(), filename);
+            } else {
+                return groovyShell.evaluate(script.getScriptAsString());
+            }
+        } catch (IOException ex) {
+            throw new ScriptCompilationException(script, "Cannot access Groovy script", ex);
+        } catch (GroovyRuntimeException ex) {
+            throw new ScriptCompilationException(script, ex);
+        }
+    }
 }

@@ -26,9 +26,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 class BarConfig {
 
-	@Bean
-	String bar() {
-		return "bar";
-	}
-
+    @Bean
+    String bar() {
+        return "bar";
+    }
 }

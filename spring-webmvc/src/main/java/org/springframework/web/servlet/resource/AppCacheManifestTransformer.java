@@ -38,220 +38,223 @@ import org.springframework.util.FileCopyUtils;
 import org.springframework.util.StringUtils;
 
 /**
- * A {@link ResourceTransformer} implementation that helps handling resources
- * within HTML5 AppCache manifests for HTML5 offline applications.
+ * A {@link ResourceTransformer} implementation that helps handling resources within HTML5 AppCache
+ * manifests for HTML5 offline applications.
  *
  * <p>This transformer:
+ *
  * <ul>
- * <li>modifies links to match the public URL paths that should be exposed to clients,
- * using configured {@code ResourceResolver} strategies
- * <li>appends a comment in the manifest, containing a Hash (e.g. "# Hash: 9de0f09ed7caf84e885f1f0f11c7e326"),
- * thus changing the content of the manifest in order to trigger an appcache reload in the browser.
+ *   <li>modifies links to match the public URL paths that should be exposed to clients, using
+ *       configured {@code ResourceResolver} strategies
+ *   <li>appends a comment in the manifest, containing a Hash (e.g. "# Hash:
+ *       9de0f09ed7caf84e885f1f0f11c7e326"), thus changing the content of the manifest in order to
+ *       trigger an appcache reload in the browser.
  * </ul>
  *
  * <p>All files that have the ".appcache" file extension, or the extension given in the constructor,
- * will be transformed by this class. This hash is computed using the content of the appcache manifest
- * and the content of the linked resources; so changing a resource linked in the manifest
+ * will be transformed by this class. This hash is computed using the content of the appcache
+ * manifest and the content of the linked resources; so changing a resource linked in the manifest
  * or the manifest itself should invalidate the browser cache.
  *
- * <p>In order to serve manifest files with the proper {@code "text/manifest"} content type,
- * it is required to configure it with
- * {@code contentNegotiationConfigurer.mediaType("appcache", MediaType.valueOf("text/manifest")}
- * in a {@code WebMvcConfigurer}.
+ * <p>In order to serve manifest files with the proper {@code "text/manifest"} content type, it is
+ * required to configure it with {@code contentNegotiationConfigurer.mediaType("appcache",
+ * MediaType.valueOf("text/manifest")} in a {@code WebMvcConfigurer}.
  *
  * @author Brian Clozel
  * @since 4.1
- * @see <a href="https://html.spec.whatwg.org/multipage/browsers.html#offline">HTML5 offline applications spec</a>
+ * @see <a href="https://html.spec.whatwg.org/multipage/browsers.html#offline">HTML5 offline
+ *     applications spec</a>
  */
 public class AppCacheManifestTransformer extends ResourceTransformerSupport {
 
-	private static final Collection<String> MANIFEST_SECTION_HEADERS =
-			Arrays.asList("CACHE MANIFEST", "NETWORK:", "FALLBACK:", "CACHE:");
+    private static final Collection<String> MANIFEST_SECTION_HEADERS =
+            Arrays.asList("CACHE MANIFEST", "NETWORK:", "FALLBACK:", "CACHE:");
 
-	private static final String MANIFEST_HEADER = "CACHE MANIFEST";
+    private static final String MANIFEST_HEADER = "CACHE MANIFEST";
 
-	private static final String CACHE_HEADER = "CACHE:";
+    private static final String CACHE_HEADER = "CACHE:";
 
-	private static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
+    private static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
-	private static final Log logger = LogFactory.getLog(AppCacheManifestTransformer.class);
+    private static final Log logger = LogFactory.getLog(AppCacheManifestTransformer.class);
 
+    private final String fileExtension;
 
-	private final String fileExtension;
+    /** Create an AppCacheResourceTransformer that transforms files with extension ".appcache". */
+    public AppCacheManifestTransformer() {
+        this("appcache");
+    }
 
+    /**
+     * Create an AppCacheResourceTransformer that transforms files with the extension given as a
+     * parameter.
+     */
+    public AppCacheManifestTransformer(String fileExtension) {
+        this.fileExtension = fileExtension;
+    }
 
-	/**
-	 * Create an AppCacheResourceTransformer that transforms files with extension ".appcache".
-	 */
-	public AppCacheManifestTransformer() {
-		this("appcache");
-	}
+    @Override
+    public Resource transform(
+            HttpServletRequest request, Resource resource, ResourceTransformerChain chain)
+            throws IOException {
 
-	/**
-	 * Create an AppCacheResourceTransformer that transforms files with the extension
-	 * given as a parameter.
-	 */
-	public AppCacheManifestTransformer(String fileExtension) {
-		this.fileExtension = fileExtension;
-	}
+        resource = chain.transform(request, resource);
+        if (!this.fileExtension.equals(StringUtils.getFilenameExtension(resource.getFilename()))) {
+            return resource;
+        }
 
+        byte[] bytes = FileCopyUtils.copyToByteArray(resource.getInputStream());
+        String content = new String(bytes, DEFAULT_CHARSET);
 
-	@Override
-	public Resource transform(HttpServletRequest request, Resource resource,
-			ResourceTransformerChain chain) throws IOException {
+        if (!content.startsWith(MANIFEST_HEADER)) {
+            if (logger.isTraceEnabled()) {
+                logger.trace(
+                        "Skipping " + resource + ": Manifest does not start with 'CACHE MANIFEST'");
+            }
+            return resource;
+        }
 
-		resource = chain.transform(request, resource);
-		if (!this.fileExtension.equals(StringUtils.getFilenameExtension(resource.getFilename()))) {
-			return resource;
-		}
+        @SuppressWarnings("resource")
+        Scanner scanner = new Scanner(content);
+        LineInfo previous = null;
+        LineAggregator aggregator = new LineAggregator(resource, content);
 
-		byte[] bytes = FileCopyUtils.copyToByteArray(resource.getInputStream());
-		String content = new String(bytes, DEFAULT_CHARSET);
+        while (scanner.hasNext()) {
+            String line = scanner.nextLine();
+            LineInfo current = new LineInfo(line, previous);
+            LineOutput lineOutput = processLine(current, request, resource, chain);
+            aggregator.add(lineOutput);
+            previous = current;
+        }
 
-		if (!content.startsWith(MANIFEST_HEADER)) {
-			if (logger.isTraceEnabled()) {
-				logger.trace("Skipping " + resource + ": Manifest does not start with 'CACHE MANIFEST'");
-			}
-			return resource;
-		}
+        return aggregator.createResource();
+    }
 
-		@SuppressWarnings("resource")
-		Scanner scanner = new Scanner(content);
-		LineInfo previous = null;
-		LineAggregator aggregator = new LineAggregator(resource, content);
+    private static byte[] getResourceBytes(Resource resource) throws IOException {
+        return FileCopyUtils.copyToByteArray(resource.getInputStream());
+    }
 
-		while (scanner.hasNext()) {
-			String line = scanner.nextLine();
-			LineInfo current = new LineInfo(line, previous);
-			LineOutput lineOutput = processLine(current, request, resource, chain);
-			aggregator.add(lineOutput);
-			previous = current;
-		}
+    private LineOutput processLine(
+            LineInfo info,
+            HttpServletRequest request,
+            Resource resource,
+            ResourceTransformerChain transformerChain) {
 
-		return aggregator.createResource();
-	}
+        if (!info.isLink()) {
+            return new LineOutput(info.getLine(), null);
+        }
 
-	private static byte[] getResourceBytes(Resource resource) throws IOException {
-		return FileCopyUtils.copyToByteArray(resource.getInputStream());
-	}
+        Resource appCacheResource =
+                transformerChain
+                        .getResolverChain()
+                        .resolveResource(null, info.getLine(), Collections.singletonList(resource));
 
-	private LineOutput processLine(LineInfo info, HttpServletRequest request,
-			Resource resource, ResourceTransformerChain transformerChain) {
+        String path = info.getLine();
+        String absolutePath = toAbsolutePath(path, request);
+        String newPath = resolveUrlPath(absolutePath, request, resource, transformerChain);
 
-		if (!info.isLink()) {
-			return new LineOutput(info.getLine(), null);
-		}
+        return new LineOutput((newPath != null ? newPath : path), appCacheResource);
+    }
 
-		Resource appCacheResource = transformerChain.getResolverChain()
-				.resolveResource(null, info.getLine(), Collections.singletonList(resource));
+    private static class LineInfo {
 
-		String path = info.getLine();
-		String absolutePath = toAbsolutePath(path, request);
-		String newPath = resolveUrlPath(absolutePath, request, resource, transformerChain);
+        private final String line;
 
-		return new LineOutput((newPath != null ? newPath : path), appCacheResource);
-	}
+        private final boolean cacheSection;
 
+        private final boolean link;
 
-	private static class LineInfo {
+        public LineInfo(String line, @Nullable LineInfo previous) {
+            this.line = line;
+            this.cacheSection = initCacheSectionFlag(line, previous);
+            this.link = iniLinkFlag(line, this.cacheSection);
+        }
 
-		private final String line;
+        private static boolean initCacheSectionFlag(String line, @Nullable LineInfo previousLine) {
+            if (MANIFEST_SECTION_HEADERS.contains(line.trim())) {
+                return line.trim().equals(CACHE_HEADER);
+            } else if (previousLine != null) {
+                return previousLine.isCacheSection();
+            }
+            throw new IllegalStateException(
+                    "Manifest does not start with " + MANIFEST_HEADER + ": " + line);
+        }
 
-		private final boolean cacheSection;
+        private static boolean iniLinkFlag(String line, boolean isCacheSection) {
+            return (isCacheSection
+                    && StringUtils.hasText(line)
+                    && !line.startsWith("#")
+                    && !line.startsWith("//")
+                    && !hasScheme(line));
+        }
 
-		private final boolean link;
+        private static boolean hasScheme(String line) {
+            int index = line.indexOf(':');
+            return (line.startsWith("//")
+                    || (index > 0 && !line.substring(0, index).contains("/")));
+        }
 
-		public LineInfo(String line, @Nullable LineInfo previous) {
-			this.line = line;
-			this.cacheSection = initCacheSectionFlag(line, previous);
-			this.link = iniLinkFlag(line, this.cacheSection);
-		}
+        public String getLine() {
+            return this.line;
+        }
 
-		private static boolean initCacheSectionFlag(String line, @Nullable LineInfo previousLine) {
-			if (MANIFEST_SECTION_HEADERS.contains(line.trim())) {
-				return line.trim().equals(CACHE_HEADER);
-			}
-			else if (previousLine != null) {
-				return previousLine.isCacheSection();
-			}
-			throw new IllegalStateException(
-					"Manifest does not start with " + MANIFEST_HEADER + ": " + line);
-		}
+        public boolean isCacheSection() {
+            return this.cacheSection;
+        }
 
-		private static boolean iniLinkFlag(String line, boolean isCacheSection) {
-			return (isCacheSection && StringUtils.hasText(line) && !line.startsWith("#")
-					&& !line.startsWith("//") && !hasScheme(line));
-		}
+        public boolean isLink() {
+            return this.link;
+        }
+    }
 
-		private static boolean hasScheme(String line) {
-			int index = line.indexOf(':');
-			return (line.startsWith("//") || (index > 0 && !line.substring(0, index).contains("/")));
-		}
+    private static class LineOutput {
 
-		public String getLine() {
-			return this.line;
-		}
+        private final String line;
 
-		public boolean isCacheSection() {
-			return this.cacheSection;
-		}
+        @Nullable private final Resource resource;
 
-		public boolean isLink() {
-			return this.link;
-		}
-	}
+        public LineOutput(String line, @Nullable Resource resource) {
+            this.line = line;
+            this.resource = resource;
+        }
 
+        public String getLine() {
+            return this.line;
+        }
 
-	private static class LineOutput {
+        @Nullable
+        public Resource getResource() {
+            return this.resource;
+        }
+    }
 
-		private final String line;
+    private static class LineAggregator {
 
-		@Nullable
-		private final Resource resource;
+        private final StringWriter writer = new StringWriter();
 
-		public LineOutput(String line, @Nullable Resource resource) {
-			this.line = line;
-			this.resource = resource;
-		}
+        private final ByteArrayOutputStream baos;
 
-		public String getLine() {
-			return this.line;
-		}
+        private final Resource resource;
 
-		@Nullable
-		public Resource getResource() {
-			return this.resource;
-		}
-	}
+        public LineAggregator(Resource resource, String content) {
+            this.resource = resource;
+            this.baos = new ByteArrayOutputStream(content.length());
+        }
 
+        public void add(LineOutput lineOutput) throws IOException {
+            this.writer.write(lineOutput.getLine() + "\n");
+            byte[] bytes =
+                    (lineOutput.getResource() != null
+                            ? DigestUtils.md5Digest(getResourceBytes(lineOutput.getResource()))
+                            : lineOutput.getLine().getBytes(DEFAULT_CHARSET));
+            this.baos.write(bytes);
+        }
 
-	private static class LineAggregator {
-
-		private final StringWriter writer = new StringWriter();
-
-		private final ByteArrayOutputStream baos;
-
-		private final Resource resource;
-
-		public LineAggregator(Resource resource, String content) {
-			this.resource = resource;
-			this.baos = new ByteArrayOutputStream(content.length());
-		}
-
-		public void add(LineOutput lineOutput) throws IOException {
-			this.writer.write(lineOutput.getLine() + "\n");
-			byte[] bytes = (lineOutput.getResource() != null ?
-					DigestUtils.md5Digest(getResourceBytes(lineOutput.getResource())) :
-					lineOutput.getLine().getBytes(DEFAULT_CHARSET));
-			this.baos.write(bytes);
-		}
-
-		public TransformedResource createResource() {
-			String hash = DigestUtils.md5DigestAsHex(this.baos.toByteArray());
-			this.writer.write("\n" + "# Hash: " + hash);
-			byte[] bytes = this.writer.toString().getBytes(DEFAULT_CHARSET);
-			return new TransformedResource(this.resource, bytes);
-		}
-	}
-
+        public TransformedResource createResource() {
+            String hash = DigestUtils.md5DigestAsHex(this.baos.toByteArray());
+            this.writer.write("\n" + "# Hash: " + hash);
+            byte[] bytes = this.writer.toString().getBytes(DEFAULT_CHARSET);
+            return new TransformedResource(this.resource, bytes);
+        }
+    }
 }

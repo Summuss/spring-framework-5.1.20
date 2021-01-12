@@ -28,8 +28,7 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * EL property accessor that knows how to traverse the keys
- * of a standard {@link java.util.Map}.
+ * EL property accessor that knows how to traverse the keys of a standard {@link java.util.Map}.
  *
  * @author Juergen Hoeller
  * @author Andy Clement
@@ -37,84 +36,94 @@ import org.springframework.util.Assert;
  */
 public class MapAccessor implements CompilablePropertyAccessor {
 
-	@Override
-	public Class<?>[] getSpecificTargetClasses() {
-		return new Class<?>[] {Map.class};
-	}
+    @Override
+    public Class<?>[] getSpecificTargetClasses() {
+        return new Class<?>[] {Map.class};
+    }
 
-	@Override
-	public boolean canRead(EvaluationContext context, @Nullable Object target, String name) throws AccessException {
-		return (target instanceof Map && ((Map<?, ?>) target).containsKey(name));
-	}
+    @Override
+    public boolean canRead(EvaluationContext context, @Nullable Object target, String name)
+            throws AccessException {
+        return (target instanceof Map && ((Map<?, ?>) target).containsKey(name));
+    }
 
-	@Override
-	public TypedValue read(EvaluationContext context, @Nullable Object target, String name) throws AccessException {
-		Assert.state(target instanceof Map, "Target must be of type Map");
-		Map<?, ?> map = (Map<?, ?>) target;
-		Object value = map.get(name);
-		if (value == null && !map.containsKey(name)) {
-			throw new MapAccessException(name);
-		}
-		return new TypedValue(value);
-	}
+    @Override
+    public TypedValue read(EvaluationContext context, @Nullable Object target, String name)
+            throws AccessException {
+        Assert.state(target instanceof Map, "Target must be of type Map");
+        Map<?, ?> map = (Map<?, ?>) target;
+        Object value = map.get(name);
+        if (value == null && !map.containsKey(name)) {
+            throw new MapAccessException(name);
+        }
+        return new TypedValue(value);
+    }
 
-	@Override
-	public boolean canWrite(EvaluationContext context, @Nullable Object target, String name) throws AccessException {
-		return true;
-	}
+    @Override
+    public boolean canWrite(EvaluationContext context, @Nullable Object target, String name)
+            throws AccessException {
+        return true;
+    }
 
-	@Override
-	@SuppressWarnings("unchecked")
-	public void write(EvaluationContext context, @Nullable Object target, String name, @Nullable Object newValue)
-			throws AccessException {
+    @Override
+    @SuppressWarnings("unchecked")
+    public void write(
+            EvaluationContext context,
+            @Nullable Object target,
+            String name,
+            @Nullable Object newValue)
+            throws AccessException {
 
-		Assert.state(target instanceof Map, "Target must be a Map");
-		Map<Object, Object> map = (Map<Object, Object>) target;
-		map.put(name, newValue);
-	}
+        Assert.state(target instanceof Map, "Target must be a Map");
+        Map<Object, Object> map = (Map<Object, Object>) target;
+        map.put(name, newValue);
+    }
 
-	@Override
-	public boolean isCompilable() {
-		return true;
-	}
+    @Override
+    public boolean isCompilable() {
+        return true;
+    }
 
-	@Override
-	public Class<?> getPropertyType() {
-		return Object.class;
-	}
+    @Override
+    public Class<?> getPropertyType() {
+        return Object.class;
+    }
 
-	@Override
-	public void generateCode(String propertyName, MethodVisitor mv, CodeFlow cf) {
-		String descriptor = cf.lastDescriptor();
-		if (descriptor == null || !descriptor.equals("Ljava/util/Map")) {
-			if (descriptor == null) {
-				cf.loadTarget(mv);
-			}
-			CodeFlow.insertCheckCast(mv, "Ljava/util/Map");
-		}
-		mv.visitLdcInsn(propertyName);
-		mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "get","(Ljava/lang/Object;)Ljava/lang/Object;",true);
-	}
+    @Override
+    public void generateCode(String propertyName, MethodVisitor mv, CodeFlow cf) {
+        String descriptor = cf.lastDescriptor();
+        if (descriptor == null || !descriptor.equals("Ljava/util/Map")) {
+            if (descriptor == null) {
+                cf.loadTarget(mv);
+            }
+            CodeFlow.insertCheckCast(mv, "Ljava/util/Map");
+        }
+        mv.visitLdcInsn(propertyName);
+        mv.visitMethodInsn(
+                INVOKEINTERFACE,
+                "java/util/Map",
+                "get",
+                "(Ljava/lang/Object;)Ljava/lang/Object;",
+                true);
+    }
 
+    /**
+     * Exception thrown from {@code read} in order to reset a cached PropertyAccessor, allowing
+     * other accessors to have a try.
+     */
+    @SuppressWarnings("serial")
+    private static class MapAccessException extends AccessException {
 
-	/**
-	 * Exception thrown from {@code read} in order to reset a cached
-	 * PropertyAccessor, allowing other accessors to have a try.
-	 */
-	@SuppressWarnings("serial")
-	private static class MapAccessException extends AccessException {
+        private final String key;
 
-		private final String key;
+        public MapAccessException(String key) {
+            super("");
+            this.key = key;
+        }
 
-		public MapAccessException(String key) {
-			super("");
-			this.key = key;
-		}
-
-		@Override
-		public String getMessage() {
-			return "Map does not contain a value for key '" + this.key + "'";
-		}
-	}
-
+        @Override
+        public String getMessage() {
+            return "Map does not contain a value for key '" + this.key + "'";
+        }
+    }
 }

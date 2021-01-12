@@ -39,9 +39,8 @@ import org.springframework.util.Assert;
 /**
  * {@code HttpMessageReader} that wraps and delegates to a {@link Decoder}.
  *
- * <p>Also a {@code HttpMessageReader} that pre-resolves decoding hints
- * from the extra information available on the server side such as the request
- * or controller method parameter annotations.
+ * <p>Also a {@code HttpMessageReader} that pre-resolves decoding hints from the extra information
+ * available on the server side such as the request or controller method parameter annotations.
  *
  * @author Arjen Poutsma
  * @author Sebastien Deleuze
@@ -51,109 +50,117 @@ import org.springframework.util.Assert;
  */
 public class DecoderHttpMessageReader<T> implements HttpMessageReader<T> {
 
-	private final Decoder<T> decoder;
+    private final Decoder<T> decoder;
 
-	private final List<MediaType> mediaTypes;
+    private final List<MediaType> mediaTypes;
 
+    /** Create an instance wrapping the given {@link Decoder}. */
+    public DecoderHttpMessageReader(Decoder<T> decoder) {
+        Assert.notNull(decoder, "Decoder is required");
+        initLogger(decoder);
+        this.decoder = decoder;
+        this.mediaTypes = MediaType.asMediaTypes(decoder.getDecodableMimeTypes());
+    }
 
-	/**
-	 * Create an instance wrapping the given {@link Decoder}.
-	 */
-	public DecoderHttpMessageReader(Decoder<T> decoder) {
-		Assert.notNull(decoder, "Decoder is required");
-		initLogger(decoder);
-		this.decoder = decoder;
-		this.mediaTypes = MediaType.asMediaTypes(decoder.getDecodableMimeTypes());
-	}
+    private static void initLogger(Decoder<?> decoder) {
+        if (decoder instanceof AbstractDecoder
+                && decoder.getClass().getName().startsWith("org.springframework.core.codec")) {
+            Log logger = HttpLogging.forLog(((AbstractDecoder) decoder).getLogger());
+            ((AbstractDecoder) decoder).setLogger(logger);
+        }
+    }
 
-	private static void initLogger(Decoder<?> decoder) {
-		if (decoder instanceof AbstractDecoder &&
-				decoder.getClass().getName().startsWith("org.springframework.core.codec")) {
-			Log logger = HttpLogging.forLog(((AbstractDecoder) decoder).getLogger());
-			((AbstractDecoder) decoder).setLogger(logger);
-		}
-	}
+    /** Return the {@link Decoder} of this reader. */
+    public Decoder<T> getDecoder() {
+        return this.decoder;
+    }
 
+    @Override
+    public List<MediaType> getReadableMediaTypes() {
+        return this.mediaTypes;
+    }
 
-	/**
-	 * Return the {@link Decoder} of this reader.
-	 */
-	public Decoder<T> getDecoder() {
-		return this.decoder;
-	}
+    @Override
+    public boolean canRead(ResolvableType elementType, @Nullable MediaType mediaType) {
+        return this.decoder.canDecode(elementType, mediaType);
+    }
 
-	@Override
-	public List<MediaType> getReadableMediaTypes() {
-		return this.mediaTypes;
-	}
+    @Override
+    public Flux<T> read(
+            ResolvableType elementType,
+            ReactiveHttpInputMessage message,
+            Map<String, Object> hints) {
+        MediaType contentType = getContentType(message);
+        return this.decoder.decode(message.getBody(), elementType, contentType, hints);
+    }
 
+    @Override
+    public Mono<T> readMono(
+            ResolvableType elementType,
+            ReactiveHttpInputMessage message,
+            Map<String, Object> hints) {
+        MediaType contentType = getContentType(message);
+        return this.decoder.decodeToMono(message.getBody(), elementType, contentType, hints);
+    }
 
-	@Override
-	public boolean canRead(ResolvableType elementType, @Nullable MediaType mediaType) {
-		return this.decoder.canDecode(elementType, mediaType);
-	}
+    /**
+     * Determine the Content-Type of the HTTP message based on the "Content-Type" header or
+     * otherwise default to {@link MediaType#APPLICATION_OCTET_STREAM}.
+     *
+     * @param inputMessage the HTTP message
+     * @return the MediaType, possibly {@code null}.
+     */
+    @Nullable
+    protected MediaType getContentType(HttpMessage inputMessage) {
+        MediaType contentType = inputMessage.getHeaders().getContentType();
+        return (contentType != null ? contentType : MediaType.APPLICATION_OCTET_STREAM);
+    }
 
-	@Override
-	public Flux<T> read(ResolvableType elementType, ReactiveHttpInputMessage message, Map<String, Object> hints) {
-		MediaType contentType = getContentType(message);
-		return this.decoder.decode(message.getBody(), elementType, contentType, hints);
-	}
+    // Server-side only...
 
-	@Override
-	public Mono<T> readMono(ResolvableType elementType, ReactiveHttpInputMessage message, Map<String, Object> hints) {
-		MediaType contentType = getContentType(message);
-		return this.decoder.decodeToMono(message.getBody(), elementType, contentType, hints);
-	}
+    @Override
+    public Flux<T> read(
+            ResolvableType actualType,
+            ResolvableType elementType,
+            ServerHttpRequest request,
+            ServerHttpResponse response,
+            Map<String, Object> hints) {
 
-	/**
-	 * Determine the Content-Type of the HTTP message based on the
-	 * "Content-Type" header or otherwise default to
-	 * {@link MediaType#APPLICATION_OCTET_STREAM}.
-	 * @param inputMessage the HTTP message
-	 * @return the MediaType, possibly {@code null}.
-	 */
-	@Nullable
-	protected MediaType getContentType(HttpMessage inputMessage) {
-		MediaType contentType = inputMessage.getHeaders().getContentType();
-		return (contentType != null ? contentType : MediaType.APPLICATION_OCTET_STREAM);
-	}
+        Map<String, Object> allHints =
+                Hints.merge(hints, getReadHints(actualType, elementType, request, response));
 
+        return read(elementType, request, allHints);
+    }
 
-	// Server-side only...
+    @Override
+    public Mono<T> readMono(
+            ResolvableType actualType,
+            ResolvableType elementType,
+            ServerHttpRequest request,
+            ServerHttpResponse response,
+            Map<String, Object> hints) {
 
-	@Override
-	public Flux<T> read(ResolvableType actualType, ResolvableType elementType,
-			ServerHttpRequest request, ServerHttpResponse response, Map<String, Object> hints) {
+        Map<String, Object> allHints =
+                Hints.merge(hints, getReadHints(actualType, elementType, request, response));
 
-		Map<String, Object> allHints = Hints.merge(hints,
-				getReadHints(actualType, elementType, request, response));
+        return readMono(elementType, request, allHints);
+    }
 
-		return read(elementType, request, allHints);
-	}
+    /**
+     * Get additional hints for decoding for example based on the server request or annotations from
+     * controller method parameters. By default, delegate to the decoder if it is an instance of
+     * {@link HttpMessageDecoder}.
+     */
+    protected Map<String, Object> getReadHints(
+            ResolvableType actualType,
+            ResolvableType elementType,
+            ServerHttpRequest request,
+            ServerHttpResponse response) {
 
-	@Override
-	public Mono<T> readMono(ResolvableType actualType, ResolvableType elementType,
-			ServerHttpRequest request, ServerHttpResponse response, Map<String, Object> hints) {
-
-		Map<String, Object> allHints = Hints.merge(hints,
-				getReadHints(actualType, elementType, request, response));
-
-		return readMono(elementType, request, allHints);
-	}
-
-	/**
-	 * Get additional hints for decoding for example based on the server request
-	 * or annotations from controller method parameters. By default, delegate to
-	 * the decoder if it is an instance of {@link HttpMessageDecoder}.
-	 */
-	protected Map<String, Object> getReadHints(ResolvableType actualType,
-			ResolvableType elementType, ServerHttpRequest request, ServerHttpResponse response) {
-
-		if (this.decoder instanceof HttpMessageDecoder) {
-			HttpMessageDecoder<?> decoder = (HttpMessageDecoder<?>) this.decoder;
-			return decoder.getDecodeHints(actualType, elementType, request, response);
-		}
-		return Hints.none();
-	}
-
+        if (this.decoder instanceof HttpMessageDecoder) {
+            HttpMessageDecoder<?> decoder = (HttpMessageDecoder<?>) this.decoder;
+            return decoder.getDecodeHints(actualType, elementType, request, response);
+        }
+        return Hints.none();
+    }
 }

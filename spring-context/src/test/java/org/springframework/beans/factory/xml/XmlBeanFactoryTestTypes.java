@@ -43,9 +43,7 @@ import org.springframework.tests.sample.beans.factory.DummyFactory;
  *
  * @author Chris Beams
  */
-final class XmlBeanFactoryTestTypes {
-}
-
+final class XmlBeanFactoryTestTypes {}
 
 /**
  * Simple bean used to check constructor dependency checking.
@@ -56,136 +54,130 @@ final class XmlBeanFactoryTestTypes {
 @SuppressWarnings("serial")
 class ConstructorDependenciesBean implements Serializable {
 
-	private int age;
+    private int age;
 
-	private String name;
+    private String name;
 
-	private TestBean spouse1;
+    private TestBean spouse1;
 
-	private TestBean spouse2;
+    private TestBean spouse2;
 
-	private IndexedTestBean other;
+    private IndexedTestBean other;
 
-	public ConstructorDependenciesBean(int age) {
-		this.age = age;
-	}
+    public ConstructorDependenciesBean(int age) {
+        this.age = age;
+    }
 
-	public ConstructorDependenciesBean(String name) {
-		this.name = name;
-	}
+    public ConstructorDependenciesBean(String name) {
+        this.name = name;
+    }
 
-	public ConstructorDependenciesBean(TestBean spouse1) {
-		this.spouse1 = spouse1;
-	}
+    public ConstructorDependenciesBean(TestBean spouse1) {
+        this.spouse1 = spouse1;
+    }
 
-	public ConstructorDependenciesBean(TestBean spouse1, TestBean spouse2) {
-		this.spouse1 = spouse1;
-		this.spouse2 = spouse2;
-	}
+    public ConstructorDependenciesBean(TestBean spouse1, TestBean spouse2) {
+        this.spouse1 = spouse1;
+        this.spouse2 = spouse2;
+    }
 
-	@ConstructorProperties({"spouse", "otherSpouse", "myAge"})
-	public ConstructorDependenciesBean(TestBean spouse1, TestBean spouse2, int age) {
-		this.spouse1 = spouse1;
-		this.spouse2 = spouse2;
-		this.age = age;
-	}
+    @ConstructorProperties({"spouse", "otherSpouse", "myAge"})
+    public ConstructorDependenciesBean(TestBean spouse1, TestBean spouse2, int age) {
+        this.spouse1 = spouse1;
+        this.spouse2 = spouse2;
+        this.age = age;
+    }
 
-	public ConstructorDependenciesBean(TestBean spouse1, TestBean spouse2, IndexedTestBean other) {
-		this.spouse1 = spouse1;
-		this.spouse2 = spouse2;
-		this.other = other;
-	}
+    public ConstructorDependenciesBean(TestBean spouse1, TestBean spouse2, IndexedTestBean other) {
+        this.spouse1 = spouse1;
+        this.spouse2 = spouse2;
+        this.other = other;
+    }
 
-	public int getAge() {
-		return age;
-	}
+    public int getAge() {
+        return age;
+    }
 
-	public String getName() {
-		return name;
-	}
+    public String getName() {
+        return name;
+    }
 
-	public TestBean getSpouse1() {
-		return spouse1;
-	}
+    public TestBean getSpouse1() {
+        return spouse1;
+    }
 
-	public TestBean getSpouse2() {
-		return spouse2;
-	}
+    public TestBean getSpouse2() {
+        return spouse2;
+    }
 
-	public IndexedTestBean getOther() {
-		return other;
-	}
+    public IndexedTestBean getOther() {
+        return other;
+    }
 
-	public void setAge(int age) {
-		this.age = age;
-	}
+    public void setAge(int age) {
+        this.age = age;
+    }
 
-	public void setName(String name) {
-		this.name = name;
-	}
+    public void setName(String name) {
+        this.name = name;
+    }
 }
-
 
 class SimpleConstructorArgBean {
 
-	private int age;
+    private int age;
 
-	private String name;
+    private String name;
 
-	public SimpleConstructorArgBean() {
-	}
+    public SimpleConstructorArgBean() {}
 
-	public SimpleConstructorArgBean(int age) {
-		this.age = age;
-	}
+    public SimpleConstructorArgBean(int age) {
+        this.age = age;
+    }
 
-	public SimpleConstructorArgBean(String name) {
-		this.name = name;
-	}
+    public SimpleConstructorArgBean(String name) {
+        this.name = name;
+    }
 
-	public int getAge() {
-		return age;
-	}
+    public int getAge() {
+        return age;
+    }
 
-	public String getName() {
-		return name;
-	}
+    public String getName() {
+        return name;
+    }
 }
 
-
 /**
- * Bean testing the ability to use both lookup method overrides
- * and constructor injection.
- * There is also a property ("setterString") to be set via
- * Setter Injection.
+ * Bean testing the ability to use both lookup method overrides and constructor injection. There is
+ * also a property ("setterString") to be set via Setter Injection.
  *
  * @author Rod Johnson
  */
 abstract class ConstructorInjectedOverrides {
 
-	private ITestBean tb;
+    private ITestBean tb;
 
-	private String setterString;
+    private String setterString;
 
-	public ConstructorInjectedOverrides(ITestBean tb) {
-		this.tb = tb;
-	}
+    public ConstructorInjectedOverrides(ITestBean tb) {
+        this.tb = tb;
+    }
 
-	public ITestBean getTestBean() {
-		return this.tb;
-	}
+    public ITestBean getTestBean() {
+        return this.tb;
+    }
 
-	protected abstract FactoryMethods createFactoryMethods();
+    protected abstract FactoryMethods createFactoryMethods();
 
-	public String getSetterString() {
-		return setterString;
-	}
+    public String getSetterString() {
+        return setterString;
+    }
 
-	public void setSetterString(String setterString) {
-		this.setterString = setterString;
-	}
+    public void setSetterString(String setterString) {
+        this.setterString = setterString;
+    }
 }
-
 
 /**
  * Simple bean used to check constructor dependency checking.
@@ -193,72 +185,63 @@ abstract class ConstructorInjectedOverrides {
  * @author Juergen Hoeller
  * @since 09.11.2003
  */
-@SuppressWarnings({ "serial", "unused" })
+@SuppressWarnings({"serial", "unused"})
 class DerivedConstructorDependenciesBean extends ConstructorDependenciesBean {
 
-	boolean initialized;
-	boolean destroyed;
+    boolean initialized;
+    boolean destroyed;
 
-	DerivedConstructorDependenciesBean(TestBean spouse1, TestBean spouse2, IndexedTestBean other) {
-		super(spouse1, spouse2, other);
-	}
+    DerivedConstructorDependenciesBean(TestBean spouse1, TestBean spouse2, IndexedTestBean other) {
+        super(spouse1, spouse2, other);
+    }
 
-	private DerivedConstructorDependenciesBean(TestBean spouse1, Object spouse2, IndexedTestBean other) {
-		super(spouse1, null, other);
-	}
+    private DerivedConstructorDependenciesBean(
+            TestBean spouse1, Object spouse2, IndexedTestBean other) {
+        super(spouse1, null, other);
+    }
 
-	protected DerivedConstructorDependenciesBean(TestBean spouse1, TestBean spouse2, IndexedTestBean other, int age, int otherAge) {
-		super(spouse1, spouse2, other);
-	}
+    protected DerivedConstructorDependenciesBean(
+            TestBean spouse1, TestBean spouse2, IndexedTestBean other, int age, int otherAge) {
+        super(spouse1, spouse2, other);
+    }
 
-	public DerivedConstructorDependenciesBean(TestBean spouse1, TestBean spouse2, IndexedTestBean other, int age, String name) {
-		super(spouse1, spouse2, other);
-		setAge(age);
-		setName(name);
-	}
+    public DerivedConstructorDependenciesBean(
+            TestBean spouse1, TestBean spouse2, IndexedTestBean other, int age, String name) {
+        super(spouse1, spouse2, other);
+        setAge(age);
+        setName(name);
+    }
 
-	private void init() {
-		this.initialized = true;
-	}
+    private void init() {
+        this.initialized = true;
+    }
 
-	private void destroy() {
-		this.destroyed = true;
-	}
+    private void destroy() {
+        this.destroyed = true;
+    }
 }
 
-
-/**
- * @author Rod Johnson
- */
+/** @author Rod Johnson */
 interface DummyBo {
 
-	void something();
+    void something();
 }
 
-
-/**
- * @author Rod Johnson
- */
+/** @author Rod Johnson */
 class DummyBoImpl implements DummyBo {
 
-	DummyDao dao;
+    DummyDao dao;
 
-	public DummyBoImpl(DummyDao dao) {
-		this.dao = dao;
-	}
+    public DummyBoImpl(DummyDao dao) {
+        this.dao = dao;
+    }
 
-	@Override
-	public void something() {
-	}
+    @Override
+    public void something() {}
 }
 
-
-/**
- * @author Rod Johnson
- */
-class DummyDao {
-}
-
+/** @author Rod Johnson */
+class DummyDao {}
 
 /**
  * @author Juergen Hoeller
@@ -266,48 +249,46 @@ class DummyDao {
  */
 class DummyReferencer {
 
-	private TestBean testBean1;
+    private TestBean testBean1;
 
-	private TestBean testBean2;
+    private TestBean testBean2;
 
-	private DummyFactory dummyFactory;
+    private DummyFactory dummyFactory;
 
-	public DummyReferencer() {
-	}
+    public DummyReferencer() {}
 
-	public DummyReferencer(DummyFactory dummyFactory) {
-		this.dummyFactory = dummyFactory;
-	}
+    public DummyReferencer(DummyFactory dummyFactory) {
+        this.dummyFactory = dummyFactory;
+    }
 
-	public void setDummyFactory(DummyFactory dummyFactory) {
-		this.dummyFactory = dummyFactory;
-	}
+    public void setDummyFactory(DummyFactory dummyFactory) {
+        this.dummyFactory = dummyFactory;
+    }
 
-	public DummyFactory getDummyFactory() {
-		return dummyFactory;
-	}
+    public DummyFactory getDummyFactory() {
+        return dummyFactory;
+    }
 
-	public void setTestBean1(TestBean testBean1) {
-		this.testBean1 = testBean1;
-	}
+    public void setTestBean1(TestBean testBean1) {
+        this.testBean1 = testBean1;
+    }
 
-	public TestBean getTestBean1() {
-		return testBean1;
-	}
+    public TestBean getTestBean1() {
+        return testBean1;
+    }
 
-	public void setTestBean2(TestBean testBean2) {
-		this.testBean2 = testBean2;
-	}
+    public void setTestBean2(TestBean testBean2) {
+        this.testBean2 = testBean2;
+    }
 
-	public TestBean getTestBean2() {
-		return testBean2;
-	}
+    public TestBean getTestBean2() {
+        return testBean2;
+    }
 }
 
-
 /**
- * Test class for Spring's ability to create objects using static
- * factory methods, rather than constructors.
+ * Test class for Spring's ability to create objects using static factory methods, rather than
+ * constructors.
  *
  * @author Rod Johnson
  * @author Juergen Hoeller
@@ -315,167 +296,149 @@ class DummyReferencer {
 @SuppressWarnings("unused")
 class FactoryMethods {
 
-	public static FactoryMethods nullInstance() {
-		return null;
-	}
+    public static FactoryMethods nullInstance() {
+        return null;
+    }
 
-	public static FactoryMethods defaultInstance() {
-		TestBean tb = new TestBean();
-		tb.setName("defaultInstance");
-		return new FactoryMethods(tb, "default", 0);
-	}
+    public static FactoryMethods defaultInstance() {
+        TestBean tb = new TestBean();
+        tb.setName("defaultInstance");
+        return new FactoryMethods(tb, "default", 0);
+    }
 
-	/**
-	 * Note that overloaded methods are supported.
-	 */
-	public static FactoryMethods newInstance(TestBean tb) {
-		return new FactoryMethods(tb, "default", 0);
-	}
+    /** Note that overloaded methods are supported. */
+    public static FactoryMethods newInstance(TestBean tb) {
+        return new FactoryMethods(tb, "default", 0);
+    }
 
-	protected static FactoryMethods newInstance(TestBean tb, int num, String name) {
-		if (name == null) {
-			throw new IllegalStateException("Should never be called with null value");
-		}
-		return new FactoryMethods(tb, name, num);
-	}
+    protected static FactoryMethods newInstance(TestBean tb, int num, String name) {
+        if (name == null) {
+            throw new IllegalStateException("Should never be called with null value");
+        }
+        return new FactoryMethods(tb, name, num);
+    }
 
-	static FactoryMethods newInstance(TestBean tb, int num, Integer something) {
-		if (something != null) {
-			throw new IllegalStateException("Should never be called with non-null value");
-		}
-		return new FactoryMethods(tb, null, num);
-	}
+    static FactoryMethods newInstance(TestBean tb, int num, Integer something) {
+        if (something != null) {
+            throw new IllegalStateException("Should never be called with non-null value");
+        }
+        return new FactoryMethods(tb, null, num);
+    }
 
-	private static List<?> listInstance() {
-		return Collections.EMPTY_LIST;
-	}
+    private static List<?> listInstance() {
+        return Collections.EMPTY_LIST;
+    }
 
-	private int num = 0;
-	private String name = "default";
-	private TestBean tb;
-	private String stringValue;
+    private int num = 0;
+    private String name = "default";
+    private TestBean tb;
+    private String stringValue;
 
-	/**
-	 * Constructor is private: not for use outside this class,
-	 * even by IoC container.
-	 */
-	private FactoryMethods(TestBean tb, String name, int num) {
-		this.tb = tb;
-		this.name = name;
-		this.num = num;
-	}
+    /** Constructor is private: not for use outside this class, even by IoC container. */
+    private FactoryMethods(TestBean tb, String name, int num) {
+        this.tb = tb;
+        this.name = name;
+        this.num = num;
+    }
 
-	public void setStringValue(String stringValue) {
-		this.stringValue = stringValue;
-	}
+    public void setStringValue(String stringValue) {
+        this.stringValue = stringValue;
+    }
 
-	public String getStringValue() {
-		return this.stringValue;
-	}
+    public String getStringValue() {
+        return this.stringValue;
+    }
 
-	public TestBean getTestBean() {
-		return this.tb;
-	}
+    public TestBean getTestBean() {
+        return this.tb;
+    }
 
-	protected TestBean protectedGetTestBean() {
-		return this.tb;
-	}
+    protected TestBean protectedGetTestBean() {
+        return this.tb;
+    }
 
-	private TestBean privateGetTestBean() {
-		return this.tb;
-	}
+    private TestBean privateGetTestBean() {
+        return this.tb;
+    }
 
-	public int getNum() {
-		return num;
-	}
+    public int getNum() {
+        return num;
+    }
 
-	public String getName() {
-		return name;
-	}
+    public String getName() {
+        return name;
+    }
 
-	/**
-	 * Set via Setter Injection once instance is created.
-	 */
-	public void setName(String name) {
-		this.name = name;
-	}
+    /** Set via Setter Injection once instance is created. */
+    public void setName(String name) {
+        this.name = name;
+    }
 }
 
 /**
  * Fixed method replacer for String return types
+ *
  * @author Rod Johnson
  */
 class FixedMethodReplacer implements MethodReplacer {
 
-	public static final String VALUE = "fixedMethodReplacer";
+    public static final String VALUE = "fixedMethodReplacer";
 
-	@Override
-	public Object reimplement(Object obj, Method method, Object[] args) throws Throwable {
-		return VALUE;
-	}
+    @Override
+    public Object reimplement(Object obj, Method method, Object[] args) throws Throwable {
+        return VALUE;
+    }
 }
 
-
-/**
- * @author Chris Beams
- */
+/** @author Chris Beams */
 class MapAndSet {
 
-	private Object obj;
+    private Object obj;
 
-	public MapAndSet(Map<?, ?> map) {
-		this.obj = map;
-	}
+    public MapAndSet(Map<?, ?> map) {
+        this.obj = map;
+    }
 
-	public MapAndSet(Set<?> set) {
-		this.obj = set;
-	}
+    public MapAndSet(Set<?> set) {
+        this.obj = set;
+    }
 
-	public Object getObject() {
-		return obj;
-	}
+    public Object getObject() {
+        return obj;
+    }
 }
 
-
-/**
- * @author Rod Johnson
- */
+/** @author Rod Johnson */
 class MethodReplaceCandidate {
 
-	public String replaceMe(String echo) {
-		return echo;
-	}
+    public String replaceMe(String echo) {
+        return echo;
+    }
 }
 
-
 /**
- * Bean that exposes a simple property that can be set
- * to a mix of references and individual values.
+ * Bean that exposes a simple property that can be set to a mix of references and individual values.
  */
 class MixedCollectionBean {
 
-	private Collection<?> jumble;
+    private Collection<?> jumble;
 
-	public void setJumble(Collection<?> jumble) {
-		this.jumble = jumble;
-	}
+    public void setJumble(Collection<?> jumble) {
+        this.jumble = jumble;
+    }
 
-	public Collection<?> getJumble() {
-		return jumble;
-	}
+    public Collection<?> getJumble() {
+        return jumble;
+    }
 }
 
-
-/**
- * @author Juergen Hoeller
- */
+/** @author Juergen Hoeller */
 interface OverrideInterface {
 
-	TestBean getPrototypeDependency();
+    TestBean getPrototypeDependency();
 
-	TestBean getPrototypeDependency(Object someParam);
+    TestBean getPrototypeDependency(Object someParam);
 }
-
 
 /**
  * @author Rod Johnson
@@ -483,57 +446,52 @@ interface OverrideInterface {
  */
 abstract class OverrideOneMethod extends MethodReplaceCandidate implements OverrideInterface {
 
-	protected abstract TestBean protectedOverrideSingleton();
+    protected abstract TestBean protectedOverrideSingleton();
 
-	@Override
-	public TestBean getPrototypeDependency(Object someParam) {
-		return new TestBean();
-	}
+    @Override
+    public TestBean getPrototypeDependency(Object someParam) {
+        return new TestBean();
+    }
 
-	public TestBean invokesOverriddenMethodOnSelf() {
-		return getPrototypeDependency();
-	}
+    public TestBean invokesOverriddenMethodOnSelf() {
+        return getPrototypeDependency();
+    }
 
-	public String echo(String echo) {
-		return echo;
-	}
+    public String echo(String echo) {
+        return echo;
+    }
 
-	/**
-	 * Overloaded form of replaceMe.
-	 */
-	public String replaceMe() {
-		return "replaceMe";
-	}
+    /** Overloaded form of replaceMe. */
+    public String replaceMe() {
+        return "replaceMe";
+    }
 
-	/**
-	 * Another overloaded form of replaceMe, not getting replaced.
-	 * Must not cause errors when the other replaceMe methods get replaced.
-	 */
-	public String replaceMe(int someParam) {
-		return "replaceMe:" + someParam;
-	}
+    /**
+     * Another overloaded form of replaceMe, not getting replaced. Must not cause errors when the
+     * other replaceMe methods get replaced.
+     */
+    public String replaceMe(int someParam) {
+        return "replaceMe:" + someParam;
+    }
 
-	@Override
-	public String replaceMe(String someParam) {
-		return "replaceMe:"  + someParam;
-	}
+    @Override
+    public String replaceMe(String someParam) {
+        return "replaceMe:" + someParam;
+    }
 }
 
-
 /**
- * Subclass of OverrideOneMethod, to check that overriding is
- * supported for inherited methods.
+ * Subclass of OverrideOneMethod, to check that overriding is supported for inherited methods.
  *
  * @author Rod Johnson
  */
 abstract class OverrideOneMethodSubclass extends OverrideOneMethod {
 
-	protected void doSomething(String arg) {
-		// This implementation does nothing!
-		// It's not overloaded
-	}
+    protected void doSomething(String arg) {
+        // This implementation does nothing!
+        // It's not overloaded
+    }
 }
-
 
 /**
  * Simple test of BeanFactory initialization and lifecycle callbacks.
@@ -541,165 +499,169 @@ abstract class OverrideOneMethodSubclass extends OverrideOneMethod {
  * @author Rod Johnson
  * @author Juergen Hoeller
  */
-class ProtectedLifecycleBean implements BeanNameAware, BeanFactoryAware, InitializingBean, DisposableBean {
+class ProtectedLifecycleBean
+        implements BeanNameAware, BeanFactoryAware, InitializingBean, DisposableBean {
 
-	protected boolean initMethodDeclared = false;
+    protected boolean initMethodDeclared = false;
 
-	protected String beanName;
+    protected String beanName;
 
-	protected BeanFactory owningFactory;
+    protected BeanFactory owningFactory;
 
-	protected boolean postProcessedBeforeInit;
+    protected boolean postProcessedBeforeInit;
 
-	protected boolean inited;
+    protected boolean inited;
 
-	protected boolean initedViaDeclaredInitMethod;
+    protected boolean initedViaDeclaredInitMethod;
 
-	protected boolean postProcessedAfterInit;
+    protected boolean postProcessedAfterInit;
 
-	protected boolean destroyed;
+    protected boolean destroyed;
 
-	public void setInitMethodDeclared(boolean initMethodDeclared) {
-		this.initMethodDeclared = initMethodDeclared;
-	}
+    public void setInitMethodDeclared(boolean initMethodDeclared) {
+        this.initMethodDeclared = initMethodDeclared;
+    }
 
-	public boolean isInitMethodDeclared() {
-		return initMethodDeclared;
-	}
+    public boolean isInitMethodDeclared() {
+        return initMethodDeclared;
+    }
 
-	@Override
-	public void setBeanName(String name) {
-		this.beanName = name;
-	}
+    @Override
+    public void setBeanName(String name) {
+        this.beanName = name;
+    }
 
-	public String getBeanName() {
-		return beanName;
-	}
+    public String getBeanName() {
+        return beanName;
+    }
 
-	@Override
-	public void setBeanFactory(BeanFactory beanFactory) {
-		this.owningFactory = beanFactory;
-	}
+    @Override
+    public void setBeanFactory(BeanFactory beanFactory) {
+        this.owningFactory = beanFactory;
+    }
 
-	public void postProcessBeforeInit() {
-		if (this.inited || this.initedViaDeclaredInitMethod) {
-			throw new RuntimeException("Factory called postProcessBeforeInit after afterPropertiesSet");
-		}
-		if (this.postProcessedBeforeInit) {
-			throw new RuntimeException("Factory called postProcessBeforeInit twice");
-		}
-		this.postProcessedBeforeInit = true;
-	}
+    public void postProcessBeforeInit() {
+        if (this.inited || this.initedViaDeclaredInitMethod) {
+            throw new RuntimeException(
+                    "Factory called postProcessBeforeInit after afterPropertiesSet");
+        }
+        if (this.postProcessedBeforeInit) {
+            throw new RuntimeException("Factory called postProcessBeforeInit twice");
+        }
+        this.postProcessedBeforeInit = true;
+    }
 
-	@Override
-	public void afterPropertiesSet() {
-		if (this.owningFactory == null) {
-			throw new RuntimeException("Factory didn't call setBeanFactory before afterPropertiesSet on lifecycle bean");
-		}
-		if (!this.postProcessedBeforeInit) {
-			throw new RuntimeException("Factory didn't call postProcessBeforeInit before afterPropertiesSet on lifecycle bean");
-		}
-		if (this.initedViaDeclaredInitMethod) {
-			throw new RuntimeException("Factory initialized via declared init method before initializing via afterPropertiesSet");
-		}
-		if (this.inited) {
-			throw new RuntimeException("Factory called afterPropertiesSet twice");
-		}
-		this.inited = true;
-	}
+    @Override
+    public void afterPropertiesSet() {
+        if (this.owningFactory == null) {
+            throw new RuntimeException(
+                    "Factory didn't call setBeanFactory before afterPropertiesSet on lifecycle bean");
+        }
+        if (!this.postProcessedBeforeInit) {
+            throw new RuntimeException(
+                    "Factory didn't call postProcessBeforeInit before afterPropertiesSet on lifecycle bean");
+        }
+        if (this.initedViaDeclaredInitMethod) {
+            throw new RuntimeException(
+                    "Factory initialized via declared init method before initializing via afterPropertiesSet");
+        }
+        if (this.inited) {
+            throw new RuntimeException("Factory called afterPropertiesSet twice");
+        }
+        this.inited = true;
+    }
 
-	public void declaredInitMethod() {
-		if (!this.inited) {
-			throw new RuntimeException("Factory didn't call afterPropertiesSet before declared init method");
-		}
+    public void declaredInitMethod() {
+        if (!this.inited) {
+            throw new RuntimeException(
+                    "Factory didn't call afterPropertiesSet before declared init method");
+        }
 
-		if (this.initedViaDeclaredInitMethod) {
-			throw new RuntimeException("Factory called declared init method twice");
-		}
-		this.initedViaDeclaredInitMethod = true;
-	}
+        if (this.initedViaDeclaredInitMethod) {
+            throw new RuntimeException("Factory called declared init method twice");
+        }
+        this.initedViaDeclaredInitMethod = true;
+    }
 
-	public void postProcessAfterInit() {
-		if (!this.inited) {
-			throw new RuntimeException("Factory called postProcessAfterInit before afterPropertiesSet");
-		}
-		if (this.initMethodDeclared && !this.initedViaDeclaredInitMethod) {
-			throw new RuntimeException("Factory called postProcessAfterInit before calling declared init method");
-		}
-		if (this.postProcessedAfterInit) {
-			throw new RuntimeException("Factory called postProcessAfterInit twice");
-		}
-		this.postProcessedAfterInit = true;
-	}
+    public void postProcessAfterInit() {
+        if (!this.inited) {
+            throw new RuntimeException(
+                    "Factory called postProcessAfterInit before afterPropertiesSet");
+        }
+        if (this.initMethodDeclared && !this.initedViaDeclaredInitMethod) {
+            throw new RuntimeException(
+                    "Factory called postProcessAfterInit before calling declared init method");
+        }
+        if (this.postProcessedAfterInit) {
+            throw new RuntimeException("Factory called postProcessAfterInit twice");
+        }
+        this.postProcessedAfterInit = true;
+    }
 
-	/**
-	 * Dummy business method that will fail unless the factory
-	 * managed the bean's lifecycle correctly
-	 */
-	public void businessMethod() {
-		if (!this.inited || (this.initMethodDeclared && !this.initedViaDeclaredInitMethod) ||
-				!this.postProcessedAfterInit) {
-			throw new RuntimeException("Factory didn't initialize lifecycle object correctly");
-		}
-	}
+    /**
+     * Dummy business method that will fail unless the factory managed the bean's lifecycle
+     * correctly
+     */
+    public void businessMethod() {
+        if (!this.inited
+                || (this.initMethodDeclared && !this.initedViaDeclaredInitMethod)
+                || !this.postProcessedAfterInit) {
+            throw new RuntimeException("Factory didn't initialize lifecycle object correctly");
+        }
+    }
 
-	@Override
-	public void destroy() {
-		if (this.destroyed) {
-			throw new IllegalStateException("Already destroyed");
-		}
-		this.destroyed = true;
-	}
+    @Override
+    public void destroy() {
+        if (this.destroyed) {
+            throw new IllegalStateException("Already destroyed");
+        }
+        this.destroyed = true;
+    }
 
-	public boolean isDestroyed() {
-		return destroyed;
-	}
+    public boolean isDestroyed() {
+        return destroyed;
+    }
 
+    public static class PostProcessor implements BeanPostProcessor {
 
-	public static class PostProcessor implements BeanPostProcessor {
+        @Override
+        public Object postProcessBeforeInitialization(Object bean, String name)
+                throws BeansException {
+            if (bean instanceof ProtectedLifecycleBean) {
+                ((ProtectedLifecycleBean) bean).postProcessBeforeInit();
+            }
+            return bean;
+        }
 
-		@Override
-		public Object postProcessBeforeInitialization(Object bean, String name) throws BeansException {
-			if (bean instanceof ProtectedLifecycleBean) {
-				((ProtectedLifecycleBean) bean).postProcessBeforeInit();
-			}
-			return bean;
-		}
-
-		@Override
-		public Object postProcessAfterInitialization(Object bean, String name) throws BeansException {
-			if (bean instanceof ProtectedLifecycleBean) {
-				((ProtectedLifecycleBean) bean).postProcessAfterInit();
-			}
-			return bean;
-		}
-	}
+        @Override
+        public Object postProcessAfterInitialization(Object bean, String name)
+                throws BeansException {
+            if (bean instanceof ProtectedLifecycleBean) {
+                ((ProtectedLifecycleBean) bean).postProcessAfterInit();
+            }
+            return bean;
+        }
+    }
 }
 
-
-/**
- * @author Rod Johnson
- */
+/** @author Rod Johnson */
 @SuppressWarnings("serial")
 class ReverseMethodReplacer implements MethodReplacer, Serializable {
 
-	@Override
-	public Object reimplement(Object obj, Method method, Object[] args) throws Throwable {
-		String s = (String) args[0];
-		return new StringBuffer(s).reverse().toString();
-	}
+    @Override
+    public Object reimplement(Object obj, Method method, Object[] args) throws Throwable {
+        String s = (String) args[0];
+        return new StringBuffer(s).reverse().toString();
+    }
 }
 
-
-/**
- * @author Rod Johnson
- */
+/** @author Rod Johnson */
 @SuppressWarnings("serial")
-abstract class SerializableMethodReplacerCandidate extends MethodReplaceCandidate implements Serializable {
+abstract class SerializableMethodReplacerCandidate extends MethodReplaceCandidate
+        implements Serializable {
 
-	//public abstract Point getPoint();
+    // public abstract Point getPoint();
 }
-
 
 /**
  * @author Juergen Hoeller
@@ -707,30 +669,30 @@ abstract class SerializableMethodReplacerCandidate extends MethodReplaceCandidat
  */
 class SingleSimpleTypeConstructorBean {
 
-	private boolean singleBoolean;
+    private boolean singleBoolean;
 
-	private boolean secondBoolean;
+    private boolean secondBoolean;
 
-	private String testString;
+    private String testString;
 
-	public SingleSimpleTypeConstructorBean(boolean singleBoolean) {
-		this.singleBoolean = singleBoolean;
-	}
+    public SingleSimpleTypeConstructorBean(boolean singleBoolean) {
+        this.singleBoolean = singleBoolean;
+    }
 
-	protected SingleSimpleTypeConstructorBean(String testString, boolean secondBoolean) {
-		this.testString = testString;
-		this.secondBoolean = secondBoolean;
-	}
+    protected SingleSimpleTypeConstructorBean(String testString, boolean secondBoolean) {
+        this.testString = testString;
+        this.secondBoolean = secondBoolean;
+    }
 
-	public boolean isSingleBoolean() {
-		return singleBoolean;
-	}
+    public boolean isSingleBoolean() {
+        return singleBoolean;
+    }
 
-	public boolean isSecondBoolean() {
-		return secondBoolean;
-	}
+    public boolean isSecondBoolean() {
+        return secondBoolean;
+    }
 
-	public String getTestString() {
-		return testString;
-	}
+    public String getTestString() {
+        return testString;
+    }
 }

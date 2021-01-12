@@ -37,248 +37,243 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Resolver that delegates to the chain, and if a resource is found, it then
- * attempts to find an encoded (e.g. gzip, brotli) variant that is acceptable
- * based on the "Accept-Encoding" request header.
+ * Resolver that delegates to the chain, and if a resource is found, it then attempts to find an
+ * encoded (e.g. gzip, brotli) variant that is acceptable based on the "Accept-Encoding" request
+ * header.
  *
- * <p>The list of supported {@link #setContentCodings(List) contentCodings} can
- * be configured, in order of preference, and each coding must be associated
- * with {@link #setExtensions(Map) extensions}.
+ * <p>The list of supported {@link #setContentCodings(List) contentCodings} can be configured, in
+ * order of preference, and each coding must be associated with {@link #setExtensions(Map)
+ * extensions}.
  *
- * <p>Note that this resolver must be ordered ahead of a
- * {@link VersionResourceResolver} with a content-based, version strategy to
- * ensure the version calculation is not impacted by the encoding.
+ * <p>Note that this resolver must be ordered ahead of a {@link VersionResourceResolver} with a
+ * content-based, version strategy to ensure the version calculation is not impacted by the
+ * encoding.
  *
  * @author Rossen Stoyanchev
  * @since 5.1
  */
 public class EncodedResourceResolver extends AbstractResourceResolver {
 
-	/**
-	 * The default content codings.
-	 */
-	public static final List<String> DEFAULT_CODINGS = Arrays.asList("br", "gzip");
+    /** The default content codings. */
+    public static final List<String> DEFAULT_CODINGS = Arrays.asList("br", "gzip");
 
+    private final List<String> contentCodings = new ArrayList<>(DEFAULT_CODINGS);
 
-	private final List<String> contentCodings = new ArrayList<>(DEFAULT_CODINGS);
+    private final Map<String, String> extensions = new LinkedHashMap<>();
 
-	private final Map<String, String> extensions = new LinkedHashMap<>();
+    public EncodedResourceResolver() {
+        this.extensions.put("gzip", ".gz");
+        this.extensions.put("br", ".br");
+    }
 
+    /**
+     * Configure the supported content codings in order of preference. The first coding that is
+     * present in the {@literal "Accept-Encoding"} header for a given request, and that has a file
+     * present with the associated extension, is used.
+     *
+     * <p><strong>Note:</strong> Each coding must be associated with a file extension via {@link
+     * #registerExtension} or {@link #setExtensions}. Also customizations to the list of codings
+     * here should be matched by customizations to the same list in {@link CachingResourceResolver}
+     * to ensure encoded variants of a resource are cached under separate keys.
+     *
+     * <p>By default this property is set to {@literal ["br", "gzip"]}.
+     *
+     * @param codings one or more supported content codings
+     */
+    public void setContentCodings(List<String> codings) {
+        Assert.notEmpty(codings, "At least one content coding expected");
+        this.contentCodings.clear();
+        this.contentCodings.addAll(codings);
+    }
 
-	public EncodedResourceResolver() {
-		this.extensions.put("gzip", ".gz");
-		this.extensions.put("br", ".br");
-	}
+    /** Return a read-only list with the supported content codings. */
+    public List<String> getContentCodings() {
+        return Collections.unmodifiableList(this.contentCodings);
+    }
 
+    /**
+     * Configure mappings from content codings to file extensions. A dot "." will be prepended in
+     * front of the extension value if not present.
+     *
+     * <p>By default this is configured with {@literal ["br" -> ".br"]} and {@literal ["gzip" ->
+     * ".gz"]}.
+     *
+     * @param extensions the extensions to use.
+     * @see #registerExtension(String, String)
+     */
+    public void setExtensions(Map<String, String> extensions) {
+        extensions.forEach(this::registerExtension);
+    }
 
-	/**
-	 * Configure the supported content codings in order of preference. The first
-	 * coding that is present in the {@literal "Accept-Encoding"} header for a
-	 * given request, and that has a file present with the associated extension,
-	 * is used.
-	 * <p><strong>Note:</strong> Each coding must be associated with a file
-	 * extension via {@link #registerExtension} or {@link #setExtensions}. Also
-	 * customizations to the list of codings here should be matched by
-	 * customizations to the same list in {@link CachingResourceResolver} to
-	 * ensure encoded variants of a resource are cached under separate keys.
-	 * <p>By default this property is set to {@literal ["br", "gzip"]}.
-	 * @param codings one or more supported content codings
-	 */
-	public void setContentCodings(List<String> codings) {
-		Assert.notEmpty(codings, "At least one content coding expected");
-		this.contentCodings.clear();
-		this.contentCodings.addAll(codings);
-	}
+    /** Return a read-only map with coding-to-extension mappings. */
+    public Map<String, String> getExtensions() {
+        return Collections.unmodifiableMap(this.extensions);
+    }
 
-	/**
-	 * Return a read-only list with the supported content codings.
-	 */
-	public List<String> getContentCodings() {
-		return Collections.unmodifiableList(this.contentCodings);
-	}
+    /**
+     * Java config friendly alternative to {@link #setExtensions(Map)}.
+     *
+     * @param coding the content coding
+     * @param extension the associated file extension
+     */
+    public void registerExtension(String coding, String extension) {
+        this.extensions.put(coding, (extension.startsWith(".") ? extension : "." + extension));
+    }
 
-	/**
-	 * Configure mappings from content codings to file extensions. A dot "."
-	 * will be prepended in front of the extension value if not present.
-	 * <p>By default this is configured with {@literal ["br" -> ".br"]} and
-	 * {@literal ["gzip" -> ".gz"]}.
-	 * @param extensions the extensions to use.
-	 * @see #registerExtension(String, String)
-	 */
-	public void setExtensions(Map<String, String> extensions) {
-		extensions.forEach(this::registerExtension);
-	}
+    @Override
+    protected Resource resolveResourceInternal(
+            @Nullable HttpServletRequest request,
+            String requestPath,
+            List<? extends Resource> locations,
+            ResourceResolverChain chain) {
 
-	/**
-	 * Return a read-only map with coding-to-extension mappings.
-	 */
-	public Map<String, String> getExtensions() {
-		return Collections.unmodifiableMap(this.extensions);
-	}
+        Resource resource = chain.resolveResource(request, requestPath, locations);
+        if (resource == null || request == null) {
+            return resource;
+        }
 
-	/**
-	 * Java config friendly alternative to {@link #setExtensions(Map)}.
-	 * @param coding the content coding
-	 * @param extension the associated file extension
-	 */
-	public void registerExtension(String coding, String extension) {
-		this.extensions.put(coding, (extension.startsWith(".") ? extension : "." + extension));
-	}
+        String acceptEncoding = getAcceptEncoding(request);
+        if (acceptEncoding == null) {
+            return resource;
+        }
 
+        for (String coding : this.contentCodings) {
+            if (acceptEncoding.contains(coding)) {
+                try {
+                    String extension = getExtension(coding);
+                    Resource encoded = new EncodedResource(resource, coding, extension);
+                    if (encoded.exists()) {
+                        return encoded;
+                    }
+                } catch (IOException ex) {
+                    if (logger.isTraceEnabled()) {
+                        logger.trace(
+                                "No " + coding + " resource for [" + resource.getFilename() + "]",
+                                ex);
+                    }
+                }
+            }
+        }
 
-	@Override
-	protected Resource resolveResourceInternal(@Nullable HttpServletRequest request, String requestPath,
-			List<? extends Resource> locations, ResourceResolverChain chain) {
+        return resource;
+    }
 
-		Resource resource = chain.resolveResource(request, requestPath, locations);
-		if (resource == null || request == null) {
-			return resource;
-		}
+    @Nullable
+    private String getAcceptEncoding(HttpServletRequest request) {
+        String header = request.getHeader(HttpHeaders.ACCEPT_ENCODING);
+        return (header != null ? header.toLowerCase() : null);
+    }
 
-		String acceptEncoding = getAcceptEncoding(request);
-		if (acceptEncoding == null) {
-			return resource;
-		}
+    private String getExtension(String coding) {
+        String extension = this.extensions.get(coding);
+        if (extension == null) {
+            throw new IllegalStateException(
+                    "No file extension associated with content coding " + coding);
+        }
+        return extension;
+    }
 
-		for (String coding : this.contentCodings) {
-			if (acceptEncoding.contains(coding)) {
-				try {
-					String extension = getExtension(coding);
-					Resource encoded = new EncodedResource(resource, coding, extension);
-					if (encoded.exists()) {
-						return encoded;
-					}
-				}
-				catch (IOException ex) {
-					if (logger.isTraceEnabled()) {
-						logger.trace("No " + coding + " resource for [" + resource.getFilename() + "]", ex);
-					}
-				}
-			}
-		}
+    @Override
+    protected String resolveUrlPathInternal(
+            String resourceUrlPath,
+            List<? extends Resource> locations,
+            ResourceResolverChain chain) {
 
-		return resource;
-	}
+        return chain.resolveUrlPath(resourceUrlPath, locations);
+    }
 
-	@Nullable
-	private String getAcceptEncoding(HttpServletRequest request) {
-		String header = request.getHeader(HttpHeaders.ACCEPT_ENCODING);
-		return (header != null ? header.toLowerCase() : null);
-	}
+    /** An encoded {@link HttpResource}. */
+    static final class EncodedResource extends AbstractResource implements HttpResource {
 
-	private String getExtension(String coding) {
-		String extension = this.extensions.get(coding);
-		if (extension == null) {
-			throw new IllegalStateException("No file extension associated with content coding " + coding);
-		}
-		return extension;
-	}
+        private final Resource original;
 
-	@Override
-	protected String resolveUrlPathInternal(String resourceUrlPath,
-			List<? extends Resource> locations, ResourceResolverChain chain) {
+        private final String coding;
 
-		return chain.resolveUrlPath(resourceUrlPath, locations);
-	}
+        private final Resource encoded;
 
+        EncodedResource(Resource original, String coding, String extension) throws IOException {
+            this.original = original;
+            this.coding = coding;
+            this.encoded = original.createRelative(original.getFilename() + extension);
+        }
 
-	/**
-	 * An encoded {@link HttpResource}.
-	 */
-	static final class EncodedResource extends AbstractResource implements HttpResource {
+        @Override
+        public InputStream getInputStream() throws IOException {
+            return this.encoded.getInputStream();
+        }
 
-		private final Resource original;
+        @Override
+        public boolean exists() {
+            return this.encoded.exists();
+        }
 
-		private final String coding;
+        @Override
+        public boolean isReadable() {
+            return this.encoded.isReadable();
+        }
 
-		private final Resource encoded;
+        @Override
+        public boolean isOpen() {
+            return this.encoded.isOpen();
+        }
 
-		EncodedResource(Resource original, String coding, String extension) throws IOException {
-			this.original = original;
-			this.coding = coding;
-			this.encoded = original.createRelative(original.getFilename() + extension);
-		}
+        @Override
+        public boolean isFile() {
+            return this.encoded.isFile();
+        }
 
+        @Override
+        public URL getURL() throws IOException {
+            return this.encoded.getURL();
+        }
 
-		@Override
-		public InputStream getInputStream() throws IOException {
-			return this.encoded.getInputStream();
-		}
+        @Override
+        public URI getURI() throws IOException {
+            return this.encoded.getURI();
+        }
 
-		@Override
-		public boolean exists() {
-			return this.encoded.exists();
-		}
+        @Override
+        public File getFile() throws IOException {
+            return this.encoded.getFile();
+        }
 
-		@Override
-		public boolean isReadable() {
-			return this.encoded.isReadable();
-		}
+        @Override
+        public long contentLength() throws IOException {
+            return this.encoded.contentLength();
+        }
 
-		@Override
-		public boolean isOpen() {
-			return this.encoded.isOpen();
-		}
+        @Override
+        public long lastModified() throws IOException {
+            return this.encoded.lastModified();
+        }
 
-		@Override
-		public boolean isFile() {
-			return this.encoded.isFile();
-		}
+        @Override
+        public Resource createRelative(String relativePath) throws IOException {
+            return this.encoded.createRelative(relativePath);
+        }
 
-		@Override
-		public URL getURL() throws IOException {
-			return this.encoded.getURL();
-		}
+        @Override
+        @Nullable
+        public String getFilename() {
+            return this.original.getFilename();
+        }
 
-		@Override
-		public URI getURI() throws IOException {
-			return this.encoded.getURI();
-		}
+        @Override
+        public String getDescription() {
+            return this.encoded.getDescription();
+        }
 
-		@Override
-		public File getFile() throws IOException {
-			return this.encoded.getFile();
-		}
-
-		@Override
-		public long contentLength() throws IOException {
-			return this.encoded.contentLength();
-		}
-
-		@Override
-		public long lastModified() throws IOException {
-			return this.encoded.lastModified();
-		}
-
-		@Override
-		public Resource createRelative(String relativePath) throws IOException {
-			return this.encoded.createRelative(relativePath);
-		}
-
-		@Override
-		@Nullable
-		public String getFilename() {
-			return this.original.getFilename();
-		}
-
-		@Override
-		public String getDescription() {
-			return this.encoded.getDescription();
-		}
-
-		@Override
-		public HttpHeaders getResponseHeaders() {
-			HttpHeaders headers;
-			if (this.original instanceof HttpResource) {
-				headers = ((HttpResource) this.original).getResponseHeaders();
-			}
-			else {
-				headers = new HttpHeaders();
-			}
-			headers.add(HttpHeaders.CONTENT_ENCODING, this.coding);
-			headers.add(HttpHeaders.VARY, HttpHeaders.ACCEPT_ENCODING);
-			return headers;
-		}
-	}
-
+        @Override
+        public HttpHeaders getResponseHeaders() {
+            HttpHeaders headers;
+            if (this.original instanceof HttpResource) {
+                headers = ((HttpResource) this.original).getResponseHeaders();
+            } else {
+                headers = new HttpHeaders();
+            }
+            headers.add(HttpHeaders.CONTENT_ENCODING, this.coding);
+            headers.add(HttpHeaders.VARY, HttpHeaders.ACCEPT_ENCODING);
+            return headers;
+        }
+    }
 }

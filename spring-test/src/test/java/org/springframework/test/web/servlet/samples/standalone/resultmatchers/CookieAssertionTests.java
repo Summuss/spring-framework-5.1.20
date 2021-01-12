@@ -38,85 +38,82 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.*;
  */
 public class CookieAssertionTests {
 
-	private static final String COOKIE_NAME = CookieLocaleResolver.DEFAULT_COOKIE_NAME;
+    private static final String COOKIE_NAME = CookieLocaleResolver.DEFAULT_COOKIE_NAME;
 
-	private MockMvc mockMvc;
+    private MockMvc mockMvc;
 
+    @Before
+    public void setup() {
+        CookieLocaleResolver localeResolver = new CookieLocaleResolver();
+        localeResolver.setCookieDomain("domain");
+        localeResolver.setCookieHttpOnly(true);
 
-	@Before
-	public void setup() {
-		CookieLocaleResolver localeResolver = new CookieLocaleResolver();
-		localeResolver.setCookieDomain("domain");
-		localeResolver.setCookieHttpOnly(true);
+        this.mockMvc =
+                standaloneSetup(new SimpleController())
+                        .addInterceptors(new LocaleChangeInterceptor())
+                        .setLocaleResolver(localeResolver)
+                        .defaultRequest(get("/").param("locale", "en_US"))
+                        .alwaysExpect(status().isOk())
+                        .build();
+    }
 
-		this.mockMvc = standaloneSetup(new SimpleController())
-				.addInterceptors(new LocaleChangeInterceptor())
-				.setLocaleResolver(localeResolver)
-				.defaultRequest(get("/").param("locale", "en_US"))
-				.alwaysExpect(status().isOk())
-				.build();
-	}
+    @Test
+    public void testExists() throws Exception {
+        this.mockMvc.perform(get("/")).andExpect(cookie().exists(COOKIE_NAME));
+    }
 
+    @Test
+    public void testNotExists() throws Exception {
+        this.mockMvc.perform(get("/")).andExpect(cookie().doesNotExist("unknownCookie"));
+    }
 
-	@Test
-	public void testExists() throws Exception {
-		this.mockMvc.perform(get("/")).andExpect(cookie().exists(COOKIE_NAME));
-	}
+    @Test
+    public void testEqualTo() throws Exception {
+        this.mockMvc.perform(get("/")).andExpect(cookie().value(COOKIE_NAME, "en-US"));
+        this.mockMvc.perform(get("/")).andExpect(cookie().value(COOKIE_NAME, equalTo("en-US")));
+    }
 
-	@Test
-	public void testNotExists() throws Exception {
-		this.mockMvc.perform(get("/")).andExpect(cookie().doesNotExist("unknownCookie"));
-	}
+    @Test
+    public void testMatcher() throws Exception {
+        this.mockMvc.perform(get("/")).andExpect(cookie().value(COOKIE_NAME, startsWith("en")));
+    }
 
-	@Test
-	public void testEqualTo() throws Exception {
-		this.mockMvc.perform(get("/")).andExpect(cookie().value(COOKIE_NAME, "en-US"));
-		this.mockMvc.perform(get("/")).andExpect(cookie().value(COOKIE_NAME, equalTo("en-US")));
-	}
+    @Test
+    public void testMaxAge() throws Exception {
+        this.mockMvc.perform(get("/")).andExpect(cookie().maxAge(COOKIE_NAME, -1));
+    }
 
-	@Test
-	public void testMatcher() throws Exception {
-		this.mockMvc.perform(get("/")).andExpect(cookie().value(COOKIE_NAME, startsWith("en")));
-	}
+    @Test
+    public void testDomain() throws Exception {
+        this.mockMvc.perform(get("/")).andExpect(cookie().domain(COOKIE_NAME, "domain"));
+    }
 
-	@Test
-	public void testMaxAge() throws Exception {
-		this.mockMvc.perform(get("/")).andExpect(cookie().maxAge(COOKIE_NAME, -1));
-	}
+    @Test
+    public void testVersion() throws Exception {
+        this.mockMvc.perform(get("/")).andExpect(cookie().version(COOKIE_NAME, 0));
+    }
 
-	@Test
-	public void testDomain() throws Exception {
-		this.mockMvc.perform(get("/")).andExpect(cookie().domain(COOKIE_NAME, "domain"));
-	}
+    @Test
+    public void testPath() throws Exception {
+        this.mockMvc.perform(get("/")).andExpect(cookie().path(COOKIE_NAME, "/"));
+    }
 
-	@Test
-	public void testVersion() throws Exception {
-		this.mockMvc.perform(get("/")).andExpect(cookie().version(COOKIE_NAME, 0));
-	}
+    @Test
+    public void testSecured() throws Exception {
+        this.mockMvc.perform(get("/")).andExpect(cookie().secure(COOKIE_NAME, false));
+    }
 
-	@Test
-	public void testPath() throws Exception {
-		this.mockMvc.perform(get("/")).andExpect(cookie().path(COOKIE_NAME, "/"));
-	}
+    @Test
+    public void testHttpOnly() throws Exception {
+        this.mockMvc.perform(get("/")).andExpect(cookie().httpOnly(COOKIE_NAME, true));
+    }
 
-	@Test
-	public void testSecured() throws Exception {
-		this.mockMvc.perform(get("/")).andExpect(cookie().secure(COOKIE_NAME, false));
-	}
+    @Controller
+    private static class SimpleController {
 
-	@Test
-	public void testHttpOnly() throws Exception {
-		this.mockMvc.perform(get("/")).andExpect(cookie().httpOnly(COOKIE_NAME, true));
-	}
-
-
-	@Controller
-	private static class SimpleController {
-
-		@RequestMapping("/")
-		public String home() {
-			return "home";
-		}
-	}
-
+        @RequestMapping("/")
+        public String home() {
+            return "home";
+        }
+    }
 }

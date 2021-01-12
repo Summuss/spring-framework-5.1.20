@@ -37,30 +37,25 @@ import static org.junit.Assert.*;
 @ContextConfiguration
 public class EarTests {
 
-	@Configuration
-	static class EarConfig {
+    @Configuration
+    static class EarConfig {
 
-		@Bean
-		public String ear() {
-			return "ear";
-		}
-	}
+        @Bean
+        public String ear() {
+            return "ear";
+        }
+    }
 
+    // -------------------------------------------------------------------------
 
-	// -------------------------------------------------------------------------
+    @Autowired private ApplicationContext context;
 
-	@Autowired
-	private ApplicationContext context;
+    @Autowired private String ear;
 
-	@Autowired
-	private String ear;
-
-
-	@Test
-	public void verifyEarConfig() {
-		assertFalse(context instanceof WebApplicationContext);
-		assertNull(context.getParent());
-		assertEquals("ear", ear);
-	}
-
+    @Test
+    public void verifyEarConfig() {
+        assertFalse(context instanceof WebApplicationContext);
+        assertNull(context.getParent());
+        assertEquals("ear", ear);
+    }
 }

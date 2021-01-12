@@ -26,10 +26,10 @@ import java.util.UUID;
  */
 public interface IdGenerator {
 
-	/**
-	 * Generate a new identifier.
-	 * @return the generated identifier
-	 */
-	UUID generateId();
-
+    /**
+     * Generate a new identifier.
+     *
+     * @return the generated identifier
+     */
+    UUID generateId();
 }

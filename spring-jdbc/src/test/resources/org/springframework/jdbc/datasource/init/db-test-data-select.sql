@@ -1,3 +1,7 @@
-insert into T_TEST (NAME) values ('Keith');
-insert into T_TEST (NAME) values ('Dave');
-select NAME from T_TEST where NAME = 'Keith';
+INSERT INTO T_TEST (NAME)
+VALUES ('Keith');
+INSERT INTO T_TEST (NAME)
+VALUES ('Dave');
+SELECT NAME
+FROM T_TEST
+WHERE NAME = 'Keith';

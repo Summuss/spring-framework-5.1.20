@@ -41,131 +41,132 @@ import static org.junit.Assert.*;
  */
 public class MockWebResponseBuilderTests {
 
-	private final MockHttpServletResponse response = new MockHttpServletResponse();
+    private final MockHttpServletResponse response = new MockHttpServletResponse();
 
-	private WebRequest webRequest;
+    private WebRequest webRequest;
 
-	private MockWebResponseBuilder responseBuilder;
+    private MockWebResponseBuilder responseBuilder;
 
+    @Before
+    public void setup() throws Exception {
+        this.webRequest = new WebRequest(new URL("http://example.com:80/test/this/here"));
+        this.responseBuilder =
+                new MockWebResponseBuilder(
+                        System.currentTimeMillis(), this.webRequest, this.response);
+    }
 
-	@Before
-	public void setup() throws Exception {
-		this.webRequest = new WebRequest(new URL("http://example.com:80/test/this/here"));
-		this.responseBuilder = new MockWebResponseBuilder(System.currentTimeMillis(), this.webRequest, this.response);
-	}
+    // --- constructor
 
+    @Test(expected = IllegalArgumentException.class)
+    public void constructorWithNullWebRequest() {
+        new MockWebResponseBuilder(0L, null, this.response);
+    }
 
-	// --- constructor
+    @Test(expected = IllegalArgumentException.class)
+    public void constructorWithNullResponse() throws Exception {
+        new MockWebResponseBuilder(
+                0L, new WebRequest(new URL("http://example.com:80/test/this/here")), null);
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void constructorWithNullWebRequest() {
-		new MockWebResponseBuilder(0L, null, this.response);
-	}
+    // --- build
 
-	@Test(expected = IllegalArgumentException.class)
-	public void constructorWithNullResponse() throws Exception {
-		new MockWebResponseBuilder(0L, new WebRequest(new URL("http://example.com:80/test/this/here")), null);
-	}
+    @Test
+    public void buildContent() throws Exception {
+        this.response.getWriter().write("expected content");
+        WebResponse webResponse = this.responseBuilder.build();
 
+        assertThat(webResponse.getContentAsString(), equalTo("expected content"));
+    }
 
-	// --- build
+    @Test
+    public void buildContentCharset() throws Exception {
+        this.response.addHeader("Content-Type", "text/html; charset=UTF-8");
+        WebResponse webResponse = this.responseBuilder.build();
 
-	@Test
-	public void buildContent() throws Exception {
-		this.response.getWriter().write("expected content");
-		WebResponse webResponse = this.responseBuilder.build();
+        assertThat(webResponse.getContentCharset(), equalTo(StandardCharsets.UTF_8));
+    }
 
-		assertThat(webResponse.getContentAsString(), equalTo("expected content"));
-	}
+    @Test
+    public void buildContentType() throws Exception {
+        this.response.addHeader("Content-Type", "text/html; charset-UTF-8");
+        WebResponse webResponse = this.responseBuilder.build();
 
-	@Test
-	public void buildContentCharset() throws Exception {
-		this.response.addHeader("Content-Type", "text/html; charset=UTF-8");
-		WebResponse webResponse = this.responseBuilder.build();
+        assertThat(webResponse.getContentType(), equalTo("text/html"));
+    }
 
-		assertThat(webResponse.getContentCharset(), equalTo(StandardCharsets.UTF_8));
-	}
+    @Test
+    public void buildResponseHeaders() throws Exception {
+        this.response.addHeader("Content-Type", "text/html");
+        this.response.addHeader("X-Test", "value");
+        Cookie cookie = new Cookie("cookieA", "valueA");
+        cookie.setDomain("domain");
+        cookie.setPath("/path");
+        cookie.setMaxAge(1800);
+        cookie.setSecure(true);
+        cookie.setHttpOnly(true);
+        this.response.addCookie(cookie);
+        WebResponse webResponse = this.responseBuilder.build();
 
-	@Test
-	public void buildContentType() throws Exception {
-		this.response.addHeader("Content-Type", "text/html; charset-UTF-8");
-		WebResponse webResponse = this.responseBuilder.build();
+        List<NameValuePair> responseHeaders = webResponse.getResponseHeaders();
+        assertThat(responseHeaders.size(), equalTo(3));
+        NameValuePair header = responseHeaders.get(0);
+        assertThat(header.getName(), equalTo("Content-Type"));
+        assertThat(header.getValue(), equalTo("text/html"));
+        header = responseHeaders.get(1);
+        assertThat(header.getName(), equalTo("X-Test"));
+        assertThat(header.getValue(), equalTo("value"));
+        header = responseHeaders.get(2);
+        assertThat(header.getName(), equalTo("Set-Cookie"));
+        assertThat(
+                header.getValue(),
+                startsWith("cookieA=valueA; Path=/path; Domain=domain; Max-Age=1800; Expires="));
+        assertThat(header.getValue(), endsWith("; Secure; HttpOnly"));
+    }
 
-		assertThat(webResponse.getContentType(), equalTo("text/html"));
-	}
+    // SPR-14169
+    @Test
+    public void buildResponseHeadersNullDomainDefaulted() throws Exception {
+        Cookie cookie = new Cookie("cookieA", "valueA");
+        this.response.addCookie(cookie);
+        WebResponse webResponse = this.responseBuilder.build();
 
-	@Test
-	public void buildResponseHeaders() throws Exception {
-		this.response.addHeader("Content-Type", "text/html");
-		this.response.addHeader("X-Test", "value");
-		Cookie cookie = new Cookie("cookieA", "valueA");
-		cookie.setDomain("domain");
-		cookie.setPath("/path");
-		cookie.setMaxAge(1800);
-		cookie.setSecure(true);
-		cookie.setHttpOnly(true);
-		this.response.addCookie(cookie);
-		WebResponse webResponse = this.responseBuilder.build();
+        List<NameValuePair> responseHeaders = webResponse.getResponseHeaders();
+        assertThat(responseHeaders.size(), equalTo(1));
+        NameValuePair header = responseHeaders.get(0);
+        assertThat(header.getName(), equalTo("Set-Cookie"));
+        assertThat(header.getValue(), equalTo("cookieA=valueA"));
+    }
 
-		List<NameValuePair> responseHeaders = webResponse.getResponseHeaders();
-		assertThat(responseHeaders.size(), equalTo(3));
-		NameValuePair header = responseHeaders.get(0);
-		assertThat(header.getName(), equalTo("Content-Type"));
-		assertThat(header.getValue(), equalTo("text/html"));
-		header = responseHeaders.get(1);
-		assertThat(header.getName(), equalTo("X-Test"));
-		assertThat(header.getValue(), equalTo("value"));
-		header = responseHeaders.get(2);
-		assertThat(header.getName(), equalTo("Set-Cookie"));
-		assertThat(header.getValue(), startsWith("cookieA=valueA; Path=/path; Domain=domain; Max-Age=1800; Expires="));
-		assertThat(header.getValue(), endsWith("; Secure; HttpOnly"));
-	}
+    @Test
+    public void buildStatus() throws Exception {
+        WebResponse webResponse = this.responseBuilder.build();
 
-	// SPR-14169
-	@Test
-	public void buildResponseHeadersNullDomainDefaulted() throws Exception {
-		Cookie cookie = new Cookie("cookieA", "valueA");
-		this.response.addCookie(cookie);
-		WebResponse webResponse = this.responseBuilder.build();
+        assertThat(webResponse.getStatusCode(), equalTo(200));
+        assertThat(webResponse.getStatusMessage(), equalTo("OK"));
+    }
 
-		List<NameValuePair> responseHeaders = webResponse.getResponseHeaders();
-		assertThat(responseHeaders.size(), equalTo(1));
-		NameValuePair header = responseHeaders.get(0);
-		assertThat(header.getName(), equalTo("Set-Cookie"));
-		assertThat(header.getValue(), equalTo("cookieA=valueA"));
-	}
+    @Test
+    public void buildStatusNotOk() throws Exception {
+        this.response.setStatus(401);
+        WebResponse webResponse = this.responseBuilder.build();
 
-	@Test
-	public void buildStatus() throws Exception {
-		WebResponse webResponse = this.responseBuilder.build();
+        assertThat(webResponse.getStatusCode(), equalTo(401));
+        assertThat(webResponse.getStatusMessage(), equalTo("Unauthorized"));
+    }
 
-		assertThat(webResponse.getStatusCode(), equalTo(200));
-		assertThat(webResponse.getStatusMessage(), equalTo("OK"));
-	}
+    @Test
+    public void buildStatusWithCustomMessage() throws Exception {
+        this.response.sendError(401, "Custom");
+        WebResponse webResponse = this.responseBuilder.build();
 
-	@Test
-	public void buildStatusNotOk() throws Exception {
-		this.response.setStatus(401);
-		WebResponse webResponse = this.responseBuilder.build();
+        assertThat(webResponse.getStatusCode(), equalTo(401));
+        assertThat(webResponse.getStatusMessage(), equalTo("Custom"));
+    }
 
-		assertThat(webResponse.getStatusCode(), equalTo(401));
-		assertThat(webResponse.getStatusMessage(), equalTo("Unauthorized"));
-	}
+    @Test
+    public void buildWebRequest() throws Exception {
+        WebResponse webResponse = this.responseBuilder.build();
 
-	@Test
-	public void buildStatusWithCustomMessage() throws Exception {
-		this.response.sendError(401, "Custom");
-		WebResponse webResponse = this.responseBuilder.build();
-
-		assertThat(webResponse.getStatusCode(), equalTo(401));
-		assertThat(webResponse.getStatusMessage(), equalTo("Custom"));
-	}
-
-	@Test
-	public void buildWebRequest() throws Exception {
-		WebResponse webResponse = this.responseBuilder.build();
-
-		assertThat(webResponse.getWebRequest(), equalTo(this.webRequest));
-	}
-
+        assertThat(webResponse.getWebRequest(), equalTo(this.webRequest));
+    }
 }

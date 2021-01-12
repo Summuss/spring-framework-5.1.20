@@ -39,20 +39,15 @@ import static org.junit.Assert.*;
 @ActiveProfiles(resolver = ClassNameActiveProfilesResolver.class)
 public class ClassNameActiveProfilesResolverTests {
 
-	@Configuration
-	static class Config {
+    @Configuration
+    static class Config {}
 
-	}
+    @Autowired private ApplicationContext applicationContext;
 
-
-	@Autowired
-	private ApplicationContext applicationContext;
-
-
-	@Test
-	public void test() {
-		assertTrue(Arrays.asList(applicationContext.getEnvironment().getActiveProfiles()).contains(
-			getClass().getSimpleName().toLowerCase()));
-	}
-
+    @Test
+    public void test() {
+        assertTrue(
+                Arrays.asList(applicationContext.getEnvironment().getActiveProfiles())
+                        .contains(getClass().getSimpleName().toLowerCase()));
+    }
 }

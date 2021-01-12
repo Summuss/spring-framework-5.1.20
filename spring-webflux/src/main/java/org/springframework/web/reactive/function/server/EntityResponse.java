@@ -49,233 +49,248 @@ import org.springframework.web.reactive.function.BodyInserters;
  */
 public interface EntityResponse<T> extends ServerResponse {
 
-	/**
-	 * Return the entity that makes up this response.
-	 */
-	T entity();
+    /** Return the entity that makes up this response. */
+    T entity();
 
-	/**
-	 * Return the {@code BodyInserter} that writes the entity to the output stream.
-	 */
-	BodyInserter<T, ? super ServerHttpResponse> inserter();
+    /** Return the {@code BodyInserter} that writes the entity to the output stream. */
+    BodyInserter<T, ? super ServerHttpResponse> inserter();
 
+    // Static builder methods
 
-	// Static builder methods
+    /**
+     * Create a builder with the given object.
+     *
+     * @param t the object that represents the body of the response
+     * @param <T> the type of the elements contained in the publisher
+     * @return the created builder
+     */
+    static <T> Builder<T> fromObject(T t) {
+        return new DefaultEntityResponseBuilder<>(t, BodyInserters.fromObject(t));
+    }
 
-	/**
-	 * Create a builder with the given object.
-	 * @param t the object that represents the body of the response
-	 * @param <T> the type of the elements contained in the publisher
-	 * @return the created builder
-	 */
-	static <T> Builder<T> fromObject(T t) {
-		return new DefaultEntityResponseBuilder<>(t, BodyInserters.fromObject(t));
-	}
+    /**
+     * Create a builder with the given publisher.
+     *
+     * @param publisher the publisher that represents the body of the response
+     * @param elementClass the class of elements contained in the publisher
+     * @param <T> the type of the elements contained in the publisher
+     * @param <P> the type of the {@code Publisher}
+     * @return the created builder
+     */
+    static <T, P extends Publisher<T>> Builder<P> fromPublisher(
+            P publisher, Class<T> elementClass) {
+        return new DefaultEntityResponseBuilder<>(
+                publisher, BodyInserters.fromPublisher(publisher, elementClass));
+    }
 
-	/**
-	 * Create a builder with the given publisher.
-	 * @param publisher the publisher that represents the body of the response
-	 * @param elementClass the class of elements contained in the publisher
-	 * @param <T> the type of the elements contained in the publisher
-	 * @param <P> the type of the {@code Publisher}
-	 * @return the created builder
-	 */
-	static <T, P extends Publisher<T>> Builder<P> fromPublisher(P publisher, Class<T> elementClass) {
-		return new DefaultEntityResponseBuilder<>(publisher,
-				BodyInserters.fromPublisher(publisher, elementClass));
-	}
+    /**
+     * Create a builder with the given publisher.
+     *
+     * @param publisher the publisher that represents the body of the response
+     * @param typeReference the type of elements contained in the publisher
+     * @param <T> the type of the elements contained in the publisher
+     * @param <P> the type of the {@code Publisher}
+     * @return the created builder
+     */
+    static <T, P extends Publisher<T>> Builder<P> fromPublisher(
+            P publisher, ParameterizedTypeReference<T> typeReference) {
 
-	/**
-	 * Create a builder with the given publisher.
-	 * @param publisher the publisher that represents the body of the response
-	 * @param typeReference the type of elements contained in the publisher
-	 * @param <T> the type of the elements contained in the publisher
-	 * @param <P> the type of the {@code Publisher}
-	 * @return the created builder
-	 */
-	static <T, P extends Publisher<T>> Builder<P> fromPublisher(P publisher,
-			ParameterizedTypeReference<T> typeReference) {
+        return new DefaultEntityResponseBuilder<>(
+                publisher, BodyInserters.fromPublisher(publisher, typeReference));
+    }
 
-		return new DefaultEntityResponseBuilder<>(publisher,
-				BodyInserters.fromPublisher(publisher, typeReference));
-	}
+    /**
+     * Defines a builder for {@code EntityResponse}.
+     *
+     * @param <T> a self reference to the builder type
+     */
+    interface Builder<T> {
 
+        /**
+         * Add the given header value(s) under the given name.
+         *
+         * @param headerName the header name
+         * @param headerValues the header value(s)
+         * @return this builder
+         * @see HttpHeaders#add(String, String)
+         */
+        Builder<T> header(String headerName, String... headerValues);
 
-	/**
-	 * Defines a builder for {@code EntityResponse}.
-	 *
-	 * @param <T> a self reference to the builder type
-	 */
-	interface Builder<T> {
+        /**
+         * Copy the given headers into the entity's headers map.
+         *
+         * @param headers the existing HttpHeaders to copy from
+         * @return this builder
+         * @see HttpHeaders#add(String, String)
+         */
+        Builder<T> headers(HttpHeaders headers);
 
-		/**
-		 * Add the given header value(s) under the given name.
-		 * @param headerName   the header name
-		 * @param headerValues the header value(s)
-		 * @return this builder
-		 * @see HttpHeaders#add(String, String)
-		 */
-		Builder<T> header(String headerName, String... headerValues);
+        /**
+         * Set the HTTP status.
+         *
+         * @param status the response status
+         * @return this builder
+         */
+        Builder<T> status(HttpStatus status);
 
-		/**
-		 * Copy the given headers into the entity's headers map.
-		 * @param headers the existing HttpHeaders to copy from
-		 * @return this builder
-		 * @see HttpHeaders#add(String, String)
-		 */
-		Builder<T> headers(HttpHeaders headers);
+        /**
+         * Set the HTTP status.
+         *
+         * @param status the response status
+         * @return this builder
+         * @since 5.0.3
+         */
+        Builder<T> status(int status);
 
-		/**
-		 * Set the HTTP status.
-		 * @param status the response status
-		 * @return this builder
-		 */
-		Builder<T> status(HttpStatus status);
+        /**
+         * Add the given cookie to the response.
+         *
+         * @param cookie the cookie to add
+         * @return this builder
+         */
+        Builder<T> cookie(ResponseCookie cookie);
 
-		/**
-		 * Set the HTTP status.
-		 * @param status the response status
-		 * @return this builder
-		 * @since 5.0.3
-		 */
-		Builder<T> status(int status);
+        /**
+         * Manipulate this response's cookies with the given consumer. The cookies provided to the
+         * consumer are "live", so that the consumer can be used to {@linkplain
+         * MultiValueMap#set(Object, Object) overwrite} existing cookies, {@linkplain
+         * MultiValueMap#remove(Object) remove} cookies, or use any of the other {@link
+         * MultiValueMap} methods.
+         *
+         * @param cookiesConsumer a function that consumes the cookies
+         * @return this builder
+         */
+        Builder<T> cookies(Consumer<MultiValueMap<String, ResponseCookie>> cookiesConsumer);
 
-		/**
-		 * Add the given cookie to the response.
-		 * @param cookie the cookie to add
-		 * @return this builder
-		 */
-		Builder<T> cookie(ResponseCookie cookie);
+        /**
+         * Set the set of allowed {@link HttpMethod HTTP methods}, as specified by the {@code Allow}
+         * header.
+         *
+         * @param allowedMethods the allowed methods
+         * @return this builder
+         * @see HttpHeaders#setAllow(Set)
+         */
+        Builder<T> allow(HttpMethod... allowedMethods);
 
-		/**
-		 * Manipulate this response's cookies with the given consumer. The
-		 * cookies provided to the consumer are "live", so that the consumer can be used to
-		 * {@linkplain MultiValueMap#set(Object, Object) overwrite} existing cookies,
-		 * {@linkplain MultiValueMap#remove(Object) remove} cookies, or use any of the other
-		 * {@link MultiValueMap} methods.
-		 * @param cookiesConsumer a function that consumes the cookies
-		 * @return this builder
-		 */
-		Builder<T> cookies(Consumer<MultiValueMap<String, ResponseCookie>> cookiesConsumer);
+        /**
+         * Set the set of allowed {@link HttpMethod HTTP methods}, as specified by the {@code Allow}
+         * header.
+         *
+         * @param allowedMethods the allowed methods
+         * @return this builder
+         * @see HttpHeaders#setAllow(Set)
+         */
+        Builder<T> allow(Set<HttpMethod> allowedMethods);
 
-		/**
-		 * Set the set of allowed {@link HttpMethod HTTP methods}, as specified
-		 * by the {@code Allow} header.
-		 * @param allowedMethods the allowed methods
-		 * @return this builder
-		 * @see HttpHeaders#setAllow(Set)
-		 */
-		Builder<T> allow(HttpMethod... allowedMethods);
+        /**
+         * Set the entity tag of the body, as specified by the {@code ETag} header.
+         *
+         * @param etag the new entity tag
+         * @return this builder
+         * @see HttpHeaders#setETag(String)
+         */
+        Builder<T> eTag(String etag);
 
-		/**
-		 * Set the set of allowed {@link HttpMethod HTTP methods}, as specified
-		 * by the {@code Allow} header.
-		 * @param allowedMethods the allowed methods
-		 * @return this builder
-		 * @see HttpHeaders#setAllow(Set)
-		 */
-		Builder<T> allow(Set<HttpMethod> allowedMethods);
+        /**
+         * Set the time the resource was last changed, as specified by the {@code Last-Modified}
+         * header.
+         *
+         * <p>The date should be specified as the number of milliseconds since January 1, 1970 GMT.
+         *
+         * @param lastModified the last modified date
+         * @return this builder
+         * @see HttpHeaders#setLastModified(long)
+         */
+        Builder<T> lastModified(ZonedDateTime lastModified);
 
-		/**
-		 * Set the entity tag of the body, as specified by the {@code ETag} header.
-		 * @param etag the new entity tag
-		 * @return this builder
-		 * @see HttpHeaders#setETag(String)
-		 */
-		Builder<T> eTag(String etag);
+        /**
+         * Set the time the resource was last changed, as specified by the {@code Last-Modified}
+         * header.
+         *
+         * <p>The date should be specified as the number of milliseconds since January 1, 1970 GMT.
+         *
+         * @param lastModified the last modified date
+         * @return this builder
+         * @since 5.1.4
+         * @see HttpHeaders#setLastModified(long)
+         */
+        Builder<T> lastModified(Instant lastModified);
 
-		/**
-		 * Set the time the resource was last changed, as specified by the
-		 * {@code Last-Modified} header.
-		 * <p>The date should be specified as the number of milliseconds since
-		 * January 1, 1970 GMT.
-		 * @param lastModified the last modified date
-		 * @return this builder
-		 * @see HttpHeaders#setLastModified(long)
-		 */
-		Builder<T> lastModified(ZonedDateTime lastModified);
+        /**
+         * Set the location of a resource, as specified by the {@code Location} header.
+         *
+         * @param location the location
+         * @return this builder
+         * @see HttpHeaders#setLocation(URI)
+         */
+        Builder<T> location(URI location);
 
-		/**
-		 * Set the time the resource was last changed, as specified by the
-		 * {@code Last-Modified} header.
-		 * <p>The date should be specified as the number of milliseconds since
-		 * January 1, 1970 GMT.
-		 * @param lastModified the last modified date
-		 * @return this builder
-		 * @since 5.1.4
-		 * @see HttpHeaders#setLastModified(long)
-		 */
-		Builder<T> lastModified(Instant lastModified);
+        /**
+         * Set the caching directives for the resource, as specified by the HTTP 1.1 {@code
+         * Cache-Control} header.
+         *
+         * <p>A {@code CacheControl} instance can be built like {@code
+         * CacheControl.maxAge(3600).cachePublic().noTransform()}.
+         *
+         * @param cacheControl a builder for cache-related HTTP response headers
+         * @return this builder
+         * @see <a href="https://tools.ietf.org/html/rfc7234#section-5.2">RFC-7234 Section 5.2</a>
+         */
+        Builder<T> cacheControl(CacheControl cacheControl);
 
-		/**
-		 * Set the location of a resource, as specified by the {@code Location} header.
-		 * @param location the location
-		 * @return this builder
-		 * @see HttpHeaders#setLocation(URI)
-		 */
-		Builder<T> location(URI location);
+        /**
+         * Configure one or more request header names (e.g. "Accept-Language") to add to the "Vary"
+         * response header to inform clients that the response is subject to content negotiation and
+         * variances based on the value of the given request headers. The configured request header
+         * names are added only if not already present in the response "Vary" header.
+         *
+         * @param requestHeaders request header names
+         * @return this builder
+         */
+        Builder<T> varyBy(String... requestHeaders);
 
-		/**
-		 * Set the caching directives for the resource, as specified by the HTTP 1.1
-		 * {@code Cache-Control} header.
-		 * <p>A {@code CacheControl} instance can be built like
-		 * {@code CacheControl.maxAge(3600).cachePublic().noTransform()}.
-		 * @param cacheControl a builder for cache-related HTTP response headers
-		 * @return this builder
-		 * @see <a href="https://tools.ietf.org/html/rfc7234#section-5.2">RFC-7234 Section 5.2</a>
-		 */
-		Builder<T> cacheControl(CacheControl cacheControl);
+        /**
+         * Set the length of the body in bytes, as specified by the {@code Content-Length} header.
+         *
+         * @param contentLength the content length
+         * @return this builder
+         * @see HttpHeaders#setContentLength(long)
+         */
+        Builder<T> contentLength(long contentLength);
 
-		/**
-		 * Configure one or more request header names (e.g. "Accept-Language") to
-		 * add to the "Vary" response header to inform clients that the response is
-		 * subject to content negotiation and variances based on the value of the
-		 * given request headers. The configured request header names are added only
-		 * if not already present in the response "Vary" header.
-		 * @param requestHeaders request header names
-		 * @return this builder
-		 */
-		Builder<T> varyBy(String... requestHeaders);
+        /**
+         * Set the {@linkplain MediaType media type} of the body, as specified by the {@code
+         * Content-Type} header.
+         *
+         * @param contentType the content type
+         * @return this builder
+         * @see HttpHeaders#setContentType(MediaType)
+         */
+        Builder<T> contentType(MediaType contentType);
 
-		/**
-		 * Set the length of the body in bytes, as specified by the
-		 * {@code Content-Length} header.
-		 * @param contentLength the content length
-		 * @return this builder
-		 * @see HttpHeaders#setContentLength(long)
-		 */
-		Builder<T> contentLength(long contentLength);
+        /**
+         * Add a serialization hint like {@link Jackson2CodecSupport#JSON_VIEW_HINT} to customize
+         * how the body will be serialized.
+         *
+         * @param key the hint key
+         * @param value the hint value
+         */
+        Builder<T> hint(String key, Object value);
 
-		/**
-		 * Set the {@linkplain MediaType media type} of the body, as specified by the
-		 * {@code Content-Type} header.
-		 * @param contentType the content type
-		 * @return this builder
-		 * @see HttpHeaders#setContentType(MediaType)
-		 */
-		Builder<T> contentType(MediaType contentType);
+        /**
+         * Customize the serialization hints with the given consumer.
+         *
+         * @param hintsConsumer a function that consumes the hints
+         * @return this builder
+         * @since 5.1.6
+         */
+        Builder<T> hints(Consumer<Map<String, Object>> hintsConsumer);
 
-		/**
-		 * Add a serialization hint like {@link Jackson2CodecSupport#JSON_VIEW_HINT} to
-		 * customize how the body will be serialized.
-		 * @param key the hint key
-		 * @param value the hint value
-		 */
-		Builder<T> hint(String key, Object value);
-
-		/**
-		 * Customize the serialization hints with the given consumer.
-		 * @param hintsConsumer a function that consumes the hints
-		 * @return this builder
-		 * @since 5.1.6
-		 */
-		Builder<T> hints(Consumer<Map<String, Object>> hintsConsumer);
-
-		/**
-		 * Build the response.
-		 * @return the built response
-		 */
-		Mono<EntityResponse<T>> build();
-	}
-
+        /**
+         * Build the response.
+         *
+         * @return the built response
+         */
+        Mono<EntityResponse<T>> build();
+    }
 }

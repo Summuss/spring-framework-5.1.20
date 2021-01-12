@@ -26,5 +26,4 @@ import org.springframework.core.type.Scope;
  */
 @Scope("None")
 @Qualifier("None")
-public class SampleNone {
-}
+public class SampleNone {}

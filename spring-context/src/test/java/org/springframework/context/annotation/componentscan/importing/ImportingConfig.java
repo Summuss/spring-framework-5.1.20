@@ -22,5 +22,4 @@ import org.springframework.context.annotation.Import;
 
 @Configuration
 @Import(ComponentScanAndImportAnnotationInteractionTests.ImportedConfig.class)
-public class ImportingConfig {
-}
+public class ImportingConfig {}

@@ -36,24 +36,23 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.*;
  */
 public class ResponseBodyTests {
 
-	@Test
-	public void json() throws Exception {
-		standaloneSetup(new PersonController()).build()
-				.perform(get("/person/Lee").accept(MediaType.APPLICATION_JSON))
-				.andExpect(status().isOk())
-				.andExpect(content().contentType("application/json;charset=UTF-8"))
-				.andExpect(jsonPath("$.name").value("Lee"));
-	}
+    @Test
+    public void json() throws Exception {
+        standaloneSetup(new PersonController())
+                .build()
+                .perform(get("/person/Lee").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("application/json;charset=UTF-8"))
+                .andExpect(jsonPath("$.name").value("Lee"));
+    }
 
+    @Controller
+    private class PersonController {
 
-	@Controller
-	private class PersonController {
-
-		@RequestMapping(value="/person/{name}")
-		@ResponseBody
-		public Person get(@PathVariable String name) {
-			return new Person(name);
-		}
-	}
-
+        @RequestMapping(value = "/person/{name}")
+        @ResponseBody
+        public Person get(@PathVariable String name) {
+            return new Person(name);
+        }
+    }
 }

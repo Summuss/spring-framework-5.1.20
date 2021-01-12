@@ -28,9 +28,8 @@ import org.springframework.core.convert.converter.Converter;
  */
 class StringToCurrencyConverter implements Converter<String, Currency> {
 
-	@Override
-	public Currency convert(String source) {
-		return Currency.getInstance(source);
-	}
-
+    @Override
+    public Currency convert(String source) {
+        return Currency.getInstance(source);
+    }
 }

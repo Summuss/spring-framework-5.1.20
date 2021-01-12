@@ -16,34 +16,31 @@
 
 package org.springframework.context.support;
 
-/**
- * @author Alef Arendsen
- */
+/** @author Alef Arendsen */
 public class Assembler implements TestIF {
 
-	@SuppressWarnings("unused")
-	private Service service;
-	private Logic l;
-	private String name;
+    @SuppressWarnings("unused")
+    private Service service;
 
-	public void setService(Service service) {
-		this.service = service;
-	}
+    private Logic l;
+    private String name;
 
-	public void setLogic(Logic l) {
-		this.l = l;
-	}
+    public void setService(Service service) {
+        this.service = service;
+    }
 
-	public void setBeanName(String name) {
-		this.name = name;
-	}
+    public void setLogic(Logic l) {
+        this.l = l;
+    }
 
-	public void test() {
-	}
+    public void setBeanName(String name) {
+        this.name = name;
+    }
 
-	public void output() {
-		System.out.println("Bean " + name);
-		l.output();
-	}
+    public void test() {}
 
+    public void output() {
+        System.out.println("Bean " + name);
+        l.output();
+    }
 }

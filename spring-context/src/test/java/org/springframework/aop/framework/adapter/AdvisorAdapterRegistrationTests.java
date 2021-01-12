@@ -41,103 +41,95 @@ import static org.junit.Assert.*;
  */
 public class AdvisorAdapterRegistrationTests {
 
-	@Before
-	@After
-	public void resetGlobalAdvisorAdapterRegistry() {
-		GlobalAdvisorAdapterRegistry.reset();
-	}
+    @Before
+    @After
+    public void resetGlobalAdvisorAdapterRegistry() {
+        GlobalAdvisorAdapterRegistry.reset();
+    }
 
-	@Test
-	public void testAdvisorAdapterRegistrationManagerNotPresentInContext() {
-		ClassPathXmlApplicationContext ctx =
-			new ClassPathXmlApplicationContext(getClass().getSimpleName() + "-without-bpp.xml", getClass());
-		ITestBean tb = (ITestBean) ctx.getBean("testBean");
-		// just invoke any method to see if advice fired
-		try {
-			tb.getName();
-			fail("Should throw UnknownAdviceTypeException");
-		}
-		catch (UnknownAdviceTypeException ex) {
-			// expected
-			assertEquals(0, getAdviceImpl(tb).getInvocationCounter());
-		}
-	}
+    @Test
+    public void testAdvisorAdapterRegistrationManagerNotPresentInContext() {
+        ClassPathXmlApplicationContext ctx =
+                new ClassPathXmlApplicationContext(
+                        getClass().getSimpleName() + "-without-bpp.xml", getClass());
+        ITestBean tb = (ITestBean) ctx.getBean("testBean");
+        // just invoke any method to see if advice fired
+        try {
+            tb.getName();
+            fail("Should throw UnknownAdviceTypeException");
+        } catch (UnknownAdviceTypeException ex) {
+            // expected
+            assertEquals(0, getAdviceImpl(tb).getInvocationCounter());
+        }
+    }
 
-	@Test
-	public void testAdvisorAdapterRegistrationManagerPresentInContext() {
-		ClassPathXmlApplicationContext ctx =
-			new ClassPathXmlApplicationContext(getClass().getSimpleName() + "-with-bpp.xml", getClass());
-		ITestBean tb = (ITestBean) ctx.getBean("testBean");
-		// just invoke any method to see if advice fired
-		try {
-			tb.getName();
-			assertEquals(1, getAdviceImpl(tb).getInvocationCounter());
-		}
-		catch (UnknownAdviceTypeException ex) {
-			fail("Should not throw UnknownAdviceTypeException");
-		}
-	}
+    @Test
+    public void testAdvisorAdapterRegistrationManagerPresentInContext() {
+        ClassPathXmlApplicationContext ctx =
+                new ClassPathXmlApplicationContext(
+                        getClass().getSimpleName() + "-with-bpp.xml", getClass());
+        ITestBean tb = (ITestBean) ctx.getBean("testBean");
+        // just invoke any method to see if advice fired
+        try {
+            tb.getName();
+            assertEquals(1, getAdviceImpl(tb).getInvocationCounter());
+        } catch (UnknownAdviceTypeException ex) {
+            fail("Should not throw UnknownAdviceTypeException");
+        }
+    }
 
-	private SimpleBeforeAdviceImpl getAdviceImpl(ITestBean tb) {
-		Advised advised = (Advised) tb;
-		Advisor advisor = advised.getAdvisors()[0];
-		return (SimpleBeforeAdviceImpl) advisor.getAdvice();
-	}
-
+    private SimpleBeforeAdviceImpl getAdviceImpl(ITestBean tb) {
+        Advised advised = (Advised) tb;
+        Advisor advisor = advised.getAdvisors()[0];
+        return (SimpleBeforeAdviceImpl) advisor.getAdvice();
+    }
 }
-
 
 interface SimpleBeforeAdvice extends BeforeAdvice {
 
-	void before() throws Throwable;
-
+    void before() throws Throwable;
 }
-
 
 @SuppressWarnings("serial")
 class SimpleBeforeAdviceAdapter implements AdvisorAdapter, Serializable {
 
-	@Override
-	public boolean supportsAdvice(Advice advice) {
-		return (advice instanceof SimpleBeforeAdvice);
-	}
+    @Override
+    public boolean supportsAdvice(Advice advice) {
+        return (advice instanceof SimpleBeforeAdvice);
+    }
 
-	@Override
-	public MethodInterceptor getInterceptor(Advisor advisor) {
-		SimpleBeforeAdvice advice = (SimpleBeforeAdvice) advisor.getAdvice();
-		return new SimpleBeforeAdviceInterceptor(advice) ;
-	}
-
+    @Override
+    public MethodInterceptor getInterceptor(Advisor advisor) {
+        SimpleBeforeAdvice advice = (SimpleBeforeAdvice) advisor.getAdvice();
+        return new SimpleBeforeAdviceInterceptor(advice);
+    }
 }
-
 
 class SimpleBeforeAdviceImpl implements SimpleBeforeAdvice {
 
-	private int invocationCounter;
+    private int invocationCounter;
 
-	@Override
-	public void before() throws Throwable {
-		++invocationCounter;
-	}
+    @Override
+    public void before() throws Throwable {
+        ++invocationCounter;
+    }
 
-	public int getInvocationCounter() {
-		return invocationCounter;
-	}
-
+    public int getInvocationCounter() {
+        return invocationCounter;
+    }
 }
-
 
 final class SimpleBeforeAdviceInterceptor implements MethodInterceptor {
 
-	private SimpleBeforeAdvice advice;
+    private SimpleBeforeAdvice advice;
 
-	public SimpleBeforeAdviceInterceptor(SimpleBeforeAdvice advice) {
-		this.advice = advice;
-	}
+    public SimpleBeforeAdviceInterceptor(SimpleBeforeAdvice advice) {
+        this.advice = advice;
+    }
 
-	@Override
-	public Object invoke(MethodInvocation mi) throws Throwable {
-		advice.before();
-		return mi.proceed();
-	}
+    @Override
+    public Object invoke(MethodInvocation mi) throws Throwable {
+        advice.before();
+        return mi.proceed();
+    }
 }

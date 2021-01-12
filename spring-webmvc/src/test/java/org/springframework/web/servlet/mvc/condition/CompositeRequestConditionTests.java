@@ -33,108 +33,110 @@ import static org.junit.Assert.*;
  */
 public class CompositeRequestConditionTests {
 
-	private ParamsRequestCondition param1;
-	private ParamsRequestCondition param2;
-	private ParamsRequestCondition param3;
+    private ParamsRequestCondition param1;
+    private ParamsRequestCondition param2;
+    private ParamsRequestCondition param3;
 
-	private HeadersRequestCondition header1;
-	private HeadersRequestCondition header2;
-	private HeadersRequestCondition header3;
+    private HeadersRequestCondition header1;
+    private HeadersRequestCondition header2;
+    private HeadersRequestCondition header3;
 
-	@Before
-	public void setup() {
-		this.param1 = new ParamsRequestCondition("param1");
-		this.param2 = new ParamsRequestCondition("param2");
-		this.param3 = this.param1.combine(this.param2);
+    @Before
+    public void setup() {
+        this.param1 = new ParamsRequestCondition("param1");
+        this.param2 = new ParamsRequestCondition("param2");
+        this.param3 = this.param1.combine(this.param2);
 
-		this.header1 = new HeadersRequestCondition("header1");
-		this.header2 = new HeadersRequestCondition("header2");
-		this.header3 = this.header1.combine(this.header2);
-	}
+        this.header1 = new HeadersRequestCondition("header1");
+        this.header2 = new HeadersRequestCondition("header2");
+        this.header3 = this.header1.combine(this.header2);
+    }
 
-	@Test
-	public void combine() {
-		CompositeRequestCondition cond1 = new CompositeRequestCondition(this.param1, this.header1);
-		CompositeRequestCondition cond2 = new CompositeRequestCondition(this.param2, this.header2);
-		CompositeRequestCondition cond3 = new CompositeRequestCondition(this.param3, this.header3);
+    @Test
+    public void combine() {
+        CompositeRequestCondition cond1 = new CompositeRequestCondition(this.param1, this.header1);
+        CompositeRequestCondition cond2 = new CompositeRequestCondition(this.param2, this.header2);
+        CompositeRequestCondition cond3 = new CompositeRequestCondition(this.param3, this.header3);
 
-		assertEquals(cond3, cond1.combine(cond2));
-	}
+        assertEquals(cond3, cond1.combine(cond2));
+    }
 
-	@Test
-	public void combineEmpty() {
-		CompositeRequestCondition empty = new CompositeRequestCondition();
-		CompositeRequestCondition notEmpty = new CompositeRequestCondition(this.param1);
+    @Test
+    public void combineEmpty() {
+        CompositeRequestCondition empty = new CompositeRequestCondition();
+        CompositeRequestCondition notEmpty = new CompositeRequestCondition(this.param1);
 
-		assertSame(empty, empty.combine(empty));
-		assertSame(notEmpty, notEmpty.combine(empty));
-		assertSame(notEmpty, empty.combine(notEmpty));
-	}
+        assertSame(empty, empty.combine(empty));
+        assertSame(notEmpty, notEmpty.combine(empty));
+        assertSame(notEmpty, empty.combine(notEmpty));
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void combineDifferentLength() {
-		CompositeRequestCondition cond1 = new CompositeRequestCondition(this.param1);
-		CompositeRequestCondition cond2 = new CompositeRequestCondition(this.param1, this.header1);
-		cond1.combine(cond2);
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void combineDifferentLength() {
+        CompositeRequestCondition cond1 = new CompositeRequestCondition(this.param1);
+        CompositeRequestCondition cond2 = new CompositeRequestCondition(this.param1, this.header1);
+        cond1.combine(cond2);
+    }
 
-	@Test
-	public void match() {
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/");
-		request.setParameter("param1", "paramValue1");
-		request.addHeader("header1", "headerValue1");
+    @Test
+    public void match() {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/");
+        request.setParameter("param1", "paramValue1");
+        request.addHeader("header1", "headerValue1");
 
-		RequestCondition<?> getPostCond = new RequestMethodsRequestCondition(RequestMethod.GET, RequestMethod.POST);
-		RequestCondition<?> getCond = new RequestMethodsRequestCondition(RequestMethod.GET);
+        RequestCondition<?> getPostCond =
+                new RequestMethodsRequestCondition(RequestMethod.GET, RequestMethod.POST);
+        RequestCondition<?> getCond = new RequestMethodsRequestCondition(RequestMethod.GET);
 
-		CompositeRequestCondition condition = new CompositeRequestCondition(this.param1, getPostCond);
-		CompositeRequestCondition matchingCondition = new CompositeRequestCondition(this.param1, getCond);
+        CompositeRequestCondition condition =
+                new CompositeRequestCondition(this.param1, getPostCond);
+        CompositeRequestCondition matchingCondition =
+                new CompositeRequestCondition(this.param1, getCond);
 
-		assertEquals(matchingCondition, condition.getMatchingCondition(request));
-	}
+        assertEquals(matchingCondition, condition.getMatchingCondition(request));
+    }
 
-	@Test
-	public void noMatch() {
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/");
-		CompositeRequestCondition cond = new CompositeRequestCondition(this.param1);
+    @Test
+    public void noMatch() {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/");
+        CompositeRequestCondition cond = new CompositeRequestCondition(this.param1);
 
-		assertNull(cond.getMatchingCondition(request));
-	}
+        assertNull(cond.getMatchingCondition(request));
+    }
 
-	@Test
-	public void matchEmpty() {
-		CompositeRequestCondition empty = new CompositeRequestCondition();
-		assertSame(empty, empty.getMatchingCondition(new MockHttpServletRequest()));
-	}
+    @Test
+    public void matchEmpty() {
+        CompositeRequestCondition empty = new CompositeRequestCondition();
+        assertSame(empty, empty.getMatchingCondition(new MockHttpServletRequest()));
+    }
 
-	@Test
-	public void compare() {
-		HttpServletRequest request = new MockHttpServletRequest();
+    @Test
+    public void compare() {
+        HttpServletRequest request = new MockHttpServletRequest();
 
-		CompositeRequestCondition cond1 = new CompositeRequestCondition(this.param1);
-		CompositeRequestCondition cond3 = new CompositeRequestCondition(this.param3);
+        CompositeRequestCondition cond1 = new CompositeRequestCondition(this.param1);
+        CompositeRequestCondition cond3 = new CompositeRequestCondition(this.param3);
 
-		assertEquals(1, cond1.compareTo(cond3, request));
-		assertEquals(-1, cond3.compareTo(cond1, request));
-	}
+        assertEquals(1, cond1.compareTo(cond3, request));
+        assertEquals(-1, cond3.compareTo(cond1, request));
+    }
 
-	@Test
-	public void compareEmpty() {
-		HttpServletRequest request = new MockHttpServletRequest();
+    @Test
+    public void compareEmpty() {
+        HttpServletRequest request = new MockHttpServletRequest();
 
-		CompositeRequestCondition empty = new CompositeRequestCondition();
-		CompositeRequestCondition notEmpty = new CompositeRequestCondition(this.param1);
+        CompositeRequestCondition empty = new CompositeRequestCondition();
+        CompositeRequestCondition notEmpty = new CompositeRequestCondition(this.param1);
 
-		assertEquals(0, empty.compareTo(empty, request));
-		assertEquals(-1, notEmpty.compareTo(empty, request));
-		assertEquals(1, empty.compareTo(notEmpty, request));
-	}
+        assertEquals(0, empty.compareTo(empty, request));
+        assertEquals(-1, notEmpty.compareTo(empty, request));
+        assertEquals(1, empty.compareTo(notEmpty, request));
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void compareDifferentLength() {
-		CompositeRequestCondition cond1 = new CompositeRequestCondition(this.param1);
-		CompositeRequestCondition cond2 = new CompositeRequestCondition(this.param1, this.header1);
-		cond1.compareTo(cond2, new MockHttpServletRequest());
-	}
-
+    @Test(expected = IllegalArgumentException.class)
+    public void compareDifferentLength() {
+        CompositeRequestCondition cond1 = new CompositeRequestCondition(this.param1);
+        CompositeRequestCondition cond2 = new CompositeRequestCondition(this.param1, this.header1);
+        cond1.compareTo(cond2, new MockHttpServletRequest());
+    }
 }

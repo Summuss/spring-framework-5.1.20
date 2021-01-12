@@ -26,13 +26,13 @@ import java.lang.annotation.Target;
 /**
  * Container annotation that aggregates several {@link Sql @Sql} annotations.
  *
- * <p>Can be used natively, declaring several nested {@code @Sql} annotations.
- * Can also be used in conjunction with Java 8's support for repeatable
- * annotations, where {@code @Sql} can simply be declared several times on the
- * same class or method, implicitly generating this container annotation.
+ * <p>Can be used natively, declaring several nested {@code @Sql} annotations. Can also be used in
+ * conjunction with Java 8's support for repeatable annotations, where {@code @Sql} can simply be
+ * declared several times on the same class or method, implicitly generating this container
+ * annotation.
  *
- * <p>This annotation may be used as a <em>meta-annotation</em> to create custom
- * <em>composed annotations</em>.
+ * <p>This annotation may be used as a <em>meta-annotation</em> to create custom <em>composed
+ * annotations</em>.
  *
  * @author Sam Brannen
  * @since 4.1
@@ -44,6 +44,5 @@ import java.lang.annotation.Target;
 @Inherited
 public @interface SqlGroup {
 
-	Sql[] value();
-
+    Sql[] value();
 }

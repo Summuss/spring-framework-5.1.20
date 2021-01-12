@@ -36,49 +36,45 @@ import static org.junit.Assert.*;
 @ContextConfiguration
 public class ExpressionUsageTests {
 
-	@Autowired
-	@Qualifier("derived")
-	private Properties props;
+    @Autowired
+    @Qualifier("derived")
+    private Properties props;
 
-	@Autowired
-	@Qualifier("andy2")
-	private Foo andy2;
+    @Autowired
+    @Qualifier("andy2")
+    private Foo andy2;
 
-	@Autowired
-	@Qualifier("andy")
-	private Foo andy;
+    @Autowired
+    @Qualifier("andy")
+    private Foo andy;
 
+    @Test
+    public void testSpr5906() throws Exception {
+        // verify the property values have been evaluated as expressions
+        assertEquals("Dave", props.getProperty("user.name"));
+        assertEquals("Andy", props.getProperty("username"));
 
-	@Test
-	public void testSpr5906() throws Exception {
-		// verify the property values have been evaluated as expressions
-		assertEquals("Dave", props.getProperty("user.name"));
-		assertEquals("Andy", props.getProperty("username"));
+        // verify the property keys have been evaluated as expressions
+        assertEquals("exists", props.getProperty("Dave"));
+        assertEquals("exists also", props.getProperty("Andy"));
+    }
 
-		// verify the property keys have been evaluated as expressions
-		assertEquals("exists", props.getProperty("Dave"));
-		assertEquals("exists also", props.getProperty("Andy"));
-	}
+    @Test
+    public void testSpr5847() throws Exception {
+        assertEquals("Andy", andy2.getName());
+        assertEquals("Andy", andy.getName());
+    }
 
-	@Test
-	public void testSpr5847() throws Exception {
-		assertEquals("Andy", andy2.getName());
-		assertEquals("Andy", andy.getName());
-	}
+    public static class Foo {
 
+        private String name;
 
-	public static class Foo {
+        public String getName() {
+            return name;
+        }
 
-		private String name;
-
-
-		public String getName() {
-			return name;
-		}
-
-		public void setName(String name) {
-			this.name = name;
-		}
-	}
-
+        public void setName(String name) {
+            this.name = name;
+        }
+    }
 }

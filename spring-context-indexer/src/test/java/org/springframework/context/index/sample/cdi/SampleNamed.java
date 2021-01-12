@@ -24,5 +24,4 @@ import javax.inject.Named;
  * @author Stephane Nicoll
  */
 @Named
-public class SampleNamed {
-}
+public class SampleNamed {}

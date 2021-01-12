@@ -35,20 +35,20 @@ import org.springframework.web.reactive.function.server.bodyToMono
 @RunWith(MockitoJUnitRunner::class)
 class ServerRequestExtensionsTests {
 
-	@Mock(answer = Answers.RETURNS_MOCKS)
-	lateinit var request: ServerRequest
+    @Mock(answer = Answers.RETURNS_MOCKS)
+    lateinit var request: ServerRequest
 
-	@Test
-	fun `bodyToMono with reified type parameters`() {
-		request.bodyToMono<List<Foo>>()
-		verify(request, times(1)).bodyToMono(object : ParameterizedTypeReference<List<Foo>>() {})
-	}
+    @Test
+    fun `bodyToMono with reified type parameters`() {
+        request.bodyToMono<List<Foo>>()
+        verify(request, times(1)).bodyToMono(object : ParameterizedTypeReference<List<Foo>>() {})
+    }
 
-	@Test
-	fun `bodyToFlux with reified type parameters`() {
-		request.bodyToFlux<List<Foo>>()
-		verify(request, times(1)).bodyToFlux(object : ParameterizedTypeReference<List<Foo>>() {})
-	}
+    @Test
+    fun `bodyToFlux with reified type parameters`() {
+        request.bodyToFlux<List<Foo>>()
+        verify(request, times(1)).bodyToFlux(object : ParameterizedTypeReference<List<Foo>>() {})
+    }
 
-	class Foo
+    class Foo
 }

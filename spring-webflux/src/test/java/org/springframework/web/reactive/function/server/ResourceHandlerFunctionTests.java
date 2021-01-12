@@ -45,114 +45,131 @@ import static org.junit.Assert.*;
  */
 public class ResourceHandlerFunctionTests {
 
-	private final Resource resource = new ClassPathResource("response.txt", getClass());
+    private final Resource resource = new ClassPathResource("response.txt", getClass());
 
-	private final ResourceHandlerFunction handlerFunction = new ResourceHandlerFunction(this.resource);
+    private final ResourceHandlerFunction handlerFunction =
+            new ResourceHandlerFunction(this.resource);
 
-	private ServerResponse.Context context;
+    private ServerResponse.Context context;
 
+    @Before
+    public void createContext() {
+        HandlerStrategies strategies = HandlerStrategies.withDefaults();
+        context =
+                new ServerResponse.Context() {
+                    @Override
+                    public List<HttpMessageWriter<?>> messageWriters() {
+                        return strategies.messageWriters();
+                    }
 
-	@Before
-	public void createContext() {
-		HandlerStrategies strategies = HandlerStrategies.withDefaults();
-		context = new ServerResponse.Context() {
-			@Override
-			public List<HttpMessageWriter<?>> messageWriters() {
-				return strategies.messageWriters();
-			}
-			@Override
-			public List<ViewResolver> viewResolvers() {
-				return strategies.viewResolvers();
-			}
-		};
-	}
+                    @Override
+                    public List<ViewResolver> viewResolvers() {
+                        return strategies.viewResolvers();
+                    }
+                };
+    }
 
+    @Test
+    public void get() throws IOException {
+        MockServerWebExchange exchange =
+                MockServerWebExchange.from(MockServerHttpRequest.get("http://localhost"));
+        MockServerHttpResponse mockResponse = exchange.getResponse();
 
-	@Test
-	public void get() throws IOException {
-		MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("http://localhost"));
-		MockServerHttpResponse mockResponse = exchange.getResponse();
+        ServerRequest request =
+                new DefaultServerRequest(
+                        exchange, HandlerStrategies.withDefaults().messageReaders());
 
-		ServerRequest request = new DefaultServerRequest(exchange, HandlerStrategies.withDefaults().messageReaders());
+        Mono<ServerResponse> responseMono = this.handlerFunction.handle(request);
 
-		Mono<ServerResponse> responseMono = this.handlerFunction.handle(request);
+        Mono<Void> result =
+                responseMono.flatMap(
+                        response -> {
+                            assertEquals(HttpStatus.OK, response.statusCode());
+                            assertTrue(response instanceof EntityResponse);
+                            @SuppressWarnings("unchecked")
+                            EntityResponse<Resource> entityResponse =
+                                    (EntityResponse<Resource>) response;
+                            assertEquals(this.resource, entityResponse.entity());
+                            return response.writeTo(exchange, context);
+                        });
 
-		Mono<Void> result = responseMono.flatMap(response -> {
-					assertEquals(HttpStatus.OK, response.statusCode());
-					assertTrue(response instanceof EntityResponse);
-					@SuppressWarnings("unchecked")
-					EntityResponse<Resource> entityResponse = (EntityResponse<Resource>) response;
-					assertEquals(this.resource, entityResponse.entity());
-					return response.writeTo(exchange, context);
-				});
+        StepVerifier.create(result).expectComplete().verify();
 
-		StepVerifier.create(result)
-				.expectComplete()
-				.verify();
+        byte[] expectedBytes = Files.readAllBytes(this.resource.getFile().toPath());
 
-		byte[] expectedBytes = Files.readAllBytes(this.resource.getFile().toPath());
+        StepVerifier.create(mockResponse.getBody())
+                .consumeNextWith(
+                        dataBuffer -> {
+                            byte[] resultBytes = new byte[dataBuffer.readableByteCount()];
+                            dataBuffer.read(resultBytes);
+                            assertArrayEquals(expectedBytes, resultBytes);
+                        })
+                .expectComplete()
+                .verify();
+        assertEquals(MediaType.TEXT_PLAIN, mockResponse.getHeaders().getContentType());
+        assertEquals(this.resource.contentLength(), mockResponse.getHeaders().getContentLength());
+    }
 
-		StepVerifier.create(mockResponse.getBody())
-				.consumeNextWith(dataBuffer -> {
-					byte[] resultBytes = new byte[dataBuffer.readableByteCount()];
-					dataBuffer.read(resultBytes);
-					assertArrayEquals(expectedBytes, resultBytes);
-				})
-				.expectComplete()
-				.verify();
-		assertEquals(MediaType.TEXT_PLAIN, mockResponse.getHeaders().getContentType());
-		assertEquals(this.resource.contentLength(), mockResponse.getHeaders().getContentLength());
-	}
+    @Test
+    public void head() throws IOException {
+        MockServerWebExchange exchange =
+                MockServerWebExchange.from(MockServerHttpRequest.head("http://localhost"));
+        MockServerHttpResponse mockResponse = exchange.getResponse();
 
-	@Test
-	public void head() throws IOException {
-		MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.head("http://localhost"));
-		MockServerHttpResponse mockResponse = exchange.getResponse();
+        ServerRequest request =
+                new DefaultServerRequest(
+                        exchange, HandlerStrategies.withDefaults().messageReaders());
 
-		ServerRequest request = new DefaultServerRequest(exchange, HandlerStrategies.withDefaults().messageReaders());
+        Mono<ServerResponse> responseMono = this.handlerFunction.handle(request);
 
-		Mono<ServerResponse> responseMono = this.handlerFunction.handle(request);
+        Mono<Void> result =
+                responseMono.flatMap(
+                        response -> {
+                            assertEquals(HttpStatus.OK, response.statusCode());
+                            assertTrue(response instanceof EntityResponse);
+                            @SuppressWarnings("unchecked")
+                            EntityResponse<Resource> entityResponse =
+                                    (EntityResponse<Resource>) response;
+                            assertEquals(
+                                    this.resource.getFilename(),
+                                    entityResponse.entity().getFilename());
+                            return response.writeTo(exchange, context);
+                        });
 
-		Mono<Void> result = responseMono.flatMap(response -> {
-			assertEquals(HttpStatus.OK, response.statusCode());
-			assertTrue(response instanceof EntityResponse);
-			@SuppressWarnings("unchecked")
-			EntityResponse<Resource> entityResponse = (EntityResponse<Resource>) response;
-			assertEquals(this.resource.getFilename(), entityResponse.entity().getFilename());
-			return response.writeTo(exchange, context);
-		});
+        StepVerifier.create(result).expectComplete().verify();
+        StepVerifier.create(mockResponse.getBody()).expectComplete().verify();
 
-		StepVerifier.create(result).expectComplete().verify();
-		StepVerifier.create(mockResponse.getBody()).expectComplete().verify();
+        assertEquals(MediaType.TEXT_PLAIN, mockResponse.getHeaders().getContentType());
+        assertEquals(this.resource.contentLength(), mockResponse.getHeaders().getContentLength());
+    }
 
-		assertEquals(MediaType.TEXT_PLAIN, mockResponse.getHeaders().getContentType());
-		assertEquals(this.resource.contentLength(), mockResponse.getHeaders().getContentLength());
-	}
+    @Test
+    public void options() {
+        MockServerWebExchange exchange =
+                MockServerWebExchange.from(MockServerHttpRequest.options("http://localhost"));
+        MockServerHttpResponse mockResponse = exchange.getResponse();
 
-	@Test
-	public void options() {
-		MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.options("http://localhost"));
-		MockServerHttpResponse mockResponse = exchange.getResponse();
+        ServerRequest request =
+                new DefaultServerRequest(
+                        exchange, HandlerStrategies.withDefaults().messageReaders());
 
-		ServerRequest request = new DefaultServerRequest(exchange, HandlerStrategies.withDefaults().messageReaders());
+        Mono<ServerResponse> responseMono = this.handlerFunction.handle(request);
+        Mono<Void> result =
+                responseMono.flatMap(
+                        response -> {
+                            assertEquals(HttpStatus.OK, response.statusCode());
+                            assertEquals(
+                                    EnumSet.of(HttpMethod.GET, HttpMethod.HEAD, HttpMethod.OPTIONS),
+                                    response.headers().getAllow());
+                            return response.writeTo(exchange, context);
+                        });
 
-		Mono<ServerResponse> responseMono = this.handlerFunction.handle(request);
-		Mono<Void> result = responseMono.flatMap(response -> {
-			assertEquals(HttpStatus.OK, response.statusCode());
-			assertEquals(EnumSet.of(HttpMethod.GET, HttpMethod.HEAD, HttpMethod.OPTIONS),
-					response.headers().getAllow());
-			return response.writeTo(exchange, context);
-		});
+        StepVerifier.create(result).expectComplete().verify();
+        assertEquals(HttpStatus.OK, mockResponse.getStatusCode());
+        assertEquals(
+                EnumSet.of(HttpMethod.GET, HttpMethod.HEAD, HttpMethod.OPTIONS),
+                mockResponse.getHeaders().getAllow());
 
-
-		StepVerifier.create(result)
-				.expectComplete()
-				.verify();
-		assertEquals(HttpStatus.OK, mockResponse.getStatusCode());
-		assertEquals(EnumSet.of(HttpMethod.GET, HttpMethod.HEAD, HttpMethod.OPTIONS),
-				mockResponse.getHeaders().getAllow());
-
-		StepVerifier.create(mockResponse.getBody()).expectComplete().verify();
-	}
-
+        StepVerifier.create(mockResponse.getBody()).expectComplete().verify();
+    }
 }

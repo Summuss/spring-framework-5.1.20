@@ -29,11 +29,11 @@ import reactor.core.publisher.Mono;
 @FunctionalInterface
 public interface HandlerFunction<T extends ServerResponse> {
 
-	/**
-	 * Handle the given request.
-	 * @param request the request to handle
-	 * @return the response
-	 */
-	Mono<T> handle(ServerRequest request);
-
+    /**
+     * Handle the given request.
+     *
+     * @param request the request to handle
+     * @return the response
+     */
+    Mono<T> handle(ServerRequest request);
 }

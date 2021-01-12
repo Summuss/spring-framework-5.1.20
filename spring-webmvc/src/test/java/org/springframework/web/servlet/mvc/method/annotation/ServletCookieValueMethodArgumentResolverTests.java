@@ -40,49 +40,46 @@ import static org.junit.Assert.*;
  */
 public class ServletCookieValueMethodArgumentResolverTests {
 
-	private ServletCookieValueMethodArgumentResolver resolver;
+    private ServletCookieValueMethodArgumentResolver resolver;
 
-	private MockHttpServletRequest request;
+    private MockHttpServletRequest request;
 
-	private ServletWebRequest webRequest;
+    private ServletWebRequest webRequest;
 
-	private MethodParameter cookieParameter;
-	private MethodParameter cookieStringParameter;
+    private MethodParameter cookieParameter;
+    private MethodParameter cookieStringParameter;
 
+    @Before
+    public void setup() throws Exception {
+        resolver = new ServletCookieValueMethodArgumentResolver(null);
+        request = new MockHttpServletRequest();
+        webRequest = new ServletWebRequest(request, new MockHttpServletResponse());
 
-	@Before
-	public void setup() throws Exception {
-		resolver = new ServletCookieValueMethodArgumentResolver(null);
-		request = new MockHttpServletRequest();
-		webRequest = new ServletWebRequest(request, new MockHttpServletResponse());
+        Method method = getClass().getMethod("params", Cookie.class, String.class);
+        cookieParameter = new SynthesizingMethodParameter(method, 0);
+        cookieStringParameter = new SynthesizingMethodParameter(method, 1);
+    }
 
-		Method method = getClass().getMethod("params", Cookie.class, String.class);
-		cookieParameter = new SynthesizingMethodParameter(method, 0);
-		cookieStringParameter = new SynthesizingMethodParameter(method, 1);
-	}
+    @Test
+    public void resolveCookieArgument() throws Exception {
+        Cookie expected = new Cookie("name", "foo");
+        request.setCookies(expected);
 
+        Cookie result = (Cookie) resolver.resolveArgument(cookieParameter, null, webRequest, null);
+        assertEquals("Invalid result", expected, result);
+    }
 
-	@Test
-	public void resolveCookieArgument() throws Exception {
-		Cookie expected = new Cookie("name", "foo");
-		request.setCookies(expected);
+    @Test
+    public void resolveCookieStringArgument() throws Exception {
+        Cookie cookie = new Cookie("name", "foo");
+        request.setCookies(cookie);
 
-		Cookie result = (Cookie) resolver.resolveArgument(cookieParameter, null, webRequest, null);
-		assertEquals("Invalid result", expected, result);
-	}
+        String result =
+                (String) resolver.resolveArgument(cookieStringParameter, null, webRequest, null);
+        assertEquals("Invalid result", cookie.getValue(), result);
+    }
 
-	@Test
-	public void resolveCookieStringArgument() throws Exception {
-		Cookie cookie = new Cookie("name", "foo");
-		request.setCookies(cookie);
-
-		String result = (String) resolver.resolveArgument(cookieStringParameter, null, webRequest, null);
-		assertEquals("Invalid result", cookie.getValue(), result);
-	}
-
-
-	public void params(@CookieValue("name") Cookie cookie,
-			@CookieValue(name = "name", defaultValue = "bar") String cookieString) {
-	}
-
+    public void params(
+            @CookieValue("name") Cookie cookie,
+            @CookieValue(name = "name", defaultValue = "bar") String cookieString) {}
 }

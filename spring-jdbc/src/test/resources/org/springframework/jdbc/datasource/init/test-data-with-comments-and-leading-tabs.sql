@@ -1,9 +1,11 @@
 -- The next comment line starts with a tab.
-	-- x, y, z...
+-- x, y, z...
 
-insert into customer (id, name)
-values	(1, 'Sam Brannen');
-	-- This is also a comment with a leading tab.
-insert into orders(id, order_date, customer_id) values (1, '2013-06-08', 1);
-	 	-- This is also a comment with a leading tab, a space, and a tab.
-insert into orders(id, order_date, customer_id) values (2, '2013-06-08', 1);
+INSERT INTO customer (id, name)
+VALUES (1, 'Sam Brannen');
+-- This is also a comment with a leading tab.
+INSERT INTO orders(id, order_date, customer_id)
+VALUES (1, '2013-06-08', 1);
+-- This is also a comment with a leading tab, a space, and a tab.
+INSERT INTO orders(id, order_date, customer_id)
+VALUES (2, '2013-06-08', 1);

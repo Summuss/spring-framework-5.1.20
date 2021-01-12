@@ -5,7 +5,8 @@
  *  x, y, z...
  */
 
-INSERT INTO users(first_name, last_name) VALUES('Juergen', 'Hoeller');
+INSERT INTO users(first_name, last_name)
+VALUES ('Juergen', 'Hoeller');
 -- This is also a comment.
 /*-------------------------------------------
 -- A fancy multi-line comments that puts
@@ -16,8 +17,7 @@ appears on a line that can potentially also
 be a single-line comment if we weren't
 already inside a multi-line comment run.
 -------------------------------------------*/
- INSERT INTO
-users(first_name, last_name)    -- This is a single line comment containing the block-end-comment sequence here */ but it's still a single-line comment
-VALUES( 'Sam'     -- first_name
-      , 'Brannen' -- last_name
-);--
+INSERT INTO users(first_name, last_name) -- This is a single line comment containing the block-end-comment sequence here */ but it's still a single-line comment
+VALUES ( 'Sam' -- first_name
+       , 'Brannen' -- last_name
+       );--

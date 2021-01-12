@@ -30,13 +30,13 @@ import org.springframework.dao.DataAccessResourceFailureException;
 @SuppressWarnings("serial")
 public class CannotGetCciConnectionException extends DataAccessResourceFailureException {
 
-	/**
-	 * Constructor for CannotGetCciConnectionException.
-	 * @param msg message
-	 * @param ex the root ResourceException cause
-	 */
-	public CannotGetCciConnectionException(String msg, ResourceException ex) {
-		super(msg, ex);
-	}
-
+    /**
+     * Constructor for CannotGetCciConnectionException.
+     *
+     * @param msg message
+     * @param ex the root ResourceException cause
+     */
+    public CannotGetCciConnectionException(String msg, ResourceException ex) {
+        super(msg, ex);
+    }
 }

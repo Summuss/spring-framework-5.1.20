@@ -25,21 +25,21 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
  * @author Rossen Stoyanchev
  * @since 4.3
  */
-public class RequestAttributeMethodArgumentResolverTests extends AbstractRequestAttributesArgumentResolverTests {
+public class RequestAttributeMethodArgumentResolverTests
+        extends AbstractRequestAttributesArgumentResolverTests {
 
-	@Override
-	protected HandlerMethodArgumentResolver createResolver() {
-		return new RequestAttributeMethodArgumentResolver();
-	}
+    @Override
+    protected HandlerMethodArgumentResolver createResolver() {
+        return new RequestAttributeMethodArgumentResolver();
+    }
 
-	@Override
-	protected String getHandleMethodName() {
-		return "handleWithRequestAttribute";
-	}
+    @Override
+    protected String getHandleMethodName() {
+        return "handleWithRequestAttribute";
+    }
 
-	@Override
-	protected int getScope() {
-		return RequestAttributes.SCOPE_REQUEST;
-	}
-
+    @Override
+    protected int getScope() {
+        return RequestAttributes.SCOPE_REQUEST;
+    }
 }

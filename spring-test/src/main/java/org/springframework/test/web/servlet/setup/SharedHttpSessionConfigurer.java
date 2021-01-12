@@ -23,10 +23,11 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.web.context.WebApplicationContext;
 
 /**
- * {@link MockMvcConfigurer} that stores and re-uses the HTTP session across
- * multiple requests performed through the same {@code MockMvc} instance.
+ * {@link MockMvcConfigurer} that stores and re-uses the HTTP session across multiple requests
+ * performed through the same {@code MockMvc} instance.
  *
  * <p>Example use:
+ *
  * <pre class="code">
  * import static org.springframework.test.web.servlet.setup.SharedHttpSessionConfigurer.sharedHttpSession;
  *
@@ -44,29 +45,26 @@ import org.springframework.web.context.WebApplicationContext;
  */
 public class SharedHttpSessionConfigurer implements MockMvcConfigurer {
 
-	@Nullable
-	private HttpSession session;
+    @Nullable private HttpSession session;
 
+    @Override
+    public void afterConfigurerAdded(ConfigurableMockMvcBuilder<?> builder) {
+        builder.alwaysDo(result -> this.session = result.getRequest().getSession(false));
+    }
 
-	@Override
-	public void afterConfigurerAdded(ConfigurableMockMvcBuilder<?> builder) {
-		builder.alwaysDo(result -> this.session = result.getRequest().getSession(false));
-	}
+    @Override
+    public RequestPostProcessor beforeMockMvcCreated(
+            ConfigurableMockMvcBuilder<?> builder, WebApplicationContext context) {
 
-	@Override
-	public RequestPostProcessor beforeMockMvcCreated(ConfigurableMockMvcBuilder<?> builder,
-			WebApplicationContext context) {
+        return request -> {
+            if (this.session != null) {
+                request.setSession(this.session);
+            }
+            return request;
+        };
+    }
 
-		return request -> {
-			if (this.session != null) {
-				request.setSession(this.session);
-			}
-			return request;
-		};
-	}
-
-	public static SharedHttpSessionConfigurer sharedHttpSession() {
-		return new SharedHttpSessionConfigurer();
-	}
-
+    public static SharedHttpSessionConfigurer sharedHttpSession() {
+        return new SharedHttpSessionConfigurer();
+    }
 }

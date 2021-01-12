@@ -24,18 +24,17 @@ import org.springframework.core.io.buffer.DataBuffer;
 /**
  * An "reactive" HTTP input message that exposes the input as {@link Publisher}.
  *
- * <p>Typically implemented by an HTTP request on the server-side or a response
- * on the client-side.
+ * <p>Typically implemented by an HTTP request on the server-side or a response on the client-side.
  *
  * @author Arjen Poutsma
  * @since 5.0
  */
 public interface ReactiveHttpInputMessage extends HttpMessage {
 
-	/**
-	 * Return the body of the message as a {@link Publisher}.
-	 * @return the body content publisher
-	 */
-	Flux<DataBuffer> getBody();
-
+    /**
+     * Return the body of the message as a {@link Publisher}.
+     *
+     * @return the body content publisher
+     */
+    Flux<DataBuffer> getBody();
 }

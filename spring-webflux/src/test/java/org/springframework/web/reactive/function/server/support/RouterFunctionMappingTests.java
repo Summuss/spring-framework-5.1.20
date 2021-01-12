@@ -28,43 +28,35 @@ import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import org.springframework.web.server.ServerWebExchange;
 
-/**
- * @author Arjen Poutsma
- */
+/** @author Arjen Poutsma */
 public class RouterFunctionMappingTests {
 
-	private final ServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("https://example.com/match"));
+    private final ServerWebExchange exchange =
+            MockServerWebExchange.from(MockServerHttpRequest.get("https://example.com/match"));
 
-	private final ServerCodecConfigurer codecConfigurer = ServerCodecConfigurer.create();
+    private final ServerCodecConfigurer codecConfigurer = ServerCodecConfigurer.create();
 
+    @Test
+    public void normal() {
+        HandlerFunction<ServerResponse> handlerFunction = request -> ServerResponse.ok().build();
+        RouterFunction<ServerResponse> routerFunction = request -> Mono.just(handlerFunction);
 
-	@Test
-	public void normal() {
-		HandlerFunction<ServerResponse> handlerFunction = request -> ServerResponse.ok().build();
-		RouterFunction<ServerResponse> routerFunction = request -> Mono.just(handlerFunction);
+        RouterFunctionMapping mapping = new RouterFunctionMapping(routerFunction);
+        mapping.setMessageReaders(this.codecConfigurer.getReaders());
 
-		RouterFunctionMapping mapping = new RouterFunctionMapping(routerFunction);
-		mapping.setMessageReaders(this.codecConfigurer.getReaders());
+        Mono<Object> result = mapping.getHandler(this.exchange);
 
-		Mono<Object> result = mapping.getHandler(this.exchange);
+        StepVerifier.create(result).expectNext(handlerFunction).expectComplete().verify();
+    }
 
-		StepVerifier.create(result)
-				.expectNext(handlerFunction)
-				.expectComplete()
-				.verify();
-	}
+    @Test
+    public void noMatch() {
+        RouterFunction<ServerResponse> routerFunction = request -> Mono.empty();
+        RouterFunctionMapping mapping = new RouterFunctionMapping(routerFunction);
+        mapping.setMessageReaders(this.codecConfigurer.getReaders());
 
-	@Test
-	public void noMatch() {
-		RouterFunction<ServerResponse> routerFunction = request -> Mono.empty();
-		RouterFunctionMapping mapping = new RouterFunctionMapping(routerFunction);
-		mapping.setMessageReaders(this.codecConfigurer.getReaders());
+        Mono<Object> result = mapping.getHandler(this.exchange);
 
-		Mono<Object> result = mapping.getHandler(this.exchange);
-
-		StepVerifier.create(result)
-				.expectComplete()
-				.verify();
-	}
-
+        StepVerifier.create(result).expectComplete().verify();
+    }
 }

@@ -24,9 +24,6 @@ package org.springframework.context.support;
  */
 public interface LiveBeansViewMBean {
 
-	/**
-	 * Generate a JSON snapshot of current beans and their dependencies.
-	 */
-	String getSnapshotAsJson();
-
+    /** Generate a JSON snapshot of current beans and their dependencies. */
+    String getSnapshotAsJson();
 }

@@ -16,7 +16,6 @@
 
 package org.springframework.web.context.request.async;
 
-
 import java.util.function.Consumer;
 
 import javax.servlet.AsyncEvent;
@@ -41,147 +40,148 @@ import static org.mockito.BDDMockito.verify;
 
 /**
  * A test fixture with a {@link StandardServletAsyncWebRequest}.
+ *
  * @author Rossen Stoyanchev
  */
 public class StandardServletAsyncWebRequestTests {
 
-	private StandardServletAsyncWebRequest asyncRequest;
+    private StandardServletAsyncWebRequest asyncRequest;
 
-	private MockHttpServletRequest request;
+    private MockHttpServletRequest request;
 
-	private MockHttpServletResponse response;
+    private MockHttpServletResponse response;
 
+    @Before
+    public void setup() {
+        this.request = new MockHttpServletRequest();
+        this.request.setAsyncSupported(true);
+        this.response = new MockHttpServletResponse();
+        this.asyncRequest = new StandardServletAsyncWebRequest(this.request, this.response);
+        this.asyncRequest.setTimeout(44 * 1000L);
+    }
 
-	@Before
-	public void setup() {
-		this.request = new MockHttpServletRequest();
-		this.request.setAsyncSupported(true);
-		this.response = new MockHttpServletResponse();
-		this.asyncRequest = new StandardServletAsyncWebRequest(this.request, this.response);
-		this.asyncRequest.setTimeout(44*1000L);
-	}
+    @Test
+    public void isAsyncStarted() throws Exception {
+        assertFalse(this.asyncRequest.isAsyncStarted());
+        this.asyncRequest.startAsync();
+        assertTrue(this.asyncRequest.isAsyncStarted());
+    }
 
+    @Test
+    public void startAsync() throws Exception {
+        this.asyncRequest.startAsync();
 
-	@Test
-	public void isAsyncStarted() throws Exception {
-		assertFalse(this.asyncRequest.isAsyncStarted());
-		this.asyncRequest.startAsync();
-		assertTrue(this.asyncRequest.isAsyncStarted());
-	}
+        MockAsyncContext context = (MockAsyncContext) this.request.getAsyncContext();
+        assertNotNull(context);
+        assertEquals("Timeout value not set", 44 * 1000, context.getTimeout());
+        assertEquals(1, context.getListeners().size());
+        assertSame(this.asyncRequest, context.getListeners().get(0));
+    }
 
-	@Test
-	public void startAsync() throws Exception {
-		this.asyncRequest.startAsync();
+    @Test
+    public void startAsyncMultipleTimes() throws Exception {
+        this.asyncRequest.startAsync();
+        this.asyncRequest.startAsync();
+        this.asyncRequest.startAsync();
+        this.asyncRequest.startAsync(); // idempotent
 
-		MockAsyncContext context = (MockAsyncContext) this.request.getAsyncContext();
-		assertNotNull(context);
-		assertEquals("Timeout value not set", 44 * 1000, context.getTimeout());
-		assertEquals(1, context.getListeners().size());
-		assertSame(this.asyncRequest, context.getListeners().get(0));
-	}
+        MockAsyncContext context = (MockAsyncContext) this.request.getAsyncContext();
+        assertNotNull(context);
+        assertEquals(1, context.getListeners().size());
+    }
 
-	@Test
-	public void startAsyncMultipleTimes() throws Exception {
-		this.asyncRequest.startAsync();
-		this.asyncRequest.startAsync();
-		this.asyncRequest.startAsync();
-		this.asyncRequest.startAsync();	// idempotent
+    @Test
+    public void startAsyncNotSupported() throws Exception {
+        this.request.setAsyncSupported(false);
+        try {
+            this.asyncRequest.startAsync();
+            fail("expected exception");
+        } catch (IllegalStateException ex) {
+            assertThat(ex.getMessage(), containsString("Async support must be enabled"));
+        }
+    }
 
-		MockAsyncContext context = (MockAsyncContext) this.request.getAsyncContext();
-		assertNotNull(context);
-		assertEquals(1, context.getListeners().size());
-	}
+    @Test
+    public void startAsyncAfterCompleted() throws Exception {
+        this.asyncRequest.onComplete(
+                new AsyncEvent(new MockAsyncContext(this.request, this.response)));
+        try {
+            this.asyncRequest.startAsync();
+            fail("expected exception");
+        } catch (IllegalStateException ex) {
+            assertEquals("Async processing has already completed", ex.getMessage());
+        }
+    }
 
-	@Test
-	public void startAsyncNotSupported() throws Exception {
-		this.request.setAsyncSupported(false);
-		try {
-			this.asyncRequest.startAsync();
-			fail("expected exception");
-		}
-		catch (IllegalStateException ex) {
-			assertThat(ex.getMessage(), containsString("Async support must be enabled"));
-		}
-	}
+    @Test
+    public void onTimeoutDefaultBehavior() throws Exception {
+        this.asyncRequest.onTimeout(
+                new AsyncEvent(new MockAsyncContext(this.request, this.response)));
+        assertEquals(200, this.response.getStatus());
+    }
 
-	@Test
-	public void startAsyncAfterCompleted() throws Exception {
-		this.asyncRequest.onComplete(new AsyncEvent(new MockAsyncContext(this.request, this.response)));
-		try {
-			this.asyncRequest.startAsync();
-			fail("expected exception");
-		}
-		catch (IllegalStateException ex) {
-			assertEquals("Async processing has already completed", ex.getMessage());
-		}
-	}
+    @Test
+    public void onTimeoutHandler() throws Exception {
+        Runnable timeoutHandler = mock(Runnable.class);
+        this.asyncRequest.addTimeoutHandler(timeoutHandler);
+        this.asyncRequest.onTimeout(
+                new AsyncEvent(new MockAsyncContext(this.request, this.response)));
+        verify(timeoutHandler).run();
+    }
 
-	@Test
-	public void onTimeoutDefaultBehavior() throws Exception {
-		this.asyncRequest.onTimeout(new AsyncEvent(new MockAsyncContext(this.request, this.response)));
-		assertEquals(200, this.response.getStatus());
-	}
+    @SuppressWarnings("unchecked")
+    @Test
+    public void onErrorHandler() throws Exception {
+        Consumer<Throwable> errorHandler = mock(Consumer.class);
+        this.asyncRequest.addErrorHandler(errorHandler);
+        Exception e = new Exception();
+        this.asyncRequest.onError(
+                new AsyncEvent(new MockAsyncContext(this.request, this.response), e));
+        verify(errorHandler).accept(e);
+    }
 
-	@Test
-	public void onTimeoutHandler() throws Exception {
-		Runnable timeoutHandler = mock(Runnable.class);
-		this.asyncRequest.addTimeoutHandler(timeoutHandler);
-		this.asyncRequest.onTimeout(new AsyncEvent(new MockAsyncContext(this.request, this.response)));
-		verify(timeoutHandler).run();
-	}
+    @Test(expected = IllegalStateException.class)
+    public void setTimeoutDuringConcurrentHandling() {
+        this.asyncRequest.startAsync();
+        this.asyncRequest.setTimeout(25L);
+    }
 
-	@SuppressWarnings("unchecked")
-	@Test
-	public void onErrorHandler() throws Exception {
-		Consumer<Throwable> errorHandler = mock(Consumer.class);
-		this.asyncRequest.addErrorHandler(errorHandler);
-		Exception e = new Exception();
-		this.asyncRequest.onError(new AsyncEvent(new MockAsyncContext(this.request, this.response), e));
-		verify(errorHandler).accept(e);
-	}
+    @Test
+    public void onCompletionHandler() throws Exception {
+        Runnable handler = mock(Runnable.class);
+        this.asyncRequest.addCompletionHandler(handler);
 
-	@Test(expected = IllegalStateException.class)
-	public void setTimeoutDuringConcurrentHandling() {
-		this.asyncRequest.startAsync();
-		this.asyncRequest.setTimeout(25L);
-	}
+        this.asyncRequest.startAsync();
+        this.asyncRequest.onComplete(new AsyncEvent(this.request.getAsyncContext()));
 
-	@Test
-	public void onCompletionHandler() throws Exception {
-		Runnable handler = mock(Runnable.class);
-		this.asyncRequest.addCompletionHandler(handler);
+        verify(handler).run();
+        assertTrue(this.asyncRequest.isAsyncComplete());
+    }
 
-		this.asyncRequest.startAsync();
-		this.asyncRequest.onComplete(new AsyncEvent(this.request.getAsyncContext()));
+    // SPR-13292
 
-		verify(handler).run();
-		assertTrue(this.asyncRequest.isAsyncComplete());
-	}
+    @SuppressWarnings("unchecked")
+    @Test
+    public void onErrorHandlerAfterOnErrorEvent() throws Exception {
+        Consumer<Throwable> handler = mock(Consumer.class);
+        this.asyncRequest.addErrorHandler(handler);
 
-	// SPR-13292
+        this.asyncRequest.startAsync();
+        Exception e = new Exception();
+        this.asyncRequest.onError(new AsyncEvent(this.request.getAsyncContext(), e));
 
-	@SuppressWarnings("unchecked")
-	@Test
-	public void onErrorHandlerAfterOnErrorEvent() throws Exception {
-		Consumer<Throwable> handler = mock(Consumer.class);
-		this.asyncRequest.addErrorHandler(handler);
+        verify(handler).accept(e);
+    }
 
-		this.asyncRequest.startAsync();
-		Exception e = new Exception();
-		this.asyncRequest.onError(new AsyncEvent(this.request.getAsyncContext(), e));
+    @Test
+    public void onCompletionHandlerAfterOnCompleteEvent() throws Exception {
+        Runnable handler = mock(Runnable.class);
+        this.asyncRequest.addCompletionHandler(handler);
 
-		verify(handler).accept(e);
-	}
+        this.asyncRequest.startAsync();
+        this.asyncRequest.onComplete(new AsyncEvent(this.request.getAsyncContext()));
 
-	@Test
-	public void onCompletionHandlerAfterOnCompleteEvent() throws Exception {
-		Runnable handler = mock(Runnable.class);
-		this.asyncRequest.addCompletionHandler(handler);
-
-		this.asyncRequest.startAsync();
-		this.asyncRequest.onComplete(new AsyncEvent(this.request.getAsyncContext()));
-
-		verify(handler).run();
-		assertTrue(this.asyncRequest.isAsyncComplete());
-	}
+        verify(handler).run();
+        assertTrue(this.asyncRequest.isAsyncComplete());
+    }
 }

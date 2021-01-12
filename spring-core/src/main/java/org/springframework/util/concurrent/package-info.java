@@ -1,6 +1,4 @@
-/**
- * Useful generic {@code java.util.concurrent.Future} extensions.
- */
+/** Useful generic {@code java.util.concurrent.Future} extensions. */
 @NonNullApi
 @NonNullFields
 package org.springframework.util.concurrent;

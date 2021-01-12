@@ -25,17 +25,12 @@ import org.springframework.stereotype.Component;
  */
 public class SampleEmbedded {
 
-	@Component
-	public static class PublicCandidate {
+    @Component
+    public static class PublicCandidate {}
 
-	}
+    public static class Another {
 
-	public static class Another {
-
-		@Component
-		public static class AnotherPublicCandidate {
-
-		}
-	}
-
+        @Component
+        public static class AnotherPublicCandidate {}
+    }
 }

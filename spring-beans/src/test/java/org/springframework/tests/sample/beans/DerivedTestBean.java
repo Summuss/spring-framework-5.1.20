@@ -26,74 +26,69 @@ import org.springframework.beans.factory.DisposableBean;
  * @since 21.08.2003
  */
 @SuppressWarnings("serial")
-public class DerivedTestBean extends TestBean implements Serializable, BeanNameAware, DisposableBean {
+public class DerivedTestBean extends TestBean
+        implements Serializable, BeanNameAware, DisposableBean {
 
-	private String beanName;
+    private String beanName;
 
-	private boolean initialized;
+    private boolean initialized;
 
-	private boolean destroyed;
+    private boolean destroyed;
 
+    public DerivedTestBean() {}
 
-	public DerivedTestBean() {
-	}
+    public DerivedTestBean(String[] names) {
+        if (names == null || names.length < 2) {
+            throw new IllegalArgumentException("Invalid names array");
+        }
+        setName(names[0]);
+        setBeanName(names[1]);
+    }
 
-	public DerivedTestBean(String[] names) {
-		if (names == null || names.length < 2) {
-			throw new IllegalArgumentException("Invalid names array");
-		}
-		setName(names[0]);
-		setBeanName(names[1]);
-	}
+    public static DerivedTestBean create(String[] names) {
+        return new DerivedTestBean(names);
+    }
 
-	public static DerivedTestBean create(String[] names) {
-		return new DerivedTestBean(names);
-	}
+    @Override
+    public void setBeanName(String beanName) {
+        if (this.beanName == null || beanName == null) {
+            this.beanName = beanName;
+        }
+    }
 
+    @Override
+    public String getBeanName() {
+        return beanName;
+    }
 
-	@Override
-	public void setBeanName(String beanName) {
-		if (this.beanName == null || beanName == null) {
-			this.beanName = beanName;
-		}
-	}
+    public void setActualSpouse(TestBean spouse) {
+        setSpouse(spouse);
+    }
 
-	@Override
-	public String getBeanName() {
-		return beanName;
-	}
+    public void setSpouseRef(String name) {
+        setSpouse(new TestBean(name));
+    }
 
-	public void setActualSpouse(TestBean spouse) {
-		setSpouse(spouse);
-	}
+    @Override
+    public TestBean getSpouse() {
+        return (TestBean) super.getSpouse();
+    }
 
-	public void setSpouseRef(String name) {
-		setSpouse(new TestBean(name));
-	}
+    public void initialize() {
+        this.initialized = true;
+    }
 
-	@Override
-	public TestBean getSpouse() {
-		return (TestBean) super.getSpouse();
-	}
+    public boolean wasInitialized() {
+        return initialized;
+    }
 
+    @Override
+    public void destroy() {
+        this.destroyed = true;
+    }
 
-	public void initialize() {
-		this.initialized = true;
-	}
-
-	public boolean wasInitialized() {
-		return initialized;
-	}
-
-
-	@Override
-	public void destroy() {
-		this.destroyed = true;
-	}
-
-	@Override
-	public boolean wasDestroyed() {
-		return destroyed;
-	}
-
+    @Override
+    public boolean wasDestroyed() {
+        return destroyed;
+    }
 }

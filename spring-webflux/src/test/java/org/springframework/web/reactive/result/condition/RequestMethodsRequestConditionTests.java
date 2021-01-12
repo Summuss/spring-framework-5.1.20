@@ -39,99 +39,100 @@ import static org.springframework.web.bind.annotation.RequestMethod.*;
  */
 public class RequestMethodsRequestConditionTests {
 
-	// TODO: custom method, CORS pre-flight (see @Ignored)
+    // TODO: custom method, CORS pre-flight (see @Ignored)
 
-	@Test
-	public void getMatchingCondition() throws Exception {
-		testMatch(new RequestMethodsRequestCondition(GET), GET);
-		testMatch(new RequestMethodsRequestCondition(GET, POST), GET);
-		testNoMatch(new RequestMethodsRequestCondition(GET), POST);
-	}
+    @Test
+    public void getMatchingCondition() throws Exception {
+        testMatch(new RequestMethodsRequestCondition(GET), GET);
+        testMatch(new RequestMethodsRequestCondition(GET, POST), GET);
+        testNoMatch(new RequestMethodsRequestCondition(GET), POST);
+    }
 
-	@Test
-	public void getMatchingConditionWithHttpHead() throws Exception {
-		testMatch(new RequestMethodsRequestCondition(HEAD), HEAD);
-		testMatch(new RequestMethodsRequestCondition(GET), GET);
-		testNoMatch(new RequestMethodsRequestCondition(POST), HEAD);
-	}
+    @Test
+    public void getMatchingConditionWithHttpHead() throws Exception {
+        testMatch(new RequestMethodsRequestCondition(HEAD), HEAD);
+        testMatch(new RequestMethodsRequestCondition(GET), GET);
+        testNoMatch(new RequestMethodsRequestCondition(POST), HEAD);
+    }
 
-	@Test
-	public void getMatchingConditionWithEmptyConditions() throws Exception {
-		RequestMethodsRequestCondition condition = new RequestMethodsRequestCondition();
-		for (RequestMethod method : RequestMethod.values()) {
-			if (method != OPTIONS) {
-				ServerWebExchange exchange = getExchange(method.name());
-				assertNotNull(condition.getMatchingCondition(exchange));
-			}
-		}
-		testNoMatch(condition, OPTIONS);
-	}
+    @Test
+    public void getMatchingConditionWithEmptyConditions() throws Exception {
+        RequestMethodsRequestCondition condition = new RequestMethodsRequestCondition();
+        for (RequestMethod method : RequestMethod.values()) {
+            if (method != OPTIONS) {
+                ServerWebExchange exchange = getExchange(method.name());
+                assertNotNull(condition.getMatchingCondition(exchange));
+            }
+        }
+        testNoMatch(condition, OPTIONS);
+    }
 
-	@Test
-	@Ignore
-	public void getMatchingConditionWithCustomMethod() throws Exception {
-		ServerWebExchange exchange = getExchange("PROPFIND");
-		assertNotNull(new RequestMethodsRequestCondition().getMatchingCondition(exchange));
-		assertNull(new RequestMethodsRequestCondition(GET, POST).getMatchingCondition(exchange));
-	}
+    @Test
+    @Ignore
+    public void getMatchingConditionWithCustomMethod() throws Exception {
+        ServerWebExchange exchange = getExchange("PROPFIND");
+        assertNotNull(new RequestMethodsRequestCondition().getMatchingCondition(exchange));
+        assertNull(new RequestMethodsRequestCondition(GET, POST).getMatchingCondition(exchange));
+    }
 
-	@Test
-	@Ignore
-	public void getMatchingConditionWithCorsPreFlight() throws Exception {
-		ServerWebExchange exchange = getExchange("OPTIONS");
-		exchange.getRequest().getHeaders().add("Origin", "https://example.com");
-		exchange.getRequest().getHeaders().add(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "PUT");
+    @Test
+    @Ignore
+    public void getMatchingConditionWithCorsPreFlight() throws Exception {
+        ServerWebExchange exchange = getExchange("OPTIONS");
+        exchange.getRequest().getHeaders().add("Origin", "https://example.com");
+        exchange.getRequest().getHeaders().add(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "PUT");
 
-		assertNotNull(new RequestMethodsRequestCondition().getMatchingCondition(exchange));
-		assertNotNull(new RequestMethodsRequestCondition(PUT).getMatchingCondition(exchange));
-		assertNull(new RequestMethodsRequestCondition(DELETE).getMatchingCondition(exchange));
-	}
+        assertNotNull(new RequestMethodsRequestCondition().getMatchingCondition(exchange));
+        assertNotNull(new RequestMethodsRequestCondition(PUT).getMatchingCondition(exchange));
+        assertNull(new RequestMethodsRequestCondition(DELETE).getMatchingCondition(exchange));
+    }
 
-	@Test
-	public void compareTo() throws Exception {
-		RequestMethodsRequestCondition c1 = new RequestMethodsRequestCondition(GET, HEAD);
-		RequestMethodsRequestCondition c2 = new RequestMethodsRequestCondition(POST);
-		RequestMethodsRequestCondition c3 = new RequestMethodsRequestCondition();
+    @Test
+    public void compareTo() throws Exception {
+        RequestMethodsRequestCondition c1 = new RequestMethodsRequestCondition(GET, HEAD);
+        RequestMethodsRequestCondition c2 = new RequestMethodsRequestCondition(POST);
+        RequestMethodsRequestCondition c3 = new RequestMethodsRequestCondition();
 
-		ServerWebExchange exchange = getExchange("GET");
+        ServerWebExchange exchange = getExchange("GET");
 
-		int result = c1.compareTo(c2, exchange);
-		assertTrue("Invalid comparison result: " + result, result < 0);
+        int result = c1.compareTo(c2, exchange);
+        assertTrue("Invalid comparison result: " + result, result < 0);
 
-		result = c2.compareTo(c1, exchange);
-		assertTrue("Invalid comparison result: " + result, result > 0);
+        result = c2.compareTo(c1, exchange);
+        assertTrue("Invalid comparison result: " + result, result > 0);
 
-		result = c2.compareTo(c3, exchange);
-		assertTrue("Invalid comparison result: " + result, result < 0);
+        result = c2.compareTo(c3, exchange);
+        assertTrue("Invalid comparison result: " + result, result < 0);
 
-		result = c1.compareTo(c1, exchange);
-		assertEquals("Invalid comparison result ", 0, result);
-	}
+        result = c1.compareTo(c1, exchange);
+        assertEquals("Invalid comparison result ", 0, result);
+    }
 
-	@Test
-	public void combine() {
-		RequestMethodsRequestCondition condition1 = new RequestMethodsRequestCondition(GET);
-		RequestMethodsRequestCondition condition2 = new RequestMethodsRequestCondition(POST);
+    @Test
+    public void combine() {
+        RequestMethodsRequestCondition condition1 = new RequestMethodsRequestCondition(GET);
+        RequestMethodsRequestCondition condition2 = new RequestMethodsRequestCondition(POST);
 
-		RequestMethodsRequestCondition result = condition1.combine(condition2);
-		assertEquals(2, result.getContent().size());
-	}
+        RequestMethodsRequestCondition result = condition1.combine(condition2);
+        assertEquals(2, result.getContent().size());
+    }
 
+    private void testMatch(RequestMethodsRequestCondition condition, RequestMethod method)
+            throws Exception {
+        ServerWebExchange exchange = getExchange(method.name());
+        RequestMethodsRequestCondition actual = condition.getMatchingCondition(exchange);
+        assertNotNull(actual);
+        assertEquals(Collections.singleton(method), actual.getContent());
+    }
 
-	private void testMatch(RequestMethodsRequestCondition condition, RequestMethod method) throws Exception {
-		ServerWebExchange exchange = getExchange(method.name());
-		RequestMethodsRequestCondition actual = condition.getMatchingCondition(exchange);
-		assertNotNull(actual);
-		assertEquals(Collections.singleton(method), actual.getContent());
-	}
+    private void testNoMatch(RequestMethodsRequestCondition condition, RequestMethod method)
+            throws Exception {
+        ServerWebExchange exchange = getExchange(method.name());
+        assertNull(condition.getMatchingCondition(exchange));
+    }
 
-	private void testNoMatch(RequestMethodsRequestCondition condition, RequestMethod method) throws Exception {
-		ServerWebExchange exchange = getExchange(method.name());
-		assertNull(condition.getMatchingCondition(exchange));
-	}
-
-	private ServerWebExchange getExchange(String method) throws URISyntaxException {
-		return MockServerWebExchange.from(MockServerHttpRequest.method(HttpMethod.valueOf(method), "/"));
-	}
-
+    private ServerWebExchange getExchange(String method) throws URISyntaxException {
+        return MockServerWebExchange.from(
+                MockServerHttpRequest.method(HttpMethod.valueOf(method), "/"));
+    }
 }

@@ -31,28 +31,27 @@ import org.springframework.util.ExceptionTypeFilter;
  */
 class CacheRemoveAllOperation extends AbstractJCacheOperation<CacheRemoveAll> {
 
-	private final ExceptionTypeFilter exceptionTypeFilter;
+    private final ExceptionTypeFilter exceptionTypeFilter;
 
+    public CacheRemoveAllOperation(
+            CacheMethodDetails<CacheRemoveAll> methodDetails, CacheResolver cacheResolver) {
+        super(methodDetails, cacheResolver);
+        CacheRemoveAll ann = methodDetails.getCacheAnnotation();
+        this.exceptionTypeFilter = createExceptionTypeFilter(ann.evictFor(), ann.noEvictFor());
+    }
 
-	public CacheRemoveAllOperation(CacheMethodDetails<CacheRemoveAll> methodDetails, CacheResolver cacheResolver) {
-		super(methodDetails, cacheResolver);
-		CacheRemoveAll ann = methodDetails.getCacheAnnotation();
-		this.exceptionTypeFilter = createExceptionTypeFilter(ann.evictFor(), ann.noEvictFor());
-	}
+    @Override
+    public ExceptionTypeFilter getExceptionTypeFilter() {
+        return this.exceptionTypeFilter;
+    }
 
-
-	@Override
-	public ExceptionTypeFilter getExceptionTypeFilter() {
-		return this.exceptionTypeFilter;
-	}
-
-	/**
-	 * Specify if the cache should be cleared before invoking the method. By default, the
-	 * cache is cleared after the method invocation.
-	 * @see javax.cache.annotation.CacheRemoveAll#afterInvocation()
-	 */
-	public boolean isEarlyRemove() {
-		return !getCacheAnnotation().afterInvocation();
-	}
-
+    /**
+     * Specify if the cache should be cleared before invoking the method. By default, the cache is
+     * cleared after the method invocation.
+     *
+     * @see javax.cache.annotation.CacheRemoveAll#afterInvocation()
+     */
+    public boolean isEarlyRemove() {
+        return !getCacheAnnotation().afterInvocation();
+    }
 }

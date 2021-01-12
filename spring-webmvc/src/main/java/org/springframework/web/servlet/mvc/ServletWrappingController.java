@@ -34,22 +34,22 @@ import org.springframework.util.ReflectionUtils;
 import org.springframework.web.servlet.ModelAndView;
 
 /**
- * Spring Controller implementation that wraps a servlet instance which it manages
- * internally. Such a wrapped servlet is not known outside of this controller;
- * its entire lifecycle is covered here (in contrast to {@link ServletForwardingController}).
+ * Spring Controller implementation that wraps a servlet instance which it manages internally. Such
+ * a wrapped servlet is not known outside of this controller; its entire lifecycle is covered here
+ * (in contrast to {@link ServletForwardingController}).
  *
- * <p>Useful to invoke an existing servlet via Spring's dispatching infrastructure,
- * for example to apply Spring HandlerInterceptors to its requests.
+ * <p>Useful to invoke an existing servlet via Spring's dispatching infrastructure, for example to
+ * apply Spring HandlerInterceptors to its requests.
  *
- * <p>Note that Struts has a special requirement in that it parses {@code web.xml}
- * to find its servlet mapping. Therefore, you need to specify the DispatcherServlet's
- * servlet name as "servletName" on this controller, so that Struts finds the
- * DispatcherServlet's mapping (thinking that it refers to the ActionServlet).
+ * <p>Note that Struts has a special requirement in that it parses {@code web.xml} to find its
+ * servlet mapping. Therefore, you need to specify the DispatcherServlet's servlet name as
+ * "servletName" on this controller, so that Struts finds the DispatcherServlet's mapping (thinking
+ * that it refers to the ActionServlet).
  *
- * <p><b>Example:</b> a DispatcherServlet XML context, forwarding "*.do" to the Struts
- * ActionServlet wrapped by a ServletWrappingController. All such requests will go
- * through the configured HandlerInterceptor chain (e.g. an OpenSessionInViewInterceptor).
- * From the Struts point of view, everything will work as usual.
+ * <p><b>Example:</b> a DispatcherServlet XML context, forwarding "*.do" to the Struts ActionServlet
+ * wrapped by a ServletWrappingController. All such requests will go through the configured
+ * HandlerInterceptor chain (e.g. an OpenSessionInViewInterceptor). From the Struts point of view,
+ * everything will work as usual.
  *
  * <pre class="code">
  * &lt;bean id="urlMapping" class="org.springframework.web.servlet.handler.SimpleUrlHandlerMapping"&gt;
@@ -84,131 +84,119 @@ import org.springframework.web.servlet.ModelAndView;
  * @see ServletForwardingController
  */
 public class ServletWrappingController extends AbstractController
-		implements BeanNameAware, InitializingBean, DisposableBean {
+        implements BeanNameAware, InitializingBean, DisposableBean {
 
-	@Nullable
-	private Class<? extends Servlet> servletClass;
+    @Nullable private Class<? extends Servlet> servletClass;
 
-	@Nullable
-	private String servletName;
+    @Nullable private String servletName;
 
-	private Properties initParameters = new Properties();
+    private Properties initParameters = new Properties();
 
-	@Nullable
-	private String beanName;
+    @Nullable private String beanName;
 
-	@Nullable
-	private Servlet servletInstance;
+    @Nullable private Servlet servletInstance;
 
+    public ServletWrappingController() {
+        super(false);
+    }
 
-	public ServletWrappingController() {
-		super(false);
-	}
+    /**
+     * Set the class of the servlet to wrap. Needs to implement {@code javax.servlet.Servlet}.
+     *
+     * @see javax.servlet.Servlet
+     */
+    public void setServletClass(Class<? extends Servlet> servletClass) {
+        this.servletClass = servletClass;
+    }
 
+    /** Set the name of the servlet to wrap. Default is the bean name of this controller. */
+    public void setServletName(String servletName) {
+        this.servletName = servletName;
+    }
 
-	/**
-	 * Set the class of the servlet to wrap.
-	 * Needs to implement {@code javax.servlet.Servlet}.
-	 * @see javax.servlet.Servlet
-	 */
-	public void setServletClass(Class<? extends Servlet> servletClass) {
-		this.servletClass = servletClass;
-	}
+    /** Specify init parameters for the servlet to wrap, as name-value pairs. */
+    public void setInitParameters(Properties initParameters) {
+        this.initParameters = initParameters;
+    }
 
-	/**
-	 * Set the name of the servlet to wrap.
-	 * Default is the bean name of this controller.
-	 */
-	public void setServletName(String servletName) {
-		this.servletName = servletName;
-	}
+    @Override
+    public void setBeanName(String name) {
+        this.beanName = name;
+    }
 
-	/**
-	 * Specify init parameters for the servlet to wrap,
-	 * as name-value pairs.
-	 */
-	public void setInitParameters(Properties initParameters) {
-		this.initParameters = initParameters;
-	}
+    /**
+     * Initialize the wrapped Servlet instance.
+     *
+     * @see javax.servlet.Servlet#init(javax.servlet.ServletConfig)
+     */
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        if (this.servletClass == null) {
+            throw new IllegalArgumentException("'servletClass' is required");
+        }
+        if (this.servletName == null) {
+            this.servletName = this.beanName;
+        }
+        this.servletInstance =
+                ReflectionUtils.accessibleConstructor(this.servletClass).newInstance();
+        this.servletInstance.init(new DelegatingServletConfig());
+    }
 
-	@Override
-	public void setBeanName(String name) {
-		this.beanName = name;
-	}
+    /**
+     * Invoke the wrapped Servlet instance.
+     *
+     * @see javax.servlet.Servlet#service(javax.servlet.ServletRequest,
+     *     javax.servlet.ServletResponse)
+     */
+    @Override
+    protected ModelAndView handleRequestInternal(
+            HttpServletRequest request, HttpServletResponse response) throws Exception {
 
+        Assert.state(this.servletInstance != null, "No Servlet instance");
+        this.servletInstance.service(request, response);
+        return null;
+    }
 
-	/**
-	 * Initialize the wrapped Servlet instance.
-	 * @see javax.servlet.Servlet#init(javax.servlet.ServletConfig)
-	 */
-	@Override
-	public void afterPropertiesSet() throws Exception {
-		if (this.servletClass == null) {
-			throw new IllegalArgumentException("'servletClass' is required");
-		}
-		if (this.servletName == null) {
-			this.servletName = this.beanName;
-		}
-		this.servletInstance = ReflectionUtils.accessibleConstructor(this.servletClass).newInstance();
-		this.servletInstance.init(new DelegatingServletConfig());
-	}
+    /**
+     * Destroy the wrapped Servlet instance.
+     *
+     * @see javax.servlet.Servlet#destroy()
+     */
+    @Override
+    public void destroy() {
+        if (this.servletInstance != null) {
+            this.servletInstance.destroy();
+        }
+    }
 
+    /**
+     * Internal implementation of the ServletConfig interface, to be passed to the wrapped servlet.
+     * Delegates to ServletWrappingController fields and methods to provide init parameters and
+     * other environment info.
+     */
+    private class DelegatingServletConfig implements ServletConfig {
 
-	/**
-	 * Invoke the wrapped Servlet instance.
-	 * @see javax.servlet.Servlet#service(javax.servlet.ServletRequest, javax.servlet.ServletResponse)
-	 */
-	@Override
-	protected ModelAndView handleRequestInternal(HttpServletRequest request, HttpServletResponse response)
-			throws Exception {
+        @Override
+        @Nullable
+        public String getServletName() {
+            return servletName;
+        }
 
-		Assert.state(this.servletInstance != null, "No Servlet instance");
-		this.servletInstance.service(request, response);
-		return null;
-	}
+        @Override
+        @Nullable
+        public ServletContext getServletContext() {
+            return ServletWrappingController.this.getServletContext();
+        }
 
+        @Override
+        public String getInitParameter(String paramName) {
+            return initParameters.getProperty(paramName);
+        }
 
-	/**
-	 * Destroy the wrapped Servlet instance.
-	 * @see javax.servlet.Servlet#destroy()
-	 */
-	@Override
-	public void destroy() {
-		if (this.servletInstance != null) {
-			this.servletInstance.destroy();
-		}
-	}
-
-
-	/**
-	 * Internal implementation of the ServletConfig interface, to be passed
-	 * to the wrapped servlet. Delegates to ServletWrappingController fields
-	 * and methods to provide init parameters and other environment info.
-	 */
-	private class DelegatingServletConfig implements ServletConfig {
-
-		@Override
-		@Nullable
-		public String getServletName() {
-			return servletName;
-		}
-
-		@Override
-		@Nullable
-		public ServletContext getServletContext() {
-			return ServletWrappingController.this.getServletContext();
-		}
-
-		@Override
-		public String getInitParameter(String paramName) {
-			return initParameters.getProperty(paramName);
-		}
-
-		@Override
-		@SuppressWarnings({"rawtypes", "unchecked"})
-		public Enumeration<String> getInitParameterNames() {
-			return (Enumeration) initParameters.keys();
-		}
-	}
-
+        @Override
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        public Enumeration<String> getInitParameterNames() {
+            return (Enumeration) initParameters.keys();
+        }
+    }
 }

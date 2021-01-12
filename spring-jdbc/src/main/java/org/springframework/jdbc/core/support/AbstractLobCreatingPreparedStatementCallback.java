@@ -29,8 +29,8 @@ import org.springframework.util.Assert;
  * Abstract {@link PreparedStatementCallback} implementation that manages a {@link LobCreator}.
  * Typically used as inner class, with access to surrounding method arguments.
  *
- * <p>Delegates to the {@code setValues} template method for setting values
- * on the PreparedStatement, using a given LobCreator for BLOB/CLOB arguments.
+ * <p>Delegates to the {@code setValues} template method for setting values on the
+ * PreparedStatement, using a given LobCreator for BLOB/CLOB arguments.
  *
  * <p>A usage example with {@link org.springframework.jdbc.core.JdbcTemplate}:
  *
@@ -52,43 +52,42 @@ import org.springframework.util.Assert;
  * @since 1.0.2
  * @see org.springframework.jdbc.support.lob.LobCreator
  */
-public abstract class AbstractLobCreatingPreparedStatementCallback implements PreparedStatementCallback<Integer> {
+public abstract class AbstractLobCreatingPreparedStatementCallback
+        implements PreparedStatementCallback<Integer> {
 
-	private final LobHandler lobHandler;
+    private final LobHandler lobHandler;
 
+    /**
+     * Create a new AbstractLobCreatingPreparedStatementCallback for the given LobHandler.
+     *
+     * @param lobHandler the LobHandler to create LobCreators with
+     */
+    public AbstractLobCreatingPreparedStatementCallback(LobHandler lobHandler) {
+        Assert.notNull(lobHandler, "LobHandler must not be null");
+        this.lobHandler = lobHandler;
+    }
 
-	/**
-	 * Create a new AbstractLobCreatingPreparedStatementCallback for the
-	 * given LobHandler.
-	 * @param lobHandler the LobHandler to create LobCreators with
-	 */
-	public AbstractLobCreatingPreparedStatementCallback(LobHandler lobHandler) {
-		Assert.notNull(lobHandler, "LobHandler must not be null");
-		this.lobHandler = lobHandler;
-	}
+    @Override
+    public final Integer doInPreparedStatement(PreparedStatement ps)
+            throws SQLException, DataAccessException {
+        LobCreator lobCreator = this.lobHandler.getLobCreator();
+        try {
+            setValues(ps, lobCreator);
+            return ps.executeUpdate();
+        } finally {
+            lobCreator.close();
+        }
+    }
 
-
-	@Override
-	public final Integer doInPreparedStatement(PreparedStatement ps) throws SQLException, DataAccessException {
-		LobCreator lobCreator = this.lobHandler.getLobCreator();
-		try {
-			setValues(ps, lobCreator);
-			return ps.executeUpdate();
-		}
-		finally {
-			lobCreator.close();
-		}
-	}
-
-	/**
-	 * Set values on the given PreparedStatement, using the given
-	 * LobCreator for BLOB/CLOB arguments.
-	 * @param ps the PreparedStatement to use
-	 * @param lobCreator the LobCreator to use
-	 * @throws SQLException if thrown by JDBC methods
-	 * @throws DataAccessException in case of custom exceptions
-	 */
-	protected abstract void setValues(PreparedStatement ps, LobCreator lobCreator)
-			throws SQLException, DataAccessException;
-
+    /**
+     * Set values on the given PreparedStatement, using the given LobCreator for BLOB/CLOB
+     * arguments.
+     *
+     * @param ps the PreparedStatement to use
+     * @param lobCreator the LobCreator to use
+     * @throws SQLException if thrown by JDBC methods
+     * @throws DataAccessException in case of custom exceptions
+     */
+    protected abstract void setValues(PreparedStatement ps, LobCreator lobCreator)
+            throws SQLException, DataAccessException;
 }

@@ -35,38 +35,37 @@ import static org.mockito.BDDMockito.*;
  */
 public class DefaultJpaDialectTests {
 
-	private JpaDialect dialect = new DefaultJpaDialect();
+    private JpaDialect dialect = new DefaultJpaDialect();
 
-	@Test
-	public void testDefaultTransactionDefinition() throws Exception {
-		DefaultTransactionDefinition definition = new DefaultTransactionDefinition();
-		definition.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
+    @Test
+    public void testDefaultTransactionDefinition() throws Exception {
+        DefaultTransactionDefinition definition = new DefaultTransactionDefinition();
+        definition.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
 
-		try {
-			dialect.beginTransaction(null, definition);
-			fail("expected exception");
-		}
-		catch (TransactionException e) {
-			// ok
-		}
-	}
+        try {
+            dialect.beginTransaction(null, definition);
+            fail("expected exception");
+        } catch (TransactionException e) {
+            // ok
+        }
+    }
 
-	@Test
-	public void testDefaultBeginTransaction() throws Exception {
-		TransactionDefinition definition = new DefaultTransactionDefinition();
-		EntityManager entityManager = mock(EntityManager.class);
-		EntityTransaction entityTx = mock(EntityTransaction.class);
+    @Test
+    public void testDefaultBeginTransaction() throws Exception {
+        TransactionDefinition definition = new DefaultTransactionDefinition();
+        EntityManager entityManager = mock(EntityManager.class);
+        EntityTransaction entityTx = mock(EntityTransaction.class);
 
-		given(entityManager.getTransaction()).willReturn(entityTx);
+        given(entityManager.getTransaction()).willReturn(entityTx);
 
-		dialect.beginTransaction(entityManager, definition);
-	}
+        dialect.beginTransaction(entityManager, definition);
+    }
 
-	@Test
-	public void testTranslateException() {
-		OptimisticLockException ex = new OptimisticLockException();
-		assertEquals(
-				EntityManagerFactoryUtils.convertJpaAccessExceptionIfPossible(ex).getCause(),
-				dialect.translateExceptionIfPossible(ex).getCause());
-	}
+    @Test
+    public void testTranslateException() {
+        OptimisticLockException ex = new OptimisticLockException();
+        assertEquals(
+                EntityManagerFactoryUtils.convertJpaAccessExceptionIfPossible(ex).getCause(),
+                dialect.translateExceptionIfPossible(ex).getCause());
+    }
 }

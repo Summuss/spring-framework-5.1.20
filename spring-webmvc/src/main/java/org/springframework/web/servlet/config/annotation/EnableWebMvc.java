@@ -25,8 +25,8 @@ import java.lang.annotation.Target;
 import org.springframework.context.annotation.Import;
 
 /**
- * Adding this annotation to an {@code @Configuration} class imports the Spring MVC
- * configuration from {@link WebMvcConfigurationSupport}, e.g.:
+ * Adding this annotation to an {@code @Configuration} class imports the Spring MVC configuration
+ * from {@link WebMvcConfigurationSupport}, e.g.:
  *
  * <pre class="code">
  * &#064;Configuration
@@ -37,8 +37,8 @@ import org.springframework.context.annotation.Import;
  * }
  * </pre>
  *
- * <p>To customize the imported configuration, implement the interface
- * {@link WebMvcConfigurer} and override individual methods, e.g.:
+ * <p>To customize the imported configuration, implement the interface {@link WebMvcConfigurer} and
+ * override individual methods, e.g.:
  *
  * <pre class="code">
  * &#064;Configuration
@@ -60,15 +60,13 @@ import org.springframework.context.annotation.Import;
  * </pre>
  *
  * <p><strong>Note:</strong> only one {@code @Configuration} class may have the
- * {@code @EnableWebMvc} annotation to import the Spring Web MVC
- * configuration. There can however be multiple {@code @Configuration} classes
- * implementing {@code WebMvcConfigurer} in order to customize the provided
- * configuration.
+ * {@code @EnableWebMvc} annotation to import the Spring Web MVC configuration. There can however be
+ * multiple {@code @Configuration} classes implementing {@code WebMvcConfigurer} in order to
+ * customize the provided configuration.
  *
- * <p>If {@link WebMvcConfigurer} does not expose some more advanced setting that
- * needs to be configured consider removing the {@code @EnableWebMvc}
- * annotation and extending directly from {@link WebMvcConfigurationSupport}
- * or {@link DelegatingWebMvcConfiguration}, e.g.:
+ * <p>If {@link WebMvcConfigurer} does not expose some more advanced setting that needs to be
+ * configured consider removing the {@code @EnableWebMvc} annotation and extending directly from
+ * {@link WebMvcConfigurationSupport} or {@link DelegatingWebMvcConfiguration}, e.g.:
  *
  * <pre class="code">
  * &#064;Configuration
@@ -76,15 +74,15 @@ import org.springframework.context.annotation.Import;
  * public class MyConfiguration extends WebMvcConfigurationSupport {
  *
  * 	   &#064;Override
- *	   public void addFormatters(FormatterRegistry formatterRegistry) {
+ *    public void addFormatters(FormatterRegistry formatterRegistry) {
  *         formatterRegistry.addConverter(new MyConverter());
- *	   }
+ *    }
  *
- *	   &#064;Bean
- *	   public RequestMappingHandlerAdapter requestMappingHandlerAdapter() {
+ *    &#064;Bean
+ *    public RequestMappingHandlerAdapter requestMappingHandlerAdapter() {
  *         // Create or delegate to "super" to create and
  *         // customize properties of RequestMappingHandlerAdapter
- *	   }
+ *    }
  * }
  * </pre>
  *
@@ -99,5 +97,4 @@ import org.springframework.context.annotation.Import;
 @Target(ElementType.TYPE)
 @Documented
 @Import(DelegatingWebMvcConfiguration.class)
-public @interface EnableWebMvc {
-}
+public @interface EnableWebMvc {}

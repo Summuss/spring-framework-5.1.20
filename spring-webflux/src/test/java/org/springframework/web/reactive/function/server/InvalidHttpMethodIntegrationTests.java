@@ -25,30 +25,28 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-/**
- * @author Arjen Poutsma
- */
+/** @author Arjen Poutsma */
 public class InvalidHttpMethodIntegrationTests extends AbstractRouterFunctionIntegrationTests {
 
-	@Override
-	protected RouterFunction<?> routerFunction() {
-		return RouterFunctions.route(RequestPredicates.GET("/"),
-				request -> ServerResponse.ok().syncBody("FOO"))
-				.andRoute(RequestPredicates.all(), request -> ServerResponse.ok().syncBody("BAR"));
-	}
+    @Override
+    protected RouterFunction<?> routerFunction() {
+        return RouterFunctions.route(
+                        RequestPredicates.GET("/"), request -> ServerResponse.ok().syncBody("FOO"))
+                .andRoute(RequestPredicates.all(), request -> ServerResponse.ok().syncBody("BAR"));
+    }
 
-	@Test
-	public void invalidHttpMethod() throws IOException {
-		OkHttpClient client = new OkHttpClient();
+    @Test
+    public void invalidHttpMethod() throws IOException {
+        OkHttpClient client = new OkHttpClient();
 
-		Request request = new Request.Builder()
-				.method("BAZ", null)
-				.url("http://localhost:" + port + "/")
-				.build();
+        Request request =
+                new Request.Builder()
+                        .method("BAZ", null)
+                        .url("http://localhost:" + port + "/")
+                        .build();
 
-		try (Response response = client.newCall(request).execute()) {
-			assertEquals("BAR", response.body().string());
-		}
-	}
-
+        try (Response response = client.newCall(request).execute()) {
+            assertEquals("BAR", response.body().string());
+        }
+    }
 }

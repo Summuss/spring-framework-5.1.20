@@ -24,16 +24,15 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.lang.Nullable;
 
 /**
- * Factory for a {@code Map} that reads from a YAML source, preserving the
- * YAML-declared value types and their structure.
+ * Factory for a {@code Map} that reads from a YAML source, preserving the YAML-declared value types
+ * and their structure.
  *
- * <p>YAML is a nice human-readable format for configuration, and it has some
- * useful hierarchical properties. It's more or less a superset of JSON, so it
- * has a lot of similar features.
+ * <p>YAML is a nice human-readable format for configuration, and it has some useful hierarchical
+ * properties. It's more or less a superset of JSON, so it has a lot of similar features.
  *
- * <p>If multiple resources are provided the later ones will override entries in
- * the earlier ones hierarchically; that is, all entries with the same nested key
- * of type {@code Map} at any depth are merged. For example:
+ * <p>If multiple resources are provided the later ones will override entries in the earlier ones
+ * hierarchically; that is, all entries with the same nested key of type {@code Map} at any depth
+ * are merged. For example:
  *
  * <pre class="code">
  * foo:
@@ -61,8 +60,8 @@ import org.springframework.lang.Nullable;
  * five: six
  * </pre>
  *
- * Note that the value of "foo" in the first document is not simply replaced
- * with the value in the second, but its nested values are merged.
+ * Note that the value of "foo" in the first document is not simply replaced with the value in the
+ * second, but its nested values are merged.
  *
  * <p>Requires SnakeYAML 1.18 or higher, as of Spring Framework 5.0.6.
  *
@@ -70,75 +69,76 @@ import org.springframework.lang.Nullable;
  * @author Juergen Hoeller
  * @since 4.1
  */
-public class YamlMapFactoryBean extends YamlProcessor implements FactoryBean<Map<String, Object>>, InitializingBean {
+public class YamlMapFactoryBean extends YamlProcessor
+        implements FactoryBean<Map<String, Object>>, InitializingBean {
 
-	private boolean singleton = true;
+    private boolean singleton = true;
 
-	@Nullable
-	private Map<String, Object> map;
+    @Nullable private Map<String, Object> map;
 
+    /**
+     * Set if a singleton should be created, or a new object on each request otherwise. Default is
+     * {@code true} (a singleton).
+     */
+    public void setSingleton(boolean singleton) {
+        this.singleton = singleton;
+    }
 
-	/**
-	 * Set if a singleton should be created, or a new object on each request
-	 * otherwise. Default is {@code true} (a singleton).
-	 */
-	public void setSingleton(boolean singleton) {
-		this.singleton = singleton;
-	}
+    @Override
+    public boolean isSingleton() {
+        return this.singleton;
+    }
 
-	@Override
-	public boolean isSingleton() {
-		return this.singleton;
-	}
+    @Override
+    public void afterPropertiesSet() {
+        if (isSingleton()) {
+            this.map = createMap();
+        }
+    }
 
-	@Override
-	public void afterPropertiesSet() {
-		if (isSingleton()) {
-			this.map = createMap();
-		}
-	}
+    @Override
+    @Nullable
+    public Map<String, Object> getObject() {
+        return (this.map != null ? this.map : createMap());
+    }
 
-	@Override
-	@Nullable
-	public Map<String, Object> getObject() {
-		return (this.map != null ? this.map : createMap());
-	}
+    @Override
+    public Class<?> getObjectType() {
+        return Map.class;
+    }
 
-	@Override
-	public Class<?> getObjectType() {
-		return Map.class;
-	}
+    /**
+     * Template method that subclasses may override to construct the object returned by this
+     * factory.
+     *
+     * <p>Invoked lazily the first time {@link #getObject()} is invoked in case of a shared
+     * singleton; else, on each {@link #getObject()} call.
+     *
+     * <p>The default implementation returns the merged {@code Map} instance.
+     *
+     * @return the object returned by this factory
+     * @see #process(MatchCallback)
+     */
+    protected Map<String, Object> createMap() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        process((properties, map) -> merge(result, map));
+        return result;
+    }
 
-
-	/**
-	 * Template method that subclasses may override to construct the object
-	 * returned by this factory.
-	 * <p>Invoked lazily the first time {@link #getObject()} is invoked in
-	 * case of a shared singleton; else, on each {@link #getObject()} call.
-	 * <p>The default implementation returns the merged {@code Map} instance.
-	 * @return the object returned by this factory
-	 * @see #process(MatchCallback)
-	 */
-	protected Map<String, Object> createMap() {
-		Map<String, Object> result = new LinkedHashMap<>();
-		process((properties, map) -> merge(result, map));
-		return result;
-	}
-
-	@SuppressWarnings({"rawtypes", "unchecked"})
-	private void merge(Map<String, Object> output, Map<String, Object> map) {
-		map.forEach((key, value) -> {
-			Object existing = output.get(key);
-			if (value instanceof Map && existing instanceof Map) {
-				// Inner cast required by Eclipse IDE.
-				Map<String, Object> result = new LinkedHashMap<>((Map<String, Object>) existing);
-				merge(result, (Map) value);
-				output.put(key, result);
-			}
-			else {
-				output.put(key, value);
-			}
-		});
-	}
-
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private void merge(Map<String, Object> output, Map<String, Object> map) {
+        map.forEach(
+                (key, value) -> {
+                    Object existing = output.get(key);
+                    if (value instanceof Map && existing instanceof Map) {
+                        // Inner cast required by Eclipse IDE.
+                        Map<String, Object> result =
+                                new LinkedHashMap<>((Map<String, Object>) existing);
+                        merge(result, (Map) value);
+                        output.put(key, result);
+                    } else {
+                        output.put(key, value);
+                    }
+                });
+    }
 }

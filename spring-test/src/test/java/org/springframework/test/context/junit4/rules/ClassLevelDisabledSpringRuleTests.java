@@ -24,9 +24,8 @@ import org.junit.runners.JUnit4;
 import org.springframework.test.context.junit4.ClassLevelDisabledSpringRunnerTests;
 
 /**
- * This class is an extension of {@link ClassLevelDisabledSpringRunnerTests}
- * that has been modified to use {@link SpringClassRule} and
- * {@link SpringMethodRule}.
+ * This class is an extension of {@link ClassLevelDisabledSpringRunnerTests} that has been modified
+ * to use {@link SpringClassRule} and {@link SpringMethodRule}.
  *
  * @author Sam Brannen
  * @since 4.2
@@ -34,12 +33,10 @@ import org.springframework.test.context.junit4.ClassLevelDisabledSpringRunnerTes
 @RunWith(JUnit4.class)
 public class ClassLevelDisabledSpringRuleTests extends ClassLevelDisabledSpringRunnerTests {
 
-	@ClassRule
-	public static final SpringClassRule springClassRule = new SpringClassRule();
+    @ClassRule public static final SpringClassRule springClassRule = new SpringClassRule();
 
-	@Rule
-	public final SpringMethodRule springMethodRule = new SpringMethodRule();
+    @Rule public final SpringMethodRule springMethodRule = new SpringMethodRule();
 
-	// All tests are in superclass.
+    // All tests are in superclass.
 
 }

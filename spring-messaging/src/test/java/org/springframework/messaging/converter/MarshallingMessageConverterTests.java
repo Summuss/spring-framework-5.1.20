@@ -34,74 +34,73 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.oxm.jaxb.Jaxb2Marshaller;
 
-/**
- * @author Arjen Poutsma
- */
+/** @author Arjen Poutsma */
 public class MarshallingMessageConverterTests {
 
-	private MarshallingMessageConverter converter;
+    private MarshallingMessageConverter converter;
 
+    @Before
+    public void createMarshaller() throws Exception {
+        Jaxb2Marshaller marshaller = new Jaxb2Marshaller();
+        marshaller.setClassesToBeBound(MyBean.class);
+        marshaller.afterPropertiesSet();
 
-	@Before
-	public void createMarshaller() throws Exception {
-		Jaxb2Marshaller marshaller = new Jaxb2Marshaller();
-		marshaller.setClassesToBeBound(MyBean.class);
-		marshaller.afterPropertiesSet();
+        this.converter = new MarshallingMessageConverter(marshaller);
+    }
 
-		this.converter = new MarshallingMessageConverter(marshaller);
-	}
+    @Test
+    public void fromMessage() throws Exception {
+        String payload = "<myBean><name>Foo</name></myBean>";
+        Message<?> message =
+                MessageBuilder.withPayload(payload.getBytes(StandardCharsets.UTF_8)).build();
+        MyBean actual = (MyBean) this.converter.fromMessage(message, MyBean.class);
 
+        assertNotNull(actual);
+        assertEquals("Foo", actual.getName());
+    }
 
-	@Test
-	public void fromMessage() throws Exception {
-		String payload = "<myBean><name>Foo</name></myBean>";
-		Message<?> message = MessageBuilder.withPayload(payload.getBytes(StandardCharsets.UTF_8)).build();
-		MyBean actual = (MyBean) this.converter.fromMessage(message, MyBean.class);
+    @Test(expected = MessageConversionException.class)
+    public void fromMessageInvalidXml() throws Exception {
+        String payload = "<myBean><name>Foo</name><myBean>";
+        Message<?> message =
+                MessageBuilder.withPayload(payload.getBytes(StandardCharsets.UTF_8)).build();
+        this.converter.fromMessage(message, MyBean.class);
+    }
 
-		assertNotNull(actual);
-		assertEquals("Foo", actual.getName());
-	}
+    @Test(expected = MessageConversionException.class)
+    public void fromMessageValidXmlWithUnknownProperty() throws IOException {
+        String payload = "<myBean><age>42</age><myBean>";
+        Message<?> message =
+                MessageBuilder.withPayload(payload.getBytes(StandardCharsets.UTF_8)).build();
+        this.converter.fromMessage(message, MyBean.class);
+    }
 
-	@Test(expected = MessageConversionException.class)
-	public void fromMessageInvalidXml() throws Exception {
-		String payload = "<myBean><name>Foo</name><myBean>";
-		Message<?> message = MessageBuilder.withPayload(payload.getBytes(StandardCharsets.UTF_8)).build();
-		this.converter.fromMessage(message, MyBean.class);
-	}
+    @Test
+    public void toMessage() throws Exception {
+        MyBean payload = new MyBean();
+        payload.setName("Foo");
 
-	@Test(expected = MessageConversionException.class)
-	public void fromMessageValidXmlWithUnknownProperty() throws IOException {
-		String payload = "<myBean><age>42</age><myBean>";
-		Message<?> message = MessageBuilder.withPayload(payload.getBytes(StandardCharsets.UTF_8)).build();
-		this.converter.fromMessage(message, MyBean.class);
-	}
+        Message<?> message = this.converter.toMessage(payload, null);
+        assertNotNull(message);
+        String actual = new String((byte[]) message.getPayload(), StandardCharsets.UTF_8);
 
-	@Test
-	public void toMessage() throws Exception {
-		MyBean payload = new MyBean();
-		payload.setName("Foo");
+        DifferenceEvaluator ev = chain(Default, downgradeDifferencesToEqual(XML_STANDALONE));
+        assertThat(
+                actual,
+                isSimilarTo("<myBean><name>Foo</name></myBean>").withDifferenceEvaluator(ev));
+    }
 
-		Message<?> message = this.converter.toMessage(payload, null);
-		assertNotNull(message);
-		String actual = new String((byte[]) message.getPayload(), StandardCharsets.UTF_8);
+    @XmlRootElement
+    public static class MyBean {
 
-		DifferenceEvaluator ev = chain(Default, downgradeDifferencesToEqual(XML_STANDALONE));
-		assertThat(actual, isSimilarTo("<myBean><name>Foo</name></myBean>").withDifferenceEvaluator(ev));
-	}
+        private String name;
 
+        public String getName() {
+            return name;
+        }
 
-	@XmlRootElement
-	public static class MyBean {
-
-		private String name;
-
-		public String getName() {
-			return name;
-		}
-
-		public void setName(String name) {
-			this.name = name;
-		}
-	}
-
+        public void setName(String name) {
+            this.name = name;
+        }
+    }
 }

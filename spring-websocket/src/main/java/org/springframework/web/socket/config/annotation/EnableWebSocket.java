@@ -25,8 +25,8 @@ import java.lang.annotation.Target;
 import org.springframework.context.annotation.Import;
 
 /**
- * Add this annotation to an {@code @Configuration} class to configure
- * processing WebSocket requests. A typical configuration would look like this:
+ * Add this annotation to an {@code @Configuration} class to configure processing WebSocket
+ * requests. A typical configuration would look like this:
  *
  * <pre class="code">
  * &#064;Configuration
@@ -36,8 +36,8 @@ import org.springframework.context.annotation.Import;
  * }
  * </pre>
  *
- * <p>Customize the imported configuration by implementing the
- * {@link WebSocketConfigurer} interface:
+ * <p>Customize the imported configuration by implementing the {@link WebSocketConfigurer}
+ * interface:
  *
  * <pre class="code">
  * &#064;Configuration
@@ -49,8 +49,8 @@ import org.springframework.context.annotation.Import;
  *         registry.addHandler(echoWebSocketHandler(), "/echo").withSockJS();
  * 	   }
  *
- *	   &#064;Override
- *	   public WebSocketHandler echoWebSocketHandler() {
+ *    &#064;Override
+ *    public WebSocketHandler echoWebSocketHandler() {
  *         return new EchoWebSocketHandler();
  *     }
  * }
@@ -63,5 +63,4 @@ import org.springframework.context.annotation.Import;
 @Target(ElementType.TYPE)
 @Documented
 @Import(DelegatingWebSocketConfiguration.class)
-public @interface EnableWebSocket {
-}
+public @interface EnableWebSocket {}

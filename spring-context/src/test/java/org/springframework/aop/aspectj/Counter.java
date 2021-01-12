@@ -23,34 +23,32 @@ package org.springframework.aop.aspectj;
  */
 final class Counter implements ICounter {
 
-	private int count;
+    private int count;
 
-	public Counter() {
-	}
+    public Counter() {}
 
-	@Override
-	public void increment() {
-		count++;
-	}
+    @Override
+    public void increment() {
+        count++;
+    }
 
-	@Override
-	public void decrement() {
-		count--;
-	}
+    @Override
+    public void decrement() {
+        count--;
+    }
 
-	@Override
-	public int getCount() {
-		return count;
-	}
+    @Override
+    public int getCount() {
+        return count;
+    }
 
-	@Override
-	public void setCount(int counter) {
-		this.count = counter;
-	}
+    @Override
+    public void setCount(int counter) {
+        this.count = counter;
+    }
 
-	@Override
-	public void reset() {
-		this.count = 0;
-	}
-
+    @Override
+    public void reset() {
+        this.count = 0;
+    }
 }

@@ -16,36 +16,31 @@
 
 package org.springframework.jdbc;
 
-/**
- * @author Juergen Hoeller
- */
+/** @author Juergen Hoeller */
 public class Customer {
 
-	private int id;
+    private int id;
 
-	private String forename;
+    private String forename;
 
+    public int getId() {
+        return id;
+    }
 
-	public int getId() {
-		return id;
-	}
+    public void setId(int id) {
+        this.id = id;
+    }
 
-	public void setId(int id) {
-		this.id = id;
-	}
+    public String getForename() {
+        return forename;
+    }
 
-	public String getForename() {
-		return forename;
-	}
+    public void setForename(String forename) {
+        this.forename = forename;
+    }
 
-	public void setForename(String forename) {
-		this.forename = forename;
-	}
-
-
-	@Override
-	public String toString() {
-		return "Customer: id=" + id + "; forename=" + forename;
-	}
-
+    @Override
+    public String toString() {
+        return "Customer: id=" + id + "; forename=" + forename;
+    }
 }

@@ -51,157 +51,170 @@ import org.springframework.web.server.ServerWebExchange;
  */
 final class DefaultRenderingResponseBuilder implements RenderingResponse.Builder {
 
-	private final String name;
+    private final String name;
 
-	private int status = HttpStatus.OK.value();
+    private int status = HttpStatus.OK.value();
 
-	private final HttpHeaders headers = new HttpHeaders();
+    private final HttpHeaders headers = new HttpHeaders();
 
-	private final MultiValueMap<String, ResponseCookie> cookies = new LinkedMultiValueMap<>();
+    private final MultiValueMap<String, ResponseCookie> cookies = new LinkedMultiValueMap<>();
 
-	private final Map<String, Object> model = new LinkedHashMap<>();
+    private final Map<String, Object> model = new LinkedHashMap<>();
 
+    public DefaultRenderingResponseBuilder(RenderingResponse other) {
+        Assert.notNull(other, "RenderingResponse must not be null");
+        this.name = other.name();
+        this.status =
+                (other instanceof DefaultRenderingResponse
+                        ? ((DefaultRenderingResponse) other).statusCode
+                        : other.statusCode().value());
+        this.headers.putAll(other.headers());
+        this.model.putAll(other.model());
+    }
 
-	public DefaultRenderingResponseBuilder(RenderingResponse other) {
-		Assert.notNull(other, "RenderingResponse must not be null");
-		this.name = other.name();
-		this.status = (other instanceof DefaultRenderingResponse ?
-				((DefaultRenderingResponse) other).statusCode : other.statusCode().value());
-		this.headers.putAll(other.headers());
-		this.model.putAll(other.model());
-	}
+    public DefaultRenderingResponseBuilder(String name) {
+        Assert.notNull(name, "Name must not be null");
+        this.name = name;
+    }
 
-	public DefaultRenderingResponseBuilder(String name) {
-		Assert.notNull(name, "Name must not be null");
-		this.name = name;
-	}
+    @Override
+    public RenderingResponse.Builder status(HttpStatus status) {
+        Assert.notNull(status, "HttpStatus must not be null");
+        this.status = status.value();
+        return this;
+    }
 
+    @Override
+    public RenderingResponse.Builder status(int status) {
+        this.status = status;
+        return this;
+    }
 
-	@Override
-	public RenderingResponse.Builder status(HttpStatus status) {
-		Assert.notNull(status, "HttpStatus must not be null");
-		this.status = status.value();
-		return this;
-	}
+    @Override
+    public RenderingResponse.Builder cookie(ResponseCookie cookie) {
+        Assert.notNull(cookie, "ResponseCookie must not be null");
+        this.cookies.add(cookie.getName(), cookie);
+        return this;
+    }
 
-	@Override
-	public RenderingResponse.Builder status(int status) {
-		this.status = status;
-		return this;
-	}
+    @Override
+    public RenderingResponse.Builder cookies(
+            Consumer<MultiValueMap<String, ResponseCookie>> cookiesConsumer) {
+        cookiesConsumer.accept(this.cookies);
+        return this;
+    }
 
-	@Override
-	public RenderingResponse.Builder cookie(ResponseCookie cookie) {
-		Assert.notNull(cookie, "ResponseCookie must not be null");
-		this.cookies.add(cookie.getName(), cookie);
-		return this;
-	}
+    @Override
+    public RenderingResponse.Builder modelAttribute(Object attribute) {
+        Assert.notNull(attribute, "Attribute must not be null");
+        if (attribute instanceof Collection && ((Collection<?>) attribute).isEmpty()) {
+            return this;
+        }
+        return modelAttribute(Conventions.getVariableName(attribute), attribute);
+    }
 
-	@Override
-	public RenderingResponse.Builder cookies(Consumer<MultiValueMap<String, ResponseCookie>> cookiesConsumer) {
-		cookiesConsumer.accept(this.cookies);
-		return this;
-	}
+    @Override
+    public RenderingResponse.Builder modelAttribute(String name, @Nullable Object value) {
+        Assert.notNull(name, "Name must not be null");
+        this.model.put(name, value);
+        return this;
+    }
 
-	@Override
-	public RenderingResponse.Builder modelAttribute(Object attribute) {
-		Assert.notNull(attribute, "Attribute must not be null");
-		if (attribute instanceof Collection && ((Collection<?>) attribute).isEmpty()) {
-			return this;
-		}
-		return modelAttribute(Conventions.getVariableName(attribute), attribute);
-	}
+    @Override
+    public RenderingResponse.Builder modelAttributes(Object... attributes) {
+        modelAttributes(Arrays.asList(attributes));
+        return this;
+    }
 
-	@Override
-	public RenderingResponse.Builder modelAttribute(String name, @Nullable Object value) {
-		Assert.notNull(name, "Name must not be null");
-		this.model.put(name, value);
-		return this;
-	}
+    @Override
+    public RenderingResponse.Builder modelAttributes(Collection<?> attributes) {
+        attributes.forEach(this::modelAttribute);
+        return this;
+    }
 
-	@Override
-	public RenderingResponse.Builder modelAttributes(Object... attributes) {
-		modelAttributes(Arrays.asList(attributes));
-		return this;
-	}
+    @Override
+    public RenderingResponse.Builder modelAttributes(Map<String, ?> attributes) {
+        this.model.putAll(attributes);
+        return this;
+    }
 
-	@Override
-	public RenderingResponse.Builder modelAttributes(Collection<?> attributes) {
-		attributes.forEach(this::modelAttribute);
-		return this;
-	}
+    @Override
+    public RenderingResponse.Builder header(String headerName, String... headerValues) {
+        for (String headerValue : headerValues) {
+            this.headers.add(headerName, headerValue);
+        }
+        return this;
+    }
 
-	@Override
-	public RenderingResponse.Builder modelAttributes(Map<String, ?> attributes) {
-		this.model.putAll(attributes);
-		return this;
-	}
+    @Override
+    public RenderingResponse.Builder headers(HttpHeaders headers) {
+        this.headers.putAll(headers);
+        return this;
+    }
 
-	@Override
-	public RenderingResponse.Builder header(String headerName, String... headerValues) {
-		for (String headerValue : headerValues) {
-			this.headers.add(headerName, headerValue);
-		}
-		return this;
-	}
+    @Override
+    public Mono<RenderingResponse> build() {
+        return Mono.just(
+                new DefaultRenderingResponse(
+                        this.status, this.headers, this.cookies, this.name, this.model));
+    }
 
-	@Override
-	public RenderingResponse.Builder headers(HttpHeaders headers) {
-		this.headers.putAll(headers);
-		return this;
-	}
+    private static final class DefaultRenderingResponse
+            extends DefaultServerResponseBuilder.AbstractServerResponse
+            implements RenderingResponse {
 
-	@Override
-	public Mono<RenderingResponse> build() {
-		return Mono.just(
-				new DefaultRenderingResponse(this.status, this.headers, this.cookies, this.name, this.model));
-	}
+        private final String name;
 
+        private final Map<String, Object> model;
 
-	private static final class DefaultRenderingResponse extends DefaultServerResponseBuilder.AbstractServerResponse
-			implements RenderingResponse {
+        public DefaultRenderingResponse(
+                int statusCode,
+                HttpHeaders headers,
+                MultiValueMap<String, ResponseCookie> cookies,
+                String name,
+                Map<String, Object> model) {
 
-		private final String name;
+            super(statusCode, headers, cookies, Collections.emptyMap());
+            this.name = name;
+            this.model = Collections.unmodifiableMap(new LinkedHashMap<>(model));
+        }
 
-		private final Map<String, Object> model;
+        @Override
+        public String name() {
+            return this.name;
+        }
 
-		public DefaultRenderingResponse(int statusCode, HttpHeaders headers,
-				MultiValueMap<String, ResponseCookie> cookies, String name, Map<String, Object> model) {
+        @Override
+        public Map<String, Object> model() {
+            return this.model;
+        }
 
-			super(statusCode, headers, cookies, Collections.emptyMap());
-			this.name = name;
-			this.model = Collections.unmodifiableMap(new LinkedHashMap<>(model));
-		}
+        @Override
+        protected Mono<Void> writeToInternal(ServerWebExchange exchange, Context context) {
+            MediaType contentType = exchange.getResponse().getHeaders().getContentType();
+            Locale locale = LocaleContextHolder.getLocale(exchange.getLocaleContext());
+            Stream<ViewResolver> viewResolverStream = context.viewResolvers().stream();
 
-		@Override
-		public String name() {
-			return this.name;
-		}
-
-		@Override
-		public Map<String, Object> model() {
-			return this.model;
-		}
-
-		@Override
-		protected Mono<Void> writeToInternal(ServerWebExchange exchange, Context context) {
-			MediaType contentType = exchange.getResponse().getHeaders().getContentType();
-			Locale locale = LocaleContextHolder.getLocale(exchange.getLocaleContext());
-			Stream<ViewResolver> viewResolverStream = context.viewResolvers().stream();
-
-			return Flux.fromStream(viewResolverStream)
-					.concatMap(viewResolver -> viewResolver.resolveViewName(name(), locale))
-					.next()
-					.switchIfEmpty(Mono.error(() ->
-							new IllegalArgumentException("Could not resolve view with name '" + name() + "'")))
-					.flatMap(view -> {
-						List<MediaType> mediaTypes = view.getSupportedMediaTypes();
-						return view.render(model(),
-								contentType == null && !mediaTypes.isEmpty() ? mediaTypes.get(0) : contentType,
-								exchange);
-					});
-		}
-
-	}
-
+            return Flux.fromStream(viewResolverStream)
+                    .concatMap(viewResolver -> viewResolver.resolveViewName(name(), locale))
+                    .next()
+                    .switchIfEmpty(
+                            Mono.error(
+                                    () ->
+                                            new IllegalArgumentException(
+                                                    "Could not resolve view with name '"
+                                                            + name()
+                                                            + "'")))
+                    .flatMap(
+                            view -> {
+                                List<MediaType> mediaTypes = view.getSupportedMediaTypes();
+                                return view.render(
+                                        model(),
+                                        contentType == null && !mediaTypes.isEmpty()
+                                                ? mediaTypes.get(0)
+                                                : contentType,
+                                        exchange);
+                            });
+        }
+    }
 }

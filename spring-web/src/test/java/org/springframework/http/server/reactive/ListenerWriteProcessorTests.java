@@ -36,171 +36,157 @@ import static org.mockito.Mockito.*;
  */
 public class ListenerWriteProcessorTests {
 
-	private final TestListenerWriteProcessor processor = new TestListenerWriteProcessor();
+    private final TestListenerWriteProcessor processor = new TestListenerWriteProcessor();
 
-	private final TestResultSubscriber resultSubscriber = new TestResultSubscriber();
+    private final TestResultSubscriber resultSubscriber = new TestResultSubscriber();
 
-	private final TestSubscription subscription = new TestSubscription();
+    private final TestSubscription subscription = new TestSubscription();
 
+    @Before
+    public void setup() {
+        this.processor.subscribe(this.resultSubscriber);
+        this.processor.onSubscribe(this.subscription);
+        assertEquals(1, subscription.getDemand());
+    }
 
-	@Before
-	public void setup() {
-		this.processor.subscribe(this.resultSubscriber);
-		this.processor.onSubscribe(this.subscription);
-		assertEquals(1, subscription.getDemand());
-	}
+    @Test // SPR-17410
+    public void writePublisherError() {
 
+        // Turn off writing so next item will be cached
+        this.processor.setWritePossible(false);
+        DataBuffer buffer = mock(DataBuffer.class);
+        this.processor.onNext(buffer);
 
-	@Test // SPR-17410
-	public void writePublisherError() {
+        // Send error while item cached
+        this.processor.onError(new IllegalStateException());
 
-		// Turn off writing so next item will be cached
-		this.processor.setWritePossible(false);
-		DataBuffer buffer = mock(DataBuffer.class);
-		this.processor.onNext(buffer);
+        assertNotNull("Error should flow to result publisher", this.resultSubscriber.getError());
+        assertEquals(1, this.processor.getDiscardedBuffers().size());
+        assertSame(buffer, this.processor.getDiscardedBuffers().get(0));
+    }
 
-		// Send error while item cached
-		this.processor.onError(new IllegalStateException());
+    @Test // SPR-17410
+    public void ioExceptionDuringWrite() {
 
-		assertNotNull("Error should flow to result publisher", this.resultSubscriber.getError());
-		assertEquals(1, this.processor.getDiscardedBuffers().size());
-		assertSame(buffer, this.processor.getDiscardedBuffers().get(0));
-	}
+        // Fail on next write
+        this.processor.setWritePossible(true);
+        this.processor.setFailOnWrite(true);
 
-	@Test // SPR-17410
-	public void ioExceptionDuringWrite() {
+        // Write
+        DataBuffer buffer = mock(DataBuffer.class);
+        this.processor.onNext(buffer);
 
-		// Fail on next write
-		this.processor.setWritePossible(true);
-		this.processor.setFailOnWrite(true);
+        assertNotNull("Error should flow to result publisher", this.resultSubscriber.getError());
+        assertEquals(1, this.processor.getDiscardedBuffers().size());
+        assertSame(buffer, this.processor.getDiscardedBuffers().get(0));
+    }
 
-		// Write
-		DataBuffer buffer = mock(DataBuffer.class);
-		this.processor.onNext(buffer);
+    @Test // SPR-17410
+    public void onNextWithoutDemand() {
 
-		assertNotNull("Error should flow to result publisher", this.resultSubscriber.getError());
-		assertEquals(1, this.processor.getDiscardedBuffers().size());
-		assertSame(buffer, this.processor.getDiscardedBuffers().get(0));
-	}
+        // Disable writing: next item will be cached..
+        this.processor.setWritePossible(false);
+        DataBuffer buffer1 = mock(DataBuffer.class);
+        this.processor.onNext(buffer1);
 
-	@Test // SPR-17410
-	public void onNextWithoutDemand() {
+        // Send more data illegally
+        DataBuffer buffer2 = mock(DataBuffer.class);
+        this.processor.onNext(buffer2);
 
-		// Disable writing: next item will be cached..
-		this.processor.setWritePossible(false);
-		DataBuffer buffer1 = mock(DataBuffer.class);
-		this.processor.onNext(buffer1);
+        assertNotNull("Error should flow to result publisher", this.resultSubscriber.getError());
+        assertEquals(2, this.processor.getDiscardedBuffers().size());
+        assertSame(buffer2, this.processor.getDiscardedBuffers().get(0));
+        assertSame(buffer1, this.processor.getDiscardedBuffers().get(1));
+    }
 
-		// Send more data illegally
-		DataBuffer buffer2 = mock(DataBuffer.class);
-		this.processor.onNext(buffer2);
+    private static final class TestListenerWriteProcessor
+            extends AbstractListenerWriteProcessor<DataBuffer> {
 
-		assertNotNull("Error should flow to result publisher", this.resultSubscriber.getError());
-		assertEquals(2, this.processor.getDiscardedBuffers().size());
-		assertSame(buffer2, this.processor.getDiscardedBuffers().get(0));
-		assertSame(buffer1, this.processor.getDiscardedBuffers().get(1));
-	}
+        private final List<DataBuffer> discardedBuffers = new ArrayList<>();
 
+        private boolean writePossible;
 
-	private static final class TestListenerWriteProcessor extends AbstractListenerWriteProcessor<DataBuffer> {
+        private boolean failOnWrite;
 
-		private final List<DataBuffer> discardedBuffers = new ArrayList<>();
+        public List<DataBuffer> getDiscardedBuffers() {
+            return this.discardedBuffers;
+        }
 
-		private boolean writePossible;
+        public void setWritePossible(boolean writePossible) {
+            this.writePossible = writePossible;
+        }
 
-		private boolean failOnWrite;
+        public void setFailOnWrite(boolean failOnWrite) {
+            this.failOnWrite = failOnWrite;
+        }
 
+        @Override
+        protected boolean isDataEmpty(DataBuffer dataBuffer) {
+            return false;
+        }
 
-		public List<DataBuffer> getDiscardedBuffers() {
-			return this.discardedBuffers;
-		}
+        @Override
+        protected boolean isWritePossible() {
+            return this.writePossible;
+        }
 
-		public void setWritePossible(boolean writePossible) {
-			this.writePossible = writePossible;
-		}
+        @Override
+        protected boolean write(DataBuffer dataBuffer) throws IOException {
+            if (this.failOnWrite) {
+                throw new IOException("write failed");
+            }
+            return true;
+        }
 
-		public void setFailOnWrite(boolean failOnWrite) {
-			this.failOnWrite = failOnWrite;
-		}
+        @Override
+        protected void writingFailed(Throwable ex) {
+            cancel();
+            onError(ex);
+        }
 
+        @Override
+        protected void discardData(DataBuffer dataBuffer) {
+            this.discardedBuffers.add(dataBuffer);
+        }
+    }
 
-		@Override
-		protected boolean isDataEmpty(DataBuffer dataBuffer) {
-			return false;
-		}
+    private static final class TestSubscription implements Subscription {
 
-		@Override
-		protected boolean isWritePossible() {
-			return this.writePossible;
-		}
+        private long demand;
 
-		@Override
-		protected boolean write(DataBuffer dataBuffer) throws IOException {
-			if (this.failOnWrite) {
-				throw new IOException("write failed");
-			}
-			return true;
-		}
+        public long getDemand() {
+            return this.demand;
+        }
 
-		@Override
-		protected void writingFailed(Throwable ex) {
-			cancel();
-			onError(ex);
-		}
+        @Override
+        public void request(long n) {
+            this.demand = (n == Long.MAX_VALUE ? n : this.demand + n);
+        }
 
-		@Override
-		protected void discardData(DataBuffer dataBuffer) {
-			this.discardedBuffers.add(dataBuffer);
-		}
-	}
+        @Override
+        public void cancel() {}
+    }
 
+    private static final class TestResultSubscriber implements Subscriber<Void> {
 
-	private static final class TestSubscription implements Subscription {
+        private Throwable error;
 
-		private long demand;
+        public Throwable getError() {
+            return this.error;
+        }
 
+        @Override
+        public void onSubscribe(Subscription subscription) {}
 
-		public long getDemand() {
-			return this.demand;
-		}
+        @Override
+        public void onNext(Void aVoid) {}
 
+        @Override
+        public void onError(Throwable ex) {
+            this.error = ex;
+        }
 
-		@Override
-		public void request(long n) {
-			this.demand = (n == Long.MAX_VALUE ? n : this.demand + n);
-		}
-
-		@Override
-		public void cancel() {
-		}
-	}
-
-	private static final class TestResultSubscriber implements Subscriber<Void> {
-
-		private Throwable error;
-
-
-		public Throwable getError() {
-			return this.error;
-		}
-
-
-		@Override
-		public void onSubscribe(Subscription subscription) {
-		}
-
-		@Override
-		public void onNext(Void aVoid) {
-		}
-
-		@Override
-		public void onError(Throwable ex) {
-			this.error = ex;
-		}
-
-		@Override
-		public void onComplete() {
-		}
-	}
-
+        @Override
+        public void onComplete() {}
+    }
 }

@@ -1,6 +1,4 @@
-/**
- * Core support package for type filtering (e.g. for classpath scanning).
- */
+/** Core support package for type filtering (e.g. for classpath scanning). */
 @NonNullApi
 @NonNullFields
 package org.springframework.core.type.filter;

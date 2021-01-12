@@ -28,31 +28,33 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.util.UriComponentsBuilder;
 
-
 /**
  * Resolvers argument values of type {@link UriComponentsBuilder}.
  *
- * <p>The returned instance is initialized via
- * {@link ServletUriComponentsBuilder#fromServletMapping(HttpServletRequest)}.
+ * <p>The returned instance is initialized via {@link
+ * ServletUriComponentsBuilder#fromServletMapping(HttpServletRequest)}.
  *
  * @author Rossen Stoyanchev
  * @since 3.1
  */
 public class UriComponentsBuilderMethodArgumentResolver implements HandlerMethodArgumentResolver {
 
-	@Override
-	public boolean supportsParameter(MethodParameter parameter) {
-		Class<?> type = parameter.getParameterType();
-		return (UriComponentsBuilder.class == type || ServletUriComponentsBuilder.class == type);
-	}
+    @Override
+    public boolean supportsParameter(MethodParameter parameter) {
+        Class<?> type = parameter.getParameterType();
+        return (UriComponentsBuilder.class == type || ServletUriComponentsBuilder.class == type);
+    }
 
-	@Override
-	public Object resolveArgument(MethodParameter parameter, @Nullable ModelAndViewContainer mavContainer,
-			NativeWebRequest webRequest, @Nullable WebDataBinderFactory binderFactory) throws Exception {
+    @Override
+    public Object resolveArgument(
+            MethodParameter parameter,
+            @Nullable ModelAndViewContainer mavContainer,
+            NativeWebRequest webRequest,
+            @Nullable WebDataBinderFactory binderFactory)
+            throws Exception {
 
-		HttpServletRequest request = webRequest.getNativeRequest(HttpServletRequest.class);
-		Assert.state(request != null, "No HttpServletRequest");
-		return ServletUriComponentsBuilder.fromServletMapping(request);
-	}
-
+        HttpServletRequest request = webRequest.getNativeRequest(HttpServletRequest.class);
+        Assert.state(request != null, "No HttpServletRequest");
+        return ServletUriComponentsBuilder.fromServletMapping(request);
+    }
 }

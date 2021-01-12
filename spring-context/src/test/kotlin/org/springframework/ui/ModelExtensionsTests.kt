@@ -27,11 +27,11 @@ import org.junit.Test
  */
 class ModelExtensionsTests {
 
-	@Test
-	fun setAttribute() {
-		val model:Model = ConcurrentModel()
-		model["foo"] = "bing"
-		assertTrue(model.containsAttribute("foo"))
-		assertEquals("bing", model.asMap()["foo"])
-	}
+    @Test
+    fun setAttribute() {
+        val model: Model = ConcurrentModel()
+        model["foo"] = "bing"
+        assertTrue(model.containsAttribute("foo"))
+        assertEquals("bing", model.asMap()["foo"])
+    }
 }

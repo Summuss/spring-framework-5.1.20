@@ -34,30 +34,34 @@ import org.springframework.web.method.annotation.AbstractNamedValueMethodArgumen
  * @author Rossen Stoyanchev
  * @since 4.3
  */
-public class RequestAttributeMethodArgumentResolver extends AbstractNamedValueMethodArgumentResolver {
+public class RequestAttributeMethodArgumentResolver
+        extends AbstractNamedValueMethodArgumentResolver {
 
-	@Override
-	public boolean supportsParameter(MethodParameter parameter) {
-		return parameter.hasParameterAnnotation(RequestAttribute.class);
-	}
+    @Override
+    public boolean supportsParameter(MethodParameter parameter) {
+        return parameter.hasParameterAnnotation(RequestAttribute.class);
+    }
 
-	@Override
-	protected NamedValueInfo createNamedValueInfo(MethodParameter parameter) {
-		RequestAttribute ann = parameter.getParameterAnnotation(RequestAttribute.class);
-		Assert.state(ann != null, "No RequestAttribute annotation");
-		return new NamedValueInfo(ann.name(), ann.required(), ValueConstants.DEFAULT_NONE);
-	}
+    @Override
+    protected NamedValueInfo createNamedValueInfo(MethodParameter parameter) {
+        RequestAttribute ann = parameter.getParameterAnnotation(RequestAttribute.class);
+        Assert.state(ann != null, "No RequestAttribute annotation");
+        return new NamedValueInfo(ann.name(), ann.required(), ValueConstants.DEFAULT_NONE);
+    }
 
-	@Override
-	@Nullable
-	protected Object resolveName(String name, MethodParameter parameter, NativeWebRequest request){
-		return request.getAttribute(name, RequestAttributes.SCOPE_REQUEST);
-	}
+    @Override
+    @Nullable
+    protected Object resolveName(String name, MethodParameter parameter, NativeWebRequest request) {
+        return request.getAttribute(name, RequestAttributes.SCOPE_REQUEST);
+    }
 
-	@Override
-	protected void handleMissingValue(String name, MethodParameter parameter) throws ServletException {
-		throw new ServletRequestBindingException("Missing request attribute '" + name +
-				"' of type " +  parameter.getNestedParameterType().getSimpleName());
-	}
-
+    @Override
+    protected void handleMissingValue(String name, MethodParameter parameter)
+            throws ServletException {
+        throw new ServletRequestBindingException(
+                "Missing request attribute '"
+                        + name
+                        + "' of type "
+                        + parameter.getNestedParameterType().getSimpleName());
+    }
 }

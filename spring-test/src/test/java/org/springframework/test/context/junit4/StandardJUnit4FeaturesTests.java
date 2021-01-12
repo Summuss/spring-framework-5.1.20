@@ -27,18 +27,14 @@ import static org.junit.Assert.*;
 import static org.junit.Assume.*;
 
 /**
- * Simple unit test to verify the expected functionality of standard JUnit 4.4+
- * testing features.
- * <p>
- * Currently testing: {@link Test @Test} (including expected exceptions and
- * timeouts), {@link BeforeClass @BeforeClass}, {@link Before @Before}, and
- * <em>assumptions</em>.
- * </p>
- * <p>
- * Due to the fact that JUnit does not guarantee a particular ordering of test
- * method execution, the following are currently not tested:
- * {@link org.junit.AfterClass @AfterClass} and {@link org.junit.After @After}.
- * </p>
+ * Simple unit test to verify the expected functionality of standard JUnit 4.4+ testing features.
+ *
+ * <p>Currently testing: {@link Test @Test} (including expected exceptions and timeouts), {@link
+ * BeforeClass @BeforeClass}, {@link Before @Before}, and <em>assumptions</em>.
+ *
+ * <p>Due to the fact that JUnit does not guarantee a particular ordering of test method execution,
+ * the following are currently not tested: {@link org.junit.AfterClass @AfterClass} and {@link
+ * org.junit.After @After}.
  *
  * @author Sam Brannen
  * @since 2.5
@@ -46,61 +42,57 @@ import static org.junit.Assume.*;
  */
 public class StandardJUnit4FeaturesTests {
 
-	private static int staticBeforeCounter = 0;
+    private static int staticBeforeCounter = 0;
 
+    @BeforeClass
+    public static void incrementStaticBeforeCounter() {
+        StandardJUnit4FeaturesTests.staticBeforeCounter++;
+    }
 
-	@BeforeClass
-	public static void incrementStaticBeforeCounter() {
-		StandardJUnit4FeaturesTests.staticBeforeCounter++;
-	}
+    private int beforeCounter = 0;
 
+    @Test
+    @Ignore
+    public void alwaysFailsButShouldBeIgnored() {
+        fail("The body of an ignored test should never be executed!");
+    }
 
-	private int beforeCounter = 0;
+    @Test
+    public void alwaysSucceeds() {
+        assertTrue(true);
+    }
 
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void expectingAnIndexOutOfBoundsException() {
+        new ArrayList<>().get(1);
+    }
 
-	@Test
-	@Ignore
-	public void alwaysFailsButShouldBeIgnored() {
-		fail("The body of an ignored test should never be executed!");
-	}
+    @Test
+    public void failedAssumptionShouldPrecludeImminentFailure() {
+        assumeTrue(false);
+        fail("A failed assumption should preclude imminent failure!");
+    }
 
-	@Test
-	public void alwaysSucceeds() {
-		assertTrue(true);
-	}
+    @Before
+    public void incrementBeforeCounter() {
+        this.beforeCounter++;
+    }
 
-	@Test(expected = IndexOutOfBoundsException.class)
-	public void expectingAnIndexOutOfBoundsException() {
-		new ArrayList<>().get(1);
-	}
+    @Test(timeout = 10000)
+    public void noOpShouldNotTimeOut() {
+        /* no-op */
+    }
 
-	@Test
-	public void failedAssumptionShouldPrecludeImminentFailure() {
-		assumeTrue(false);
-		fail("A failed assumption should preclude imminent failure!");
-	}
+    @Test
+    public void verifyBeforeAnnotation() {
+        assertEquals(1, this.beforeCounter);
+    }
 
-	@Before
-	public void incrementBeforeCounter() {
-		this.beforeCounter++;
-	}
-
-	@Test(timeout = 10000)
-	public void noOpShouldNotTimeOut() {
-		/* no-op */
-	}
-
-	@Test
-	public void verifyBeforeAnnotation() {
-		assertEquals(1, this.beforeCounter);
-	}
-
-	@Test
-	public void verifyBeforeClassAnnotation() {
-		// Instead of testing for equality to 1, we just assert that the value
-		// was incremented at least once, since this test class may serve as a
-		// parent class to other tests in a suite, etc.
-		assertTrue(StandardJUnit4FeaturesTests.staticBeforeCounter > 0);
-	}
-
+    @Test
+    public void verifyBeforeClassAnnotation() {
+        // Instead of testing for equality to 1, we just assert that the value
+        // was incremented at least once, since this test class may serve as a
+        // parent class to other tests in a suite, etc.
+        assertTrue(StandardJUnit4FeaturesTests.staticBeforeCounter > 0);
+    }
 }

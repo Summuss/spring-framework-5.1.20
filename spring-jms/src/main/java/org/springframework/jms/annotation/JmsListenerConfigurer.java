@@ -19,12 +19,11 @@ package org.springframework.jms.annotation;
 import org.springframework.jms.config.JmsListenerEndpointRegistrar;
 
 /**
- * Optional interface to be implemented by a Spring managed bean willing
- * to customize how JMS listener endpoints are configured. Typically
- * used to define the default {@link org.springframework.jms.config.JmsListenerContainerFactory
- * JmsListenerContainerFactory} to use or for registering JMS endpoints
- * in a <em>programmatic</em> fashion as opposed to the <em>declarative</em>
- * approach of using the @{@link JmsListener} annotation.
+ * Optional interface to be implemented by a Spring managed bean willing to customize how JMS
+ * listener endpoints are configured. Typically used to define the default {@link
+ * org.springframework.jms.config.JmsListenerContainerFactory JmsListenerContainerFactory} to use or
+ * for registering JMS endpoints in a <em>programmatic</em> fashion as opposed to the
+ * <em>declarative</em> approach of using the @{@link JmsListener} annotation.
  *
  * <p>See @{@link EnableJms} for detailed usage examples.
  *
@@ -36,15 +35,15 @@ import org.springframework.jms.config.JmsListenerEndpointRegistrar;
 @FunctionalInterface
 public interface JmsListenerConfigurer {
 
-	/**
-	 * Callback allowing a {@link org.springframework.jms.config.JmsListenerEndpointRegistry
-	 * JmsListenerEndpointRegistry} and specific {@link org.springframework.jms.config.JmsListenerEndpoint
-	 * JmsListenerEndpoint} instances to be registered against the given
-	 * {@link JmsListenerEndpointRegistrar}. The default
-	 * {@link org.springframework.jms.config.JmsListenerContainerFactory JmsListenerContainerFactory}
-	 * can also be customized.
-	 * @param registrar the registrar to be configured
-	 */
-	void configureJmsListeners(JmsListenerEndpointRegistrar registrar);
-
+    /**
+     * Callback allowing a {@link org.springframework.jms.config.JmsListenerEndpointRegistry
+     * JmsListenerEndpointRegistry} and specific {@link
+     * org.springframework.jms.config.JmsListenerEndpoint JmsListenerEndpoint} instances to be
+     * registered against the given {@link JmsListenerEndpointRegistrar}. The default {@link
+     * org.springframework.jms.config.JmsListenerContainerFactory JmsListenerContainerFactory} can
+     * also be customized.
+     *
+     * @param registrar the registrar to be configured
+     */
+    void configureJmsListeners(JmsListenerEndpointRegistrar registrar);
 }

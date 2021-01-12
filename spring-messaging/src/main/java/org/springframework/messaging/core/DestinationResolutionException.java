@@ -29,12 +29,11 @@ import org.springframework.messaging.MessagingException;
 @SuppressWarnings("serial")
 public class DestinationResolutionException extends MessagingException {
 
-	public DestinationResolutionException(String description) {
-		super(description);
-	}
+    public DestinationResolutionException(String description) {
+        super(description);
+    }
 
-	public DestinationResolutionException(@Nullable String description, @Nullable Throwable cause) {
-		super(description, cause);
-	}
-
+    public DestinationResolutionException(@Nullable String description, @Nullable Throwable cause) {
+        super(description, cause);
+    }
 }

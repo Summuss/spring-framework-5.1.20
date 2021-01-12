@@ -27,36 +27,34 @@ import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.*;
 
 /**
- * Tests ensuring that configuration classes marked with @ComponentScan
- * may be processed recursively
+ * Tests ensuring that configuration classes marked with @ComponentScan may be processed recursively
  *
  * @author Chris Beams
  * @since 3.1
  */
 public class ComponentScanAnnotationRecursionTests {
 
-	@Test
-	public void recursion() {
-		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
-		ctx.register(Level1Config.class);
-		ctx.refresh();
+    @Test
+    public void recursion() {
+        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+        ctx.register(Level1Config.class);
+        ctx.refresh();
 
-		// assert that all levels have been detected
-		ctx.getBean(Level1Config.class);
-		ctx.getBean(Level2Config.class);
-		ctx.getBean(Level3Component.class);
+        // assert that all levels have been detected
+        ctx.getBean(Level1Config.class);
+        ctx.getBean(Level2Config.class);
+        ctx.getBean(Level3Component.class);
 
-		// assert that enhancement is working
-		assertThat(ctx.getBean("level1Bean"), sameInstance(ctx.getBean("level1Bean")));
-		assertThat(ctx.getBean("level2Bean"), sameInstance(ctx.getBean("level2Bean")));
-	}
+        // assert that enhancement is working
+        assertThat(ctx.getBean("level1Bean"), sameInstance(ctx.getBean("level1Bean")));
+        assertThat(ctx.getBean("level2Bean"), sameInstance(ctx.getBean("level2Bean")));
+    }
 
-	public void evenCircularScansAreSupported() {
-		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
-		ctx.register(LeftConfig.class); // left scans right, and right scans left
-		ctx.refresh();
-		ctx.getBean("leftConfig");      // but this is handled gracefully
-		ctx.getBean("rightConfig");     // and beans from both packages are available
-	}
-
+    public void evenCircularScansAreSupported() {
+        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+        ctx.register(LeftConfig.class); // left scans right, and right scans left
+        ctx.refresh();
+        ctx.getBean("leftConfig"); // but this is handled gracefully
+        ctx.getBean("rightConfig"); // and beans from both packages are available
+    }
 }

@@ -30,8 +30,7 @@ import org.springframework.stereotype.Component;
 @Component
 public @interface DevComponent {
 
-	String PROFILE_NAME = "dev";
+    String PROFILE_NAME = "dev";
 
-	String value() default "";
-
+    String value() default "";
 }

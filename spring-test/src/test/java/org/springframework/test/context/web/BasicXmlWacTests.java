@@ -29,9 +29,8 @@ import static org.junit.Assert.*;
 @ContextConfiguration
 public class BasicXmlWacTests extends AbstractBasicWacTests {
 
-	@Test
-	public void fooBarAutowired() {
-		assertEquals("bar", foo);
-	}
-
+    @Test
+    public void fooBarAutowired() {
+        assertEquals("bar", foo);
+    }
 }

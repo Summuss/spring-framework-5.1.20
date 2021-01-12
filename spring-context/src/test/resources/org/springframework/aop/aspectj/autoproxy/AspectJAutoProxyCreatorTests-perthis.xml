@@ -3,13 +3,13 @@
 
 <beans>
 
-	<bean class="org.springframework.aop.aspectj.annotation.AnnotationAwareAspectJAutoProxyCreator"/>
+    <bean class="org.springframework.aop.aspectj.annotation.AnnotationAwareAspectJAutoProxyCreator"/>
 
-	<bean class="test.aspect.PerThisAspect" scope="prototype"/>
+    <bean class="test.aspect.PerThisAspect" scope="prototype"/>
 
-	<bean id="adrian" class="org.springframework.tests.sample.beans.TestBean" scope="prototype">
-		<property name="name" value="adrian"/>
-		<property name="age" value="34"/>
-	</bean>
+    <bean id="adrian" class="org.springframework.tests.sample.beans.TestBean" scope="prototype">
+        <property name="name" value="adrian"/>
+        <property name="age" value="34"/>
+    </bean>
 
 </beans>

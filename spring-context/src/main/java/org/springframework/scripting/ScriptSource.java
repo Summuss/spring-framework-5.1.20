@@ -21,8 +21,8 @@ import java.io.IOException;
 import org.springframework.lang.Nullable;
 
 /**
- * Interface that defines the source of a script.
- * Tracks whether the underlying script has been modified.
+ * Interface that defines the source of a script. Tracks whether the underlying script has been
+ * modified.
  *
  * @author Rob Harrop
  * @author Juergen Hoeller
@@ -30,26 +30,27 @@ import org.springframework.lang.Nullable;
  */
 public interface ScriptSource {
 
-	/**
-	 * Retrieve the current script source text as String.
-	 * @return the script text
-	 * @throws IOException if script retrieval failed
-	 */
-	String getScriptAsString() throws IOException;
+    /**
+     * Retrieve the current script source text as String.
+     *
+     * @return the script text
+     * @throws IOException if script retrieval failed
+     */
+    String getScriptAsString() throws IOException;
 
-	/**
-	 * Indicate whether the underlying script data has been modified since
-	 * the last time {@link #getScriptAsString()} was called.
-	 * Returns {@code true} if the script has not been read yet.
-	 * @return whether the script data has been modified
-	 */
-	boolean isModified();
+    /**
+     * Indicate whether the underlying script data has been modified since the last time {@link
+     * #getScriptAsString()} was called. Returns {@code true} if the script has not been read yet.
+     *
+     * @return whether the script data has been modified
+     */
+    boolean isModified();
 
-	/**
-	 * Determine a class name for the underlying script.
-	 * @return the suggested class name, or {@code null} if none available
-	 */
-	@Nullable
-	String suggestedClassName();
-
+    /**
+     * Determine a class name for the underlying script.
+     *
+     * @return the suggested class name, or {@code null} if none available
+     */
+    @Nullable
+    String suggestedClassName();
 }

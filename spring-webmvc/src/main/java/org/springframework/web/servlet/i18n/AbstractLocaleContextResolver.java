@@ -27,8 +27,8 @@ import org.springframework.lang.Nullable;
 import org.springframework.web.servlet.LocaleContextResolver;
 
 /**
- * Abstract base class for {@link LocaleContextResolver} implementations.
- * Provides support for a default locale and a default time zone.
+ * Abstract base class for {@link LocaleContextResolver} implementations. Provides support for a
+ * default locale and a default time zone.
  *
  * <p>Also provides pre-implemented versions of {@link #resolveLocale} and {@link #setLocale},
  * delegating to {@link #resolveLocaleContext} and {@link #setLocaleContext}.
@@ -38,37 +38,34 @@ import org.springframework.web.servlet.LocaleContextResolver;
  * @see #setDefaultLocale
  * @see #setDefaultTimeZone
  */
-public abstract class AbstractLocaleContextResolver extends AbstractLocaleResolver implements LocaleContextResolver {
+public abstract class AbstractLocaleContextResolver extends AbstractLocaleResolver
+        implements LocaleContextResolver {
 
-	@Nullable
-	private TimeZone defaultTimeZone;
+    @Nullable private TimeZone defaultTimeZone;
 
+    /** Set a default TimeZone that this resolver will return if no other time zone found. */
+    public void setDefaultTimeZone(@Nullable TimeZone defaultTimeZone) {
+        this.defaultTimeZone = defaultTimeZone;
+    }
 
-	/**
-	 * Set a default TimeZone that this resolver will return if no other time zone found.
-	 */
-	public void setDefaultTimeZone(@Nullable TimeZone defaultTimeZone) {
-		this.defaultTimeZone = defaultTimeZone;
-	}
+    /** Return the default TimeZone that this resolver is supposed to fall back to, if any. */
+    @Nullable
+    public TimeZone getDefaultTimeZone() {
+        return this.defaultTimeZone;
+    }
 
-	/**
-	 * Return the default TimeZone that this resolver is supposed to fall back to, if any.
-	 */
-	@Nullable
-	public TimeZone getDefaultTimeZone() {
-		return this.defaultTimeZone;
-	}
+    @Override
+    public Locale resolveLocale(HttpServletRequest request) {
+        Locale locale = resolveLocaleContext(request).getLocale();
+        return (locale != null ? locale : request.getLocale());
+    }
 
-
-	@Override
-	public Locale resolveLocale(HttpServletRequest request) {
-		Locale locale = resolveLocaleContext(request).getLocale();
-		return (locale != null ? locale : request.getLocale());
-	}
-
-	@Override
-	public void setLocale(HttpServletRequest request, @Nullable HttpServletResponse response, @Nullable Locale locale) {
-		setLocaleContext(request, response, (locale != null ? new SimpleLocaleContext(locale) : null));
-	}
-
+    @Override
+    public void setLocale(
+            HttpServletRequest request,
+            @Nullable HttpServletResponse response,
+            @Nullable Locale locale) {
+        setLocaleContext(
+                request, response, (locale != null ? new SimpleLocaleContext(locale) : null));
+    }
 }

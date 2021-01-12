@@ -31,9 +31,8 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import static org.junit.Assert.*;
 
 /**
- * Integration tests for {@link TestPropertySource @TestPropertySource}
- * support with an explicitly named properties file that overrides a
- * system property.
+ * Integration tests for {@link TestPropertySource @TestPropertySource} support with an explicitly
+ * named properties file that overrides a system property.
  *
  * @author Sam Brannen
  * @since 4.1
@@ -43,33 +42,31 @@ import static org.junit.Assert.*;
 @TestPropertySource("SystemPropertyOverridePropertiesFileTestPropertySourceTests.properties")
 public class SystemPropertyOverridePropertiesFileTestPropertySourceTests {
 
-	private static final String KEY = SystemPropertyOverridePropertiesFileTestPropertySourceTests.class.getSimpleName() + ".riddle";
+    private static final String KEY =
+            SystemPropertyOverridePropertiesFileTestPropertySourceTests.class.getSimpleName()
+                    + ".riddle";
 
-	@Autowired
-	protected Environment env;
+    @Autowired protected Environment env;
 
+    @BeforeClass
+    public static void setSystemProperty() {
+        System.setProperty(KEY, "override me!");
+    }
 
-	@BeforeClass
-	public static void setSystemProperty() {
-		System.setProperty(KEY, "override me!");
-	}
+    @AfterClass
+    public static void removeSystemProperty() {
+        System.setProperty(KEY, "");
+    }
 
-	@AfterClass
-	public static void removeSystemProperty() {
-		System.setProperty(KEY, "");
-	}
+    @Test
+    public void verifyPropertiesAreAvailableInEnvironment() {
+        assertEquals("enigma", env.getProperty(KEY));
+    }
 
-	@Test
-	public void verifyPropertiesAreAvailableInEnvironment() {
-		assertEquals("enigma", env.getProperty(KEY));
-	}
+    // -------------------------------------------------------------------
 
-
-	// -------------------------------------------------------------------
-
-	@Configuration
-	static class Config {
-		/* no user beans required for these tests */
-	}
-
+    @Configuration
+    static class Config {
+        /* no user beans required for these tests */
+    }
 }

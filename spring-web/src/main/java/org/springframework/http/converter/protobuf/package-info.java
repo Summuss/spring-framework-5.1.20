@@ -1,6 +1,6 @@
 /**
- * Provides an HttpMessageConverter implementation for handling
- * <a href="https://developers.google.com/protocol-buffers/">Google Protocol Buffers</a>.
+ * Provides an HttpMessageConverter implementation for handling <a
+ * href="https://developers.google.com/protocol-buffers/">Google Protocol Buffers</a>.
  */
 @NonNullApi
 @NonNullFields

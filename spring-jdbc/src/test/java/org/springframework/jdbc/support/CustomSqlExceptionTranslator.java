@@ -29,12 +29,11 @@ import org.springframework.lang.Nullable;
  */
 public class CustomSqlExceptionTranslator implements SQLExceptionTranslator {
 
-	@Override
-	public DataAccessException translate(String task, @Nullable String sql, SQLException ex) {
-		if (ex.getErrorCode() == 2) {
-			return new TransientDataAccessResourceException("Custom", ex);
-		}
-		return null;
-	}
-
+    @Override
+    public DataAccessException translate(String task, @Nullable String sql, SQLException ex) {
+        if (ex.getErrorCode() == 2) {
+            return new TransientDataAccessResourceException("Custom", ex);
+        }
+        return null;
+    }
 }

@@ -23,6 +23,7 @@ import reactor.core.publisher.Mono;
  * {@linkplain ClientResponse}. Can be used as an alternative to {@link WebClient}.
  *
  * <p>For example:
+ *
  * <pre class="code">
  * ExchangeFunction exchangeFunction = ExchangeFunctions.create(new ReactorClientHttpConnector());
  * ClientRequest&lt;Void&gt; request = ClientRequest.method(HttpMethod.GET, "https://example.com/resource").build();
@@ -38,22 +39,23 @@ import reactor.core.publisher.Mono;
 @FunctionalInterface
 public interface ExchangeFunction {
 
-	/**
-	 * Exchange the given request for a response mono.
-	 * @param request the request to exchange
-	 * @return the delayed response
-	 */
-	Mono<ClientResponse> exchange(ClientRequest request);
+    /**
+     * Exchange the given request for a response mono.
+     *
+     * @param request the request to exchange
+     * @return the delayed response
+     */
+    Mono<ClientResponse> exchange(ClientRequest request);
 
-	/**
-	 * Filters this exchange function with the given {@code ExchangeFilterFunction}, resulting in a
-	 * filtered {@code ExchangeFunction}.
-	 * @param filter the filter to apply to this exchange
-	 * @return the filtered exchange
-	 * @see ExchangeFilterFunction#apply(ExchangeFunction)
-	 */
-	default ExchangeFunction filter(ExchangeFilterFunction filter) {
-		return filter.apply(this);
-	}
-
+    /**
+     * Filters this exchange function with the given {@code ExchangeFilterFunction}, resulting in a
+     * filtered {@code ExchangeFunction}.
+     *
+     * @param filter the filter to apply to this exchange
+     * @return the filtered exchange
+     * @see ExchangeFilterFunction#apply(ExchangeFunction)
+     */
+    default ExchangeFunction filter(ExchangeFilterFunction filter) {
+        return filter.apply(this);
+    }
 }

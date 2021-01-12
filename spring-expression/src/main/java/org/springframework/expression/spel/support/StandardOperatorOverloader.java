@@ -29,18 +29,19 @@ import org.springframework.lang.Nullable;
  */
 public class StandardOperatorOverloader implements OperatorOverloader {
 
-	@Override
-	public boolean overridesOperation(Operation operation, @Nullable Object leftOperand, @Nullable Object rightOperand)
-			throws EvaluationException {
+    @Override
+    public boolean overridesOperation(
+            Operation operation, @Nullable Object leftOperand, @Nullable Object rightOperand)
+            throws EvaluationException {
 
-		return false;
-	}
+        return false;
+    }
 
-	@Override
-	public Object operate(Operation operation, @Nullable Object leftOperand, @Nullable Object rightOperand)
-			throws EvaluationException {
+    @Override
+    public Object operate(
+            Operation operation, @Nullable Object leftOperand, @Nullable Object rightOperand)
+            throws EvaluationException {
 
-		throw new EvaluationException("No operation overloaded by default");
-	}
-
+        throw new EvaluationException("No operation overloaded by default");
+    }
 }

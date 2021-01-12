@@ -35,107 +35,105 @@ import static org.junit.Assert.*;
 
 public class SpringConfiguratorTests {
 
-	private MockServletContext servletContext;
+    private MockServletContext servletContext;
 
-	private ContextLoader contextLoader;
+    private ContextLoader contextLoader;
 
-	private AnnotationConfigWebApplicationContext webAppContext;
+    private AnnotationConfigWebApplicationContext webAppContext;
 
-	private SpringConfigurator configurator;
+    private SpringConfigurator configurator;
 
+    @Before
+    public void setup() {
+        this.servletContext = new MockServletContext();
 
-	@Before
-	public void setup() {
-		this.servletContext = new MockServletContext();
+        this.webAppContext = new AnnotationConfigWebApplicationContext();
+        this.webAppContext.register(Config.class);
 
-		this.webAppContext = new AnnotationConfigWebApplicationContext();
-		this.webAppContext.register(Config.class);
+        this.contextLoader = new ContextLoader(this.webAppContext);
+        this.contextLoader.initWebApplicationContext(this.servletContext);
 
-		this.contextLoader = new ContextLoader(this.webAppContext);
-		this.contextLoader.initWebApplicationContext(this.servletContext);
+        this.configurator = new SpringConfigurator();
+    }
 
-		this.configurator = new SpringConfigurator();
-	}
+    @After
+    public void destroy() {
+        this.contextLoader.closeWebApplicationContext(this.servletContext);
+    }
 
-	@After
-	public void destroy() {
-		this.contextLoader.closeWebApplicationContext(this.servletContext);
-	}
+    @Test
+    public void getEndpointPerConnection() throws Exception {
+        PerConnectionEchoEndpoint endpoint =
+                this.configurator.getEndpointInstance(PerConnectionEchoEndpoint.class);
+        assertNotNull(endpoint);
+    }
 
+    @Test
+    public void getEndpointSingletonByType() throws Exception {
+        EchoEndpoint expected = this.webAppContext.getBean(EchoEndpoint.class);
+        EchoEndpoint actual = this.configurator.getEndpointInstance(EchoEndpoint.class);
+        assertSame(expected, actual);
+    }
 
-	@Test
-	public void getEndpointPerConnection() throws Exception {
-		PerConnectionEchoEndpoint endpoint = this.configurator.getEndpointInstance(PerConnectionEchoEndpoint.class);
-		assertNotNull(endpoint);
-	}
+    @Test
+    public void getEndpointSingletonByComponentName() throws Exception {
+        ComponentEchoEndpoint expected = this.webAppContext.getBean(ComponentEchoEndpoint.class);
+        ComponentEchoEndpoint actual =
+                this.configurator.getEndpointInstance(ComponentEchoEndpoint.class);
+        assertSame(expected, actual);
+    }
 
-	@Test
-	public void getEndpointSingletonByType() throws Exception {
-		EchoEndpoint expected = this.webAppContext.getBean(EchoEndpoint.class);
-		EchoEndpoint actual = this.configurator.getEndpointInstance(EchoEndpoint.class);
-		assertSame(expected, actual);
-	}
+    @Configuration
+    @ComponentScan(basePackageClasses = SpringConfiguratorTests.class)
+    static class Config {
 
-	@Test
-	public void getEndpointSingletonByComponentName() throws Exception {
-		ComponentEchoEndpoint expected = this.webAppContext.getBean(ComponentEchoEndpoint.class);
-		ComponentEchoEndpoint actual = this.configurator.getEndpointInstance(ComponentEchoEndpoint.class);
-		assertSame(expected, actual);
-	}
+        @Bean
+        public EchoEndpoint javaConfigEndpoint() {
+            return new EchoEndpoint(echoService());
+        }
 
+        @Bean
+        public EchoService echoService() {
+            return new EchoService();
+        }
+    }
 
-	@Configuration
-	@ComponentScan(basePackageClasses=SpringConfiguratorTests.class)
-	static class Config {
+    @ServerEndpoint("/echo")
+    private static class EchoEndpoint {
 
-		@Bean
-		public EchoEndpoint javaConfigEndpoint() {
-			return new EchoEndpoint(echoService());
-		}
+        @SuppressWarnings("unused")
+        private final EchoService service;
 
-		@Bean
-		public EchoService echoService() {
-			return new EchoService();
-		}
-	}
+        @Autowired
+        public EchoEndpoint(EchoService service) {
+            this.service = service;
+        }
+    }
 
-	@ServerEndpoint("/echo")
-	private static class EchoEndpoint {
+    @Component("myComponentEchoEndpoint")
+    @ServerEndpoint("/echo")
+    private static class ComponentEchoEndpoint {
 
-		@SuppressWarnings("unused")
-		private final EchoService service;
+        @SuppressWarnings("unused")
+        private final EchoService service;
 
-		@Autowired
-		public EchoEndpoint(EchoService service) {
-			this.service = service;
-		}
-	}
+        @Autowired
+        public ComponentEchoEndpoint(EchoService service) {
+            this.service = service;
+        }
+    }
 
-	@Component("myComponentEchoEndpoint")
-	@ServerEndpoint("/echo")
-	private static class ComponentEchoEndpoint {
+    @ServerEndpoint("/echo")
+    private static class PerConnectionEchoEndpoint {
 
-		@SuppressWarnings("unused")
-		private final EchoService service;
+        @SuppressWarnings("unused")
+        private final EchoService service;
 
-		@Autowired
-		public ComponentEchoEndpoint(EchoService service) {
-			this.service = service;
-		}
-	}
+        @Autowired
+        public PerConnectionEchoEndpoint(EchoService service) {
+            this.service = service;
+        }
+    }
 
-	@ServerEndpoint("/echo")
-	private static class PerConnectionEchoEndpoint {
-
-		@SuppressWarnings("unused")
-		private final EchoService service;
-
-		@Autowired
-		public PerConnectionEchoEndpoint(EchoService service) {
-			this.service = service;
-		}
-	}
-
-	private static class EchoService {	}
-
+    private static class EchoService {}
 }

@@ -29,39 +29,37 @@ import org.springframework.context.annotation.Configuration;
 
 import static org.junit.Assert.*;
 
-/**
- * @author Juergen Hoeller
- */
+/** @author Juergen Hoeller */
 public class ThreadPoolExecutorFactoryBeanTests {
 
-	@Test
-	public void defaultExecutor() throws Exception {
-		ApplicationContext context = new AnnotationConfigApplicationContext(ExecutorConfig.class);
-		ExecutorService executor = context.getBean("executor", ExecutorService.class);
+    @Test
+    public void defaultExecutor() throws Exception {
+        ApplicationContext context = new AnnotationConfigApplicationContext(ExecutorConfig.class);
+        ExecutorService executor = context.getBean("executor", ExecutorService.class);
 
-		FutureTask<String> task = new FutureTask<>(new Callable<String>() {
-			@Override
-			public String call() throws Exception {
-				return "foo";
-			}
-		});
-		executor.execute(task);
-		assertEquals("foo", task.get());
-	}
+        FutureTask<String> task =
+                new FutureTask<>(
+                        new Callable<String>() {
+                            @Override
+                            public String call() throws Exception {
+                                return "foo";
+                            }
+                        });
+        executor.execute(task);
+        assertEquals("foo", task.get());
+    }
 
+    @Configuration
+    public static class ExecutorConfig {
 
-	@Configuration
-	public static class ExecutorConfig {
+        @Bean
+        public ThreadPoolExecutorFactoryBean executorFactory() {
+            return new ThreadPoolExecutorFactoryBean();
+        }
 
-		@Bean
-		public ThreadPoolExecutorFactoryBean executorFactory() {
-			return new ThreadPoolExecutorFactoryBean();
-		}
-
-		@Bean
-		public ExecutorService executor() {
-			return executorFactory().getObject();
-		}
-	}
-
+        @Bean
+        public ExecutorService executor() {
+            return executorFactory().getObject();
+        }
+    }
 }

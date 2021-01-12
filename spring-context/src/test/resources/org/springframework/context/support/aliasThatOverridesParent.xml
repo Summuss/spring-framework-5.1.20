@@ -3,8 +3,8 @@
 
 <beans>
 
-	<alias name="myMessageSource" alias="someMessageSource"/>
+    <alias name="myMessageSource" alias="someMessageSource"/>
 
-	<bean id="myMessageSource" class="org.springframework.context.support.StaticMessageSource"/>
+    <bean id="myMessageSource" class="org.springframework.context.support.StaticMessageSource"/>
 
 </beans>

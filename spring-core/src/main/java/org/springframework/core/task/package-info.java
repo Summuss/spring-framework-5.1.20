@@ -1,6 +1,6 @@
 /**
- * This package defines Spring's core TaskExecutor abstraction,
- * and provides SyncTaskExecutor and SimpleAsyncTaskExecutor implementations.
+ * This package defines Spring's core TaskExecutor abstraction, and provides SyncTaskExecutor and
+ * SimpleAsyncTaskExecutor implementations.
  */
 @NonNullApi
 @NonNullFields

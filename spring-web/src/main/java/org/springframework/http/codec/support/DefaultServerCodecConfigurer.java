@@ -24,30 +24,29 @@ import org.springframework.http.codec.ServerCodecConfigurer;
  * @author Rossen Stoyanchev
  * @since 5.0
  */
-public class DefaultServerCodecConfigurer extends BaseCodecConfigurer implements ServerCodecConfigurer {
+public class DefaultServerCodecConfigurer extends BaseCodecConfigurer
+        implements ServerCodecConfigurer {
 
+    public DefaultServerCodecConfigurer() {
+        super(new ServerDefaultCodecsImpl());
+    }
 
-	public DefaultServerCodecConfigurer() {
-		super(new ServerDefaultCodecsImpl());
-	}
+    private DefaultServerCodecConfigurer(BaseCodecConfigurer other) {
+        super(other);
+    }
 
-	private DefaultServerCodecConfigurer(BaseCodecConfigurer other) {
-		super(other);
-	}
+    @Override
+    public ServerDefaultCodecs defaultCodecs() {
+        return (ServerDefaultCodecs) super.defaultCodecs();
+    }
 
+    @Override
+    public DefaultServerCodecConfigurer clone() {
+        return new DefaultServerCodecConfigurer(this);
+    }
 
-	@Override
-	public ServerDefaultCodecs defaultCodecs() {
-		return (ServerDefaultCodecs) super.defaultCodecs();
-	}
-
-	@Override
-	public DefaultServerCodecConfigurer clone() {
-		return new DefaultServerCodecConfigurer(this);
-	}
-
-	@Override
-	protected BaseDefaultCodecs cloneDefaultCodecs() {
-		return new ServerDefaultCodecsImpl((ServerDefaultCodecsImpl) defaultCodecs());
-	}
+    @Override
+    protected BaseDefaultCodecs cloneDefaultCodecs() {
+        return new ServerDefaultCodecsImpl((ServerDefaultCodecsImpl) defaultCodecs());
+    }
 }

@@ -1,1 +1,2 @@
-INSERT INTO user VALUES('Catbert');
+INSERT INTO user
+VALUES ('Catbert');

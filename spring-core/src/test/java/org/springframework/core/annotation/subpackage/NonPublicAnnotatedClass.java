@@ -23,6 +23,4 @@ package org.springframework.core.annotation.subpackage;
  * @since 4.0
  */
 @NonPublicAnnotation(42)
-public class NonPublicAnnotatedClass {
-
-}
+public class NonPublicAnnotatedClass {}

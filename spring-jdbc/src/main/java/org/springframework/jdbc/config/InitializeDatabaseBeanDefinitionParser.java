@@ -27,9 +27,10 @@ import org.springframework.jdbc.datasource.init.DataSourceInitializer;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
 /**
- * {@link org.springframework.beans.factory.xml.BeanDefinitionParser} that parses an {@code initialize-database}
- * element and creates a {@link BeanDefinition} of type {@link DataSourceInitializer}. Picks up nested
- * {@code script} elements and configures a {@link ResourceDatabasePopulator} for them.
+ * {@link org.springframework.beans.factory.xml.BeanDefinitionParser} that parses an {@code
+ * initialize-database} element and creates a {@link BeanDefinition} of type {@link
+ * DataSourceInitializer}. Picks up nested {@code script} elements and configures a {@link
+ * ResourceDatabasePopulator} for them.
  *
  * @author Dave Syer
  * @author Juergen Hoeller
@@ -37,19 +38,19 @@ import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
  */
 class InitializeDatabaseBeanDefinitionParser extends AbstractBeanDefinitionParser {
 
-	@Override
-	protected AbstractBeanDefinition parseInternal(Element element, ParserContext parserContext) {
-		BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(DataSourceInitializer.class);
-		builder.addPropertyReference("dataSource", element.getAttribute("data-source"));
-		builder.addPropertyValue("enabled", element.getAttribute("enabled"));
-		DatabasePopulatorConfigUtils.setDatabasePopulator(element, builder);
-		builder.getRawBeanDefinition().setSource(parserContext.extractSource(element));
-		return builder.getBeanDefinition();
-	}
+    @Override
+    protected AbstractBeanDefinition parseInternal(Element element, ParserContext parserContext) {
+        BeanDefinitionBuilder builder =
+                BeanDefinitionBuilder.genericBeanDefinition(DataSourceInitializer.class);
+        builder.addPropertyReference("dataSource", element.getAttribute("data-source"));
+        builder.addPropertyValue("enabled", element.getAttribute("enabled"));
+        DatabasePopulatorConfigUtils.setDatabasePopulator(element, builder);
+        builder.getRawBeanDefinition().setSource(parserContext.extractSource(element));
+        return builder.getBeanDefinition();
+    }
 
-	@Override
-	protected boolean shouldGenerateId() {
-		return true;
-	}
-
+    @Override
+    protected boolean shouldGenerateId() {
+        return true;
+    }
 }

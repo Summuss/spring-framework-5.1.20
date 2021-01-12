@@ -34,122 +34,108 @@ import static org.springframework.beans.factory.config.BeanDefinition.*;
  */
 public class Spr12526Tests {
 
-	@Test
-	public void testInjection() {
-		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(TestContext.class);
-		CustomCondition condition = ctx.getBean(CustomCondition.class);
+    @Test
+    public void testInjection() {
+        AnnotationConfigApplicationContext ctx =
+                new AnnotationConfigApplicationContext(TestContext.class);
+        CustomCondition condition = ctx.getBean(CustomCondition.class);
 
-		condition.setCondition(true);
-		FirstService firstService = (FirstService) ctx.getBean(Service.class);
-		assertNotNull("FirstService.dependency is null", firstService.getDependency());
+        condition.setCondition(true);
+        FirstService firstService = (FirstService) ctx.getBean(Service.class);
+        assertNotNull("FirstService.dependency is null", firstService.getDependency());
 
-		condition.setCondition(false);
-		SecondService secondService = (SecondService) ctx.getBean(Service.class);
-		assertNotNull("SecondService.dependency is null", secondService.getDependency());
-	}
+        condition.setCondition(false);
+        SecondService secondService = (SecondService) ctx.getBean(Service.class);
+        assertNotNull("SecondService.dependency is null", secondService.getDependency());
+    }
 
+    @Configuration
+    public static class TestContext {
 
-	@Configuration
-	public static class TestContext {
+        @Bean
+        @Scope(SCOPE_SINGLETON)
+        public CustomCondition condition() {
+            return new CustomCondition();
+        }
 
-		@Bean
-		@Scope(SCOPE_SINGLETON)
-		public CustomCondition condition() {
-			return new CustomCondition();
-		}
+        @Bean
+        @Scope(SCOPE_PROTOTYPE)
+        public Service service(CustomCondition condition) {
+            return (condition.check() ? new FirstService() : new SecondService());
+        }
 
+        @Bean
+        public DependencyOne dependencyOne() {
+            return new DependencyOne();
+        }
 
-		@Bean
-		@Scope(SCOPE_PROTOTYPE)
-		public Service service(CustomCondition condition) {
-			return (condition.check() ? new FirstService() : new SecondService());
-		}
+        @Bean
+        public DependencyTwo dependencyTwo() {
+            return new DependencyTwo();
+        }
+    }
 
-		@Bean
-		public DependencyOne dependencyOne() {
-			return new DependencyOne();
-		}
+    public static class CustomCondition {
 
+        private boolean condition;
 
-		@Bean
-		public DependencyTwo dependencyTwo() {
-			return new DependencyTwo();
-		}
-	}
+        public boolean check() {
+            return condition;
+        }
 
+        public void setCondition(boolean value) {
+            this.condition = value;
+        }
+    }
 
-	public static class CustomCondition {
+    public interface Service {
 
-		private boolean condition;
+        void doStuff();
+    }
 
-		public boolean check() {
-			return condition;
-		}
+    public static class FirstService implements Service {
 
-		public void setCondition(boolean value) {
-			this.condition = value;
-		}
-	}
+        private DependencyOne dependency;
 
+        @Override
+        public void doStuff() {
+            if (dependency == null) {
+                throw new IllegalStateException("FirstService: dependency is null");
+            }
+        }
 
-	public interface Service {
+        @Resource(name = "dependencyOne")
+        public void setDependency(DependencyOne dependency) {
+            this.dependency = dependency;
+        }
 
-		void doStuff();
-	}
+        public DependencyOne getDependency() {
+            return dependency;
+        }
+    }
 
+    public static class SecondService implements Service {
 
-	public static class FirstService implements Service {
+        private DependencyTwo dependency;
 
-		private DependencyOne dependency;
+        @Override
+        public void doStuff() {
+            if (dependency == null) {
+                throw new IllegalStateException("SecondService: dependency is null");
+            }
+        }
 
+        @Resource(name = "dependencyTwo")
+        public void setDependency(DependencyTwo dependency) {
+            this.dependency = dependency;
+        }
 
-		@Override
-		public void doStuff() {
-			if (dependency == null) {
-				throw new IllegalStateException("FirstService: dependency is null");
-			}
-		}
+        public DependencyTwo getDependency() {
+            return dependency;
+        }
+    }
 
-		@Resource(name = "dependencyOne")
-		public void setDependency(DependencyOne dependency) {
-			this.dependency = dependency;
-		}
+    public static class DependencyOne {}
 
-
-		public DependencyOne getDependency() {
-			return dependency;
-		}
-	}
-
-
-	public static class SecondService implements Service {
-
-		private DependencyTwo dependency;
-
-		@Override
-		public void doStuff() {
-			if (dependency == null) {
-				throw new IllegalStateException("SecondService: dependency is null");
-			}
-		}
-
-		@Resource(name = "dependencyTwo")
-		public void setDependency(DependencyTwo dependency) {
-			this.dependency = dependency;
-		}
-
-
-		public DependencyTwo getDependency() {
-			return dependency;
-		}
-	}
-
-
-	public static class DependencyOne {
-	}
-
-
-	public static class DependencyTwo {
-	}
-
+    public static class DependencyTwo {}
 }

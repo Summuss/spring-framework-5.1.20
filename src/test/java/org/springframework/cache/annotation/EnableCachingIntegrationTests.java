@@ -45,94 +45,86 @@ import static org.junit.Assert.*;
 @SuppressWarnings("resource")
 public class EnableCachingIntegrationTests {
 
-	@Test
-	public void repositoryIsClassBasedCacheProxy() {
-		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
-		ctx.register(Config.class, ProxyTargetClassCachingConfig.class);
-		ctx.refresh();
+    @Test
+    public void repositoryIsClassBasedCacheProxy() {
+        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+        ctx.register(Config.class, ProxyTargetClassCachingConfig.class);
+        ctx.refresh();
 
-		assertCacheProxying(ctx);
-		assertThat(AopUtils.isCglibProxy(ctx.getBean(FooRepository.class)), is(true));
-	}
+        assertCacheProxying(ctx);
+        assertThat(AopUtils.isCglibProxy(ctx.getBean(FooRepository.class)), is(true));
+    }
 
-	@Test
-	public void repositoryUsesAspectJAdviceMode() {
-		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
-		ctx.register(Config.class, AspectJCacheConfig.class);
-		try {
-			ctx.refresh();
-		}
-		catch (Exception ex) {
-			// this test is a bit fragile, but gets the job done, proving that an
-			// attempt was made to look up the AJ aspect. It's due to classpath issues
-			// in .integration-tests that it's not found.
-			assertTrue(ex.getMessage().contains("AspectJCachingConfiguration"));
-		}
-	}
+    @Test
+    public void repositoryUsesAspectJAdviceMode() {
+        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+        ctx.register(Config.class, AspectJCacheConfig.class);
+        try {
+            ctx.refresh();
+        } catch (Exception ex) {
+            // this test is a bit fragile, but gets the job done, proving that an
+            // attempt was made to look up the AJ aspect. It's due to classpath issues
+            // in .integration-tests that it's not found.
+            assertTrue(ex.getMessage().contains("AspectJCachingConfiguration"));
+        }
+    }
 
+    private void assertCacheProxying(AnnotationConfigApplicationContext ctx) {
+        FooRepository repo = ctx.getBean(FooRepository.class);
 
-	private void assertCacheProxying(AnnotationConfigApplicationContext ctx) {
-		FooRepository repo = ctx.getBean(FooRepository.class);
+        boolean isCacheProxy = false;
+        if (AopUtils.isAopProxy(repo)) {
+            for (Advisor advisor : ((Advised) repo).getAdvisors()) {
+                if (advisor instanceof BeanFactoryCacheOperationSourceAdvisor) {
+                    isCacheProxy = true;
+                    break;
+                }
+            }
+        }
+        assertTrue("FooRepository is not a cache proxy", isCacheProxy);
+    }
 
-		boolean isCacheProxy = false;
-		if (AopUtils.isAopProxy(repo)) {
-			for (Advisor advisor : ((Advised)repo).getAdvisors()) {
-				if (advisor instanceof BeanFactoryCacheOperationSourceAdvisor) {
-					isCacheProxy = true;
-					break;
-				}
-			}
-		}
-		assertTrue("FooRepository is not a cache proxy", isCacheProxy);
-	}
+    @Configuration
+    @EnableCaching(proxyTargetClass = true)
+    static class ProxyTargetClassCachingConfig {
 
+        @Bean
+        CacheManager mgr() {
+            return new NoOpCacheManager();
+        }
+    }
 
-	@Configuration
-	@EnableCaching(proxyTargetClass=true)
-	static class ProxyTargetClassCachingConfig {
+    @Configuration
+    static class Config {
 
-		@Bean
-		CacheManager mgr() {
-			return new NoOpCacheManager();
-		}
-	}
+        @Bean
+        FooRepository fooRepository() {
+            return new DummyFooRepository();
+        }
+    }
 
+    @Configuration
+    @EnableCaching(mode = AdviceMode.ASPECTJ)
+    static class AspectJCacheConfig {
 
-	@Configuration
-	static class Config {
+        @Bean
+        CacheManager cacheManager() {
+            return new NoOpCacheManager();
+        }
+    }
 
-		@Bean
-		FooRepository fooRepository() {
-			return new DummyFooRepository();
-		}
-	}
+    interface FooRepository {
 
+        List<Object> findAll();
+    }
 
-	@Configuration
-	@EnableCaching(mode=AdviceMode.ASPECTJ)
-	static class AspectJCacheConfig {
+    @Repository
+    static class DummyFooRepository implements FooRepository {
 
-		@Bean
-		CacheManager cacheManager() {
-			return new NoOpCacheManager();
-		}
-	}
-
-
-	interface FooRepository {
-
-		List<Object> findAll();
-	}
-
-
-	@Repository
-	static class DummyFooRepository implements FooRepository {
-
-		@Override
-		@Cacheable("primary")
-		public List<Object> findAll() {
-			return Collections.emptyList();
-		}
-	}
-
+        @Override
+        @Cacheable("primary")
+        public List<Object> findAll() {
+            return Collections.emptyList();
+        }
+    }
 }

@@ -45,109 +45,108 @@ import static org.junit.Assert.*;
  */
 public class JdkProxyControllerTests {
 
-	private DispatcherServlet servlet;
+    private DispatcherServlet servlet;
 
+    @Test
+    public void typeLevel() throws Exception {
+        initServlet(TypeLevelImpl.class);
 
-	@Test
-	public void typeLevel() throws Exception {
-		initServlet(TypeLevelImpl.class);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/test");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        servlet.service(request, response);
+        assertEquals("doIt", response.getContentAsString());
+    }
 
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/test");
-		MockHttpServletResponse response = new MockHttpServletResponse();
-		servlet.service(request, response);
-		assertEquals("doIt", response.getContentAsString());
-	}
+    @Test
+    public void methodLevel() throws Exception {
+        initServlet(MethodLevelImpl.class);
 
-	@Test
-	public void methodLevel() throws Exception {
-		initServlet(MethodLevelImpl.class);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/test");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        servlet.service(request, response);
+        assertEquals("doIt", response.getContentAsString());
+    }
 
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/test");
-		MockHttpServletResponse response = new MockHttpServletResponse();
-		servlet.service(request, response);
-		assertEquals("doIt", response.getContentAsString());
-	}
+    @Test
+    public void typeAndMethodLevel() throws Exception {
+        initServlet(TypeAndMethodLevelImpl.class);
 
-	@Test
-	public void typeAndMethodLevel() throws Exception {
-		initServlet(TypeAndMethodLevelImpl.class);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels/bookings");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        servlet.service(request, response);
+        assertEquals("doIt", response.getContentAsString());
+    }
 
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/hotels/bookings");
-		MockHttpServletResponse response = new MockHttpServletResponse();
-		servlet.service(request, response);
-		assertEquals("doIt", response.getContentAsString());
-	}
+    @SuppressWarnings("serial")
+    private void initServlet(final Class<?> controllerclass) throws ServletException {
+        servlet =
+                new DispatcherServlet() {
+                    @Override
+                    protected WebApplicationContext createWebApplicationContext(
+                            @Nullable WebApplicationContext parent) {
+                        GenericWebApplicationContext wac = new GenericWebApplicationContext();
+                        wac.registerBeanDefinition(
+                                "controller", new RootBeanDefinition(controllerclass));
+                        DefaultAdvisorAutoProxyCreator autoProxyCreator =
+                                new DefaultAdvisorAutoProxyCreator();
+                        autoProxyCreator.setBeanFactory(wac.getBeanFactory());
+                        wac.getBeanFactory().addBeanPostProcessor(autoProxyCreator);
+                        wac.getBeanFactory()
+                                .registerSingleton(
+                                        "advisor",
+                                        new DefaultPointcutAdvisor(
+                                                new SimpleTraceInterceptor(true)));
+                        wac.refresh();
+                        return wac;
+                    }
+                };
+        servlet.init(new MockServletConfig());
+    }
 
+    @Controller
+    @RequestMapping("/test")
+    public interface TypeLevel {
 
-	@SuppressWarnings("serial")
-	private void initServlet(final Class<?> controllerclass) throws ServletException {
-		servlet = new DispatcherServlet() {
-			@Override
-			protected WebApplicationContext createWebApplicationContext(@Nullable WebApplicationContext parent) {
-				GenericWebApplicationContext wac = new GenericWebApplicationContext();
-				wac.registerBeanDefinition("controller", new RootBeanDefinition(controllerclass));
-				DefaultAdvisorAutoProxyCreator autoProxyCreator = new DefaultAdvisorAutoProxyCreator();
-				autoProxyCreator.setBeanFactory(wac.getBeanFactory());
-				wac.getBeanFactory().addBeanPostProcessor(autoProxyCreator);
-				wac.getBeanFactory().registerSingleton("advisor", new DefaultPointcutAdvisor(new SimpleTraceInterceptor(true)));
-				wac.refresh();
-				return wac;
-			}
-		};
-		servlet.init(new MockServletConfig());
-	}
+        @RequestMapping
+        void doIt(Writer writer) throws IOException;
+    }
 
+    public static class TypeLevelImpl implements TypeLevel {
 
-	@Controller
-	@RequestMapping("/test")
-	public interface TypeLevel {
+        @Override
+        public void doIt(Writer writer) throws IOException {
+            writer.write("doIt");
+        }
+    }
 
-		@RequestMapping
-		void doIt(Writer writer) throws IOException;
-	}
+    @Controller
+    public interface MethodLevel {
 
+        @RequestMapping("/test")
+        void doIt(Writer writer) throws IOException;
+    }
 
-	public static class TypeLevelImpl implements TypeLevel {
+    public static class MethodLevelImpl implements MethodLevel {
 
-		@Override
-		public void doIt(Writer writer) throws IOException {
-			writer.write("doIt");
-		}
-	}
+        @Override
+        public void doIt(Writer writer) throws IOException {
+            writer.write("doIt");
+        }
+    }
 
+    @Controller
+    @RequestMapping("/hotels")
+    public interface TypeAndMethodLevel {
 
-	@Controller
-	public interface MethodLevel {
+        @RequestMapping("/bookings")
+        void doIt(Writer writer) throws IOException;
+    }
 
-		@RequestMapping("/test")
-		void doIt(Writer writer) throws IOException;
-	}
+    public static class TypeAndMethodLevelImpl implements TypeAndMethodLevel {
 
-
-	public static class MethodLevelImpl implements MethodLevel {
-
-		@Override
-		public void doIt(Writer writer) throws IOException {
-			writer.write("doIt");
-		}
-	}
-
-
-	@Controller
-	@RequestMapping("/hotels")
-	public interface TypeAndMethodLevel {
-
-		@RequestMapping("/bookings")
-		void doIt(Writer writer) throws IOException;
-	}
-
-
-	public static class TypeAndMethodLevelImpl implements TypeAndMethodLevel {
-
-		@Override
-		public void doIt(Writer writer) throws IOException {
-			writer.write("doIt");
-		}
-	}
-
+        @Override
+        public void doIt(Writer writer) throws IOException {
+            writer.write("doIt");
+        }
+    }
 }

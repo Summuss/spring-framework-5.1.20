@@ -3,16 +3,16 @@
 
 <beans>
 
-	<bean class="org.springframework.beans.factory.xml.GeneratedNameBean">
-		<property name="child">
-			<bean class="org.springframework.beans.factory.xml.GeneratedNameBean"/>
-		</property>
-	</bean>
+    <bean class="org.springframework.beans.factory.xml.GeneratedNameBean">
+        <property name="child">
+            <bean class="org.springframework.beans.factory.xml.GeneratedNameBean"/>
+        </property>
+    </bean>
 
-	<bean class="org.springframework.beans.factory.xml.GeneratedNameBean">
-		<property name="child">
-			<bean class="org.springframework.beans.factory.xml.GeneratedNameBean"/>
-		</property>
-	</bean>
+    <bean class="org.springframework.beans.factory.xml.GeneratedNameBean">
+        <property name="child">
+            <bean class="org.springframework.beans.factory.xml.GeneratedNameBean"/>
+        </property>
+    </bean>
 
 </beans>

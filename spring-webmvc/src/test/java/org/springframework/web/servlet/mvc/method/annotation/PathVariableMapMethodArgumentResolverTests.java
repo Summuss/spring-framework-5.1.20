@@ -41,65 +41,62 @@ import static org.junit.Assert.*;
  */
 public class PathVariableMapMethodArgumentResolverTests {
 
-	private PathVariableMapMethodArgumentResolver resolver;
+    private PathVariableMapMethodArgumentResolver resolver;
 
-	private ModelAndViewContainer mavContainer;
+    private ModelAndViewContainer mavContainer;
 
-	private ServletWebRequest webRequest;
+    private ServletWebRequest webRequest;
 
-	private MockHttpServletRequest request;
+    private MockHttpServletRequest request;
 
-	private MethodParameter paramMap;
-	private MethodParameter paramNamedMap;
-	private MethodParameter paramMapNoAnnot;
+    private MethodParameter paramMap;
+    private MethodParameter paramNamedMap;
+    private MethodParameter paramMapNoAnnot;
 
+    @Before
+    public void setup() throws Exception {
+        resolver = new PathVariableMapMethodArgumentResolver();
+        mavContainer = new ModelAndViewContainer();
+        request = new MockHttpServletRequest();
+        webRequest = new ServletWebRequest(request, new MockHttpServletResponse());
 
-	@Before
-	public void setup() throws Exception {
-		resolver = new PathVariableMapMethodArgumentResolver();
-		mavContainer = new ModelAndViewContainer();
-		request = new MockHttpServletRequest();
-		webRequest = new ServletWebRequest(request, new MockHttpServletResponse());
+        Method method = getClass().getMethod("handle", Map.class, Map.class, Map.class);
+        paramMap = new MethodParameter(method, 0);
+        paramNamedMap = new MethodParameter(method, 1);
+        paramMapNoAnnot = new MethodParameter(method, 2);
+    }
 
-		Method method = getClass().getMethod("handle", Map.class, Map.class, Map.class);
-		paramMap = new MethodParameter(method, 0);
-		paramNamedMap = new MethodParameter(method, 1);
-		paramMapNoAnnot = new MethodParameter(method, 2);
-	}
+    @Test
+    public void supportsParameter() {
+        assertTrue(resolver.supportsParameter(paramMap));
+        assertFalse(resolver.supportsParameter(paramNamedMap));
+        assertFalse(resolver.supportsParameter(paramMapNoAnnot));
+    }
 
+    @Test
+    public void resolveArgument() throws Exception {
+        Map<String, String> uriTemplateVars = new HashMap<>();
+        uriTemplateVars.put("name1", "value1");
+        uriTemplateVars.put("name2", "value2");
+        request.setAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, uriTemplateVars);
 
-	@Test
-	public void supportsParameter() {
-		assertTrue(resolver.supportsParameter(paramMap));
-		assertFalse(resolver.supportsParameter(paramNamedMap));
-		assertFalse(resolver.supportsParameter(paramMapNoAnnot));
-	}
+        Object result = resolver.resolveArgument(paramMap, mavContainer, webRequest, null);
 
-	@Test
-	public void resolveArgument() throws Exception {
-		Map<String, String> uriTemplateVars = new HashMap<>();
-		uriTemplateVars.put("name1", "value1");
-		uriTemplateVars.put("name2", "value2");
-		request.setAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, uriTemplateVars);
+        assertEquals(uriTemplateVars, result);
+    }
 
-		Object result = resolver.resolveArgument(paramMap, mavContainer, webRequest, null);
+    @Test
+    @SuppressWarnings("unchecked")
+    public void resolveArgumentNoUriVars() throws Exception {
+        Map<String, String> map =
+                (Map<String, String>)
+                        resolver.resolveArgument(paramMap, mavContainer, webRequest, null);
 
-		assertEquals(uriTemplateVars, result);
-	}
+        assertEquals(Collections.emptyMap(), map);
+    }
 
-	@Test
-	@SuppressWarnings("unchecked")
-	public void resolveArgumentNoUriVars() throws Exception {
-		Map<String, String> map = (Map<String, String>) resolver.resolveArgument(paramMap, mavContainer, webRequest, null);
-
-		assertEquals(Collections.emptyMap(), map);
-	}
-
-
-	public void handle(
-			@PathVariable Map<String, String> map,
-			@PathVariable(value = "name") Map<String, String> namedMap,
-			Map<String, String> mapWithoutAnnotat) {
-	}
-
+    public void handle(
+            @PathVariable Map<String, String> map,
+            @PathVariable(value = "name") Map<String, String> namedMap,
+            Map<String, String> mapWithoutAnnotat) {}
 }

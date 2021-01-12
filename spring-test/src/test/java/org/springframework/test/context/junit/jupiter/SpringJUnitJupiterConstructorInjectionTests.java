@@ -30,12 +30,12 @@ import org.springframework.test.context.junit.jupiter.comics.Person;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Integration tests which demonstrate support for autowiring individual
- * parameters in test class constructors using {@link Autowired @Autowired}
- * and {@link Value @Value} with the Spring TestContext Framework and JUnit Jupiter.
+ * Integration tests which demonstrate support for autowiring individual parameters in test class
+ * constructors using {@link Autowired @Autowired} and {@link Value @Value} with the Spring
+ * TestContext Framework and JUnit Jupiter.
  *
- * <p>To run these tests in an IDE that does not have built-in support for the JUnit
- * Platform, simply run {@link SpringJUnitJupiterTestSuite} as a JUnit 4 test.
+ * <p>To run these tests in an IDE that does not have built-in support for the JUnit Platform,
+ * simply run {@link SpringJUnitJupiterTestSuite} as a JUnit 4 test.
  *
  * @author Sam Brannen
  * @since 5.0
@@ -46,46 +46,49 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestPropertySource(properties = "enigma = 42")
 class SpringJUnitJupiterConstructorInjectionTests {
 
-	final ApplicationContext applicationContext;
-	final Person dilbert;
-	final Dog dog;
-	final Integer enigma;
-	final TestInfo testInfo;
+    final ApplicationContext applicationContext;
+    final Person dilbert;
+    final Dog dog;
+    final Integer enigma;
+    final TestInfo testInfo;
 
-	SpringJUnitJupiterConstructorInjectionTests(ApplicationContext applicationContext, @Autowired Person dilbert,
-			@Autowired Dog dog, @Value("${enigma}") Integer enigma, TestInfo testInfo) {
+    SpringJUnitJupiterConstructorInjectionTests(
+            ApplicationContext applicationContext,
+            @Autowired Person dilbert,
+            @Autowired Dog dog,
+            @Value("${enigma}") Integer enigma,
+            TestInfo testInfo) {
 
-		this.applicationContext = applicationContext;
-		this.dilbert = dilbert;
-		this.dog = dog;
-		this.enigma = enigma;
-		this.testInfo = testInfo;
-	}
+        this.applicationContext = applicationContext;
+        this.dilbert = dilbert;
+        this.dog = dog;
+        this.enigma = enigma;
+        this.testInfo = testInfo;
+    }
 
-	@Test
-	void applicationContextInjected() {
-		assertNotNull(applicationContext, "ApplicationContext should have been injected by Spring");
-		assertEquals(this.dilbert, applicationContext.getBean("dilbert", Person.class));
-	}
+    @Test
+    void applicationContextInjected() {
+        assertNotNull(applicationContext, "ApplicationContext should have been injected by Spring");
+        assertEquals(this.dilbert, applicationContext.getBean("dilbert", Person.class));
+    }
 
-	@Test
-	void beansInjected() {
-		assertNotNull(this.dilbert, "Dilbert should have been @Autowired by Spring");
-		assertEquals("Dilbert", this.dilbert.getName(), "Person's name");
+    @Test
+    void beansInjected() {
+        assertNotNull(this.dilbert, "Dilbert should have been @Autowired by Spring");
+        assertEquals("Dilbert", this.dilbert.getName(), "Person's name");
 
-		assertNotNull(this.dog, "Dogbert should have been @Autowired by Spring");
-		assertEquals("Dogbert", this.dog.getName(), "Dog's name");
-	}
+        assertNotNull(this.dog, "Dogbert should have been @Autowired by Spring");
+        assertEquals("Dogbert", this.dog.getName(), "Dog's name");
+    }
 
-	@Test
-	void propertyPlaceholderInjected() {
-		assertNotNull(this.enigma, "Enigma should have been injected via @Value by Spring");
-		assertEquals(Integer.valueOf(42), this.enigma, "enigma");
-	}
+    @Test
+    void propertyPlaceholderInjected() {
+        assertNotNull(this.enigma, "Enigma should have been injected via @Value by Spring");
+        assertEquals(Integer.valueOf(42), this.enigma, "enigma");
+    }
 
-	@Test
-	void testInfoInjected() {
-		assertNotNull(this.testInfo, "TestInfo should have been injected by JUnit");
-	}
-
+    @Test
+    void testInfoInjected() {
+        assertNotNull(this.testInfo, "TestInfo should have been injected by JUnit");
+    }
 }

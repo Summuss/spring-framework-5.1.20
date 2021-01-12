@@ -1,9 +1,12 @@
 {*
-	these are custom block comments
+	these ARE custom block comments
 *}
-drop table T_TEST if exists;
+DROP TABLE T_TEST if EXISTS;
 
 {*
-	these are custom block comments
+	these ARE custom block comments
 *}
-create table T_TEST (NAME varchar(50) not null);
+CREATE TABLE T_TEST
+(
+    NAME varchar(50) NOT NULL
+);

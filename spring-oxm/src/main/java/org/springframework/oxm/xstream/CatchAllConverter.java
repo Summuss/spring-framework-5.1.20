@@ -23,18 +23,18 @@ import com.thoughtworks.xstream.io.HierarchicalStreamReader;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 
 /**
- * XStream {@link Converter} that supports all classes, but throws exceptions for
- * (un)marshalling.
+ * XStream {@link Converter} that supports all classes, but throws exceptions for (un)marshalling.
  *
- * <p>The main purpose of this class is to
- * {@linkplain com.thoughtworks.xstream.XStream#registerConverter(com.thoughtworks.xstream.converters.Converter, int) register}
- * this converter as a catch-all last converter with a
- * {@linkplain com.thoughtworks.xstream.XStream#PRIORITY_NORMAL normal}
- * or higher priority, in addition to converters that explicitly handle the domain
- * classes that should be supported. As a result, default XStream converters with
- * lower priorities and possible security vulnerabilities do not get invoked.
+ * <p>The main purpose of this class is to {@linkplain
+ * com.thoughtworks.xstream.XStream#registerConverter(com.thoughtworks.xstream.converters.Converter,
+ * int) register} this converter as a catch-all last converter with a {@linkplain
+ * com.thoughtworks.xstream.XStream#PRIORITY_NORMAL normal} or higher priority, in addition to
+ * converters that explicitly handle the domain classes that should be supported. As a result,
+ * default XStream converters with lower priorities and possible security vulnerabilities do not get
+ * invoked.
  *
  * <p>For instance:
+ *
  * <pre class="code">
  * XStreamMarshaller unmarshaller = new XStreamMarshaller();
  * unmarshaller.getXStream().registerConverter(new MyDomainClassConverter(), XStream.PRIORITY_VERY_HIGH);
@@ -47,20 +47,20 @@ import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
  */
 public class CatchAllConverter implements Converter {
 
-	@Override
-	@SuppressWarnings("rawtypes")
-	public boolean canConvert(Class type) {
-		return true;
-	}
+    @Override
+    @SuppressWarnings("rawtypes")
+    public boolean canConvert(Class type) {
+        return true;
+    }
 
-	@Override
-	public void marshal(Object source, HierarchicalStreamWriter writer, MarshallingContext context) {
-		throw new UnsupportedOperationException("Marshalling not supported");
-	}
+    @Override
+    public void marshal(
+            Object source, HierarchicalStreamWriter writer, MarshallingContext context) {
+        throw new UnsupportedOperationException("Marshalling not supported");
+    }
 
-	@Override
-	public Object unmarshal(HierarchicalStreamReader reader, UnmarshallingContext context) {
-		throw new UnsupportedOperationException("Unmarshalling not supported");
-	}
-
+    @Override
+    public Object unmarshal(HierarchicalStreamReader reader, UnmarshallingContext context) {
+        throw new UnsupportedOperationException("Unmarshalling not supported");
+    }
 }

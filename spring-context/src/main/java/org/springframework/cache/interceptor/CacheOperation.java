@@ -32,200 +32,201 @@ import org.springframework.util.Assert;
  */
 public abstract class CacheOperation implements BasicOperation {
 
-	private final String name;
+    private final String name;
 
-	private final Set<String> cacheNames;
+    private final Set<String> cacheNames;
 
-	private final String key;
+    private final String key;
 
-	private final String keyGenerator;
+    private final String keyGenerator;
 
-	private final String cacheManager;
+    private final String cacheManager;
 
-	private final String cacheResolver;
+    private final String cacheResolver;
 
-	private final String condition;
+    private final String condition;
 
-	private final String toString;
+    private final String toString;
 
+    /**
+     * Create a new {@link CacheOperation} instance from the given builder.
+     *
+     * @since 4.3
+     */
+    protected CacheOperation(Builder b) {
+        this.name = b.name;
+        this.cacheNames = b.cacheNames;
+        this.key = b.key;
+        this.keyGenerator = b.keyGenerator;
+        this.cacheManager = b.cacheManager;
+        this.cacheResolver = b.cacheResolver;
+        this.condition = b.condition;
+        this.toString = b.getOperationDescription().toString();
+    }
 
-	/**
-	 * Create a new {@link CacheOperation} instance from the given builder.
-	 * @since 4.3
-	 */
-	protected CacheOperation(Builder b) {
-		this.name = b.name;
-		this.cacheNames = b.cacheNames;
-		this.key = b.key;
-		this.keyGenerator = b.keyGenerator;
-		this.cacheManager = b.cacheManager;
-		this.cacheResolver = b.cacheResolver;
-		this.condition = b.condition;
-		this.toString = b.getOperationDescription().toString();
-	}
+    public String getName() {
+        return this.name;
+    }
 
+    @Override
+    public Set<String> getCacheNames() {
+        return this.cacheNames;
+    }
 
-	public String getName() {
-		return this.name;
-	}
+    public String getKey() {
+        return this.key;
+    }
 
-	@Override
-	public Set<String> getCacheNames() {
-		return this.cacheNames;
-	}
+    public String getKeyGenerator() {
+        return this.keyGenerator;
+    }
 
-	public String getKey() {
-		return this.key;
-	}
+    public String getCacheManager() {
+        return this.cacheManager;
+    }
 
-	public String getKeyGenerator() {
-		return this.keyGenerator;
-	}
+    public String getCacheResolver() {
+        return this.cacheResolver;
+    }
 
-	public String getCacheManager() {
-		return this.cacheManager;
-	}
+    public String getCondition() {
+        return this.condition;
+    }
 
-	public String getCacheResolver() {
-		return this.cacheResolver;
-	}
+    /**
+     * This implementation compares the {@code toString()} results.
+     *
+     * @see #toString()
+     */
+    @Override
+    public boolean equals(Object other) {
+        return (other instanceof CacheOperation && toString().equals(other.toString()));
+    }
 
-	public String getCondition() {
-		return this.condition;
-	}
+    /**
+     * This implementation returns {@code toString()}'s hash code.
+     *
+     * @see #toString()
+     */
+    @Override
+    public int hashCode() {
+        return toString().hashCode();
+    }
 
+    /**
+     * Return an identifying description for this cache operation.
+     *
+     * <p>Returned value is produced by calling {@link Builder#getOperationDescription()} during
+     * object construction. This method is used in {@link #hashCode} and {@link #equals}.
+     *
+     * @see Builder#getOperationDescription()
+     */
+    @Override
+    public final String toString() {
+        return this.toString;
+    }
 
-	/**
-	 * This implementation compares the {@code toString()} results.
-	 * @see #toString()
-	 */
-	@Override
-	public boolean equals(Object other) {
-		return (other instanceof CacheOperation && toString().equals(other.toString()));
-	}
+    /**
+     * Base class for builders that can be used to create a {@link CacheOperation}.
+     *
+     * @since 4.3
+     */
+    public abstract static class Builder {
 
-	/**
-	 * This implementation returns {@code toString()}'s hash code.
-	 * @see #toString()
-	 */
-	@Override
-	public int hashCode() {
-		return toString().hashCode();
-	}
+        private String name = "";
 
-	/**
-	 * Return an identifying description for this cache operation.
-	 * <p>Returned value is produced by calling {@link Builder#getOperationDescription()}
-	 * during object construction. This method is used in {@link #hashCode} and
-	 * {@link #equals}.
-	 * @see Builder#getOperationDescription()
-	 */
-	@Override
-	public final String toString() {
-		return this.toString;
-	}
+        private Set<String> cacheNames = Collections.emptySet();
 
+        private String key = "";
 
-	/**
-	 * Base class for builders that can be used to create a {@link CacheOperation}.
-	 * @since 4.3
-	 */
-	public abstract static class Builder {
+        private String keyGenerator = "";
 
-		private String name = "";
+        private String cacheManager = "";
 
-		private Set<String> cacheNames = Collections.emptySet();
+        private String cacheResolver = "";
 
-		private String key = "";
+        private String condition = "";
 
-		private String keyGenerator = "";
+        public void setName(String name) {
+            Assert.hasText(name, "Name must not be empty");
+            this.name = name;
+        }
 
-		private String cacheManager = "";
+        public void setCacheName(String cacheName) {
+            Assert.hasText(cacheName, "Cache name must not be empty");
+            this.cacheNames = Collections.singleton(cacheName);
+        }
 
-		private String cacheResolver = "";
+        public void setCacheNames(String... cacheNames) {
+            this.cacheNames = new LinkedHashSet<>(cacheNames.length);
+            for (String cacheName : cacheNames) {
+                Assert.hasText(cacheName, "Cache name must be non-empty if specified");
+                this.cacheNames.add(cacheName);
+            }
+        }
 
-		private String condition = "";
+        public Set<String> getCacheNames() {
+            return this.cacheNames;
+        }
 
-		public void setName(String name) {
-			Assert.hasText(name, "Name must not be empty");
-			this.name = name;
-		}
+        public void setKey(String key) {
+            Assert.notNull(key, "Key must not be null");
+            this.key = key;
+        }
 
-		public void setCacheName(String cacheName) {
-			Assert.hasText(cacheName, "Cache name must not be empty");
-			this.cacheNames = Collections.singleton(cacheName);
-		}
+        public String getKey() {
+            return this.key;
+        }
 
-		public void setCacheNames(String... cacheNames) {
-			this.cacheNames = new LinkedHashSet<>(cacheNames.length);
-			for (String cacheName : cacheNames) {
-				Assert.hasText(cacheName, "Cache name must be non-empty if specified");
-				this.cacheNames.add(cacheName);
-			}
-		}
+        public String getKeyGenerator() {
+            return this.keyGenerator;
+        }
 
-		public Set<String> getCacheNames() {
-			return this.cacheNames;
-		}
+        public String getCacheManager() {
+            return this.cacheManager;
+        }
 
-		public void setKey(String key) {
-			Assert.notNull(key, "Key must not be null");
-			this.key = key;
-		}
+        public String getCacheResolver() {
+            return this.cacheResolver;
+        }
 
-		public String getKey() {
-			return this.key;
-		}
+        public void setKeyGenerator(String keyGenerator) {
+            Assert.notNull(keyGenerator, "KeyGenerator name must not be null");
+            this.keyGenerator = keyGenerator;
+        }
 
-		public String getKeyGenerator() {
-			return this.keyGenerator;
-		}
+        public void setCacheManager(String cacheManager) {
+            Assert.notNull(cacheManager, "CacheManager name must not be null");
+            this.cacheManager = cacheManager;
+        }
 
-		public String getCacheManager() {
-			return this.cacheManager;
-		}
+        public void setCacheResolver(String cacheResolver) {
+            Assert.notNull(cacheResolver, "CacheResolver name must not be null");
+            this.cacheResolver = cacheResolver;
+        }
 
-		public String getCacheResolver() {
-			return this.cacheResolver;
-		}
+        public void setCondition(String condition) {
+            Assert.notNull(condition, "Condition must not be null");
+            this.condition = condition;
+        }
 
-		public void setKeyGenerator(String keyGenerator) {
-			Assert.notNull(keyGenerator, "KeyGenerator name must not be null");
-			this.keyGenerator = keyGenerator;
-		}
+        /**
+         * Return an identifying description for this caching operation.
+         *
+         * <p>Available to subclasses, for inclusion in their {@code toString()} result.
+         */
+        protected StringBuilder getOperationDescription() {
+            StringBuilder result = new StringBuilder(getClass().getSimpleName());
+            result.append("[").append(this.name);
+            result.append("] caches=").append(this.cacheNames);
+            result.append(" | key='").append(this.key);
+            result.append("' | keyGenerator='").append(this.keyGenerator);
+            result.append("' | cacheManager='").append(this.cacheManager);
+            result.append("' | cacheResolver='").append(this.cacheResolver);
+            result.append("' | condition='").append(this.condition).append("'");
+            return result;
+        }
 
-		public void setCacheManager(String cacheManager) {
-			Assert.notNull(cacheManager, "CacheManager name must not be null");
-			this.cacheManager = cacheManager;
-		}
-
-		public void setCacheResolver(String cacheResolver) {
-			Assert.notNull(cacheResolver, "CacheResolver name must not be null");
-			this.cacheResolver = cacheResolver;
-		}
-
-		public void setCondition(String condition) {
-			Assert.notNull(condition, "Condition must not be null");
-			this.condition = condition;
-		}
-
-		/**
-		 * Return an identifying description for this caching operation.
-		 * <p>Available to subclasses, for inclusion in their {@code toString()} result.
-		 */
-		protected StringBuilder getOperationDescription() {
-			StringBuilder result = new StringBuilder(getClass().getSimpleName());
-			result.append("[").append(this.name);
-			result.append("] caches=").append(this.cacheNames);
-			result.append(" | key='").append(this.key);
-			result.append("' | keyGenerator='").append(this.keyGenerator);
-			result.append("' | cacheManager='").append(this.cacheManager);
-			result.append("' | cacheResolver='").append(this.cacheResolver);
-			result.append("' | condition='").append(this.condition).append("'");
-			return result;
-		}
-
-		public abstract CacheOperation build();
-	}
-
+        public abstract CacheOperation build();
+    }
 }

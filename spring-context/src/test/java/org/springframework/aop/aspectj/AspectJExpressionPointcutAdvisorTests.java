@@ -33,47 +33,43 @@ import static org.junit.Assert.*;
  */
 public class AspectJExpressionPointcutAdvisorTests {
 
-	private ITestBean testBean;
+    private ITestBean testBean;
 
-	private CallCountingInterceptor interceptor;
+    private CallCountingInterceptor interceptor;
 
+    @Before
+    public void setup() {
+        ClassPathXmlApplicationContext ctx =
+                new ClassPathXmlApplicationContext(getClass().getSimpleName() + ".xml", getClass());
+        testBean = (ITestBean) ctx.getBean("testBean");
+        interceptor = (CallCountingInterceptor) ctx.getBean("interceptor");
+    }
 
-	@Before
-	public void setup() {
-		ClassPathXmlApplicationContext ctx =
-				new ClassPathXmlApplicationContext(getClass().getSimpleName() + ".xml", getClass());
-		testBean = (ITestBean) ctx.getBean("testBean");
-		interceptor = (CallCountingInterceptor) ctx.getBean("interceptor");
-	}
-
-
-	@Test
-	public void testPointcutting() {
-		assertEquals("Count should be 0", 0, interceptor.getCount());
-		testBean.getSpouses();
-		assertEquals("Count should be 1", 1, interceptor.getCount());
-		testBean.getSpouse();
-		assertEquals("Count should be 1", 1, interceptor.getCount());
-	}
-
+    @Test
+    public void testPointcutting() {
+        assertEquals("Count should be 0", 0, interceptor.getCount());
+        testBean.getSpouses();
+        assertEquals("Count should be 1", 1, interceptor.getCount());
+        testBean.getSpouse();
+        assertEquals("Count should be 1", 1, interceptor.getCount());
+    }
 }
-
 
 class CallCountingInterceptor implements MethodInterceptor {
 
-	private int count;
+    private int count;
 
-	@Override
-	public Object invoke(MethodInvocation methodInvocation) throws Throwable {
-		count++;
-		return methodInvocation.proceed();
-	}
+    @Override
+    public Object invoke(MethodInvocation methodInvocation) throws Throwable {
+        count++;
+        return methodInvocation.proceed();
+    }
 
-	public int getCount() {
-		return count;
-	}
+    public int getCount() {
+        return count;
+    }
 
-	public void reset() {
-		this.count = 0;
-	}
+    public void reset() {
+        this.count = 0;
+    }
 }

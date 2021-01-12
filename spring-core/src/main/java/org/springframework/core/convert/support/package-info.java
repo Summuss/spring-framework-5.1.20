@@ -1,6 +1,4 @@
-/**
- * Default implementation of the type conversion system.
- */
+/** Default implementation of the type conversion system. */
 @NonNullApi
 @NonNullFields
 package org.springframework.core.convert.support;

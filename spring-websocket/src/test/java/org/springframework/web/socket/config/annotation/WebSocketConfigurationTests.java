@@ -49,74 +49,78 @@ import static org.junit.Assert.*;
 @RunWith(Parameterized.class)
 public class WebSocketConfigurationTests extends AbstractWebSocketIntegrationTests {
 
-	@Parameters(name = "server [{0}], client [{1}]")
-	public static Iterable<Object[]> arguments() {
-		return Arrays.asList(new Object[][] {
-				{new JettyWebSocketTestServer(), new JettyWebSocketClient()},
-				{new TomcatWebSocketTestServer(), new StandardWebSocketClient()},
-				{new UndertowTestServer(), new StandardWebSocketClient()}
-		});
-	}
+    @Parameters(name = "server [{0}], client [{1}]")
+    public static Iterable<Object[]> arguments() {
+        return Arrays.asList(
+                new Object[][] {
+                    {new JettyWebSocketTestServer(), new JettyWebSocketClient()},
+                    {new TomcatWebSocketTestServer(), new StandardWebSocketClient()},
+                    {new UndertowTestServer(), new StandardWebSocketClient()}
+                });
+    }
 
+    @Override
+    protected Class<?>[] getAnnotatedConfigClasses() {
+        return new Class<?>[] {TestConfig.class};
+    }
 
-	@Override
-	protected Class<?>[] getAnnotatedConfigClasses() {
-		return new Class<?>[] {TestConfig.class};
-	}
+    @Test
+    public void registerWebSocketHandler() throws Exception {
+        WebSocketSession session =
+                this.webSocketClient
+                        .doHandshake(new AbstractWebSocketHandler() {}, getWsBaseUrl() + "/ws")
+                        .get();
 
-	@Test
-	public void registerWebSocketHandler() throws Exception {
-		WebSocketSession session = this.webSocketClient.doHandshake(
-				new AbstractWebSocketHandler() {}, getWsBaseUrl() + "/ws").get();
+        TestHandler serverHandler = this.wac.getBean(TestHandler.class);
+        assertTrue(serverHandler.connectLatch.await(2, TimeUnit.SECONDS));
 
-		TestHandler serverHandler = this.wac.getBean(TestHandler.class);
-		assertTrue(serverHandler.connectLatch.await(2, TimeUnit.SECONDS));
+        session.close();
+    }
 
-		session.close();
-	}
+    @Test
+    public void registerWebSocketHandlerWithSockJS() throws Exception {
+        WebSocketSession session =
+                this.webSocketClient
+                        .doHandshake(
+                                new AbstractWebSocketHandler() {},
+                                getWsBaseUrl() + "/sockjs/websocket")
+                        .get();
 
-	@Test
-	public void registerWebSocketHandlerWithSockJS() throws Exception {
-		WebSocketSession session = this.webSocketClient.doHandshake(
-				new AbstractWebSocketHandler() {}, getWsBaseUrl() + "/sockjs/websocket").get();
+        TestHandler serverHandler = this.wac.getBean(TestHandler.class);
+        assertTrue(serverHandler.connectLatch.await(2, TimeUnit.SECONDS));
 
-		TestHandler serverHandler = this.wac.getBean(TestHandler.class);
-		assertTrue(serverHandler.connectLatch.await(2, TimeUnit.SECONDS));
+        session.close();
+    }
 
-		session.close();
-	}
+    @Configuration
+    @EnableWebSocket
+    static class TestConfig implements WebSocketConfigurer {
 
+        @Autowired
+        private HandshakeHandler handshakeHandler; // can't rely on classpath for server detection
 
-	@Configuration
-	@EnableWebSocket
-	static class TestConfig implements WebSocketConfigurer {
+        @Override
+        public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+            registry.addHandler(serverHandler(), "/ws").setHandshakeHandler(this.handshakeHandler);
+            registry.addHandler(serverHandler(), "/sockjs")
+                    .withSockJS()
+                    .setTransportHandlerOverrides(
+                            new WebSocketTransportHandler(this.handshakeHandler));
+        }
 
-		@Autowired
-		private HandshakeHandler handshakeHandler; // can't rely on classpath for server detection
+        @Bean
+        public TestHandler serverHandler() {
+            return new TestHandler();
+        }
+    }
 
-		@Override
-		public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-			registry.addHandler(serverHandler(), "/ws")
-					.setHandshakeHandler(this.handshakeHandler);
-			registry.addHandler(serverHandler(), "/sockjs").withSockJS()
-					.setTransportHandlerOverrides(new WebSocketTransportHandler(this.handshakeHandler));
-		}
+    private static class TestHandler extends AbstractWebSocketHandler {
 
-		@Bean
-		public TestHandler serverHandler() {
-			return new TestHandler();
-		}
-	}
+        private CountDownLatch connectLatch = new CountDownLatch(1);
 
-
-	private static class TestHandler extends AbstractWebSocketHandler {
-
-		private CountDownLatch connectLatch = new CountDownLatch(1);
-
-		@Override
-		public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-			this.connectLatch.countDown();
-		}
-	}
-
+        @Override
+        public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+            this.connectLatch.countDown();
+        }
+    }
 }

@@ -24,8 +24,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.ContextConfiguration;
 
 /**
- * Custom <em>composed annotation</em> combining {@link WebAppConfiguration} and
- * {@link ContextConfiguration} as meta-annotations.
+ * Custom <em>composed annotation</em> combining {@link WebAppConfiguration} and {@link
+ * ContextConfiguration} as meta-annotations.
  *
  * @author Sam Brannen
  * @since 4.0
@@ -33,14 +33,13 @@ import org.springframework.test.context.ContextConfiguration;
 @WebAppConfiguration
 @ContextConfiguration(classes = FooConfig.class)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface WebTestConfiguration {
-}
+public @interface WebTestConfiguration {}
 
 @Configuration
 class FooConfig {
 
-	@Bean
-	public String foo() {
-		return "enigma";
-	}
+    @Bean
+    public String foo() {
+        return "enigma";
+    }
 }

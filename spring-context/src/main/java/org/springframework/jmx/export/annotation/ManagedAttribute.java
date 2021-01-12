@@ -23,9 +23,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Method-level annotation that indicates to expose a given bean property as a
- * JMX attribute, corresponding to the {@code ManagedAttribute} attribute.
- * Only valid when used on a JavaBean getter or setter.
+ * Method-level annotation that indicates to expose a given bean property as a JMX attribute,
+ * corresponding to the {@code ManagedAttribute} attribute. Only valid when used on a JavaBean
+ * getter or setter.
  *
  * @author Rob Harrop
  * @since 1.2
@@ -36,14 +36,13 @@ import java.lang.annotation.Target;
 @Documented
 public @interface ManagedAttribute {
 
-	String defaultValue() default "";
+    String defaultValue() default "";
 
-	String description() default "";
+    String description() default "";
 
-	int currencyTimeLimit() default -1;
+    int currencyTimeLimit() default -1;
 
-	String persistPolicy() default "";
+    String persistPolicy() default "";
 
-	int persistPeriod() default -1;
-
+    int persistPeriod() default -1;
 }

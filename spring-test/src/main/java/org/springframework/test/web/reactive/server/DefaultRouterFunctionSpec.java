@@ -29,31 +29,30 @@ import org.springframework.web.server.adapter.WebHttpHandlerBuilder;
  * @since 5.0
  */
 class DefaultRouterFunctionSpec extends AbstractMockServerSpec<WebTestClient.RouterFunctionSpec>
-		implements WebTestClient.RouterFunctionSpec {
+        implements WebTestClient.RouterFunctionSpec {
 
-	private final RouterFunction<?> routerFunction;
+    private final RouterFunction<?> routerFunction;
 
-	private HandlerStrategies handlerStrategies = HandlerStrategies.withDefaults();
+    private HandlerStrategies handlerStrategies = HandlerStrategies.withDefaults();
 
+    DefaultRouterFunctionSpec(RouterFunction<?> routerFunction) {
+        this.routerFunction = routerFunction;
+    }
 
-	DefaultRouterFunctionSpec(RouterFunction<?> routerFunction) {
-		this.routerFunction = routerFunction;
-	}
+    @Override
+    public WebTestClient.RouterFunctionSpec handlerStrategies(HandlerStrategies handlerStrategies) {
+        this.handlerStrategies = handlerStrategies;
+        return this;
+    }
 
-
-	@Override
-	public WebTestClient.RouterFunctionSpec handlerStrategies(HandlerStrategies handlerStrategies) {
-		this.handlerStrategies = handlerStrategies;
-		return this;
-	}
-
-	@Override
-	protected WebHttpHandlerBuilder initHttpHandlerBuilder() {
-		WebHandler webHandler = RouterFunctions.toWebHandler(this.routerFunction, this.handlerStrategies);
-		return WebHttpHandlerBuilder.webHandler(webHandler)
-				.filters(filters -> filters.addAll(this.handlerStrategies.webFilters()))
-				.exceptionHandlers(handlers -> handlers.addAll(this.handlerStrategies.exceptionHandlers()))
-				.localeContextResolver(this.handlerStrategies.localeContextResolver());
-	}
-
+    @Override
+    protected WebHttpHandlerBuilder initHttpHandlerBuilder() {
+        WebHandler webHandler =
+                RouterFunctions.toWebHandler(this.routerFunction, this.handlerStrategies);
+        return WebHttpHandlerBuilder.webHandler(webHandler)
+                .filters(filters -> filters.addAll(this.handlerStrategies.webFilters()))
+                .exceptionHandlers(
+                        handlers -> handlers.addAll(this.handlerStrategies.exceptionHandlers()))
+                .localeContextResolver(this.handlerStrategies.localeContextResolver());
+    }
 }

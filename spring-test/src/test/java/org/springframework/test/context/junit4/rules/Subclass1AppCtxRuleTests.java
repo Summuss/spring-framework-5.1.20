@@ -34,22 +34,19 @@ import static org.junit.Assert.*;
 @ContextConfiguration
 public class Subclass1AppCtxRuleTests extends BaseAppCtxRuleTests {
 
-	@Autowired
-	private String bar;
+    @Autowired private String bar;
 
+    @Test
+    public void bar() {
+        assertEquals("bar", bar);
+    }
 
-	@Test
-	public void bar() {
-		assertEquals("bar", bar);
-	}
+    @Configuration
+    static class Config {
 
-
-	@Configuration
-	static class Config {
-
-		@Bean
-		public String bar() {
-			return "bar";
-		}
-	}
+        @Bean
+        public String bar() {
+            return "bar";
+        }
+    }
 }

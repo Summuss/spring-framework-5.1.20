@@ -33,40 +33,40 @@ import static org.junit.Assert.assertTrue;
 
 /**
  * Unit tests for {@link ContentCachingResponseWrapper}.
+ *
  * @author Rossen Stoyanchev
  */
 public class ContentCachingResponseWrapperTests {
 
-	@Test
-	public void copyBodyToResponse() throws Exception {
-		byte[] responseBody = "Hello World".getBytes(StandardCharsets.UTF_8);
-		MockHttpServletResponse response = new MockHttpServletResponse();
+    @Test
+    public void copyBodyToResponse() throws Exception {
+        byte[] responseBody = "Hello World".getBytes(StandardCharsets.UTF_8);
+        MockHttpServletResponse response = new MockHttpServletResponse();
 
-		ContentCachingResponseWrapper responseWrapper = new ContentCachingResponseWrapper(response);
-		responseWrapper.setStatus(HttpServletResponse.SC_OK);
-		FileCopyUtils.copy(responseBody, responseWrapper.getOutputStream());
-		responseWrapper.copyBodyToResponse();
+        ContentCachingResponseWrapper responseWrapper = new ContentCachingResponseWrapper(response);
+        responseWrapper.setStatus(HttpServletResponse.SC_OK);
+        FileCopyUtils.copy(responseBody, responseWrapper.getOutputStream());
+        responseWrapper.copyBodyToResponse();
 
-		assertEquals(200, response.getStatus());
-		assertTrue(response.getContentLength() > 0);
-		assertArrayEquals(responseBody, response.getContentAsByteArray());
-	}
+        assertEquals(200, response.getStatus());
+        assertTrue(response.getContentLength() > 0);
+        assertArrayEquals(responseBody, response.getContentAsByteArray());
+    }
 
-	@Test
-	public void copyBodyToResponseWithTransferEncoding() throws Exception {
-		byte[] responseBody = "6\r\nHello 5\r\nWorld0\r\n\r\n".getBytes(StandardCharsets.UTF_8);
-		MockHttpServletResponse response = new MockHttpServletResponse();
+    @Test
+    public void copyBodyToResponseWithTransferEncoding() throws Exception {
+        byte[] responseBody = "6\r\nHello 5\r\nWorld0\r\n\r\n".getBytes(StandardCharsets.UTF_8);
+        MockHttpServletResponse response = new MockHttpServletResponse();
 
-		ContentCachingResponseWrapper responseWrapper = new ContentCachingResponseWrapper(response);
-		responseWrapper.setStatus(HttpServletResponse.SC_OK);
-		responseWrapper.setHeader(HttpHeaders.TRANSFER_ENCODING, "chunked");
-		FileCopyUtils.copy(responseBody, responseWrapper.getOutputStream());
-		responseWrapper.copyBodyToResponse();
+        ContentCachingResponseWrapper responseWrapper = new ContentCachingResponseWrapper(response);
+        responseWrapper.setStatus(HttpServletResponse.SC_OK);
+        responseWrapper.setHeader(HttpHeaders.TRANSFER_ENCODING, "chunked");
+        FileCopyUtils.copy(responseBody, responseWrapper.getOutputStream());
+        responseWrapper.copyBodyToResponse();
 
-		assertEquals(200, response.getStatus());
-		assertEquals("chunked", response.getHeader(HttpHeaders.TRANSFER_ENCODING));
-		assertNull(response.getHeader(HttpHeaders.CONTENT_LENGTH));
-		assertArrayEquals(responseBody, response.getContentAsByteArray());
-	}
-
+        assertEquals(200, response.getStatus());
+        assertEquals("chunked", response.getHeader(HttpHeaders.TRANSFER_ENCODING));
+        assertNull(response.getHeader(HttpHeaders.CONTENT_LENGTH));
+        assertArrayEquals(responseBody, response.getContentAsByteArray());
+    }
 }

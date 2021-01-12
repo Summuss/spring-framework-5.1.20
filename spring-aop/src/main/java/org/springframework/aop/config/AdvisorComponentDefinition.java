@@ -24,10 +24,9 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * {@link org.springframework.beans.factory.parsing.ComponentDefinition}
- * that bridges the gap between the advisor bean definition configured
- * by the {@code <aop:advisor>} tag and the component definition
- * infrastructure.
+ * {@link org.springframework.beans.factory.parsing.ComponentDefinition} that bridges the gap
+ * between the advisor bean definition configured by the {@code <aop:advisor>} tag and the component
+ * definition infrastructure.
  *
  * @author Rob Harrop
  * @author Juergen Hoeller
@@ -35,84 +34,88 @@ import org.springframework.util.Assert;
  */
 public class AdvisorComponentDefinition extends AbstractComponentDefinition {
 
-	private final String advisorBeanName;
+    private final String advisorBeanName;
 
-	private final BeanDefinition advisorDefinition;
+    private final BeanDefinition advisorDefinition;
 
-	private final String description;
+    private final String description;
 
-	private final BeanReference[] beanReferences;
+    private final BeanReference[] beanReferences;
 
-	private final BeanDefinition[] beanDefinitions;
+    private final BeanDefinition[] beanDefinitions;
 
+    public AdvisorComponentDefinition(String advisorBeanName, BeanDefinition advisorDefinition) {
+        this(advisorBeanName, advisorDefinition, null);
+    }
 
-	public AdvisorComponentDefinition(String advisorBeanName, BeanDefinition advisorDefinition) {
-		this(advisorBeanName, advisorDefinition, null);
-	}
+    public AdvisorComponentDefinition(
+            String advisorBeanName,
+            BeanDefinition advisorDefinition,
+            @Nullable BeanDefinition pointcutDefinition) {
 
-	public AdvisorComponentDefinition(
-			String advisorBeanName, BeanDefinition advisorDefinition, @Nullable BeanDefinition pointcutDefinition) {
+        Assert.notNull(advisorBeanName, "'advisorBeanName' must not be null");
+        Assert.notNull(advisorDefinition, "'advisorDefinition' must not be null");
+        this.advisorBeanName = advisorBeanName;
+        this.advisorDefinition = advisorDefinition;
 
-		Assert.notNull(advisorBeanName, "'advisorBeanName' must not be null");
-		Assert.notNull(advisorDefinition, "'advisorDefinition' must not be null");
-		this.advisorBeanName = advisorBeanName;
-		this.advisorDefinition = advisorDefinition;
+        MutablePropertyValues pvs = advisorDefinition.getPropertyValues();
+        BeanReference adviceReference = (BeanReference) pvs.get("adviceBeanName");
+        Assert.state(adviceReference != null, "Missing 'adviceBeanName' property");
 
-		MutablePropertyValues pvs = advisorDefinition.getPropertyValues();
-		BeanReference adviceReference = (BeanReference) pvs.get("adviceBeanName");
-		Assert.state(adviceReference != null, "Missing 'adviceBeanName' property");
+        if (pointcutDefinition != null) {
+            this.beanReferences = new BeanReference[] {adviceReference};
+            this.beanDefinitions = new BeanDefinition[] {advisorDefinition, pointcutDefinition};
+            this.description = buildDescription(adviceReference, pointcutDefinition);
+        } else {
+            BeanReference pointcutReference = (BeanReference) pvs.get("pointcut");
+            Assert.state(pointcutReference != null, "Missing 'pointcut' property");
+            this.beanReferences = new BeanReference[] {adviceReference, pointcutReference};
+            this.beanDefinitions = new BeanDefinition[] {advisorDefinition};
+            this.description = buildDescription(adviceReference, pointcutReference);
+        }
+    }
 
-		if (pointcutDefinition != null) {
-			this.beanReferences = new BeanReference[] {adviceReference};
-			this.beanDefinitions = new BeanDefinition[] {advisorDefinition, pointcutDefinition};
-			this.description = buildDescription(adviceReference, pointcutDefinition);
-		}
-		else {
-			BeanReference pointcutReference = (BeanReference) pvs.get("pointcut");
-			Assert.state(pointcutReference != null, "Missing 'pointcut' property");
-			this.beanReferences = new BeanReference[] {adviceReference, pointcutReference};
-			this.beanDefinitions = new BeanDefinition[] {advisorDefinition};
-			this.description = buildDescription(adviceReference, pointcutReference);
-		}
-	}
+    private String buildDescription(
+            BeanReference adviceReference, BeanDefinition pointcutDefinition) {
+        return "Advisor <advice(ref)='"
+                + adviceReference.getBeanName()
+                + "', pointcut(expression)=["
+                + pointcutDefinition.getPropertyValues().get("expression")
+                + "]>";
+    }
 
-	private String buildDescription(BeanReference adviceReference, BeanDefinition pointcutDefinition) {
-		return "Advisor <advice(ref)='" +
-				adviceReference.getBeanName() + "', pointcut(expression)=[" +
-				pointcutDefinition.getPropertyValues().get("expression") + "]>";
-	}
+    private String buildDescription(
+            BeanReference adviceReference, BeanReference pointcutReference) {
+        return "Advisor <advice(ref)='"
+                + adviceReference.getBeanName()
+                + "', pointcut(ref)='"
+                + pointcutReference.getBeanName()
+                + "'>";
+    }
 
-	private String buildDescription(BeanReference adviceReference, BeanReference pointcutReference) {
-		return "Advisor <advice(ref)='" +
-				adviceReference.getBeanName() + "', pointcut(ref)='" +
-				pointcutReference.getBeanName() + "'>";
-	}
+    @Override
+    public String getName() {
+        return this.advisorBeanName;
+    }
 
+    @Override
+    public String getDescription() {
+        return this.description;
+    }
 
-	@Override
-	public String getName() {
-		return this.advisorBeanName;
-	}
+    @Override
+    public BeanDefinition[] getBeanDefinitions() {
+        return this.beanDefinitions;
+    }
 
-	@Override
-	public String getDescription() {
-		return this.description;
-	}
+    @Override
+    public BeanReference[] getBeanReferences() {
+        return this.beanReferences;
+    }
 
-	@Override
-	public BeanDefinition[] getBeanDefinitions() {
-		return this.beanDefinitions;
-	}
-
-	@Override
-	public BeanReference[] getBeanReferences() {
-		return this.beanReferences;
-	}
-
-	@Override
-	@Nullable
-	public Object getSource() {
-		return this.advisorDefinition.getSource();
-	}
-
+    @Override
+    @Nullable
+    public Object getSource() {
+        return this.advisorDefinition.getSource();
+    }
 }

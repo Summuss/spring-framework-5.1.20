@@ -1,6 +1,6 @@
 /**
- * Holds implementations of
- * {@link org.springframework.web.reactive.socket.server.RequestUpgradeStrategy}.
+ * Holds implementations of {@link
+ * org.springframework.web.reactive.socket.server.RequestUpgradeStrategy}.
  */
 @NonNullApi
 @NonNullFields

@@ -26,8 +26,7 @@ package org.springframework.jms;
 @SuppressWarnings("serial")
 public class TransactionRolledBackException extends JmsException {
 
-	public TransactionRolledBackException(javax.jms.TransactionRolledBackException cause) {
-		super(cause);
-	}
-
+    public TransactionRolledBackException(javax.jms.TransactionRolledBackException cause) {
+        super(cause);
+    }
 }

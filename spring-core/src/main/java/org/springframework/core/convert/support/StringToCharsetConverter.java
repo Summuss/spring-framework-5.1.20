@@ -28,9 +28,8 @@ import org.springframework.core.convert.converter.Converter;
  */
 class StringToCharsetConverter implements Converter<String, Charset> {
 
-	@Override
-	public Charset convert(String source) {
-		return Charset.forName(source);
-	}
-
+    @Override
+    public Charset convert(String source) {
+        return Charset.forName(source);
+    }
 }

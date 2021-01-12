@@ -32,14 +32,11 @@ import static org.junit.Assert.*;
 @RunWith(SpringRunner.class)
 public class ContextConfigurationInterfaceTests implements ContextConfigurationTestInterface {
 
-	@Autowired
-	Employee employee;
+    @Autowired Employee employee;
 
-
-	@Test
-	public void profileFromTestInterface() {
-		assertNotNull(employee);
-		assertEquals("Dilbert", employee.getName());
-	}
-
+    @Test
+    public void profileFromTestInterface() {
+        assertNotNull(employee);
+        assertEquals("Dilbert", employee.getName());
+    }
 }

@@ -4,17 +4,17 @@ import org.springframework.scripting.Calculator
 
 class DelegatingCalculator implements Calculator {
 
-	def Calculator delegate;
+    def Calculator delegate;
 
-	int add(int x, int y) {
-		//println "hello"
-		//println this.metaClass.getClass()
-		//println delegate.metaClass.getClass()
-		//delegate.metaClass.invokeMethod("add", [x,y])
+    int add(int x, int y) {
+        //println "hello"
+        //println this.metaClass.getClass()
+        //println delegate.metaClass.getClass()
+        //delegate.metaClass.invokeMethod("add", [x,y])
 
-		delegate.callMissingMethod()
+        delegate.callMissingMethod()
 
-		return delegate.add(x,y)
-	}
+        return delegate.add(x, y)
+    }
 
 }

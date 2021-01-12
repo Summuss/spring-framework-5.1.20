@@ -48,152 +48,155 @@ import static org.junit.Assert.*;
  */
 public class HeaderMethodArgumentResolverTests {
 
-	private HeaderMethodArgumentResolver resolver;
+    private HeaderMethodArgumentResolver resolver;
 
-	private MethodParameter paramRequired;
-	private MethodParameter paramNamedDefaultValueStringHeader;
-	private MethodParameter paramSystemPropertyDefaultValue;
-	private MethodParameter paramSystemPropertyName;
-	private MethodParameter paramNotAnnotated;
-	private MethodParameter paramOptional;
-	private MethodParameter paramNativeHeader;
+    private MethodParameter paramRequired;
+    private MethodParameter paramNamedDefaultValueStringHeader;
+    private MethodParameter paramSystemPropertyDefaultValue;
+    private MethodParameter paramSystemPropertyName;
+    private MethodParameter paramNotAnnotated;
+    private MethodParameter paramOptional;
+    private MethodParameter paramNativeHeader;
 
+    @Before
+    public void setup() {
+        @SuppressWarnings("resource")
+        GenericApplicationContext cxt = new GenericApplicationContext();
+        cxt.refresh();
+        this.resolver =
+                new HeaderMethodArgumentResolver(
+                        new DefaultConversionService(), cxt.getBeanFactory());
 
-	@Before
-	public void setup() {
-		@SuppressWarnings("resource")
-		GenericApplicationContext cxt = new GenericApplicationContext();
-		cxt.refresh();
-		this.resolver = new HeaderMethodArgumentResolver(new DefaultConversionService(), cxt.getBeanFactory());
+        Method method = ReflectionUtils.findMethod(getClass(), "handleMessage", (Class<?>[]) null);
+        this.paramRequired = new SynthesizingMethodParameter(method, 0);
+        this.paramNamedDefaultValueStringHeader = new SynthesizingMethodParameter(method, 1);
+        this.paramSystemPropertyDefaultValue = new SynthesizingMethodParameter(method, 2);
+        this.paramSystemPropertyName = new SynthesizingMethodParameter(method, 3);
+        this.paramNotAnnotated = new SynthesizingMethodParameter(method, 4);
+        this.paramOptional = new SynthesizingMethodParameter(method, 5);
+        this.paramNativeHeader = new SynthesizingMethodParameter(method, 6);
 
-		Method method = ReflectionUtils.findMethod(getClass(), "handleMessage", (Class<?>[]) null);
-		this.paramRequired = new SynthesizingMethodParameter(method, 0);
-		this.paramNamedDefaultValueStringHeader = new SynthesizingMethodParameter(method, 1);
-		this.paramSystemPropertyDefaultValue = new SynthesizingMethodParameter(method, 2);
-		this.paramSystemPropertyName = new SynthesizingMethodParameter(method, 3);
-		this.paramNotAnnotated = new SynthesizingMethodParameter(method, 4);
-		this.paramOptional = new SynthesizingMethodParameter(method, 5);
-		this.paramNativeHeader = new SynthesizingMethodParameter(method, 6);
+        this.paramRequired.initParameterNameDiscovery(new DefaultParameterNameDiscoverer());
+        GenericTypeResolver.resolveParameterType(
+                this.paramRequired, HeaderMethodArgumentResolver.class);
+    }
 
-		this.paramRequired.initParameterNameDiscovery(new DefaultParameterNameDiscoverer());
-		GenericTypeResolver.resolveParameterType(this.paramRequired, HeaderMethodArgumentResolver.class);
-	}
+    @Test
+    public void supportsParameter() {
+        assertTrue(resolver.supportsParameter(paramNamedDefaultValueStringHeader));
+        assertFalse(resolver.supportsParameter(paramNotAnnotated));
+    }
 
+    @Test
+    public void resolveArgument() throws Exception {
+        Message<byte[]> message =
+                MessageBuilder.withPayload(new byte[0]).setHeader("param1", "foo").build();
+        Object result = this.resolver.resolveArgument(this.paramRequired, message);
+        assertEquals("foo", result);
+    }
 
-	@Test
-	public void supportsParameter() {
-		assertTrue(resolver.supportsParameter(paramNamedDefaultValueStringHeader));
-		assertFalse(resolver.supportsParameter(paramNotAnnotated));
-	}
+    @Test // SPR-11326
+    public void resolveArgumentNativeHeader() throws Exception {
+        TestMessageHeaderAccessor headers = new TestMessageHeaderAccessor();
+        headers.setNativeHeader("param1", "foo");
+        Message<byte[]> message =
+                MessageBuilder.withPayload(new byte[0]).setHeaders(headers).build();
+        assertEquals("foo", this.resolver.resolveArgument(this.paramRequired, message));
+    }
 
-	@Test
-	public void resolveArgument() throws Exception {
-		Message<byte[]> message = MessageBuilder.withPayload(new byte[0]).setHeader("param1", "foo").build();
-		Object result = this.resolver.resolveArgument(this.paramRequired, message);
-		assertEquals("foo", result);
-	}
+    @Test
+    public void resolveArgumentNativeHeaderAmbiguity() throws Exception {
+        TestMessageHeaderAccessor headers = new TestMessageHeaderAccessor();
+        headers.setHeader("param1", "foo");
+        headers.setNativeHeader("param1", "native-foo");
+        Message<byte[]> message =
+                MessageBuilder.withPayload(new byte[0]).setHeaders(headers).build();
 
-	@Test  // SPR-11326
-	public void resolveArgumentNativeHeader() throws Exception {
-		TestMessageHeaderAccessor headers = new TestMessageHeaderAccessor();
-		headers.setNativeHeader("param1", "foo");
-		Message<byte[]> message = MessageBuilder.withPayload(new byte[0]).setHeaders(headers).build();
-		assertEquals("foo", this.resolver.resolveArgument(this.paramRequired, message));
-	}
+        assertEquals("foo", this.resolver.resolveArgument(this.paramRequired, message));
+        assertEquals("native-foo", this.resolver.resolveArgument(this.paramNativeHeader, message));
+    }
 
-	@Test
-	public void resolveArgumentNativeHeaderAmbiguity() throws Exception {
-		TestMessageHeaderAccessor headers = new TestMessageHeaderAccessor();
-		headers.setHeader("param1", "foo");
-		headers.setNativeHeader("param1", "native-foo");
-		Message<byte[]> message = MessageBuilder.withPayload(new byte[0]).setHeaders(headers).build();
+    @Test(expected = MessageHandlingException.class)
+    public void resolveArgumentNotFound() throws Exception {
+        Message<byte[]> message = MessageBuilder.withPayload(new byte[0]).build();
+        this.resolver.resolveArgument(this.paramRequired, message);
+    }
 
-		assertEquals("foo", this.resolver.resolveArgument(this.paramRequired, message));
-		assertEquals("native-foo", this.resolver.resolveArgument(this.paramNativeHeader, message));
-	}
+    @Test
+    public void resolveArgumentDefaultValue() throws Exception {
+        Message<byte[]> message = MessageBuilder.withPayload(new byte[0]).build();
+        Object result =
+                this.resolver.resolveArgument(this.paramNamedDefaultValueStringHeader, message);
+        assertEquals("bar", result);
+    }
 
-	@Test(expected = MessageHandlingException.class)
-	public void resolveArgumentNotFound() throws Exception {
-		Message<byte[]> message = MessageBuilder.withPayload(new byte[0]).build();
-		this.resolver.resolveArgument(this.paramRequired, message);
-	}
+    @Test
+    public void resolveDefaultValueSystemProperty() throws Exception {
+        System.setProperty("systemProperty", "sysbar");
+        try {
+            Message<byte[]> message = MessageBuilder.withPayload(new byte[0]).build();
+            Object result = resolver.resolveArgument(paramSystemPropertyDefaultValue, message);
+            assertEquals("sysbar", result);
+        } finally {
+            System.clearProperty("systemProperty");
+        }
+    }
 
-	@Test
-	public void resolveArgumentDefaultValue() throws Exception {
-		Message<byte[]> message = MessageBuilder.withPayload(new byte[0]).build();
-		Object result = this.resolver.resolveArgument(this.paramNamedDefaultValueStringHeader, message);
-		assertEquals("bar", result);
-	}
+    @Test
+    public void resolveNameFromSystemProperty() throws Exception {
+        System.setProperty("systemProperty", "sysbar");
+        try {
+            Message<byte[]> message =
+                    MessageBuilder.withPayload(new byte[0]).setHeader("sysbar", "foo").build();
+            Object result = resolver.resolveArgument(paramSystemPropertyName, message);
+            assertEquals("foo", result);
+        } finally {
+            System.clearProperty("systemProperty");
+        }
+    }
 
-	@Test
-	public void resolveDefaultValueSystemProperty() throws Exception {
-		System.setProperty("systemProperty", "sysbar");
-		try {
-			Message<byte[]> message = MessageBuilder.withPayload(new byte[0]).build();
-			Object result = resolver.resolveArgument(paramSystemPropertyDefaultValue, message);
-			assertEquals("sysbar", result);
-		}
-		finally {
-			System.clearProperty("systemProperty");
-		}
-	}
+    @Test
+    public void resolveOptionalHeaderWithValue() throws Exception {
+        GenericApplicationContext cxt = new GenericApplicationContext();
+        cxt.refresh();
 
-	@Test
-	public void resolveNameFromSystemProperty() throws Exception {
-		System.setProperty("systemProperty", "sysbar");
-		try {
-			Message<byte[]> message = MessageBuilder.withPayload(new byte[0]).setHeader("sysbar", "foo").build();
-			Object result = resolver.resolveArgument(paramSystemPropertyName, message);
-			assertEquals("foo", result);
-		}
-		finally {
-			System.clearProperty("systemProperty");
-		}
-	}
+        HeaderMethodArgumentResolver resolver =
+                new HeaderMethodArgumentResolver(
+                        new DefaultConversionService(), cxt.getBeanFactory());
 
-	@Test
-	public void resolveOptionalHeaderWithValue() throws Exception {
-		GenericApplicationContext cxt = new GenericApplicationContext();
-		cxt.refresh();
+        Message<String> message = MessageBuilder.withPayload("foo").setHeader("foo", "bar").build();
+        Object result = resolver.resolveArgument(paramOptional, message);
+        assertEquals(Optional.of("bar"), result);
+    }
 
-		HeaderMethodArgumentResolver resolver =
-				new HeaderMethodArgumentResolver(new DefaultConversionService(), cxt.getBeanFactory());
+    @Test
+    public void resolveOptionalHeaderAsEmpty() throws Exception {
+        GenericApplicationContext cxt = new GenericApplicationContext();
+        cxt.refresh();
 
-		Message<String> message = MessageBuilder.withPayload("foo").setHeader("foo", "bar").build();
-		Object result = resolver.resolveArgument(paramOptional, message);
-		assertEquals(Optional.of("bar"), result);
-	}
+        HeaderMethodArgumentResolver resolver =
+                new HeaderMethodArgumentResolver(
+                        new DefaultConversionService(), cxt.getBeanFactory());
 
-	@Test
-	public void resolveOptionalHeaderAsEmpty() throws Exception {
-		GenericApplicationContext cxt = new GenericApplicationContext();
-		cxt.refresh();
+        Message<String> message = MessageBuilder.withPayload("foo").build();
+        Object result = resolver.resolveArgument(paramOptional, message);
+        assertEquals(Optional.empty(), result);
+    }
 
-		HeaderMethodArgumentResolver resolver =
-				new HeaderMethodArgumentResolver(new DefaultConversionService(), cxt.getBeanFactory());
+    public void handleMessage(
+            @Header String param1,
+            @Header(name = "name", defaultValue = "bar") String param2,
+            @Header(name = "name", defaultValue = "#{systemProperties.systemProperty}")
+                    String param3,
+            @Header(name = "#{systemProperties.systemProperty}") String param4,
+            String param5,
+            @Header("foo") Optional<String> param6,
+            @Header("nativeHeaders.param1") String nativeHeaderParam1) {}
 
-		Message<String> message = MessageBuilder.withPayload("foo").build();
-		Object result = resolver.resolveArgument(paramOptional, message);
-		assertEquals(Optional.empty(), result);
-	}
+    public static class TestMessageHeaderAccessor extends NativeMessageHeaderAccessor {
 
-
-	public void handleMessage(
-			@Header String param1,
-			@Header(name = "name", defaultValue = "bar") String param2,
-			@Header(name = "name", defaultValue = "#{systemProperties.systemProperty}") String param3,
-			@Header(name = "#{systemProperties.systemProperty}") String param4,
-			String param5,
-			@Header("foo") Optional<String> param6,
-			@Header("nativeHeaders.param1") String nativeHeaderParam1) {
-	}
-
-
-	public static class TestMessageHeaderAccessor extends NativeMessageHeaderAccessor {
-
-		protected TestMessageHeaderAccessor() {
-			super((Map<String, List<String>>) null);
-		}
-	}
-
+        protected TestMessageHeaderAccessor() {
+            super((Map<String, List<String>>) null);
+        }
+    }
 }

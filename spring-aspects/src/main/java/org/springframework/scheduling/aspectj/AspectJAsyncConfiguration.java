@@ -25,8 +25,8 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.config.TaskManagementConfigUtils;
 
 /**
- * {@code @Configuration} class that registers the Spring infrastructure beans necessary
- * to enable AspectJ-based asynchronous method execution.
+ * {@code @Configuration} class that registers the Spring infrastructure beans necessary to enable
+ * AspectJ-based asynchronous method execution.
  *
  * @author Chris Beams
  * @author Stephane Nicoll
@@ -40,12 +40,11 @@ import org.springframework.scheduling.config.TaskManagementConfigUtils;
 @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
 public class AspectJAsyncConfiguration extends AbstractAsyncConfiguration {
 
-	@Bean(name = TaskManagementConfigUtils.ASYNC_EXECUTION_ASPECT_BEAN_NAME)
-	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)
-	public AnnotationAsyncExecutionAspect asyncAdvisor() {
-		AnnotationAsyncExecutionAspect asyncAspect = AnnotationAsyncExecutionAspect.aspectOf();
-		asyncAspect.configure(this.executor, this.exceptionHandler);
-		return asyncAspect;
-	}
-
+    @Bean(name = TaskManagementConfigUtils.ASYNC_EXECUTION_ASPECT_BEAN_NAME)
+    @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
+    public AnnotationAsyncExecutionAspect asyncAdvisor() {
+        AnnotationAsyncExecutionAspect asyncAspect = AnnotationAsyncExecutionAspect.aspectOf();
+        asyncAspect.configure(this.executor, this.exceptionHandler);
+        return asyncAspect;
+    }
 }

@@ -18,10 +18,6 @@ package org.springframework.http.codec.xml.jaxb;
 
 import javax.xml.bind.annotation.XmlType;
 
-/**
- * @author Arjen Poutsma
- */
+/** @author Arjen Poutsma */
 @XmlType(name = "name")
-public class XmlTypeWithName {
-
-}
+public class XmlTypeWithName {}

@@ -35,113 +35,121 @@ import static org.junit.Assert.*;
  */
 public class MethodMatchersTests {
 
-	private final Method EXCEPTION_GETMESSAGE;
+    private final Method EXCEPTION_GETMESSAGE;
 
-	private final Method ITESTBEAN_SETAGE;
+    private final Method ITESTBEAN_SETAGE;
 
-	private final Method ITESTBEAN_GETAGE;
+    private final Method ITESTBEAN_GETAGE;
 
-	private final Method IOTHER_ABSQUATULATE;
+    private final Method IOTHER_ABSQUATULATE;
 
+    public MethodMatchersTests() throws Exception {
+        EXCEPTION_GETMESSAGE = Exception.class.getMethod("getMessage");
+        ITESTBEAN_GETAGE = ITestBean.class.getMethod("getAge");
+        ITESTBEAN_SETAGE = ITestBean.class.getMethod("setAge", int.class);
+        IOTHER_ABSQUATULATE = IOther.class.getMethod("absquatulate");
+    }
 
-	public MethodMatchersTests() throws Exception {
-		EXCEPTION_GETMESSAGE = Exception.class.getMethod("getMessage");
-		ITESTBEAN_GETAGE = ITestBean.class.getMethod("getAge");
-		ITESTBEAN_SETAGE = ITestBean.class.getMethod("setAge", int.class);
-		IOTHER_ABSQUATULATE = IOther.class.getMethod("absquatulate");
-	}
+    @Test
+    public void testDefaultMatchesAll() throws Exception {
+        MethodMatcher defaultMm = MethodMatcher.TRUE;
+        assertTrue(defaultMm.matches(EXCEPTION_GETMESSAGE, Exception.class));
+        assertTrue(defaultMm.matches(ITESTBEAN_SETAGE, TestBean.class));
+    }
 
+    @Test
+    public void testMethodMatcherTrueSerializable() throws Exception {
+        assertSame(
+                SerializationTestUtils.serializeAndDeserialize(MethodMatcher.TRUE),
+                MethodMatcher.TRUE);
+    }
 
-	@Test
-	public void testDefaultMatchesAll() throws Exception {
-		MethodMatcher defaultMm = MethodMatcher.TRUE;
-		assertTrue(defaultMm.matches(EXCEPTION_GETMESSAGE, Exception.class));
-		assertTrue(defaultMm.matches(ITESTBEAN_SETAGE, TestBean.class));
-	}
+    @Test
+    public void testSingle() throws Exception {
+        MethodMatcher defaultMm = MethodMatcher.TRUE;
+        assertTrue(defaultMm.matches(EXCEPTION_GETMESSAGE, Exception.class));
+        assertTrue(defaultMm.matches(ITESTBEAN_SETAGE, TestBean.class));
+        defaultMm = MethodMatchers.intersection(defaultMm, new StartsWithMatcher("get"));
 
-	@Test
-	public void testMethodMatcherTrueSerializable() throws Exception {
-		assertSame(SerializationTestUtils.serializeAndDeserialize(MethodMatcher.TRUE), MethodMatcher.TRUE);
-	}
+        assertTrue(defaultMm.matches(EXCEPTION_GETMESSAGE, Exception.class));
+        assertFalse(defaultMm.matches(ITESTBEAN_SETAGE, TestBean.class));
+    }
 
-	@Test
-	public void testSingle() throws Exception {
-		MethodMatcher defaultMm = MethodMatcher.TRUE;
-		assertTrue(defaultMm.matches(EXCEPTION_GETMESSAGE, Exception.class));
-		assertTrue(defaultMm.matches(ITESTBEAN_SETAGE, TestBean.class));
-		defaultMm = MethodMatchers.intersection(defaultMm, new StartsWithMatcher("get"));
+    @Test
+    public void testDynamicAndStaticMethodMatcherIntersection() throws Exception {
+        MethodMatcher mm1 = MethodMatcher.TRUE;
+        MethodMatcher mm2 = new TestDynamicMethodMatcherWhichMatches();
+        MethodMatcher intersection = MethodMatchers.intersection(mm1, mm2);
+        assertTrue("Intersection is a dynamic matcher", intersection.isRuntime());
+        assertTrue(
+                "2Matched setAge method", intersection.matches(ITESTBEAN_SETAGE, TestBean.class));
+        assertTrue(
+                "3Matched setAge method",
+                intersection.matches(ITESTBEAN_SETAGE, TestBean.class, new Integer(5)));
+        // Knock out dynamic part
+        intersection =
+                MethodMatchers.intersection(
+                        intersection, new TestDynamicMethodMatcherWhichDoesNotMatch());
+        assertTrue("Intersection is a dynamic matcher", intersection.isRuntime());
+        assertTrue(
+                "2Matched setAge method", intersection.matches(ITESTBEAN_SETAGE, TestBean.class));
+        assertFalse(
+                "3 - not Matched setAge method",
+                intersection.matches(ITESTBEAN_SETAGE, TestBean.class, new Integer(5)));
+    }
 
-		assertTrue(defaultMm.matches(EXCEPTION_GETMESSAGE, Exception.class));
-		assertFalse(defaultMm.matches(ITESTBEAN_SETAGE, TestBean.class));
-	}
+    @Test
+    public void testStaticMethodMatcherUnion() throws Exception {
+        MethodMatcher getterMatcher = new StartsWithMatcher("get");
+        MethodMatcher setterMatcher = new StartsWithMatcher("set");
+        MethodMatcher union = MethodMatchers.union(getterMatcher, setterMatcher);
 
+        assertFalse("Union is a static matcher", union.isRuntime());
+        assertTrue("Matched setAge method", union.matches(ITESTBEAN_SETAGE, TestBean.class));
+        assertTrue("Matched getAge method", union.matches(ITESTBEAN_GETAGE, TestBean.class));
+        assertFalse(
+                "Didn't matched absquatulate method",
+                union.matches(IOTHER_ABSQUATULATE, TestBean.class));
+    }
 
-	@Test
-	public void testDynamicAndStaticMethodMatcherIntersection() throws Exception {
-		MethodMatcher mm1 = MethodMatcher.TRUE;
-		MethodMatcher mm2 = new TestDynamicMethodMatcherWhichMatches();
-		MethodMatcher intersection = MethodMatchers.intersection(mm1, mm2);
-		assertTrue("Intersection is a dynamic matcher", intersection.isRuntime());
-		assertTrue("2Matched setAge method", intersection.matches(ITESTBEAN_SETAGE, TestBean.class));
-		assertTrue("3Matched setAge method", intersection.matches(ITESTBEAN_SETAGE, TestBean.class, new Integer(5)));
-		// Knock out dynamic part
-		intersection = MethodMatchers.intersection(intersection, new TestDynamicMethodMatcherWhichDoesNotMatch());
-		assertTrue("Intersection is a dynamic matcher", intersection.isRuntime());
-		assertTrue("2Matched setAge method", intersection.matches(ITESTBEAN_SETAGE, TestBean.class));
-		assertFalse("3 - not Matched setAge method", intersection.matches(ITESTBEAN_SETAGE, TestBean.class, new Integer(5)));
-	}
+    @Test
+    public void testUnionEquals() {
+        MethodMatcher first = MethodMatchers.union(MethodMatcher.TRUE, MethodMatcher.TRUE);
+        MethodMatcher second =
+                new ComposablePointcut(MethodMatcher.TRUE)
+                        .union(new ComposablePointcut(MethodMatcher.TRUE))
+                        .getMethodMatcher();
+        assertTrue(first.equals(second));
+        assertTrue(second.equals(first));
+    }
 
-	@Test
-	public void testStaticMethodMatcherUnion() throws Exception {
-		MethodMatcher getterMatcher = new StartsWithMatcher("get");
-		MethodMatcher setterMatcher = new StartsWithMatcher("set");
-		MethodMatcher union = MethodMatchers.union(getterMatcher, setterMatcher);
+    public static class StartsWithMatcher extends StaticMethodMatcher {
 
-		assertFalse("Union is a static matcher", union.isRuntime());
-		assertTrue("Matched setAge method", union.matches(ITESTBEAN_SETAGE, TestBean.class));
-		assertTrue("Matched getAge method", union.matches(ITESTBEAN_GETAGE, TestBean.class));
-		assertFalse("Didn't matched absquatulate method", union.matches(IOTHER_ABSQUATULATE, TestBean.class));
-	}
+        private final String prefix;
 
-	@Test
-	public void testUnionEquals() {
-		MethodMatcher first = MethodMatchers.union(MethodMatcher.TRUE, MethodMatcher.TRUE);
-		MethodMatcher second = new ComposablePointcut(MethodMatcher.TRUE).union(new ComposablePointcut(MethodMatcher.TRUE)).getMethodMatcher();
-		assertTrue(first.equals(second));
-		assertTrue(second.equals(first));
-	}
+        public StartsWithMatcher(String s) {
+            this.prefix = s;
+        }
 
+        @Override
+        public boolean matches(Method m, @Nullable Class<?> targetClass) {
+            return m.getName().startsWith(prefix);
+        }
+    }
 
-	public static class StartsWithMatcher extends StaticMethodMatcher {
+    private static class TestDynamicMethodMatcherWhichMatches extends DynamicMethodMatcher {
 
-		private final String prefix;
+        @Override
+        public boolean matches(Method m, @Nullable Class<?> targetClass, Object... args) {
+            return true;
+        }
+    }
 
-		public StartsWithMatcher(String s) {
-			this.prefix = s;
-		}
+    private static class TestDynamicMethodMatcherWhichDoesNotMatch extends DynamicMethodMatcher {
 
-		@Override
-		public boolean matches(Method m, @Nullable Class<?> targetClass) {
-			return m.getName().startsWith(prefix);
-		}
-	}
-
-
-	private static class TestDynamicMethodMatcherWhichMatches extends DynamicMethodMatcher {
-
-		@Override
-		public boolean matches(Method m, @Nullable Class<?> targetClass, Object... args) {
-			return true;
-		}
-	}
-
-
-	private static class TestDynamicMethodMatcherWhichDoesNotMatch extends DynamicMethodMatcher {
-
-		@Override
-		public boolean matches(Method m, @Nullable Class<?> targetClass, Object... args) {
-			return false;
-		}
-	}
-
+        @Override
+        public boolean matches(Method m, @Nullable Class<?> targetClass, Object... args) {
+            return false;
+        }
+    }
 }

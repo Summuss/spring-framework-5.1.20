@@ -35,34 +35,33 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.*;
  */
 public class ViewNameAssertionTests {
 
-	private MockMvc mockMvc;
+    private MockMvc mockMvc;
 
-	@Before
-	public void setup() {
-		this.mockMvc = standaloneSetup(new SimpleController())
-				.alwaysExpect(status().isOk())
-				.build();
-	}
+    @Before
+    public void setup() {
+        this.mockMvc =
+                standaloneSetup(new SimpleController()).alwaysExpect(status().isOk()).build();
+    }
 
-	@Test
-	public void testEqualTo() throws Exception {
-		this.mockMvc.perform(get("/"))
-			.andExpect(view().name("mySpecialView"))
-			.andExpect(view().name(equalTo("mySpecialView")));
-	}
+    @Test
+    public void testEqualTo() throws Exception {
+        this.mockMvc
+                .perform(get("/"))
+                .andExpect(view().name("mySpecialView"))
+                .andExpect(view().name(equalTo("mySpecialView")));
+    }
 
-	@Test
-	public void testHamcrestMatcher() throws Exception {
-		this.mockMvc.perform(get("/")).andExpect(view().name(containsString("Special")));
-	}
+    @Test
+    public void testHamcrestMatcher() throws Exception {
+        this.mockMvc.perform(get("/")).andExpect(view().name(containsString("Special")));
+    }
 
+    @Controller
+    private static class SimpleController {
 
-	@Controller
-	private static class SimpleController {
-
-		@RequestMapping("/")
-		public String handle() {
-			return "mySpecialView";
-		}
-	}
+        @RequestMapping("/")
+        public String handle() {
+            return "mySpecialView";
+        }
+    }
 }

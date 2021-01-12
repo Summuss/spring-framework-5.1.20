@@ -27,24 +27,23 @@ import static org.junit.Assert.*;
  */
 public class ParamTests {
 
-	private final Param param = new Param();
+    private final Param param = new Param();
 
-	@Test
-	public void name() {
-		param.setName("name");
-		assertEquals("name", param.getName());
-	}
+    @Test
+    public void name() {
+        param.setName("name");
+        assertEquals("name", param.getName());
+    }
 
-	@Test
-	public void value() {
-		param.setValue("value");
-		assertEquals("value", param.getValue());
-	}
+    @Test
+    public void value() {
+        param.setValue("value");
+        assertEquals("value", param.getValue());
+    }
 
-	@Test
-	public void nullDefaults() {
-		assertNull(param.getName());
-		assertNull(param.getValue());
-	}
-
+    @Test
+    public void nullDefaults() {
+        assertNull(param.getName());
+        assertNull(param.getValue());
+    }
 }

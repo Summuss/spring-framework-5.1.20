@@ -25,9 +25,9 @@ import java.lang.annotation.Target;
 import org.springframework.jmx.support.MetricType;
 
 /**
- * Method-level annotation that indicates to expose a given bean property as a
- * JMX attribute, with added descriptor properties to indicate that it is a metric.
- * Only valid when used on a JavaBean getter.
+ * Method-level annotation that indicates to expose a given bean property as a JMX attribute, with
+ * added descriptor properties to indicate that it is a metric. Only valid when used on a JavaBean
+ * getter.
  *
  * @author Jennifer Hickey
  * @since 3.0
@@ -38,20 +38,19 @@ import org.springframework.jmx.support.MetricType;
 @Documented
 public @interface ManagedMetric {
 
-	String category() default "";
+    String category() default "";
 
-	int currencyTimeLimit() default -1;
+    int currencyTimeLimit() default -1;
 
-	String description() default "";
+    String description() default "";
 
-	String displayName() default "";
+    String displayName() default "";
 
-	MetricType metricType() default MetricType.GAUGE;
+    MetricType metricType() default MetricType.GAUGE;
 
-	int persistPeriod() default -1;
+    int persistPeriod() default -1;
 
-	String persistPolicy() default "";
+    String persistPolicy() default "";
 
-	String unit() default "";
-
+    String unit() default "";
 }

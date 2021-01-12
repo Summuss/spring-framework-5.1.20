@@ -26,13 +26,11 @@ import org.springframework.core.NestedRuntimeException;
 @SuppressWarnings("serial")
 public class StompConversionException extends NestedRuntimeException {
 
+    public StompConversionException(String msg, Throwable cause) {
+        super(msg, cause);
+    }
 
-	public StompConversionException(String msg, Throwable cause) {
-		super(msg, cause);
-	}
-
-	public StompConversionException(String msg) {
-		super(msg);
-	}
-
+    public StompConversionException(String msg) {
+        super(msg);
+    }
 }

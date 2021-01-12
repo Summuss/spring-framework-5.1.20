@@ -39,83 +39,91 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
 /**
- * {@code HttpMessageReader} for reading {@code "multipart/form-data"} requests
- * into a {@code MultiValueMap<String, Part>}.
+ * {@code HttpMessageReader} for reading {@code "multipart/form-data"} requests into a {@code
+ * MultiValueMap<String, Part>}.
  *
- * <p>Note that this reader depends on access to an
- * {@code HttpMessageReader<Part>} for the actual parsing of multipart content.
- * The purpose of this reader is to collect the parts into a map.
+ * <p>Note that this reader depends on access to an {@code HttpMessageReader<Part>} for the actual
+ * parsing of multipart content. The purpose of this reader is to collect the parts into a map.
  *
  * @author Rossen Stoyanchev
  * @since 5.0
  */
 public class MultipartHttpMessageReader extends LoggingCodecSupport
-		implements HttpMessageReader<MultiValueMap<String, Part>> {
+        implements HttpMessageReader<MultiValueMap<String, Part>> {
 
-	private static final ResolvableType MULTIPART_VALUE_TYPE = ResolvableType.forClassWithGenerics(
-			MultiValueMap.class, String.class, Part.class);
+    private static final ResolvableType MULTIPART_VALUE_TYPE =
+            ResolvableType.forClassWithGenerics(MultiValueMap.class, String.class, Part.class);
 
+    private final HttpMessageReader<Part> partReader;
 
-	private final HttpMessageReader<Part> partReader;
+    public MultipartHttpMessageReader(HttpMessageReader<Part> partReader) {
+        Assert.notNull(partReader, "'partReader' is required");
+        this.partReader = partReader;
+    }
 
+    /**
+     * Return the configured parts reader.
+     *
+     * @since 5.1.11
+     */
+    public HttpMessageReader<Part> getPartReader() {
+        return this.partReader;
+    }
 
-	public MultipartHttpMessageReader(HttpMessageReader<Part> partReader) {
-		Assert.notNull(partReader, "'partReader' is required");
-		this.partReader = partReader;
-	}
+    @Override
+    public List<MediaType> getReadableMediaTypes() {
+        return Collections.singletonList(MediaType.MULTIPART_FORM_DATA);
+    }
 
+    @Override
+    public boolean canRead(ResolvableType elementType, @Nullable MediaType mediaType) {
+        return MULTIPART_VALUE_TYPE.isAssignableFrom(elementType)
+                && (mediaType == null || MediaType.MULTIPART_FORM_DATA.isCompatibleWith(mediaType));
+    }
 
-	/**
-	 * Return the configured parts reader.
-	 * @since 5.1.11
-	 */
-	public HttpMessageReader<Part> getPartReader() {
-		return this.partReader;
-	}
+    @Override
+    public Flux<MultiValueMap<String, Part>> read(
+            ResolvableType elementType,
+            ReactiveHttpInputMessage message,
+            Map<String, Object> hints) {
 
-	@Override
-	public List<MediaType> getReadableMediaTypes() {
-		return Collections.singletonList(MediaType.MULTIPART_FORM_DATA);
-	}
+        return Flux.from(readMono(elementType, message, hints));
+    }
 
-	@Override
-	public boolean canRead(ResolvableType elementType, @Nullable MediaType mediaType) {
-		return MULTIPART_VALUE_TYPE.isAssignableFrom(elementType) &&
-				(mediaType == null || MediaType.MULTIPART_FORM_DATA.isCompatibleWith(mediaType));
-	}
+    @Override
+    public Mono<MultiValueMap<String, Part>> readMono(
+            ResolvableType elementType,
+            ReactiveHttpInputMessage inputMessage,
+            Map<String, Object> hints) {
 
+        Map<String, Object> allHints = Hints.merge(hints, Hints.SUPPRESS_LOGGING_HINT, true);
 
-	@Override
-	public Flux<MultiValueMap<String, Part>> read(ResolvableType elementType,
-			ReactiveHttpInputMessage message, Map<String, Object> hints) {
+        return this.partReader
+                .read(elementType, inputMessage, allHints)
+                .collectMultimap(Part::name)
+                .doOnNext(
+                        map ->
+                                LogFormatUtils.traceDebug(
+                                        logger,
+                                        traceOn ->
+                                                Hints.getLogPrefix(hints)
+                                                        + "Parsed "
+                                                        + (isEnableLoggingRequestDetails()
+                                                                ? LogFormatUtils.formatValue(
+                                                                        map, !traceOn)
+                                                                : "parts "
+                                                                        + map.keySet()
+                                                                        + " (content masked)")))
+                .map(this::toMultiValueMap);
+    }
 
-		return Flux.from(readMono(elementType, message, hints));
-	}
+    private LinkedMultiValueMap<String, Part> toMultiValueMap(Map<String, Collection<Part>> map) {
+        return new LinkedMultiValueMap<>(
+                map.entrySet().stream()
+                        .collect(Collectors.toMap(Map.Entry::getKey, e -> toList(e.getValue()))));
+    }
 
-
-	@Override
-	public Mono<MultiValueMap<String, Part>> readMono(ResolvableType elementType,
-			ReactiveHttpInputMessage inputMessage, Map<String, Object> hints) {
-
-		Map<String, Object> allHints = Hints.merge(hints, Hints.SUPPRESS_LOGGING_HINT, true);
-
-		return this.partReader.read(elementType, inputMessage, allHints)
-				.collectMultimap(Part::name)
-				.doOnNext(map ->
-					LogFormatUtils.traceDebug(logger, traceOn -> Hints.getLogPrefix(hints) + "Parsed " +
-							(isEnableLoggingRequestDetails() ?
-									LogFormatUtils.formatValue(map, !traceOn) :
-									"parts " + map.keySet() + " (content masked)")))
-				.map(this::toMultiValueMap);
-	}
-
-	private LinkedMultiValueMap<String, Part> toMultiValueMap(Map<String, Collection<Part>> map) {
-		return new LinkedMultiValueMap<>(map.entrySet().stream()
-				.collect(Collectors.toMap(Map.Entry::getKey, e -> toList(e.getValue()))));
-	}
-
-	private List<Part> toList(Collection<Part> collection) {
-		return collection instanceof List ? (List<Part>) collection : new ArrayList<>(collection);
-	}
-
+    private List<Part> toList(Collection<Part> collection) {
+        return collection instanceof List ? (List<Part>) collection : new ArrayList<>(collection);
+    }
 }

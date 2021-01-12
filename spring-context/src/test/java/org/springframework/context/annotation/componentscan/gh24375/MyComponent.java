@@ -20,5 +20,4 @@ import org.springframework.stereotype.Component;
 
 @Component
 @A(other = @B)
-public class MyComponent {
-}
+public class MyComponent {}

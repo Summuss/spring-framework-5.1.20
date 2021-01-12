@@ -47,130 +47,126 @@ import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
  */
 public abstract class AbstractWebSocketIntegrationTests {
 
-	private static Map<Class<?>, Class<?>> upgradeStrategyConfigTypes = new HashMap<>();
+    private static Map<Class<?>, Class<?>> upgradeStrategyConfigTypes = new HashMap<>();
 
-	static {
-		upgradeStrategyConfigTypes.put(JettyWebSocketTestServer.class, JettyUpgradeStrategyConfig.class);
-		upgradeStrategyConfigTypes.put(TomcatWebSocketTestServer.class, TomcatUpgradeStrategyConfig.class);
-		upgradeStrategyConfigTypes.put(UndertowTestServer.class, UndertowUpgradeStrategyConfig.class);
-	}
+    static {
+        upgradeStrategyConfigTypes.put(
+                JettyWebSocketTestServer.class, JettyUpgradeStrategyConfig.class);
+        upgradeStrategyConfigTypes.put(
+                TomcatWebSocketTestServer.class, TomcatUpgradeStrategyConfig.class);
+        upgradeStrategyConfigTypes.put(
+                UndertowTestServer.class, UndertowUpgradeStrategyConfig.class);
+    }
 
+    @Rule public final TestName testName = new TestName();
 
-	@Rule
-	public final TestName testName = new TestName();
+    @Parameter(0)
+    public WebSocketTestServer server;
 
-	@Parameter(0)
-	public WebSocketTestServer server;
+    @Parameter(1)
+    public WebSocketClient webSocketClient;
 
-	@Parameter(1)
-	public WebSocketClient webSocketClient;
+    protected final Log logger = LogFactory.getLog(getClass());
 
-	protected final Log logger = LogFactory.getLog(getClass());
+    protected AnnotationConfigWebApplicationContext wac;
 
-	protected AnnotationConfigWebApplicationContext wac;
+    @Before
+    public void setup() throws Exception {
+        logger.debug(
+                "Setting up '"
+                        + this.testName.getMethodName()
+                        + "', client="
+                        + this.webSocketClient.getClass().getSimpleName()
+                        + ", server="
+                        + this.server.getClass().getSimpleName());
 
+        this.wac = new AnnotationConfigWebApplicationContext();
+        this.wac.register(getAnnotatedConfigClasses());
+        this.wac.register(upgradeStrategyConfigTypes.get(this.server.getClass()));
 
-	@Before
-	public void setup() throws Exception {
-		logger.debug("Setting up '" + this.testName.getMethodName() + "', client=" +
-				this.webSocketClient.getClass().getSimpleName() + ", server=" +
-				this.server.getClass().getSimpleName());
+        if (this.webSocketClient instanceof Lifecycle) {
+            ((Lifecycle) this.webSocketClient).start();
+        }
 
-		this.wac = new AnnotationConfigWebApplicationContext();
-		this.wac.register(getAnnotatedConfigClasses());
-		this.wac.register(upgradeStrategyConfigTypes.get(this.server.getClass()));
+        this.server.setup();
+        this.server.deployConfig(this.wac);
+        this.server.start();
 
-		if (this.webSocketClient instanceof Lifecycle) {
-			((Lifecycle) this.webSocketClient).start();
-		}
+        this.wac.setServletContext(this.server.getServletContext());
+        this.wac.refresh();
+    }
 
-		this.server.setup();
-		this.server.deployConfig(this.wac);
-		this.server.start();
+    protected abstract Class<?>[] getAnnotatedConfigClasses();
 
-		this.wac.setServletContext(this.server.getServletContext());
-		this.wac.refresh();
-	}
+    @After
+    public void teardown() throws Exception {
+        try {
+            if (this.webSocketClient instanceof Lifecycle) {
+                ((Lifecycle) this.webSocketClient).stop();
+            }
+        } catch (Throwable t) {
+            logger.error("Failed to stop WebSocket client", t);
+        }
+        try {
+            this.server.undeployConfig();
+        } catch (Throwable t) {
+            logger.error("Failed to undeploy application config", t);
+        }
+        try {
+            this.server.stop();
+        } catch (Throwable t) {
+            logger.error("Failed to stop server", t);
+        }
+        try {
+            this.wac.close();
+        } catch (Throwable t) {
+            logger.error("Failed to close WebApplicationContext", t);
+        }
+    }
 
-	protected abstract Class<?>[] getAnnotatedConfigClasses();
+    protected String getWsBaseUrl() {
+        return "ws://localhost:" + this.server.getPort();
+    }
 
-	@After
-	public void teardown() throws Exception {
-		try {
-			if (this.webSocketClient instanceof Lifecycle) {
-				((Lifecycle) this.webSocketClient).stop();
-			}
-		}
-		catch (Throwable t) {
-			logger.error("Failed to stop WebSocket client", t);
-		}
-		try {
-			this.server.undeployConfig();
-		}
-		catch (Throwable t) {
-			logger.error("Failed to undeploy application config", t);
-		}
-		try {
-			this.server.stop();
-		}
-		catch (Throwable t) {
-			logger.error("Failed to stop server", t);
-		}
-		try {
-			this.wac.close();
-		}
-		catch (Throwable t) {
-			logger.error("Failed to close WebApplicationContext", t);
-		}
-	}
+    protected ListenableFuture<WebSocketSession> doHandshake(
+            WebSocketHandler clientHandler, String endpointPath) {
+        return this.webSocketClient.doHandshake(clientHandler, getWsBaseUrl() + endpointPath);
+    }
 
-	protected String getWsBaseUrl() {
-		return "ws://localhost:" + this.server.getPort();
-	}
+    abstract static class AbstractRequestUpgradeStrategyConfig {
 
-	protected ListenableFuture<WebSocketSession> doHandshake(WebSocketHandler clientHandler, String endpointPath) {
-		return this.webSocketClient.doHandshake(clientHandler, getWsBaseUrl() + endpointPath);
-	}
+        @Bean
+        public DefaultHandshakeHandler handshakeHandler() {
+            return new DefaultHandshakeHandler(requestUpgradeStrategy());
+        }
 
+        public abstract RequestUpgradeStrategy requestUpgradeStrategy();
+    }
 
-	static abstract class AbstractRequestUpgradeStrategyConfig {
+    @Configuration
+    static class JettyUpgradeStrategyConfig extends AbstractRequestUpgradeStrategyConfig {
 
-		@Bean
-		public DefaultHandshakeHandler handshakeHandler() {
-			return new DefaultHandshakeHandler(requestUpgradeStrategy());
-		}
+        @Bean
+        public RequestUpgradeStrategy requestUpgradeStrategy() {
+            return new JettyRequestUpgradeStrategy();
+        }
+    }
 
-		public abstract RequestUpgradeStrategy requestUpgradeStrategy();
-	}
+    @Configuration
+    static class TomcatUpgradeStrategyConfig extends AbstractRequestUpgradeStrategyConfig {
 
+        @Bean
+        public RequestUpgradeStrategy requestUpgradeStrategy() {
+            return new TomcatRequestUpgradeStrategy();
+        }
+    }
 
-	@Configuration
-	static class JettyUpgradeStrategyConfig extends AbstractRequestUpgradeStrategyConfig {
+    @Configuration
+    static class UndertowUpgradeStrategyConfig extends AbstractRequestUpgradeStrategyConfig {
 
-		@Bean
-		public RequestUpgradeStrategy requestUpgradeStrategy() {
-			return new JettyRequestUpgradeStrategy();
-		}
-	}
-
-
-	@Configuration
-	static class TomcatUpgradeStrategyConfig extends AbstractRequestUpgradeStrategyConfig {
-
-		@Bean
-		public RequestUpgradeStrategy requestUpgradeStrategy() {
-			return new TomcatRequestUpgradeStrategy();
-		}
-	}
-
-
-	@Configuration
-	static class UndertowUpgradeStrategyConfig extends AbstractRequestUpgradeStrategyConfig {
-
-		@Bean
-		public RequestUpgradeStrategy requestUpgradeStrategy() {
-			return new UndertowRequestUpgradeStrategy();
-		}
-	}
-
+        @Bean
+        public RequestUpgradeStrategy requestUpgradeStrategy() {
+            return new UndertowRequestUpgradeStrategy();
+        }
+    }
 }

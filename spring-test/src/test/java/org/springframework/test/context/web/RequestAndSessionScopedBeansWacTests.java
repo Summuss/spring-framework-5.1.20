@@ -30,8 +30,8 @@ import org.springframework.web.context.WebApplicationContext;
 import static org.junit.Assert.*;
 
 /**
- * Integration tests that verify support for request and session scoped beans
- * in conjunction with the TestContext Framework.
+ * Integration tests that verify support for request and session scoped beans in conjunction with
+ * the TestContext Framework.
  *
  * @author Sam Brannen
  * @since 3.2
@@ -41,41 +41,36 @@ import static org.junit.Assert.*;
 @WebAppConfiguration
 public class RequestAndSessionScopedBeansWacTests {
 
-	@Autowired
-	private WebApplicationContext wac;
+    @Autowired private WebApplicationContext wac;
 
-	@Autowired
-	private MockHttpServletRequest request;
+    @Autowired private MockHttpServletRequest request;
 
-	@Autowired
-	private MockHttpSession session;
+    @Autowired private MockHttpSession session;
 
+    @Test
+    public void requestScope() throws Exception {
+        final String beanName = "requestScopedTestBean";
+        final String contextPath = "/path";
 
-	@Test
-	public void requestScope() throws Exception {
-		final String beanName = "requestScopedTestBean";
-		final String contextPath = "/path";
+        assertNull(request.getAttribute(beanName));
 
-		assertNull(request.getAttribute(beanName));
+        request.setContextPath(contextPath);
+        TestBean testBean = wac.getBean(beanName, TestBean.class);
 
-		request.setContextPath(contextPath);
-		TestBean testBean = wac.getBean(beanName, TestBean.class);
+        assertEquals(contextPath, testBean.getName());
+        assertSame(testBean, request.getAttribute(beanName));
+        assertSame(testBean, wac.getBean(beanName, TestBean.class));
+    }
 
-		assertEquals(contextPath, testBean.getName());
-		assertSame(testBean, request.getAttribute(beanName));
-		assertSame(testBean, wac.getBean(beanName, TestBean.class));
-	}
+    @Test
+    public void sessionScope() throws Exception {
+        final String beanName = "sessionScopedTestBean";
 
-	@Test
-	public void sessionScope() throws Exception {
-		final String beanName = "sessionScopedTestBean";
+        assertNull(session.getAttribute(beanName));
 
-		assertNull(session.getAttribute(beanName));
+        TestBean testBean = wac.getBean(beanName, TestBean.class);
 
-		TestBean testBean = wac.getBean(beanName, TestBean.class);
-
-		assertSame(testBean, session.getAttribute(beanName));
-		assertSame(testBean, wac.getBean(beanName, TestBean.class));
-	}
-
+        assertSame(testBean, session.getAttribute(beanName));
+        assertSame(testBean, wac.getBean(beanName, TestBean.class));
+    }
 }

@@ -19,8 +19,7 @@ package org.springframework.jms.config;
 import org.springframework.beans.factory.xml.NamespaceHandlerSupport;
 
 /**
- * A {@link org.springframework.beans.factory.xml.NamespaceHandler}
- * for the JMS namespace.
+ * A {@link org.springframework.beans.factory.xml.NamespaceHandler} for the JMS namespace.
  *
  * @author Mark Fisher
  * @author Juergen Hoeller
@@ -29,11 +28,11 @@ import org.springframework.beans.factory.xml.NamespaceHandlerSupport;
  */
 public class JmsNamespaceHandler extends NamespaceHandlerSupport {
 
-	@Override
-	public void init() {
-		registerBeanDefinitionParser("listener-container", new JmsListenerContainerParser());
-		registerBeanDefinitionParser("jca-listener-container", new JcaListenerContainerParser());
-		registerBeanDefinitionParser("annotation-driven", new AnnotationDrivenJmsBeanDefinitionParser());
-	}
-
+    @Override
+    public void init() {
+        registerBeanDefinitionParser("listener-container", new JmsListenerContainerParser());
+        registerBeanDefinitionParser("jca-listener-container", new JcaListenerContainerParser());
+        registerBeanDefinitionParser(
+                "annotation-driven", new AnnotationDrivenJmsBeanDefinitionParser());
+    }
 }

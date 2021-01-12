@@ -37,43 +37,38 @@ import static org.junit.Assert.*;
  */
 public class Spr9031Tests {
 
-	/**
-	 * Use of @Import to register LowLevelConfig results in ASM-based annotation
-	 * processing.
-	 */
-	@Test
-	public void withAsmAnnotationProcessing() {
-		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
-		ctx.register(HighLevelConfig.class);
-		ctx.refresh();
-		assertThat(ctx.getBean(LowLevelConfig.class).scanned, not(nullValue()));
-	}
+    /** Use of @Import to register LowLevelConfig results in ASM-based annotation processing. */
+    @Test
+    public void withAsmAnnotationProcessing() {
+        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+        ctx.register(HighLevelConfig.class);
+        ctx.refresh();
+        assertThat(ctx.getBean(LowLevelConfig.class).scanned, not(nullValue()));
+    }
 
-	/**
-	 * Direct registration of LowLevelConfig results in reflection-based annotation
-	 * processing.
-	 */
-	@Test
-	public void withoutAsmAnnotationProcessing() {
-		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
-		ctx.register(LowLevelConfig.class);
-		ctx.refresh();
-		assertThat(ctx.getBean(LowLevelConfig.class).scanned, not(nullValue()));
-	}
+    /** Direct registration of LowLevelConfig results in reflection-based annotation processing. */
+    @Test
+    public void withoutAsmAnnotationProcessing() {
+        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+        ctx.register(LowLevelConfig.class);
+        ctx.refresh();
+        assertThat(ctx.getBean(LowLevelConfig.class).scanned, not(nullValue()));
+    }
 
-	@Configuration
-	@Import(LowLevelConfig.class)
-	static class HighLevelConfig {}
+    @Configuration
+    @Import(LowLevelConfig.class)
+    static class HighLevelConfig {}
 
-	@Configuration
-	@ComponentScan(
-			basePackages = "org.springframework.context.annotation.configuration.spr9031.scanpackage",
-			includeFilters = { @Filter(MarkerAnnotation.class) })
-	static class LowLevelConfig {
-		// fails to wire when LowLevelConfig is processed with ASM because nested @Filter
-		// annotation is not parsed
-		@Autowired Spr9031Component scanned;
-	}
+    @Configuration
+    @ComponentScan(
+            basePackages =
+                    "org.springframework.context.annotation.configuration.spr9031.scanpackage",
+            includeFilters = {@Filter(MarkerAnnotation.class)})
+    static class LowLevelConfig {
+        // fails to wire when LowLevelConfig is processed with ASM because nested @Filter
+        // annotation is not parsed
+        @Autowired Spr9031Component scanned;
+    }
 
-	public @interface MarkerAnnotation {}
+    public @interface MarkerAnnotation {}
 }

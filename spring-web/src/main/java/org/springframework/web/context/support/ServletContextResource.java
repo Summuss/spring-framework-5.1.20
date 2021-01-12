@@ -35,13 +35,12 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.util.WebUtils;
 
 /**
- * {@link org.springframework.core.io.Resource} implementation for
- * {@link javax.servlet.ServletContext} resources, interpreting
- * relative paths within the web application root directory.
+ * {@link org.springframework.core.io.Resource} implementation for {@link
+ * javax.servlet.ServletContext} resources, interpreting relative paths within the web application
+ * root directory.
  *
- * <p>Always supports stream access and URL access, but only allows
- * {@code java.io.File} access when the web application archive
- * is expanded.
+ * <p>Always supports stream access and URL access, but only allows {@code java.io.File} access when
+ * the web application archive is expanded.
  *
  * @author Juergen Hoeller
  * @since 28.12.2003
@@ -49,212 +48,203 @@ import org.springframework.web.util.WebUtils;
  * @see javax.servlet.ServletContext#getResource
  * @see javax.servlet.ServletContext#getRealPath
  */
-public class ServletContextResource extends AbstractFileResolvingResource implements ContextResource {
+public class ServletContextResource extends AbstractFileResolvingResource
+        implements ContextResource {
 
-	private final ServletContext servletContext;
+    private final ServletContext servletContext;
 
-	private final String path;
+    private final String path;
 
+    /**
+     * Create a new ServletContextResource.
+     *
+     * <p>The Servlet spec requires that resource paths start with a slash, even if many containers
+     * accept paths without leading slash too. Consequently, the given path will be prepended with a
+     * slash if it doesn't already start with one.
+     *
+     * @param servletContext the ServletContext to load from
+     * @param path the path of the resource
+     */
+    public ServletContextResource(ServletContext servletContext, String path) {
+        // check ServletContext
+        Assert.notNull(
+                servletContext, "Cannot resolve ServletContextResource without ServletContext");
+        this.servletContext = servletContext;
 
-	/**
-	 * Create a new ServletContextResource.
-	 * <p>The Servlet spec requires that resource paths start with a slash,
-	 * even if many containers accept paths without leading slash too.
-	 * Consequently, the given path will be prepended with a slash if it
-	 * doesn't already start with one.
-	 * @param servletContext the ServletContext to load from
-	 * @param path the path of the resource
-	 */
-	public ServletContextResource(ServletContext servletContext, String path) {
-		// check ServletContext
-		Assert.notNull(servletContext, "Cannot resolve ServletContextResource without ServletContext");
-		this.servletContext = servletContext;
+        // check path
+        Assert.notNull(path, "Path is required");
+        String pathToUse = StringUtils.cleanPath(path);
+        if (!pathToUse.startsWith("/")) {
+            pathToUse = "/" + pathToUse;
+        }
+        this.path = pathToUse;
+    }
 
-		// check path
-		Assert.notNull(path, "Path is required");
-		String pathToUse = StringUtils.cleanPath(path);
-		if (!pathToUse.startsWith("/")) {
-			pathToUse = "/" + pathToUse;
-		}
-		this.path = pathToUse;
-	}
+    /** Return the ServletContext for this resource. */
+    public final ServletContext getServletContext() {
+        return this.servletContext;
+    }
 
+    /** Return the path for this resource. */
+    public final String getPath() {
+        return this.path;
+    }
 
-	/**
-	 * Return the ServletContext for this resource.
-	 */
-	public final ServletContext getServletContext() {
-		return this.servletContext;
-	}
+    /**
+     * This implementation checks {@code ServletContext.getResource}.
+     *
+     * @see javax.servlet.ServletContext#getResource(String)
+     */
+    @Override
+    public boolean exists() {
+        try {
+            URL url = this.servletContext.getResource(this.path);
+            return (url != null);
+        } catch (MalformedURLException ex) {
+            return false;
+        }
+    }
 
-	/**
-	 * Return the path for this resource.
-	 */
-	public final String getPath() {
-		return this.path;
-	}
+    /**
+     * This implementation delegates to {@code ServletContext.getResourceAsStream}, which returns
+     * {@code null} in case of a non-readable resource (e.g. a directory).
+     *
+     * @see javax.servlet.ServletContext#getResourceAsStream(String)
+     */
+    @Override
+    public boolean isReadable() {
+        InputStream is = this.servletContext.getResourceAsStream(this.path);
+        if (is != null) {
+            try {
+                is.close();
+            } catch (IOException ex) {
+                // ignore
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
 
-	/**
-	 * This implementation checks {@code ServletContext.getResource}.
-	 * @see javax.servlet.ServletContext#getResource(String)
-	 */
-	@Override
-	public boolean exists() {
-		try {
-			URL url = this.servletContext.getResource(this.path);
-			return (url != null);
-		}
-		catch (MalformedURLException ex) {
-			return false;
-		}
-	}
+    @Override
+    public boolean isFile() {
+        try {
+            URL url = this.servletContext.getResource(this.path);
+            if (url != null && ResourceUtils.isFileURL(url)) {
+                return true;
+            } else {
+                return (this.servletContext.getRealPath(this.path) != null);
+            }
+        } catch (MalformedURLException ex) {
+            return false;
+        }
+    }
 
-	/**
-	 * This implementation delegates to {@code ServletContext.getResourceAsStream},
-	 * which returns {@code null} in case of a non-readable resource (e.g. a directory).
-	 * @see javax.servlet.ServletContext#getResourceAsStream(String)
-	 */
-	@Override
-	public boolean isReadable() {
-		InputStream is = this.servletContext.getResourceAsStream(this.path);
-		if (is != null) {
-			try {
-				is.close();
-			}
-			catch (IOException ex) {
-				// ignore
-			}
-			return true;
-		}
-		else {
-			return false;
-		}
-	}
+    /**
+     * This implementation delegates to {@code ServletContext.getResourceAsStream}, but throws a
+     * FileNotFoundException if no resource found.
+     *
+     * @see javax.servlet.ServletContext#getResourceAsStream(String)
+     */
+    @Override
+    public InputStream getInputStream() throws IOException {
+        InputStream is = this.servletContext.getResourceAsStream(this.path);
+        if (is == null) {
+            throw new FileNotFoundException("Could not open " + getDescription());
+        }
+        return is;
+    }
 
-	@Override
-	public boolean isFile() {
-		try {
-			URL url = this.servletContext.getResource(this.path);
-			if (url != null && ResourceUtils.isFileURL(url)) {
-				return true;
-			}
-			else {
-				return (this.servletContext.getRealPath(this.path) != null);
-			}
-		}
-		catch (MalformedURLException ex) {
-			return false;
-		}
-	}
+    /**
+     * This implementation delegates to {@code ServletContext.getResource}, but throws a
+     * FileNotFoundException if no resource found.
+     *
+     * @see javax.servlet.ServletContext#getResource(String)
+     */
+    @Override
+    public URL getURL() throws IOException {
+        URL url = this.servletContext.getResource(this.path);
+        if (url == null) {
+            throw new FileNotFoundException(
+                    getDescription() + " cannot be resolved to URL because it does not exist");
+        }
+        return url;
+    }
 
-	/**
-	 * This implementation delegates to {@code ServletContext.getResourceAsStream},
-	 * but throws a FileNotFoundException if no resource found.
-	 * @see javax.servlet.ServletContext#getResourceAsStream(String)
-	 */
-	@Override
-	public InputStream getInputStream() throws IOException {
-		InputStream is = this.servletContext.getResourceAsStream(this.path);
-		if (is == null) {
-			throw new FileNotFoundException("Could not open " + getDescription());
-		}
-		return is;
-	}
+    /**
+     * This implementation resolves "file:" URLs or alternatively delegates to {@code
+     * ServletContext.getRealPath}, throwing a FileNotFoundException if not found or not resolvable.
+     *
+     * @see javax.servlet.ServletContext#getResource(String)
+     * @see javax.servlet.ServletContext#getRealPath(String)
+     */
+    @Override
+    public File getFile() throws IOException {
+        URL url = this.servletContext.getResource(this.path);
+        if (url != null && ResourceUtils.isFileURL(url)) {
+            // Proceed with file system resolution...
+            return super.getFile();
+        } else {
+            String realPath = WebUtils.getRealPath(this.servletContext, this.path);
+            return new File(realPath);
+        }
+    }
 
-	/**
-	 * This implementation delegates to {@code ServletContext.getResource},
-	 * but throws a FileNotFoundException if no resource found.
-	 * @see javax.servlet.ServletContext#getResource(String)
-	 */
-	@Override
-	public URL getURL() throws IOException {
-		URL url = this.servletContext.getResource(this.path);
-		if (url == null) {
-			throw new FileNotFoundException(
-					getDescription() + " cannot be resolved to URL because it does not exist");
-		}
-		return url;
-	}
+    /**
+     * This implementation creates a ServletContextResource, applying the given path relative to the
+     * path of the underlying file of this resource descriptor.
+     *
+     * @see org.springframework.util.StringUtils#applyRelativePath(String, String)
+     */
+    @Override
+    public Resource createRelative(String relativePath) {
+        String pathToUse = StringUtils.applyRelativePath(this.path, relativePath);
+        return new ServletContextResource(this.servletContext, pathToUse);
+    }
 
-	/**
-	 * This implementation resolves "file:" URLs or alternatively delegates to
-	 * {@code ServletContext.getRealPath}, throwing a FileNotFoundException
-	 * if not found or not resolvable.
-	 * @see javax.servlet.ServletContext#getResource(String)
-	 * @see javax.servlet.ServletContext#getRealPath(String)
-	 */
-	@Override
-	public File getFile() throws IOException {
-		URL url = this.servletContext.getResource(this.path);
-		if (url != null && ResourceUtils.isFileURL(url)) {
-			// Proceed with file system resolution...
-			return super.getFile();
-		}
-		else {
-			String realPath = WebUtils.getRealPath(this.servletContext, this.path);
-			return new File(realPath);
-		}
-	}
+    /**
+     * This implementation returns the name of the file that this ServletContext resource refers to.
+     *
+     * @see org.springframework.util.StringUtils#getFilename(String)
+     */
+    @Override
+    @Nullable
+    public String getFilename() {
+        return StringUtils.getFilename(this.path);
+    }
 
-	/**
-	 * This implementation creates a ServletContextResource, applying the given path
-	 * relative to the path of the underlying file of this resource descriptor.
-	 * @see org.springframework.util.StringUtils#applyRelativePath(String, String)
-	 */
-	@Override
-	public Resource createRelative(String relativePath) {
-		String pathToUse = StringUtils.applyRelativePath(this.path, relativePath);
-		return new ServletContextResource(this.servletContext, pathToUse);
-	}
+    /**
+     * This implementation returns a description that includes the ServletContext resource location.
+     */
+    @Override
+    public String getDescription() {
+        return "ServletContext resource [" + this.path + "]";
+    }
 
-	/**
-	 * This implementation returns the name of the file that this ServletContext
-	 * resource refers to.
-	 * @see org.springframework.util.StringUtils#getFilename(String)
-	 */
-	@Override
-	@Nullable
-	public String getFilename() {
-		return StringUtils.getFilename(this.path);
-	}
+    @Override
+    public String getPathWithinContext() {
+        return this.path;
+    }
 
-	/**
-	 * This implementation returns a description that includes the ServletContext
-	 * resource location.
-	 */
-	@Override
-	public String getDescription() {
-		return "ServletContext resource [" + this.path + "]";
-	}
+    /** This implementation compares the underlying ServletContext resource locations. */
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof ServletContextResource)) {
+            return false;
+        }
+        ServletContextResource otherRes = (ServletContextResource) other;
+        return (this.servletContext.equals(otherRes.servletContext)
+                && this.path.equals(otherRes.path));
+    }
 
-	@Override
-	public String getPathWithinContext() {
-		return this.path;
-	}
-
-
-	/**
-	 * This implementation compares the underlying ServletContext resource locations.
-	 */
-	@Override
-	public boolean equals(Object other) {
-		if (this == other) {
-			return true;
-		}
-		if (!(other instanceof ServletContextResource)) {
-			return false;
-		}
-		ServletContextResource otherRes = (ServletContextResource) other;
-		return (this.servletContext.equals(otherRes.servletContext) && this.path.equals(otherRes.path));
-	}
-
-	/**
-	 * This implementation returns the hash code of the underlying
-	 * ServletContext resource location.
-	 */
-	@Override
-	public int hashCode() {
-		return this.path.hashCode();
-	}
-
+    /**
+     * This implementation returns the hash code of the underlying ServletContext resource location.
+     */
+    @Override
+    public int hashCode() {
+        return this.path.hashCode();
+    }
 }

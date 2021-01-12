@@ -34,44 +34,44 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.*;
  */
 public class UrlAssertionTests {
 
-	private MockMvc mockMvc;
+    private MockMvc mockMvc;
 
-	@Before
-	public void setup() {
-		this.mockMvc = standaloneSetup(new SimpleController()).build();
-	}
+    @Before
+    public void setup() {
+        this.mockMvc = standaloneSetup(new SimpleController()).build();
+    }
 
-	@Test
-	public void testRedirect() throws Exception {
-		this.mockMvc.perform(get("/persons")).andExpect(redirectedUrl("/persons/1"));
-	}
+    @Test
+    public void testRedirect() throws Exception {
+        this.mockMvc.perform(get("/persons")).andExpect(redirectedUrl("/persons/1"));
+    }
 
-	@Test
-	public void testRedirectPattern() throws Exception {
-		this.mockMvc.perform(get("/persons")).andExpect(redirectedUrlPattern("/persons/*"));
-	}
+    @Test
+    public void testRedirectPattern() throws Exception {
+        this.mockMvc.perform(get("/persons")).andExpect(redirectedUrlPattern("/persons/*"));
+    }
 
-	@Test
-	public void testForward() throws Exception {
-		this.mockMvc.perform(get("/")).andExpect(forwardedUrl("/home"));
-	}
+    @Test
+    public void testForward() throws Exception {
+        this.mockMvc.perform(get("/")).andExpect(forwardedUrl("/home"));
+    }
 
-	@Test
-	public void testForwardPattern() throws Exception {
-		this.mockMvc.perform(get("/")).andExpect(forwardedUrlPattern("/ho?e"));
-	}
+    @Test
+    public void testForwardPattern() throws Exception {
+        this.mockMvc.perform(get("/")).andExpect(forwardedUrlPattern("/ho?e"));
+    }
 
-	@Controller
-	private static class SimpleController {
+    @Controller
+    private static class SimpleController {
 
-		@RequestMapping("/persons")
-		public String save() {
-			return "redirect:/persons/1";
-		}
+        @RequestMapping("/persons")
+        public String save() {
+            return "redirect:/persons/1";
+        }
 
-		@RequestMapping("/")
-		public String forward() {
-			return "forward:/home";
-		}
-	}
+        @RequestMapping("/")
+        public String forward() {
+            return "forward:/home";
+        }
+    }
 }

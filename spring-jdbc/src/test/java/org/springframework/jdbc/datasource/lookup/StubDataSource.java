@@ -30,14 +30,13 @@ import org.springframework.jdbc.datasource.AbstractDataSource;
  */
 class StubDataSource extends AbstractDataSource {
 
-	@Override
-	public Connection getConnection() throws SQLException {
-		throw new UnsupportedOperationException();
-	}
+    @Override
+    public Connection getConnection() throws SQLException {
+        throw new UnsupportedOperationException();
+    }
 
-	@Override
-	public Connection getConnection(String username, String password) throws SQLException {
-		throw new UnsupportedOperationException();
-	}
-
+    @Override
+    public Connection getConnection(String username, String password) throws SQLException {
+        throw new UnsupportedOperationException();
+    }
 }

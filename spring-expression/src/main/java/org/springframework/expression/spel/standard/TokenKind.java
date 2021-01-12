@@ -24,131 +24,128 @@ package org.springframework.expression.spel.standard;
  */
 enum TokenKind {
 
-	// ordered by priority - operands first
+    // ordered by priority - operands first
 
-	LITERAL_INT,
+    LITERAL_INT,
 
-	LITERAL_LONG,
+    LITERAL_LONG,
 
-	LITERAL_HEXINT,
+    LITERAL_HEXINT,
 
-	LITERAL_HEXLONG,
+    LITERAL_HEXLONG,
 
-	LITERAL_STRING,
+    LITERAL_STRING,
 
-	LITERAL_REAL,
+    LITERAL_REAL,
 
-	LITERAL_REAL_FLOAT,
+    LITERAL_REAL_FLOAT,
 
-	LPAREN("("),
+    LPAREN("("),
 
-	RPAREN(")"),
+    RPAREN(")"),
 
-	COMMA(","),
+    COMMA(","),
 
-	IDENTIFIER,
+    IDENTIFIER,
 
-	COLON(":"),
+    COLON(":"),
 
-	HASH("#"),
+    HASH("#"),
 
-	RSQUARE("]"),
+    RSQUARE("]"),
 
-	LSQUARE("["),
+    LSQUARE("["),
 
-	LCURLY("{"),
+    LCURLY("{"),
 
-	RCURLY("}"),
+    RCURLY("}"),
 
-	DOT("."),
+    DOT("."),
 
-	PLUS("+"),
+    PLUS("+"),
 
-	STAR("*"),
+    STAR("*"),
 
-	MINUS("-"),
+    MINUS("-"),
 
-	SELECT_FIRST("^["),
+    SELECT_FIRST("^["),
 
-	SELECT_LAST("$["),
+    SELECT_LAST("$["),
 
-	QMARK("?"),
+    QMARK("?"),
 
-	PROJECT("!["),
+    PROJECT("!["),
 
-	DIV("/"),
+    DIV("/"),
 
-	GE(">="),
+    GE(">="),
 
-	GT(">"),
+    GT(">"),
 
-	LE("<="),
+    LE("<="),
 
-	LT("<"),
+    LT("<"),
 
-	EQ("=="),
+    EQ("=="),
 
-	NE("!="),
+    NE("!="),
 
-	MOD("%"),
+    MOD("%"),
 
-	NOT("!"),
+    NOT("!"),
 
-	ASSIGN("="),
+    ASSIGN("="),
 
-	INSTANCEOF("instanceof"),
+    INSTANCEOF("instanceof"),
 
-	MATCHES("matches"),
+    MATCHES("matches"),
 
-	BETWEEN("between"),
+    BETWEEN("between"),
 
-	SELECT("?["),
+    SELECT("?["),
 
-	POWER("^"),
+    POWER("^"),
 
-	ELVIS("?:"),
+    ELVIS("?:"),
 
-	SAFE_NAVI("?."),
+    SAFE_NAVI("?."),
 
-	BEAN_REF("@"),
+    BEAN_REF("@"),
 
-	FACTORY_BEAN_REF("&"),
+    FACTORY_BEAN_REF("&"),
 
-	SYMBOLIC_OR("||"),
+    SYMBOLIC_OR("||"),
 
-	SYMBOLIC_AND("&&"),
+    SYMBOLIC_AND("&&"),
 
-	INC("++"),
+    INC("++"),
 
-	DEC("--");
+    DEC("--");
 
+    final char[] tokenChars;
 
-	final char[] tokenChars;
+    private final boolean hasPayload; // is there more to this token than simply the kind
 
-	private final boolean hasPayload;  // is there more to this token than simply the kind
+    private TokenKind(String tokenString) {
+        this.tokenChars = tokenString.toCharArray();
+        this.hasPayload = (this.tokenChars.length == 0);
+    }
 
+    private TokenKind() {
+        this("");
+    }
 
-	private TokenKind(String tokenString) {
-		this.tokenChars = tokenString.toCharArray();
-		this.hasPayload = (this.tokenChars.length == 0);
-	}
+    @Override
+    public String toString() {
+        return (name()
+                + (this.tokenChars.length != 0 ? "(" + new String(this.tokenChars) + ")" : ""));
+    }
 
-	private TokenKind() {
-		this("");
-	}
+    public boolean hasPayload() {
+        return this.hasPayload;
+    }
 
-
-	@Override
-	public String toString() {
-		return (name() + (this.tokenChars.length !=0 ? "(" + new String(this.tokenChars) +")" : ""));
-	}
-
-	public boolean hasPayload() {
-		return this.hasPayload;
-	}
-
-	public int getLength() {
-		return this.tokenChars.length;
-	}
-
+    public int getLength() {
+        return this.tokenChars.length;
+    }
 }

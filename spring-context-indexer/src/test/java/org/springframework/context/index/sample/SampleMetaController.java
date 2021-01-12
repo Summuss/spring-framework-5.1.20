@@ -22,5 +22,4 @@ package org.springframework.context.index.sample;
  * @author Stephane Nicoll
  */
 @MetaController
-public class SampleMetaController {
-}
+public class SampleMetaController {}

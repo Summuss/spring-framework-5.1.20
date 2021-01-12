@@ -3,9 +3,9 @@
 
 <beans>
 
-	<bean id="someMessageSource" class="org.springframework.context.support.StaticMessageSource">
-		<property name="useCodeAsDefaultMessage" value="xxx"/>
-		<property name="alwaysUseMessageFormat" value="yyy"/>
-	</bean>
+    <bean id="someMessageSource" class="org.springframework.context.support.StaticMessageSource">
+        <property name="useCodeAsDefaultMessage" value="xxx"/>
+        <property name="alwaysUseMessageFormat" value="yyy"/>
+    </bean>
 
 </beans>

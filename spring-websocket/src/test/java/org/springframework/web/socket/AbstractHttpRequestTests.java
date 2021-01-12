@@ -33,43 +33,41 @@ import org.springframework.mock.web.test.MockHttpServletResponse;
  */
 public abstract class AbstractHttpRequestTests {
 
-	protected ServerHttpRequest request;
+    protected ServerHttpRequest request;
 
-	protected ServerHttpResponse response;
+    protected ServerHttpResponse response;
 
-	protected MockHttpServletRequest servletRequest;
+    protected MockHttpServletRequest servletRequest;
 
-	protected MockHttpServletResponse servletResponse;
+    protected MockHttpServletResponse servletResponse;
 
-	protected ServerHttpAsyncRequestControl asyncControl;
+    protected ServerHttpAsyncRequestControl asyncControl;
 
+    @Before
+    public void setup() {
+        resetRequestAndResponse();
+    }
 
-	@Before
-	public void setup() {
-		resetRequestAndResponse();
-	}
+    protected void setRequest(String method, String requestUri) {
+        this.servletRequest.setMethod(method);
+        this.servletRequest.setRequestURI(requestUri);
+        this.request = new ServletServerHttpRequest(this.servletRequest);
+    }
 
-	protected void setRequest(String method, String requestUri) {
-		this.servletRequest.setMethod(method);
-		this.servletRequest.setRequestURI(requestUri);
-		this.request = new ServletServerHttpRequest(this.servletRequest);
-	}
+    protected void resetRequestAndResponse() {
+        resetRequest();
+        resetResponse();
+        this.asyncControl = this.request.getAsyncRequestControl(this.response);
+    }
 
-	protected void resetRequestAndResponse() {
-		resetRequest();
-		resetResponse();
-		this.asyncControl = this.request.getAsyncRequestControl(this.response);
-	}
+    protected void resetRequest() {
+        this.servletRequest = new MockHttpServletRequest();
+        this.servletRequest.setAsyncSupported(true);
+        this.request = new ServletServerHttpRequest(this.servletRequest);
+    }
 
-	protected void resetRequest() {
-		this.servletRequest = new MockHttpServletRequest();
-		this.servletRequest.setAsyncSupported(true);
-		this.request = new ServletServerHttpRequest(this.servletRequest);
-	}
-
-	protected void resetResponse() {
-		this.servletResponse = new MockHttpServletResponse();
-		this.response = new ServletServerHttpResponse(this.servletResponse);
-	}
-
+    protected void resetResponse() {
+        this.servletResponse = new MockHttpServletResponse();
+        this.response = new ServletServerHttpResponse(this.servletResponse);
+    }
 }

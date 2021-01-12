@@ -25,20 +25,16 @@ import org.springframework.jms.listener.adapter.MessageListenerAdapter;
 
 import static org.junit.Assert.*;
 
-/**
- * @author Stephane Nicoll
- */
+/** @author Stephane Nicoll */
 public class SimpleJmsListenerEndpointTests {
 
-	private final SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
+    private final SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
 
-
-	@Test
-	public void createListener() {
-		SimpleJmsListenerEndpoint endpoint = new SimpleJmsListenerEndpoint();
-		MessageListener messageListener = new MessageListenerAdapter();
-		endpoint.setMessageListener(messageListener);
-		assertSame(messageListener, endpoint.createMessageListener(container));
-	}
-
+    @Test
+    public void createListener() {
+        SimpleJmsListenerEndpoint endpoint = new SimpleJmsListenerEndpoint();
+        MessageListener messageListener = new MessageListenerAdapter();
+        endpoint.setMessageListener(messageListener);
+        assertSame(messageListener, endpoint.createMessageListener(container));
+    }
 }

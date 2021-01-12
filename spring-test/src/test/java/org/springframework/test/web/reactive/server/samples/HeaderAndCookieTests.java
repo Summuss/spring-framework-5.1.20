@@ -29,59 +29,70 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Tests with headers and cookies.
+ *
  * @author Rossen Stoyanchev
  * @since 5.0
  */
 public class HeaderAndCookieTests {
 
-	private final WebTestClient client = WebTestClient.bindToController(new TestController()).build();
+    private final WebTestClient client =
+            WebTestClient.bindToController(new TestController()).build();
 
+    @Test
+    public void requestResponseHeaderPair() throws Exception {
+        this.client
+                .get()
+                .uri("/header-echo")
+                .header("h1", "in")
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectHeader()
+                .valueEquals("h1", "in-out");
+    }
 
-	@Test
-	public void requestResponseHeaderPair() throws Exception {
-		this.client.get().uri("/header-echo").header("h1", "in")
-				.exchange()
-				.expectStatus().isOk()
-				.expectHeader().valueEquals("h1", "in-out");
-	}
+    @Test
+    public void headerMultipleValues() throws Exception {
+        this.client
+                .get()
+                .uri("/header-multi-value")
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectHeader()
+                .valueEquals("h1", "v1", "v2", "v3");
+    }
 
-	@Test
-	public void headerMultipleValues() throws Exception {
-		this.client.get().uri("/header-multi-value")
-				.exchange()
-				.expectStatus().isOk()
-				.expectHeader().valueEquals("h1", "v1", "v2", "v3");
-	}
+    @Test
+    public void setCookies() {
+        this.client
+                .get()
+                .uri("/cookie-echo")
+                .cookies(cookies -> cookies.add("k1", "v1"))
+                .exchange()
+                .expectHeader()
+                .valueMatches("Set-Cookie", "k1=v1");
+    }
 
-	@Test
-	public void setCookies() {
-		this.client.get().uri("/cookie-echo")
-				.cookies(cookies -> cookies.add("k1", "v1"))
-				.exchange()
-				.expectHeader().valueMatches("Set-Cookie", "k1=v1");
-	}
+    @RestController
+    static class TestController {
 
+        @GetMapping("header-echo")
+        ResponseEntity<Void> handleHeader(@RequestHeader("h1") String myHeader) {
+            String value = myHeader + "-out";
+            return ResponseEntity.ok().header("h1", value).build();
+        }
 
-	@RestController
-	static class TestController {
+        @GetMapping("header-multi-value")
+        ResponseEntity<Void> multiValue() {
+            return ResponseEntity.ok().header("h1", "v1", "v2", "v3").build();
+        }
 
-		@GetMapping("header-echo")
-		ResponseEntity<Void> handleHeader(@RequestHeader("h1") String myHeader) {
-			String value = myHeader + "-out";
-			return ResponseEntity.ok().header("h1", value).build();
-		}
-
-		@GetMapping("header-multi-value")
-		ResponseEntity<Void> multiValue() {
-			return ResponseEntity.ok().header("h1", "v1", "v2", "v3").build();
-		}
-
-		@GetMapping("cookie-echo")
-		ResponseEntity<Void> handleCookie(@CookieValue("k1") String cookieValue) {
-			HttpHeaders headers = new HttpHeaders();
-			headers.set("Set-Cookie", "k1=" + cookieValue);
-			return new ResponseEntity<>(headers, HttpStatus.OK);
-		}
-	}
-
+        @GetMapping("cookie-echo")
+        ResponseEntity<Void> handleCookie(@CookieValue("k1") String cookieValue) {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Set-Cookie", "k1=" + cookieValue);
+            return new ResponseEntity<>(headers, HttpStatus.OK);
+        }
+    }
 }

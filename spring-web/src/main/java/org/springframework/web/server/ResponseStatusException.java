@@ -36,93 +36,92 @@ import org.springframework.util.Assert;
 @SuppressWarnings("serial")
 public class ResponseStatusException extends NestedRuntimeException {
 
-	private final HttpStatus status;
+    private final HttpStatus status;
 
-	@Nullable
-	private final String reason;
+    @Nullable private final String reason;
 
+    /**
+     * Constructor with a response status.
+     *
+     * @param status the HTTP status (required)
+     */
+    public ResponseStatusException(HttpStatus status) {
+        this(status, null, null);
+    }
 
-	/**
-	 * Constructor with a response status.
-	 * @param status the HTTP status (required)
-	 */
-	public ResponseStatusException(HttpStatus status) {
-		this(status, null, null);
-	}
+    /**
+     * Constructor with a response status and a reason to add to the exception message as
+     * explanation.
+     *
+     * @param status the HTTP status (required)
+     * @param reason the associated reason (optional)
+     */
+    public ResponseStatusException(HttpStatus status, @Nullable String reason) {
+        this(status, reason, null);
+    }
 
-	/**
-	 * Constructor with a response status and a reason to add to the exception
-	 * message as explanation.
-	 * @param status the HTTP status (required)
-	 * @param reason the associated reason (optional)
-	 */
-	public ResponseStatusException(HttpStatus status, @Nullable String reason) {
-		this(status, reason, null);
-	}
+    /**
+     * Constructor with a response status and a reason to add to the exception message as
+     * explanation, as well as a nested exception.
+     *
+     * @param status the HTTP status (required)
+     * @param reason the associated reason (optional)
+     * @param cause a nested exception (optional)
+     */
+    public ResponseStatusException(
+            HttpStatus status, @Nullable String reason, @Nullable Throwable cause) {
+        super(null, cause);
+        Assert.notNull(status, "HttpStatus is required");
+        this.status = status;
+        this.reason = reason;
+    }
 
-	/**
-	 * Constructor with a response status and a reason to add to the exception
-	 * message as explanation, as well as a nested exception.
-	 * @param status the HTTP status (required)
-	 * @param reason the associated reason (optional)
-	 * @param cause a nested exception (optional)
-	 */
-	public ResponseStatusException(HttpStatus status, @Nullable String reason, @Nullable Throwable cause) {
-		super(null, cause);
-		Assert.notNull(status, "HttpStatus is required");
-		this.status = status;
-		this.reason = reason;
-	}
+    /** Return the HTTP status associated with this exception. */
+    public HttpStatus getStatus() {
+        return this.status;
+    }
 
+    /**
+     * Return headers associated with the exception that should be added to the error response, e.g.
+     * "Allow", "Accept", etc.
+     *
+     * <p>The default implementation in this class returns an empty map.
+     *
+     * @since 5.1.11
+     * @deprecated as of 5.1.13 in favor of {@link #getResponseHeaders()}
+     */
+    @Deprecated
+    public Map<String, String> getHeaders() {
+        return Collections.emptyMap();
+    }
 
-	/**
-	 * Return the HTTP status associated with this exception.
-	 */
-	public HttpStatus getStatus() {
-		return this.status;
-	}
+    /**
+     * Return headers associated with the exception that should be added to the error response, e.g.
+     * "Allow", "Accept", etc.
+     *
+     * <p>The default implementation in this class returns empty headers.
+     *
+     * @since 5.1.13
+     */
+    public HttpHeaders getResponseHeaders() {
+        Map<String, String> headers = getHeaders();
+        if (headers.isEmpty()) {
+            return HttpHeaders.EMPTY;
+        }
+        HttpHeaders result = new HttpHeaders();
+        getHeaders().forEach(result::add);
+        return result;
+    }
 
-	/**
-	 * Return headers associated with the exception that should be added to the
-	 * error response, e.g. "Allow", "Accept", etc.
-	 * <p>The default implementation in this class returns an empty map.
-	 * @since 5.1.11
-	 * @deprecated as of 5.1.13 in favor of {@link #getResponseHeaders()}
-	 */
-	@Deprecated
-	public Map<String, String> getHeaders() {
-		return Collections.emptyMap();
-	}
+    /** The reason explaining the exception (potentially {@code null} or empty). */
+    @Nullable
+    public String getReason() {
+        return this.reason;
+    }
 
-	/**
-	 * Return headers associated with the exception that should be added to the
-	 * error response, e.g. "Allow", "Accept", etc.
-	 * <p>The default implementation in this class returns empty headers.
-	 * @since 5.1.13
-	 */
-	public HttpHeaders getResponseHeaders() {
-		Map<String, String> headers = getHeaders();
-		if (headers.isEmpty()) {
-			return HttpHeaders.EMPTY;
-		}
-		HttpHeaders result = new HttpHeaders();
-		getHeaders().forEach(result::add);
-		return result;
-	}
-
-	/**
-	 * The reason explaining the exception (potentially {@code null} or empty).
-	 */
-	@Nullable
-	public String getReason() {
-		return this.reason;
-	}
-
-
-	@Override
-	public String getMessage() {
-		String msg = this.status + (this.reason != null ? " \"" + this.reason + "\"" : "");
-		return NestedExceptionUtils.buildMessage(msg, getCause());
-	}
-
+    @Override
+    public String getMessage() {
+        String msg = this.status + (this.reason != null ? " \"" + this.reason + "\"" : "");
+        return NestedExceptionUtils.buildMessage(msg, getCause());
+    }
 }

@@ -30,11 +30,11 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Factory for locally defined JAX-WS {@link javax.xml.ws.Service} references.
- * Uses the JAX-WS {@link javax.xml.ws.Service#create} factory API underneath.
+ * Factory for locally defined JAX-WS {@link javax.xml.ws.Service} references. Uses the JAX-WS
+ * {@link javax.xml.ws.Service#create} factory API underneath.
  *
- * <p>Serves as base class for {@link LocalJaxWsServiceFactoryBean} as well as
- * {@link JaxWsPortClientInterceptor} and {@link JaxWsPortProxyFactoryBean}.
+ * <p>Serves as base class for {@link LocalJaxWsServiceFactoryBean} as well as {@link
+ * JaxWsPortClientInterceptor} and {@link JaxWsPortProxyFactoryBean}.
  *
  * @author Juergen Hoeller
  * @since 2.5
@@ -45,148 +45,136 @@ import org.springframework.util.Assert;
  */
 public class LocalJaxWsServiceFactory {
 
-	@Nullable
-	private URL wsdlDocumentUrl;
+    @Nullable private URL wsdlDocumentUrl;
 
-	@Nullable
-	private String namespaceUri;
+    @Nullable private String namespaceUri;
 
-	@Nullable
-	private String serviceName;
+    @Nullable private String serviceName;
 
-	@Nullable
-	private WebServiceFeature[] serviceFeatures;
+    @Nullable private WebServiceFeature[] serviceFeatures;
 
-	@Nullable
-	private Executor executor;
+    @Nullable private Executor executor;
 
-	@Nullable
-	private HandlerResolver handlerResolver;
+    @Nullable private HandlerResolver handlerResolver;
 
+    /**
+     * Set the URL of the WSDL document that describes the service.
+     *
+     * @see #setWsdlDocumentResource(Resource)
+     */
+    public void setWsdlDocumentUrl(@Nullable URL wsdlDocumentUrl) {
+        this.wsdlDocumentUrl = wsdlDocumentUrl;
+    }
 
-	/**
-	 * Set the URL of the WSDL document that describes the service.
-	 * @see #setWsdlDocumentResource(Resource)
-	 */
-	public void setWsdlDocumentUrl(@Nullable URL wsdlDocumentUrl) {
-		this.wsdlDocumentUrl = wsdlDocumentUrl;
-	}
+    /**
+     * Set the WSDL document URL as a {@link Resource}.
+     *
+     * @since 3.2
+     */
+    public void setWsdlDocumentResource(Resource wsdlDocumentResource) throws IOException {
+        Assert.notNull(wsdlDocumentResource, "WSDL Resource must not be null");
+        this.wsdlDocumentUrl = wsdlDocumentResource.getURL();
+    }
 
-	/**
-	 * Set the WSDL document URL as a {@link Resource}.
-	 * @since 3.2
-	 */
-	public void setWsdlDocumentResource(Resource wsdlDocumentResource) throws IOException {
-		Assert.notNull(wsdlDocumentResource, "WSDL Resource must not be null");
-		this.wsdlDocumentUrl = wsdlDocumentResource.getURL();
-	}
+    /** Return the URL of the WSDL document that describes the service. */
+    @Nullable
+    public URL getWsdlDocumentUrl() {
+        return this.wsdlDocumentUrl;
+    }
 
-	/**
-	 * Return the URL of the WSDL document that describes the service.
-	 */
-	@Nullable
-	public URL getWsdlDocumentUrl() {
-		return this.wsdlDocumentUrl;
-	}
+    /** Set the namespace URI of the service. Corresponds to the WSDL "targetNamespace". */
+    public void setNamespaceUri(@Nullable String namespaceUri) {
+        this.namespaceUri = (namespaceUri != null ? namespaceUri.trim() : null);
+    }
 
-	/**
-	 * Set the namespace URI of the service.
-	 * Corresponds to the WSDL "targetNamespace".
-	 */
-	public void setNamespaceUri(@Nullable String namespaceUri) {
-		this.namespaceUri = (namespaceUri != null ? namespaceUri.trim() : null);
-	}
+    /** Return the namespace URI of the service. */
+    @Nullable
+    public String getNamespaceUri() {
+        return this.namespaceUri;
+    }
 
-	/**
-	 * Return the namespace URI of the service.
-	 */
-	@Nullable
-	public String getNamespaceUri() {
-		return this.namespaceUri;
-	}
+    /** Set the name of the service to look up. Corresponds to the "wsdl:service" name. */
+    public void setServiceName(@Nullable String serviceName) {
+        this.serviceName = serviceName;
+    }
 
-	/**
-	 * Set the name of the service to look up.
-	 * Corresponds to the "wsdl:service" name.
-	 */
-	public void setServiceName(@Nullable String serviceName) {
-		this.serviceName = serviceName;
-	}
+    /** Return the name of the service. */
+    @Nullable
+    public String getServiceName() {
+        return this.serviceName;
+    }
 
-	/**
-	 * Return the name of the service.
-	 */
-	@Nullable
-	public String getServiceName() {
-		return this.serviceName;
-	}
+    /**
+     * Specify WebServiceFeature objects (e.g. as inner bean definitions) to apply to JAX-WS service
+     * creation.
+     *
+     * @since 4.0
+     * @see Service#create(QName, WebServiceFeature...)
+     */
+    public void setServiceFeatures(WebServiceFeature... serviceFeatures) {
+        this.serviceFeatures = serviceFeatures;
+    }
 
-	/**
-	 * Specify WebServiceFeature objects (e.g. as inner bean definitions)
-	 * to apply to JAX-WS service creation.
-	 * @since 4.0
-	 * @see Service#create(QName, WebServiceFeature...)
-	 */
-	public void setServiceFeatures(WebServiceFeature... serviceFeatures) {
-		this.serviceFeatures = serviceFeatures;
-	}
+    /**
+     * Set the JDK concurrent executor to use for asynchronous executions that require callbacks.
+     *
+     * @see javax.xml.ws.Service#setExecutor
+     */
+    public void setExecutor(Executor executor) {
+        this.executor = executor;
+    }
 
-	/**
-	 * Set the JDK concurrent executor to use for asynchronous executions
-	 * that require callbacks.
-	 * @see javax.xml.ws.Service#setExecutor
-	 */
-	public void setExecutor(Executor executor) {
-		this.executor = executor;
-	}
+    /**
+     * Set the JAX-WS HandlerResolver to use for all proxies and dispatchers created through this
+     * factory.
+     *
+     * @see javax.xml.ws.Service#setHandlerResolver
+     */
+    public void setHandlerResolver(HandlerResolver handlerResolver) {
+        this.handlerResolver = handlerResolver;
+    }
 
-	/**
-	 * Set the JAX-WS HandlerResolver to use for all proxies and dispatchers
-	 * created through this factory.
-	 * @see javax.xml.ws.Service#setHandlerResolver
-	 */
-	public void setHandlerResolver(HandlerResolver handlerResolver) {
-		this.handlerResolver = handlerResolver;
-	}
+    /**
+     * Create a JAX-WS Service according to the parameters of this factory.
+     *
+     * @see #setServiceName
+     * @see #setWsdlDocumentUrl
+     */
+    public Service createJaxWsService() {
+        Assert.notNull(this.serviceName, "No service name specified");
+        Service service;
 
+        if (this.serviceFeatures != null) {
+            service =
+                    (this.wsdlDocumentUrl != null
+                            ? Service.create(
+                                    this.wsdlDocumentUrl,
+                                    getQName(this.serviceName),
+                                    this.serviceFeatures)
+                            : Service.create(getQName(this.serviceName), this.serviceFeatures));
+        } else {
+            service =
+                    (this.wsdlDocumentUrl != null
+                            ? Service.create(this.wsdlDocumentUrl, getQName(this.serviceName))
+                            : Service.create(getQName(this.serviceName)));
+        }
 
-	/**
-	 * Create a JAX-WS Service according to the parameters of this factory.
-	 * @see #setServiceName
-	 * @see #setWsdlDocumentUrl
-	 */
-	public Service createJaxWsService() {
-		Assert.notNull(this.serviceName, "No service name specified");
-		Service service;
+        if (this.executor != null) {
+            service.setExecutor(this.executor);
+        }
+        if (this.handlerResolver != null) {
+            service.setHandlerResolver(this.handlerResolver);
+        }
 
-		if (this.serviceFeatures != null) {
-			service = (this.wsdlDocumentUrl != null ?
-				Service.create(this.wsdlDocumentUrl, getQName(this.serviceName), this.serviceFeatures) :
-				Service.create(getQName(this.serviceName), this.serviceFeatures));
-		}
-		else {
-			service = (this.wsdlDocumentUrl != null ?
-					Service.create(this.wsdlDocumentUrl, getQName(this.serviceName)) :
-					Service.create(getQName(this.serviceName)));
-		}
+        return service;
+    }
 
-		if (this.executor != null) {
-			service.setExecutor(this.executor);
-		}
-		if (this.handlerResolver != null) {
-			service.setHandlerResolver(this.handlerResolver);
-		}
-
-		return service;
-	}
-
-	/**
-	 * Return a QName for the given name, relative to the namespace URI
-	 * of this factory, if given.
-	 * @see #setNamespaceUri
-	 */
-	protected QName getQName(String name) {
-		return (getNamespaceUri() != null ? new QName(getNamespaceUri(), name) : new QName(name));
-	}
-
+    /**
+     * Return a QName for the given name, relative to the namespace URI of this factory, if given.
+     *
+     * @see #setNamespaceUri
+     */
+    protected QName getQName(String name) {
+        return (getNamespaceUri() != null ? new QName(getNamespaceUri(), name) : new QName(name));
+    }
 }

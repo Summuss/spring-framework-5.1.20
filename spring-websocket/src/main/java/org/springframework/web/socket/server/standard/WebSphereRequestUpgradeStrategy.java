@@ -34,12 +34,11 @@ import org.springframework.lang.Nullable;
 import org.springframework.web.socket.server.HandshakeFailureException;
 
 /**
- * WebSphere support for upgrading an {@link HttpServletRequest} during a
- * WebSocket handshake. To modify properties of the underlying
- * {@link javax.websocket.server.ServerContainer} you can use
- * {@link ServletServerContainerFactoryBean} in XML configuration or, when using
- * Java configuration, access the container instance through the
- * "javax.websocket.server.ServerContainer" ServletContext attribute.
+ * WebSphere support for upgrading an {@link HttpServletRequest} during a WebSocket handshake. To
+ * modify properties of the underlying {@link javax.websocket.server.ServerContainer} you can use
+ * {@link ServletServerContainerFactoryBean} in XML configuration or, when using Java configuration,
+ * access the container instance through the "javax.websocket.server.ServerContainer" ServletContext
+ * attribute.
  *
  * <p>Tested with WAS Liberty beta (August 2015) for the upcoming 8.5.5.7 release.
  *
@@ -48,50 +47,55 @@ import org.springframework.web.socket.server.HandshakeFailureException;
  */
 public class WebSphereRequestUpgradeStrategy extends AbstractStandardUpgradeStrategy {
 
-	private static final Method upgradeMethod;
+    private static final Method upgradeMethod;
 
-	static {
-		ClassLoader loader = WebSphereRequestUpgradeStrategy.class.getClassLoader();
-		try {
-			Class<?> type = loader.loadClass("com.ibm.websphere.wsoc.WsWsocServerContainer");
-			upgradeMethod = type.getMethod("doUpgrade", HttpServletRequest.class,
-					HttpServletResponse.class, ServerEndpointConfig.class, Map.class);
-		}
-		catch (Exception ex) {
-			throw new IllegalStateException("No compatible WebSphere version found", ex);
-		}
-	}
+    static {
+        ClassLoader loader = WebSphereRequestUpgradeStrategy.class.getClassLoader();
+        try {
+            Class<?> type = loader.loadClass("com.ibm.websphere.wsoc.WsWsocServerContainer");
+            upgradeMethod =
+                    type.getMethod(
+                            "doUpgrade",
+                            HttpServletRequest.class,
+                            HttpServletResponse.class,
+                            ServerEndpointConfig.class,
+                            Map.class);
+        } catch (Exception ex) {
+            throw new IllegalStateException("No compatible WebSphere version found", ex);
+        }
+    }
 
+    @Override
+    public String[] getSupportedVersions() {
+        return new String[] {"13"};
+    }
 
-	@Override
-	public String[] getSupportedVersions() {
-		return new String[] {"13"};
-	}
+    @Override
+    public void upgradeInternal(
+            ServerHttpRequest httpRequest,
+            ServerHttpResponse httpResponse,
+            @Nullable String selectedProtocol,
+            List<Extension> selectedExtensions,
+            Endpoint endpoint)
+            throws HandshakeFailureException {
 
-	@Override
-	public void upgradeInternal(ServerHttpRequest httpRequest, ServerHttpResponse httpResponse,
-			@Nullable String selectedProtocol, List<Extension> selectedExtensions, Endpoint endpoint)
-			throws HandshakeFailureException {
+        HttpServletRequest request = getHttpServletRequest(httpRequest);
+        HttpServletResponse response = getHttpServletResponse(httpResponse);
 
-		HttpServletRequest request = getHttpServletRequest(httpRequest);
-		HttpServletResponse response = getHttpServletResponse(httpResponse);
+        StringBuffer requestUrl = request.getRequestURL();
+        String path = request.getRequestURI(); // shouldn't matter
+        Map<String, String> pathParams = Collections.<String, String>emptyMap();
 
-		StringBuffer requestUrl = request.getRequestURL();
-		String path = request.getRequestURI();  // shouldn't matter
-		Map<String, String> pathParams = Collections.<String, String> emptyMap();
+        ServerEndpointRegistration endpointConfig = new ServerEndpointRegistration(path, endpoint);
+        endpointConfig.setSubprotocols(Collections.singletonList(selectedProtocol));
+        endpointConfig.setExtensions(selectedExtensions);
 
-		ServerEndpointRegistration endpointConfig = new ServerEndpointRegistration(path, endpoint);
-		endpointConfig.setSubprotocols(Collections.singletonList(selectedProtocol));
-		endpointConfig.setExtensions(selectedExtensions);
-
-		try {
-			ServerContainer container = getContainer(request);
-			upgradeMethod.invoke(container, request, response, endpointConfig, pathParams);
-		}
-		catch (Exception ex) {
-			throw new HandshakeFailureException(
-					"Servlet request failed to upgrade to WebSocket for " + requestUrl, ex);
-		}
-	}
-
+        try {
+            ServerContainer container = getContainer(request);
+            upgradeMethod.invoke(container, request, response, endpointConfig, pathParams);
+        } catch (Exception ex) {
+            throw new HandshakeFailureException(
+                    "Servlet request failed to upgrade to WebSocket for " + requestUrl, ex);
+        }
+    }
 }

@@ -30,42 +30,40 @@ import org.springframework.web.socket.TextMessage;
  */
 public class StompTextMessageBuilder {
 
-	private StompCommand command;
+    private StompCommand command;
 
-	private final List<String> headerLines = new ArrayList<>();
+    private final List<String> headerLines = new ArrayList<>();
 
-	private String body;
+    private String body;
 
+    private StompTextMessageBuilder(StompCommand command) {
+        this.command = command;
+    }
 
-	private StompTextMessageBuilder(StompCommand command) {
-		this.command = command;
-	}
+    public static StompTextMessageBuilder create(StompCommand command) {
+        return new StompTextMessageBuilder(command);
+    }
 
-	public static StompTextMessageBuilder create(StompCommand command) {
-		return new StompTextMessageBuilder(command);
-	}
+    public StompTextMessageBuilder headers(String... headerLines) {
+        this.headerLines.addAll(Arrays.asList(headerLines));
+        return this;
+    }
 
-	public StompTextMessageBuilder headers(String... headerLines) {
-		this.headerLines.addAll(Arrays.asList(headerLines));
-		return this;
-	}
+    public StompTextMessageBuilder body(String body) {
+        this.body = body;
+        return this;
+    }
 
-	public StompTextMessageBuilder body(String body) {
-		this.body = body;
-		return this;
-	}
-
-	public TextMessage build() {
-		StringBuilder sb = new StringBuilder(this.command.name()).append("\n");
-		for (String line : this.headerLines) {
-			sb.append(line).append("\n");
-		}
-		sb.append("\n");
-		if (this.body != null) {
-			sb.append(this.body);
-		}
-		sb.append("\u0000");
-		return new TextMessage(sb.toString());
-	}
-
+    public TextMessage build() {
+        StringBuilder sb = new StringBuilder(this.command.name()).append("\n");
+        for (String line : this.headerLines) {
+            sb.append(line).append("\n");
+        }
+        sb.append("\n");
+        if (this.body != null) {
+            sb.append(this.body);
+        }
+        sb.append("\u0000");
+        return new TextMessage(sb.toString());
+    }
 }

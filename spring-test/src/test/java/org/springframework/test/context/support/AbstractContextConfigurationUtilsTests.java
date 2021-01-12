@@ -41,180 +41,191 @@ import org.springframework.test.context.web.WebAppConfiguration;
 import static org.junit.Assert.*;
 
 /**
- * Abstract base class for tests involving {@link ContextLoaderUtils},
- * {@link BootstrapTestUtils}, and {@link ActiveProfilesUtils}.
+ * Abstract base class for tests involving {@link ContextLoaderUtils}, {@link BootstrapTestUtils},
+ * and {@link ActiveProfilesUtils}.
  *
  * @author Sam Brannen
  * @since 3.1
  */
 abstract class AbstractContextConfigurationUtilsTests {
 
-	static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
+    static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
 
-	static final String[] EMPTY_STRING_ARRAY = new String[0];
+    static final String[] EMPTY_STRING_ARRAY = new String[0];
 
-	static final Set<Class<? extends ApplicationContextInitializer<?>>>
-			EMPTY_INITIALIZER_CLASSES = Collections.<Class<? extends ApplicationContextInitializer<?>>> emptySet();
+    static final Set<Class<? extends ApplicationContextInitializer<?>>> EMPTY_INITIALIZER_CLASSES =
+            Collections.<Class<? extends ApplicationContextInitializer<?>>>emptySet();
 
+    MergedContextConfiguration buildMergedContextConfiguration(Class<?> testClass) {
+        CacheAwareContextLoaderDelegate cacheAwareContextLoaderDelegate =
+                Mockito.mock(CacheAwareContextLoaderDelegate.class);
+        BootstrapContext bootstrapContext =
+                BootstrapTestUtils.buildBootstrapContext(
+                        testClass, cacheAwareContextLoaderDelegate);
+        TestContextBootstrapper bootstrapper =
+                BootstrapTestUtils.resolveTestContextBootstrapper(bootstrapContext);
+        return bootstrapper.buildMergedContextConfiguration();
+    }
 
-	MergedContextConfiguration buildMergedContextConfiguration(Class<?> testClass) {
-		CacheAwareContextLoaderDelegate cacheAwareContextLoaderDelegate = Mockito.mock(CacheAwareContextLoaderDelegate.class);
-		BootstrapContext bootstrapContext = BootstrapTestUtils.buildBootstrapContext(testClass, cacheAwareContextLoaderDelegate);
-		TestContextBootstrapper bootstrapper = BootstrapTestUtils.resolveTestContextBootstrapper(bootstrapContext);
-		return bootstrapper.buildMergedContextConfiguration();
-	}
+    void assertAttributes(
+            ContextConfigurationAttributes attributes,
+            Class<?> expectedDeclaringClass,
+            String[] expectedLocations,
+            Class<?>[] expectedClasses,
+            Class<? extends ContextLoader> expectedContextLoaderClass,
+            boolean expectedInheritLocations) {
 
-	void assertAttributes(ContextConfigurationAttributes attributes, Class<?> expectedDeclaringClass,
-			String[] expectedLocations, Class<?>[] expectedClasses,
-			Class<? extends ContextLoader> expectedContextLoaderClass, boolean expectedInheritLocations) {
+        assertEquals("declaring class", expectedDeclaringClass, attributes.getDeclaringClass());
+        assertArrayEquals("locations", expectedLocations, attributes.getLocations());
+        assertArrayEquals("classes", expectedClasses, attributes.getClasses());
+        assertEquals(
+                "inherit locations", expectedInheritLocations, attributes.isInheritLocations());
+        assertEquals(
+                "context loader", expectedContextLoaderClass, attributes.getContextLoaderClass());
+    }
 
-		assertEquals("declaring class", expectedDeclaringClass, attributes.getDeclaringClass());
-		assertArrayEquals("locations", expectedLocations, attributes.getLocations());
-		assertArrayEquals("classes", expectedClasses, attributes.getClasses());
-		assertEquals("inherit locations", expectedInheritLocations, attributes.isInheritLocations());
-		assertEquals("context loader", expectedContextLoaderClass, attributes.getContextLoaderClass());
-	}
+    void assertMergedConfig(
+            MergedContextConfiguration mergedConfig,
+            Class<?> expectedTestClass,
+            String[] expectedLocations,
+            Class<?>[] expectedClasses,
+            Class<? extends ContextLoader> expectedContextLoaderClass) {
 
-	void assertMergedConfig(MergedContextConfiguration mergedConfig, Class<?> expectedTestClass,
-			String[] expectedLocations, Class<?>[] expectedClasses,
-			Class<? extends ContextLoader> expectedContextLoaderClass) {
+        assertMergedConfig(
+                mergedConfig,
+                expectedTestClass,
+                expectedLocations,
+                expectedClasses,
+                EMPTY_INITIALIZER_CLASSES,
+                expectedContextLoaderClass);
+    }
 
-		assertMergedConfig(mergedConfig, expectedTestClass, expectedLocations, expectedClasses,
-				EMPTY_INITIALIZER_CLASSES, expectedContextLoaderClass);
-	}
+    void assertMergedConfig(
+            MergedContextConfiguration mergedConfig,
+            Class<?> expectedTestClass,
+            String[] expectedLocations,
+            Class<?>[] expectedClasses,
+            Set<Class<? extends ApplicationContextInitializer<?>>> expectedInitializerClasses,
+            Class<? extends ContextLoader> expectedContextLoaderClass) {
 
-	void assertMergedConfig(
-			MergedContextConfiguration mergedConfig,
-			Class<?> expectedTestClass,
-			String[] expectedLocations,
-			Class<?>[] expectedClasses,
-			Set<Class<? extends ApplicationContextInitializer<?>>> expectedInitializerClasses,
-			Class<? extends ContextLoader> expectedContextLoaderClass) {
+        assertNotNull(mergedConfig);
+        assertEquals(expectedTestClass, mergedConfig.getTestClass());
+        assertNotNull(mergedConfig.getLocations());
+        assertArrayEquals(expectedLocations, mergedConfig.getLocations());
+        assertNotNull(mergedConfig.getClasses());
+        assertArrayEquals(expectedClasses, mergedConfig.getClasses());
+        assertNotNull(mergedConfig.getActiveProfiles());
+        if (expectedContextLoaderClass == null) {
+            assertNull(mergedConfig.getContextLoader());
+        } else {
+            assertEquals(expectedContextLoaderClass, mergedConfig.getContextLoader().getClass());
+        }
+        assertNotNull(mergedConfig.getContextInitializerClasses());
+        assertEquals(expectedInitializerClasses, mergedConfig.getContextInitializerClasses());
+    }
 
-		assertNotNull(mergedConfig);
-		assertEquals(expectedTestClass, mergedConfig.getTestClass());
-		assertNotNull(mergedConfig.getLocations());
-		assertArrayEquals(expectedLocations, mergedConfig.getLocations());
-		assertNotNull(mergedConfig.getClasses());
-		assertArrayEquals(expectedClasses, mergedConfig.getClasses());
-		assertNotNull(mergedConfig.getActiveProfiles());
-		if (expectedContextLoaderClass == null) {
-			assertNull(mergedConfig.getContextLoader());
-		}
-		else {
-			assertEquals(expectedContextLoaderClass, mergedConfig.getContextLoader().getClass());
-		}
-		assertNotNull(mergedConfig.getContextInitializerClasses());
-		assertEquals(expectedInitializerClasses, mergedConfig.getContextInitializerClasses());
-	}
+    @SafeVarargs
+    static <T> T[] array(T... objects) {
+        return objects;
+    }
 
-	@SafeVarargs
-	static <T> T[] array(T... objects) {
-		return objects;
-	}
+    static class Enigma {}
 
+    @ContextConfiguration
+    @ActiveProfiles
+    static class BareAnnotations {}
 
-	static class Enigma {
-	}
+    @Configuration
+    static class FooConfig {}
 
-	@ContextConfiguration
-	@ActiveProfiles
-	static class BareAnnotations {
-	}
+    @Configuration
+    static class BarConfig {}
 
-	@Configuration
-	static class FooConfig {
-	}
+    @ContextConfiguration("/foo.xml")
+    @ActiveProfiles(profiles = "foo")
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.TYPE)
+    public static @interface MetaLocationsFooConfig {}
 
-	@Configuration
-	static class BarConfig {
-	}
+    @ContextConfiguration
+    @ActiveProfiles
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.TYPE)
+    public static @interface MetaLocationsFooConfigWithOverrides {
 
-	@ContextConfiguration("/foo.xml")
-	@ActiveProfiles(profiles = "foo")
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target(ElementType.TYPE)
-	public static @interface MetaLocationsFooConfig {
-	}
+        String[] locations() default "/foo.xml";
 
-	@ContextConfiguration
-	@ActiveProfiles
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target(ElementType.TYPE)
-	public static @interface MetaLocationsFooConfigWithOverrides {
+        String[] profiles() default "foo";
+    }
 
-		String[] locations() default "/foo.xml";
+    @ContextConfiguration("/bar.xml")
+    @ActiveProfiles(profiles = "bar")
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.TYPE)
+    public static @interface MetaLocationsBarConfig {}
 
-		String[] profiles() default "foo";
-	}
+    @MetaLocationsFooConfig
+    static class MetaLocationsFoo {}
 
-	@ContextConfiguration("/bar.xml")
-	@ActiveProfiles(profiles = "bar")
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target(ElementType.TYPE)
-	public static @interface MetaLocationsBarConfig {
-	}
+    @MetaLocationsBarConfig
+    static class MetaLocationsBar extends MetaLocationsFoo {}
 
-	@MetaLocationsFooConfig
-	static class MetaLocationsFoo {
-	}
+    @MetaLocationsFooConfigWithOverrides
+    static class MetaLocationsFooWithOverrides {}
 
-	@MetaLocationsBarConfig
-	static class MetaLocationsBar extends MetaLocationsFoo {
-	}
+    @MetaLocationsFooConfigWithOverrides(
+            locations = {"foo1.xml", "foo2.xml"},
+            profiles = {"foo1", "foo2"})
+    static class MetaLocationsFooWithOverriddenAttributes {}
 
-	@MetaLocationsFooConfigWithOverrides
-	static class MetaLocationsFooWithOverrides {
-	}
+    @ContextConfiguration(locations = "/foo.xml", inheritLocations = false)
+    @ActiveProfiles("foo")
+    static class LocationsFoo {}
 
-	@MetaLocationsFooConfigWithOverrides(locations = {"foo1.xml", "foo2.xml"}, profiles = {"foo1", "foo2"})
-	static class MetaLocationsFooWithOverriddenAttributes {
-	}
+    @ContextConfiguration(classes = FooConfig.class, inheritLocations = false)
+    @ActiveProfiles("foo")
+    static class ClassesFoo {}
 
-	@ContextConfiguration(locations = "/foo.xml", inheritLocations = false)
-	@ActiveProfiles("foo")
-	static class LocationsFoo {
-	}
+    @WebAppConfiguration
+    static class WebClassesFoo extends ClassesFoo {}
 
-	@ContextConfiguration(classes = FooConfig.class, inheritLocations = false)
-	@ActiveProfiles("foo")
-	static class ClassesFoo {
-	}
+    @ContextConfiguration(
+            locations = "/bar.xml",
+            inheritLocations = true,
+            loader = AnnotationConfigContextLoader.class)
+    @ActiveProfiles("bar")
+    static class LocationsBar extends LocationsFoo {}
 
-	@WebAppConfiguration
-	static class WebClassesFoo extends ClassesFoo {
-	}
+    @ContextConfiguration(
+            locations = "/bar.xml",
+            inheritLocations = false,
+            loader = AnnotationConfigContextLoader.class)
+    @ActiveProfiles("bar")
+    static class OverriddenLocationsBar extends LocationsFoo {}
 
-	@ContextConfiguration(locations = "/bar.xml", inheritLocations = true, loader = AnnotationConfigContextLoader.class)
-	@ActiveProfiles("bar")
-	static class LocationsBar extends LocationsFoo {
-	}
+    @ContextConfiguration(
+            classes = BarConfig.class,
+            inheritLocations = true,
+            loader = AnnotationConfigContextLoader.class)
+    @ActiveProfiles("bar")
+    static class ClassesBar extends ClassesFoo {}
 
-	@ContextConfiguration(locations = "/bar.xml", inheritLocations = false, loader = AnnotationConfigContextLoader.class)
-	@ActiveProfiles("bar")
-	static class OverriddenLocationsBar extends LocationsFoo {
-	}
+    @ContextConfiguration(
+            classes = BarConfig.class,
+            inheritLocations = false,
+            loader = AnnotationConfigContextLoader.class)
+    @ActiveProfiles("bar")
+    static class OverriddenClassesBar extends ClassesFoo {}
 
-	@ContextConfiguration(classes = BarConfig.class, inheritLocations = true, loader = AnnotationConfigContextLoader.class)
-	@ActiveProfiles("bar")
-	static class ClassesBar extends ClassesFoo {
-	}
+    @ContextConfiguration(
+            locations = "/foo.properties",
+            loader = GenericPropertiesContextLoader.class)
+    @ActiveProfiles("foo")
+    static class PropertiesLocationsFoo {}
 
-	@ContextConfiguration(classes = BarConfig.class, inheritLocations = false, loader = AnnotationConfigContextLoader.class)
-	@ActiveProfiles("bar")
-	static class OverriddenClassesBar extends ClassesFoo {
-	}
-
-	@ContextConfiguration(locations = "/foo.properties", loader = GenericPropertiesContextLoader.class)
-	@ActiveProfiles("foo")
-	static class PropertiesLocationsFoo {
-	}
-
-	// Combining @Configuration classes with a Properties based loader doesn't really make
-	// sense, but that's OK for unit testing purposes.
-	@ContextConfiguration(classes = FooConfig.class, loader = GenericPropertiesContextLoader.class)
-	@ActiveProfiles("foo")
-	static class PropertiesClassesFoo {
-	}
-
+    // Combining @Configuration classes with a Properties based loader doesn't really make
+    // sense, but that's OK for unit testing purposes.
+    @ContextConfiguration(classes = FooConfig.class, loader = GenericPropertiesContextLoader.class)
+    @ActiveProfiles("foo")
+    static class PropertiesClassesFoo {}
 }

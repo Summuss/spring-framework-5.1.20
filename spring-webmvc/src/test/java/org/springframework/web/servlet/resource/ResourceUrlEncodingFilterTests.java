@@ -42,153 +42,176 @@ import static org.junit.Assert.*;
  */
 public class ResourceUrlEncodingFilterTests {
 
-	private ResourceUrlEncodingFilter filter;
+    private ResourceUrlEncodingFilter filter;
 
-	private ResourceUrlProvider urlProvider;
+    private ResourceUrlProvider urlProvider;
 
+    @Before
+    public void createFilter() {
+        VersionResourceResolver versionResolver = new VersionResourceResolver();
+        versionResolver.setStrategyMap(
+                Collections.singletonMap("/**", new ContentVersionStrategy()));
+        PathResourceResolver pathResolver = new PathResourceResolver();
+        pathResolver.setAllowedLocations(new ClassPathResource("test/", getClass()));
+        List<ResourceResolver> resolvers = new ArrayList<>();
+        resolvers.add(versionResolver);
+        resolvers.add(pathResolver);
 
-	@Before
-	public void createFilter() {
-		VersionResourceResolver versionResolver = new VersionResourceResolver();
-		versionResolver.setStrategyMap(Collections.singletonMap("/**", new ContentVersionStrategy()));
-		PathResourceResolver pathResolver = new PathResourceResolver();
-		pathResolver.setAllowedLocations(new ClassPathResource("test/", getClass()));
-		List<ResourceResolver> resolvers = new ArrayList<>();
-		resolvers.add(versionResolver);
-		resolvers.add(pathResolver);
+        this.filter = new ResourceUrlEncodingFilter();
+        this.urlProvider = createResourceUrlProvider(resolvers);
+    }
 
-		this.filter = new ResourceUrlEncodingFilter();
-		this.urlProvider = createResourceUrlProvider(resolvers);
-	}
+    private ResourceUrlProvider createResourceUrlProvider(List<ResourceResolver> resolvers) {
+        ResourceHttpRequestHandler handler = new ResourceHttpRequestHandler();
+        handler.setLocations(Collections.singletonList(new ClassPathResource("test/", getClass())));
+        handler.setResourceResolvers(resolvers);
 
-	private ResourceUrlProvider createResourceUrlProvider(List<ResourceResolver> resolvers) {
-		ResourceHttpRequestHandler handler = new ResourceHttpRequestHandler();
-		handler.setLocations(Collections.singletonList(new ClassPathResource("test/", getClass())));
-		handler.setResourceResolvers(resolvers);
+        ResourceUrlProvider urlProvider = new ResourceUrlProvider();
+        urlProvider.setHandlerMap(Collections.singletonMap("/resources/**", handler));
+        return urlProvider;
+    }
 
-		ResourceUrlProvider urlProvider = new ResourceUrlProvider();
-		urlProvider.setHandlerMap(Collections.singletonMap("/resources/**", handler));
-		return urlProvider;
-	}
+    @Test
+    public void encodeURL() throws Exception {
+        testEncodeUrl(
+                new MockHttpServletRequest("GET", "/"),
+                "/resources/bar.css",
+                "/resources/bar-11e16cf79faee7ac698c805cf28248d2.css");
+    }
 
+    @Test
+    public void encodeUrlWithContext() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/context/foo");
+        request.setContextPath("/context");
 
-	@Test
-	public void encodeURL() throws Exception {
-		testEncodeUrl(new MockHttpServletRequest("GET", "/"),
-				"/resources/bar.css", "/resources/bar-11e16cf79faee7ac698c805cf28248d2.css");
-	}
+        testEncodeUrl(
+                request,
+                "/context/resources/bar.css",
+                "/context/resources/bar-11e16cf79faee7ac698c805cf28248d2.css");
+    }
 
-	@Test
-	public void encodeUrlWithContext() throws Exception {
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/context/foo");
-		request.setContextPath("/context");
+    @Test
+    public void encodeUrlWithContextAndForwardedRequest() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/context/foo");
+        request.setContextPath("/context");
 
-		testEncodeUrl(request, "/context/resources/bar.css",
-				"/context/resources/bar-11e16cf79faee7ac698c805cf28248d2.css");
-	}
+        this.filter.doFilter(
+                request,
+                new MockHttpServletResponse(),
+                (req, res) -> {
+                    req.setAttribute(
+                            ResourceUrlProviderExposingInterceptor.RESOURCE_URL_PROVIDER_ATTR,
+                            this.urlProvider);
+                    request.setRequestURI("/forwarded");
+                    request.setContextPath("/");
+                    String result =
+                            ((HttpServletResponse) res).encodeURL("/context/resources/bar.css");
+                    assertEquals(
+                            "/context/resources/bar-11e16cf79faee7ac698c805cf28248d2.css", result);
+                });
+    }
 
+    @Test // SPR-13757
+    public void encodeContextPathUrlWithoutSuffix() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/context");
+        request.setContextPath("/context");
 
-	@Test
-	public void encodeUrlWithContextAndForwardedRequest() throws Exception {
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/context/foo");
-		request.setContextPath("/context");
+        testEncodeUrl(
+                request,
+                "/context/resources/bar.css",
+                "/context/resources/bar-11e16cf79faee7ac698c805cf28248d2.css");
+    }
 
-		this.filter.doFilter(request, new MockHttpServletResponse(), (req, res) -> {
-			req.setAttribute(ResourceUrlProviderExposingInterceptor.RESOURCE_URL_PROVIDER_ATTR, this.urlProvider);
-			request.setRequestURI("/forwarded");
-			request.setContextPath("/");
-			String result = ((HttpServletResponse) res).encodeURL("/context/resources/bar.css");
-			assertEquals("/context/resources/bar-11e16cf79faee7ac698c805cf28248d2.css", result);
-		});
-	}
+    @Test
+    public void encodeContextPathUrlWithSuffix() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/context/");
+        request.setContextPath("/context");
 
-	@Test // SPR-13757
-	public void encodeContextPathUrlWithoutSuffix() throws Exception {
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/context");
-		request.setContextPath("/context");
+        testEncodeUrl(
+                request,
+                "/context/resources/bar.css",
+                "/context/resources/bar-11e16cf79faee7ac698c805cf28248d2.css");
+    }
 
-		testEncodeUrl(request, "/context/resources/bar.css",
-				"/context/resources/bar-11e16cf79faee7ac698c805cf28248d2.css");
-	}
+    @Test // SPR-13018
+    public void encodeEmptyUrlWithContext() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/context/foo");
+        request.setContextPath("/context");
 
-	@Test
-	public void encodeContextPathUrlWithSuffix() throws Exception {
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/context/");
-		request.setContextPath("/context");
+        testEncodeUrl(request, "?foo=1", "?foo=1");
+    }
 
-		testEncodeUrl(request, "/context/resources/bar.css",
-				"/context/resources/bar-11e16cf79faee7ac698c805cf28248d2.css");
-	}
+    @Test // SPR-13374
+    public void encodeUrlWithRequestParams() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/foo");
+        request.setContextPath("/");
 
-	@Test // SPR-13018
-	public void encodeEmptyUrlWithContext() throws Exception {
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/context/foo");
-		request.setContextPath("/context");
+        testEncodeUrl(
+                request,
+                "/resources/bar.css?foo=bar&url=https://example.org",
+                "/resources/bar-11e16cf79faee7ac698c805cf28248d2.css?foo=bar&url=https://example.org");
+    }
 
-		testEncodeUrl(request, "?foo=1", "?foo=1");
-	}
+    @Test // SPR-13847
+    public void encodeUrlPreventStringOutOfBounds() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/context-path/index");
+        request.setContextPath("/context-path");
+        request.setServletPath("");
 
-	@Test // SPR-13374
-	public void encodeUrlWithRequestParams() throws Exception {
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/foo");
-		request.setContextPath("/");
+        testEncodeUrl(request, "index?key=value", "index?key=value");
+    }
 
-		testEncodeUrl(request, "/resources/bar.css?foo=bar&url=https://example.org",
-				"/resources/bar-11e16cf79faee7ac698c805cf28248d2.css?foo=bar&url=https://example.org");
-	}
+    @Test // SPR-17535
+    public void encodeUrlWithFragment() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/foo");
+        request.setContextPath("/");
 
-	@Test // SPR-13847
-	public void encodeUrlPreventStringOutOfBounds() throws Exception {
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/context-path/index");
-		request.setContextPath("/context-path");
-		request.setServletPath("");
+        testEncodeUrl(
+                request,
+                "/resources/bar.css#something",
+                "/resources/bar-11e16cf79faee7ac698c805cf28248d2.css#something");
 
-		testEncodeUrl(request, "index?key=value", "index?key=value");
-	}
+        testEncodeUrl(
+                request,
+                "/resources/bar.css?foo=bar&url=https://example.org#something",
+                "/resources/bar-11e16cf79faee7ac698c805cf28248d2.css?foo=bar&url=https://example.org#something");
+    }
 
-	@Test // SPR-17535
-	public void encodeUrlWithFragment() throws Exception {
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/foo");
-		request.setContextPath("/");
+    @Test // gh-23508
+    public void invalidLookupPath() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/a/b/../logo.png");
+        request.setServletPath("/a/logo.png");
 
-		testEncodeUrl(request, "/resources/bar.css#something",
-				"/resources/bar-11e16cf79faee7ac698c805cf28248d2.css#something");
+        this.filter.doFilter(
+                request,
+                new MockHttpServletResponse(),
+                (req, res) -> {
+                    try {
+                        ResourceUrlProviderExposingInterceptor interceptor =
+                                new ResourceUrlProviderExposingInterceptor(this.urlProvider);
 
-		testEncodeUrl(request,
-				"/resources/bar.css?foo=bar&url=https://example.org#something",
-				"/resources/bar-11e16cf79faee7ac698c805cf28248d2.css?foo=bar&url=https://example.org#something");
-	}
+                        interceptor.preHandle(
+                                (HttpServletRequest) req, (HttpServletResponse) res, new Object());
+                        fail();
+                    } catch (Exception ex) {
+                        assertEquals(ServletRequestBindingException.class, ex.getClass());
+                    }
+                });
+    }
 
-	@Test // gh-23508
-	public void invalidLookupPath() throws Exception {
-		MockHttpServletRequest request = new MockHttpServletRequest();
-		request.setRequestURI("/a/b/../logo.png");
-		request.setServletPath("/a/logo.png");
+    private void testEncodeUrl(MockHttpServletRequest request, String url, String expected)
+            throws ServletException, IOException {
 
-			this.filter.doFilter(request, new MockHttpServletResponse(), (req, res) -> {
-				try {
-					ResourceUrlProviderExposingInterceptor interceptor =
-							new ResourceUrlProviderExposingInterceptor(this.urlProvider);
+        FilterChain chain =
+                (req, res) -> {
+                    req.setAttribute(
+                            ResourceUrlProviderExposingInterceptor.RESOURCE_URL_PROVIDER_ATTR,
+                            this.urlProvider);
+                    String result = ((HttpServletResponse) res).encodeURL(url);
+                    assertEquals(expected, result);
+                };
 
-					interceptor.preHandle((HttpServletRequest) req, (HttpServletResponse) res, new Object());
-					fail();
-				}
-				catch (Exception ex) {
-					assertEquals(ServletRequestBindingException.class, ex.getClass());
-				}
-			});
-	}
-
-	private void testEncodeUrl(MockHttpServletRequest request, String url, String expected)
-			throws ServletException, IOException {
-
-		FilterChain chain = (req, res) -> {
-			req.setAttribute(ResourceUrlProviderExposingInterceptor.RESOURCE_URL_PROVIDER_ATTR, this.urlProvider);
-			String result = ((HttpServletResponse) res).encodeURL(url);
-			assertEquals(expected, result);
-		};
-
-		this.filter.doFilter(request, new MockHttpServletResponse(), chain);
-	}
-
+        this.filter.doFilter(request, new MockHttpServletResponse(), chain);
+    }
 }

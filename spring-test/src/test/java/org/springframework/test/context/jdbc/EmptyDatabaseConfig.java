@@ -33,16 +33,15 @@ import org.springframework.transaction.PlatformTransactionManager;
 @Configuration
 public class EmptyDatabaseConfig {
 
-	@Bean
-	public PlatformTransactionManager transactionManager() {
-		return new DataSourceTransactionManager(dataSource());
-	}
+    @Bean
+    public PlatformTransactionManager transactionManager() {
+        return new DataSourceTransactionManager(dataSource());
+    }
 
-	@Bean
-	public DataSource dataSource() {
-		return new EmbeddedDatabaseBuilder()//
-		.setName("empty-sql-scripts-test-db")//
-		.build();
-	}
-
+    @Bean
+    public DataSource dataSource() {
+        return new EmbeddedDatabaseBuilder() //
+                .setName("empty-sql-scripts-test-db") //
+                .build();
+    }
 }

@@ -49,97 +49,110 @@ import static org.mockito.Mockito.*;
  */
 public abstract class AbstractHtmlElementTagTests extends AbstractTagTests {
 
-	public static final String COMMAND_NAME = "testBean";
+    public static final String COMMAND_NAME = "testBean";
 
-	private StringWriter writer;
+    private StringWriter writer;
 
-	private MockPageContext pageContext;
+    private MockPageContext pageContext;
 
+    @Before
+    public final void setUp() throws Exception {
+        // set up a writer for the tag content to be written to
+        this.writer = new StringWriter();
 
-	@Before
-	public final void setUp() throws Exception {
-		// set up a writer for the tag content to be written to
-		this.writer = new StringWriter();
+        // configure the page context
+        this.pageContext = createAndPopulatePageContext();
 
-		// configure the page context
-		this.pageContext = createAndPopulatePageContext();
+        onSetUp();
+    }
 
-		onSetUp();
-	}
+    protected MockPageContext createAndPopulatePageContext() throws JspException {
+        MockPageContext pageContext = createPageContext();
+        MockHttpServletRequest request = (MockHttpServletRequest) pageContext.getRequest();
+        ((StaticWebApplicationContext) RequestContextUtils.findWebApplicationContext(request))
+                .registerSingleton(
+                        "requestDataValueProcessor", RequestDataValueProcessorWrapper.class);
+        extendRequest(request);
+        extendPageContext(pageContext);
+        RequestContext requestContext = new JspAwareRequestContext(pageContext);
+        pageContext.setAttribute(
+                RequestContextAwareTag.REQUEST_CONTEXT_PAGE_ATTRIBUTE, requestContext);
+        return pageContext;
+    }
 
-	protected MockPageContext createAndPopulatePageContext() throws JspException {
-		MockPageContext pageContext = createPageContext();
-		MockHttpServletRequest request = (MockHttpServletRequest) pageContext.getRequest();
-		((StaticWebApplicationContext) RequestContextUtils.findWebApplicationContext(request))
-				.registerSingleton("requestDataValueProcessor", RequestDataValueProcessorWrapper.class);
-		extendRequest(request);
-		extendPageContext(pageContext);
-		RequestContext requestContext = new JspAwareRequestContext(pageContext);
-		pageContext.setAttribute(RequestContextAwareTag.REQUEST_CONTEXT_PAGE_ATTRIBUTE, requestContext);
-		return pageContext;
-	}
+    protected void extendPageContext(MockPageContext pageContext) throws JspException {}
 
-	protected void extendPageContext(MockPageContext pageContext) throws JspException {
-	}
+    protected void extendRequest(MockHttpServletRequest request) {}
 
-	protected void extendRequest(MockHttpServletRequest request) {
-	}
+    protected void onSetUp() {}
 
-	protected void onSetUp() {
-	}
+    protected MockPageContext getPageContext() {
+        return this.pageContext;
+    }
 
-	protected MockPageContext getPageContext() {
-		return this.pageContext;
-	}
+    protected Writer getWriter() {
+        return this.writer;
+    }
 
-	protected Writer getWriter() {
-		return this.writer;
-	}
+    protected String getOutput() {
+        return this.writer.toString();
+    }
 
-	protected String getOutput() {
-		return this.writer.toString();
-	}
+    protected final RequestContext getRequestContext() {
+        return (RequestContext)
+                getPageContext()
+                        .getAttribute(RequestContextAwareTag.REQUEST_CONTEXT_PAGE_ATTRIBUTE);
+    }
 
-	protected final RequestContext getRequestContext() {
-		return (RequestContext) getPageContext().getAttribute(RequestContextAwareTag.REQUEST_CONTEXT_PAGE_ATTRIBUTE);
-	}
+    protected RequestDataValueProcessor getMockRequestDataValueProcessor() {
+        RequestDataValueProcessor mockProcessor = mock(RequestDataValueProcessor.class);
+        HttpServletRequest request = (HttpServletRequest) getPageContext().getRequest();
+        WebApplicationContext wac = RequestContextUtils.findWebApplicationContext(request);
+        wac.getBean(RequestDataValueProcessorWrapper.class)
+                .setRequestDataValueProcessor(mockProcessor);
+        return mockProcessor;
+    }
 
-	protected RequestDataValueProcessor getMockRequestDataValueProcessor() {
-		RequestDataValueProcessor mockProcessor = mock(RequestDataValueProcessor.class);
-		HttpServletRequest request = (HttpServletRequest) getPageContext().getRequest();
-		WebApplicationContext wac = RequestContextUtils.findWebApplicationContext(request);
-		wac.getBean(RequestDataValueProcessorWrapper.class).setRequestDataValueProcessor(mockProcessor);
-		return mockProcessor;
-	}
+    protected void exposeBindingResult(Errors errors) {
+        // wrap errors in a Model
+        Map<String, Object> model =
+                Collections.singletonMap(BindingResult.MODEL_KEY_PREFIX + COMMAND_NAME, errors);
 
-	protected void exposeBindingResult(Errors errors) {
-		// wrap errors in a Model
-		Map<String, Object> model = Collections.singletonMap(
-				BindingResult.MODEL_KEY_PREFIX + COMMAND_NAME, errors);
+        // replace the request context with one containing the errors
+        MockPageContext pageContext = getPageContext();
+        RequestContext context =
+                new RequestContext((HttpServletRequest) pageContext.getRequest(), model);
+        pageContext.setAttribute(RequestContextAwareTag.REQUEST_CONTEXT_PAGE_ATTRIBUTE, context);
+    }
 
-		// replace the request context with one containing the errors
-		MockPageContext pageContext = getPageContext();
-		RequestContext context = new RequestContext((HttpServletRequest) pageContext.getRequest(), model);
-		pageContext.setAttribute(RequestContextAwareTag.REQUEST_CONTEXT_PAGE_ATTRIBUTE, context);
-	}
+    protected final void assertContainsAttribute(
+            String output, String attributeName, String attributeValue) {
+        String attributeString = attributeName + "=\"" + attributeValue + "\"";
+        assertTrue(
+                "Expected to find attribute '"
+                        + attributeName
+                        + "' with value '"
+                        + attributeValue
+                        + "' in output + '"
+                        + output
+                        + "'",
+                output.contains(attributeString));
+    }
 
-	protected final void assertContainsAttribute(String output, String attributeName, String attributeValue) {
-		String attributeString = attributeName + "=\"" + attributeValue + "\"";
-		assertTrue("Expected to find attribute '" + attributeName +
-				"' with value '" + attributeValue +
-				"' in output + '" + output + "'",
-				output.contains(attributeString));
-	}
+    protected final void assertAttributeNotPresent(String output, String attributeName) {
+        assertTrue(
+                "Unexpected attribute '" + attributeName + "' in output '" + output + "'.",
+                !output.contains(attributeName + "=\""));
+    }
 
-	protected final void assertAttributeNotPresent(String output, String attributeName) {
-		assertTrue("Unexpected attribute '" + attributeName + "' in output '" + output + "'.",
-				!output.contains(attributeName + "=\""));
-	}
-
-	protected final void assertBlockTagContains(String output, String desiredContents) {
-		String contents = output.substring(output.indexOf(">") + 1, output.lastIndexOf("<"));
-		assertTrue("Expected to find '" + desiredContents + "' in the contents of block tag '" + output + "'",
-				contents.contains(desiredContents));
-	}
-
+    protected final void assertBlockTagContains(String output, String desiredContents) {
+        String contents = output.substring(output.indexOf(">") + 1, output.lastIndexOf("<"));
+        assertTrue(
+                "Expected to find '"
+                        + desiredContents
+                        + "' in the contents of block tag '"
+                        + output
+                        + "'",
+                contents.contains(desiredContents));
+    }
 }

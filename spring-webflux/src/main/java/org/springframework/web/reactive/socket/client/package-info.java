@@ -1,6 +1,4 @@
-/**
- * Client support for WebSocket interactions.
- */
+/** Client support for WebSocket interactions. */
 @NonNullApi
 @NonNullFields
 package org.springframework.web.reactive.socket.client;

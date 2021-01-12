@@ -60,10 +60,11 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.*;
 
 /**
  * Integration tests for the following use cases.
+ *
  * <ul>
- * <li>SPR-10025: Access to request attributes via RequestContextHolder</li>
- * <li>SPR-13217: Populate RequestAttributes before invoking Filters in MockMvc</li>
- * <li>SPR-13260: No reuse of mock requests</li>
+ *   <li>SPR-10025: Access to request attributes via RequestContextHolder
+ *   <li>SPR-13217: Populate RequestAttributes before invoking Filters in MockMvc
+ *   <li>SPR-13260: No reuse of mock requests
  * </ul>
  *
  * @author Rossen Stoyanchev
@@ -76,254 +77,257 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.*;
 @DirtiesContext
 public class RequestContextHolderTests {
 
-	private static final String FROM_TCF_MOCK = "fromTestContextFrameworkMock";
-	private static final String FROM_MVC_TEST_DEFAULT = "fromSpringMvcTestDefault";
-	private static final String FROM_MVC_TEST_MOCK = "fromSpringMvcTestMock";
-	private static final String FROM_REQUEST_FILTER = "fromRequestFilter";
-	private static final String FROM_REQUEST_ATTRIBUTES_FILTER = "fromRequestAttributesFilter";
+    private static final String FROM_TCF_MOCK = "fromTestContextFrameworkMock";
+    private static final String FROM_MVC_TEST_DEFAULT = "fromSpringMvcTestDefault";
+    private static final String FROM_MVC_TEST_MOCK = "fromSpringMvcTestMock";
+    private static final String FROM_REQUEST_FILTER = "fromRequestFilter";
+    private static final String FROM_REQUEST_ATTRIBUTES_FILTER = "fromRequestAttributesFilter";
 
-	@Autowired
-	private WebApplicationContext wac;
+    @Autowired private WebApplicationContext wac;
 
-	@Autowired
-	private MockHttpServletRequest mockRequest;
+    @Autowired private MockHttpServletRequest mockRequest;
 
-	@Autowired
-	private RequestScopedController requestScopedController;
+    @Autowired private RequestScopedController requestScopedController;
 
-	@Autowired
-	private RequestScopedService requestScopedService;
+    @Autowired private RequestScopedService requestScopedService;
 
-	@Autowired
-	private SessionScopedService sessionScopedService;
+    @Autowired private SessionScopedService sessionScopedService;
 
-	@Autowired
-	private FilterWithSessionScopedService filterWithSessionScopedService;
+    @Autowired private FilterWithSessionScopedService filterWithSessionScopedService;
 
-	private MockMvc mockMvc;
+    private MockMvc mockMvc;
 
+    @Before
+    public void setup() {
+        this.mockRequest.setAttribute(FROM_TCF_MOCK, FROM_TCF_MOCK);
 
-	@Before
-	public void setup() {
-		this.mockRequest.setAttribute(FROM_TCF_MOCK, FROM_TCF_MOCK);
+        this.mockMvc =
+                webAppContextSetup(this.wac)
+                        .addFilters(
+                                new RequestFilter(),
+                                new RequestAttributesFilter(),
+                                this.filterWithSessionScopedService)
+                        .defaultRequest(
+                                get("/").requestAttr(FROM_MVC_TEST_DEFAULT, FROM_MVC_TEST_DEFAULT))
+                        .alwaysExpect(status().isOk())
+                        .build();
+    }
 
-		this.mockMvc = webAppContextSetup(this.wac)
-				.addFilters(new RequestFilter(), new RequestAttributesFilter(), this.filterWithSessionScopedService)
-				.defaultRequest(get("/").requestAttr(FROM_MVC_TEST_DEFAULT, FROM_MVC_TEST_DEFAULT))
-				.alwaysExpect(status().isOk())
-				.build();
-	}
+    @Test
+    public void singletonController() throws Exception {
+        this.mockMvc.perform(
+                get("/singletonController").requestAttr(FROM_MVC_TEST_MOCK, FROM_MVC_TEST_MOCK));
+    }
 
-	@Test
-	public void singletonController() throws Exception {
-		this.mockMvc.perform(get("/singletonController").requestAttr(FROM_MVC_TEST_MOCK, FROM_MVC_TEST_MOCK));
-	}
+    @Test
+    public void requestScopedController() throws Exception {
+        assertTrue(
+                "request-scoped controller must be a CGLIB proxy",
+                AopUtils.isCglibProxy(this.requestScopedController));
+        this.mockMvc.perform(
+                get("/requestScopedController")
+                        .requestAttr(FROM_MVC_TEST_MOCK, FROM_MVC_TEST_MOCK));
+    }
 
-	@Test
-	public void requestScopedController() throws Exception {
-		assertTrue("request-scoped controller must be a CGLIB proxy", AopUtils.isCglibProxy(this.requestScopedController));
-		this.mockMvc.perform(get("/requestScopedController").requestAttr(FROM_MVC_TEST_MOCK, FROM_MVC_TEST_MOCK));
-	}
+    @Test
+    public void requestScopedService() throws Exception {
+        assertTrue(
+                "request-scoped service must be a CGLIB proxy",
+                AopUtils.isCglibProxy(this.requestScopedService));
+        this.mockMvc.perform(
+                get("/requestScopedService").requestAttr(FROM_MVC_TEST_MOCK, FROM_MVC_TEST_MOCK));
+    }
 
-	@Test
-	public void requestScopedService() throws Exception {
-		assertTrue("request-scoped service must be a CGLIB proxy", AopUtils.isCglibProxy(this.requestScopedService));
-		this.mockMvc.perform(get("/requestScopedService").requestAttr(FROM_MVC_TEST_MOCK, FROM_MVC_TEST_MOCK));
-	}
+    @Test
+    public void sessionScopedService() throws Exception {
+        assertTrue(
+                "session-scoped service must be a CGLIB proxy",
+                AopUtils.isCglibProxy(this.sessionScopedService));
+        this.mockMvc.perform(
+                get("/sessionScopedService").requestAttr(FROM_MVC_TEST_MOCK, FROM_MVC_TEST_MOCK));
+    }
 
-	@Test
-	public void sessionScopedService() throws Exception {
-		assertTrue("session-scoped service must be a CGLIB proxy", AopUtils.isCglibProxy(this.sessionScopedService));
-		this.mockMvc.perform(get("/sessionScopedService").requestAttr(FROM_MVC_TEST_MOCK, FROM_MVC_TEST_MOCK));
-	}
+    @After
+    public void verifyRestoredRequestAttributes() {
+        assertRequestAttributes(false);
+    }
 
-	@After
-	public void verifyRestoredRequestAttributes() {
-		assertRequestAttributes(false);
-	}
+    // -------------------------------------------------------------------
 
+    @Configuration
+    @EnableWebMvc
+    static class WebConfig implements WebMvcConfigurer {
 
-	// -------------------------------------------------------------------
+        @Bean
+        public SingletonController singletonController() {
+            return new SingletonController();
+        }
 
-	@Configuration
-	@EnableWebMvc
-	static class WebConfig implements WebMvcConfigurer {
+        @Bean
+        @Scope(scopeName = "request", proxyMode = ScopedProxyMode.TARGET_CLASS)
+        public RequestScopedController requestScopedController() {
+            return new RequestScopedController();
+        }
 
-		@Bean
-		public SingletonController singletonController() {
-			return new SingletonController();
-		}
+        @Bean
+        @RequestScope
+        public RequestScopedService requestScopedService() {
+            return new RequestScopedService();
+        }
 
-		@Bean
-		@Scope(scopeName = "request", proxyMode = ScopedProxyMode.TARGET_CLASS)
-		public RequestScopedController requestScopedController() {
-			return new RequestScopedController();
-		}
+        @Bean
+        public ControllerWithRequestScopedService controllerWithRequestScopedService() {
+            return new ControllerWithRequestScopedService();
+        }
 
-		@Bean
-		@RequestScope
-		public RequestScopedService requestScopedService() {
-			return new RequestScopedService();
-		}
+        @Bean
+        @SessionScope
+        public SessionScopedService sessionScopedService() {
+            return new SessionScopedService();
+        }
 
-		@Bean
-		public ControllerWithRequestScopedService controllerWithRequestScopedService() {
-			return new ControllerWithRequestScopedService();
-		}
+        @Bean
+        public ControllerWithSessionScopedService controllerWithSessionScopedService() {
+            return new ControllerWithSessionScopedService();
+        }
 
-		@Bean
-		@SessionScope
-		public SessionScopedService sessionScopedService() {
-			return new SessionScopedService();
-		}
+        @Bean
+        public FilterWithSessionScopedService filterWithSessionScopedService() {
+            return new FilterWithSessionScopedService();
+        }
+    }
 
-		@Bean
-		public ControllerWithSessionScopedService controllerWithSessionScopedService() {
-			return new ControllerWithSessionScopedService();
-		}
+    @RestController
+    static class SingletonController {
 
-		@Bean
-		public FilterWithSessionScopedService filterWithSessionScopedService() {
-			return new FilterWithSessionScopedService();
-		}
-	}
+        @RequestMapping("/singletonController")
+        public void handle() {
+            assertRequestAttributes();
+        }
+    }
 
-	@RestController
-	static class SingletonController {
+    @RestController
+    static class RequestScopedController {
 
-		@RequestMapping("/singletonController")
-		public void handle() {
-			assertRequestAttributes();
-		}
-	}
+        @Autowired private ServletRequest request;
 
-	@RestController
-	static class RequestScopedController {
+        @RequestMapping("/requestScopedController")
+        public void handle() {
+            assertRequestAttributes(request);
+            assertRequestAttributes();
+        }
+    }
 
-		@Autowired
-		private ServletRequest request;
+    static class RequestScopedService {
 
+        @Autowired private ServletRequest request;
 
-		@RequestMapping("/requestScopedController")
-		public void handle() {
-			assertRequestAttributes(request);
-			assertRequestAttributes();
-		}
-	}
+        void process() {
+            assertRequestAttributes(request);
+        }
+    }
 
-	static class RequestScopedService {
+    static class SessionScopedService {
 
-		@Autowired
-		private ServletRequest request;
+        @Autowired private ServletRequest request;
 
+        void process() {
+            assertRequestAttributes(this.request);
+        }
+    }
 
-		void process() {
-			assertRequestAttributes(request);
-		}
-	}
+    @RestController
+    static class ControllerWithRequestScopedService {
 
-	static class SessionScopedService {
+        @Autowired private RequestScopedService service;
 
-		@Autowired
-		private ServletRequest request;
+        @RequestMapping("/requestScopedService")
+        public void handle() {
+            this.service.process();
+            assertRequestAttributes();
+        }
+    }
 
+    @RestController
+    static class ControllerWithSessionScopedService {
 
-		void process() {
-			assertRequestAttributes(this.request);
-		}
-	}
+        @Autowired private SessionScopedService service;
 
-	@RestController
-	static class ControllerWithRequestScopedService {
+        @RequestMapping("/sessionScopedService")
+        public void handle() {
+            this.service.process();
+            assertRequestAttributes();
+        }
+    }
 
-		@Autowired
-		private RequestScopedService service;
+    static class FilterWithSessionScopedService extends GenericFilterBean {
 
+        @Autowired private SessionScopedService service;
 
-		@RequestMapping("/requestScopedService")
-		public void handle() {
-			this.service.process();
-			assertRequestAttributes();
-		}
-	}
+        @Override
+        public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+                throws IOException, ServletException {
+            this.service.process();
+            assertRequestAttributes(request);
+            assertRequestAttributes();
+            chain.doFilter(request, response);
+        }
+    }
 
-	@RestController
-	static class ControllerWithSessionScopedService {
+    static class RequestFilter extends GenericFilterBean {
 
-		@Autowired
-		private SessionScopedService service;
+        @Override
+        public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+                throws IOException, ServletException {
+            request.setAttribute(FROM_REQUEST_FILTER, FROM_REQUEST_FILTER);
+            chain.doFilter(request, response);
+        }
+    }
 
+    static class RequestAttributesFilter extends GenericFilterBean {
 
-		@RequestMapping("/sessionScopedService")
-		public void handle() {
-			this.service.process();
-			assertRequestAttributes();
-		}
-	}
+        @Override
+        public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+                throws IOException, ServletException {
+            RequestContextHolder.getRequestAttributes()
+                    .setAttribute(
+                            FROM_REQUEST_ATTRIBUTES_FILTER,
+                            FROM_REQUEST_ATTRIBUTES_FILTER,
+                            RequestAttributes.SCOPE_REQUEST);
+            chain.doFilter(request, response);
+        }
+    }
 
-	static class FilterWithSessionScopedService extends GenericFilterBean {
+    private static void assertRequestAttributes() {
+        assertRequestAttributes(true);
+    }
 
-		@Autowired
-		private SessionScopedService service;
+    private static void assertRequestAttributes(boolean withinMockMvc) {
+        RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
+        assertThat(requestAttributes, instanceOf(ServletRequestAttributes.class));
+        assertRequestAttributes(
+                ((ServletRequestAttributes) requestAttributes).getRequest(), withinMockMvc);
+    }
 
+    private static void assertRequestAttributes(ServletRequest request) {
+        assertRequestAttributes(request, true);
+    }
 
-		@Override
-		public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
-			this.service.process();
-			assertRequestAttributes(request);
-			assertRequestAttributes();
-			chain.doFilter(request, response);
-		}
-	}
-
-	static class RequestFilter extends GenericFilterBean {
-
-		@Override
-		public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
-			request.setAttribute(FROM_REQUEST_FILTER, FROM_REQUEST_FILTER);
-			chain.doFilter(request, response);
-		}
-	}
-
-	static class RequestAttributesFilter extends GenericFilterBean {
-
-		@Override
-		public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
-			RequestContextHolder.getRequestAttributes().setAttribute(FROM_REQUEST_ATTRIBUTES_FILTER, FROM_REQUEST_ATTRIBUTES_FILTER, RequestAttributes.SCOPE_REQUEST);
-			chain.doFilter(request, response);
-		}
-	}
-
-
-	private static void assertRequestAttributes() {
-		assertRequestAttributes(true);
-	}
-
-	private static void assertRequestAttributes(boolean withinMockMvc) {
-		RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
-		assertThat(requestAttributes, instanceOf(ServletRequestAttributes.class));
-		assertRequestAttributes(((ServletRequestAttributes) requestAttributes).getRequest(), withinMockMvc);
-	}
-
-	private static void assertRequestAttributes(ServletRequest request) {
-		assertRequestAttributes(request, true);
-	}
-
-	private static void assertRequestAttributes(ServletRequest request, boolean withinMockMvc) {
-		if (withinMockMvc) {
-			assertThat(request.getAttribute(FROM_TCF_MOCK), is(nullValue()));
-			assertThat(request.getAttribute(FROM_MVC_TEST_DEFAULT), is(FROM_MVC_TEST_DEFAULT));
-			assertThat(request.getAttribute(FROM_MVC_TEST_MOCK), is(FROM_MVC_TEST_MOCK));
-			assertThat(request.getAttribute(FROM_REQUEST_FILTER), is(FROM_REQUEST_FILTER));
-			assertThat(request.getAttribute(FROM_REQUEST_ATTRIBUTES_FILTER), is(FROM_REQUEST_ATTRIBUTES_FILTER));
-		}
-		else {
-			assertThat(request.getAttribute(FROM_TCF_MOCK), is(FROM_TCF_MOCK));
-			assertThat(request.getAttribute(FROM_MVC_TEST_DEFAULT), is(nullValue()));
-			assertThat(request.getAttribute(FROM_MVC_TEST_MOCK), is(nullValue()));
-			assertThat(request.getAttribute(FROM_REQUEST_FILTER), is(nullValue()));
-			assertThat(request.getAttribute(FROM_REQUEST_ATTRIBUTES_FILTER), is(nullValue()));
-		}
-	}
-
+    private static void assertRequestAttributes(ServletRequest request, boolean withinMockMvc) {
+        if (withinMockMvc) {
+            assertThat(request.getAttribute(FROM_TCF_MOCK), is(nullValue()));
+            assertThat(request.getAttribute(FROM_MVC_TEST_DEFAULT), is(FROM_MVC_TEST_DEFAULT));
+            assertThat(request.getAttribute(FROM_MVC_TEST_MOCK), is(FROM_MVC_TEST_MOCK));
+            assertThat(request.getAttribute(FROM_REQUEST_FILTER), is(FROM_REQUEST_FILTER));
+            assertThat(
+                    request.getAttribute(FROM_REQUEST_ATTRIBUTES_FILTER),
+                    is(FROM_REQUEST_ATTRIBUTES_FILTER));
+        } else {
+            assertThat(request.getAttribute(FROM_TCF_MOCK), is(FROM_TCF_MOCK));
+            assertThat(request.getAttribute(FROM_MVC_TEST_DEFAULT), is(nullValue()));
+            assertThat(request.getAttribute(FROM_MVC_TEST_MOCK), is(nullValue()));
+            assertThat(request.getAttribute(FROM_REQUEST_FILTER), is(nullValue()));
+            assertThat(request.getAttribute(FROM_REQUEST_ATTRIBUTES_FILTER), is(nullValue()));
+        }
+    }
 }

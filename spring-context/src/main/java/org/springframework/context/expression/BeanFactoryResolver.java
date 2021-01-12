@@ -24,35 +24,32 @@ import org.springframework.expression.EvaluationContext;
 import org.springframework.util.Assert;
 
 /**
- * EL bean resolver that operates against a Spring
- * {@link org.springframework.beans.factory.BeanFactory}.
+ * EL bean resolver that operates against a Spring {@link
+ * org.springframework.beans.factory.BeanFactory}.
  *
  * @author Juergen Hoeller
  * @since 3.0.4
  */
 public class BeanFactoryResolver implements BeanResolver {
 
-	private final BeanFactory beanFactory;
+    private final BeanFactory beanFactory;
 
+    /**
+     * Create a new {@link BeanFactoryResolver} for the given factory.
+     *
+     * @param beanFactory the {@link BeanFactory} to resolve bean names against
+     */
+    public BeanFactoryResolver(BeanFactory beanFactory) {
+        Assert.notNull(beanFactory, "BeanFactory must not be null");
+        this.beanFactory = beanFactory;
+    }
 
-	/**
-	 * Create a new {@link BeanFactoryResolver} for the given factory.
-	 * @param beanFactory the {@link BeanFactory} to resolve bean names against
-	 */
-	public BeanFactoryResolver(BeanFactory beanFactory) {
-		Assert.notNull(beanFactory, "BeanFactory must not be null");
-		this.beanFactory = beanFactory;
-	}
-
-
-	@Override
-	public Object resolve(EvaluationContext context, String beanName) throws AccessException {
-		try {
-			return this.beanFactory.getBean(beanName);
-		}
-		catch (BeansException ex) {
-			throw new AccessException("Could not resolve bean reference against BeanFactory", ex);
-		}
-	}
-
+    @Override
+    public Object resolve(EvaluationContext context, String beanName) throws AccessException {
+        try {
+            return this.beanFactory.getBean(beanName);
+        } catch (BeansException ex) {
+            throw new AccessException("Could not resolve bean reference against BeanFactory", ex);
+        }
+    }
 }

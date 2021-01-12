@@ -21,63 +21,61 @@ import java.io.IOException;
 /**
  * Interface used for {@link org.springframework.tests.sample.beans.TestBean}.
  *
- * <p>Two methods are the same as on Person, but if this
- * extends person it breaks quite a few tests..
+ * <p>Two methods are the same as on Person, but if this extends person it breaks quite a few
+ * tests..
  *
  * @author Rod Johnson
  * @author Juergen Hoeller
  */
 public interface ITestBean extends AgeHolder {
 
-	String getName();
+    String getName();
 
-	void setName(String name);
+    void setName(String name);
 
-	ITestBean getSpouse();
+    ITestBean getSpouse();
 
-	void setSpouse(ITestBean spouse);
+    void setSpouse(ITestBean spouse);
 
-	ITestBean[] getSpouses();
+    ITestBean[] getSpouses();
 
-	String[] getStringArray();
+    String[] getStringArray();
 
-	void setStringArray(String[] stringArray);
+    void setStringArray(String[] stringArray);
 
-	Integer[][] getNestedIntegerArray();
+    Integer[][] getNestedIntegerArray();
 
-	Integer[] getSomeIntegerArray();
+    Integer[] getSomeIntegerArray();
 
-	void setSomeIntegerArray(Integer[] someIntegerArray);
+    void setSomeIntegerArray(Integer[] someIntegerArray);
 
-	void setNestedIntegerArray(Integer[][] nestedIntegerArray);
+    void setNestedIntegerArray(Integer[][] nestedIntegerArray);
 
-	int[] getSomeIntArray();
+    int[] getSomeIntArray();
 
-	void setSomeIntArray(int[] someIntArray);
+    void setSomeIntArray(int[] someIntArray);
 
-	int[][] getNestedIntArray();
+    int[][] getNestedIntArray();
 
-	void setNestedIntArray(int[][] someNestedArray);
+    void setNestedIntArray(int[][] someNestedArray);
 
-	/**
-	 * Throws a given (non-null) exception.
-	 */
-	void exceptional(Throwable t) throws Throwable;
+    /** Throws a given (non-null) exception. */
+    void exceptional(Throwable t) throws Throwable;
 
-	Object returnsThis();
+    Object returnsThis();
 
-	INestedTestBean getDoctor();
+    INestedTestBean getDoctor();
 
-	INestedTestBean getLawyer();
+    INestedTestBean getLawyer();
 
-	IndexedTestBean getNestedIndexedBean();
+    IndexedTestBean getNestedIndexedBean();
 
-	/**
-	 * Increment the age by one.
-	 * @return the previous age
-	 */
-	int haveBirthday();
+    /**
+     * Increment the age by one.
+     *
+     * @return the previous age
+     */
+    int haveBirthday();
 
-	void unreliableFileOperation() throws IOException;
-
+    void unreliableFileOperation() throws IOException;
 }

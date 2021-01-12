@@ -17,17 +17,16 @@
 package org.springframework.core;
 
 /**
- * Interface to be implemented by transparent resource proxies that need to be
- * considered as equal to the underlying resource, for example for consistent
- * lookup key comparisons. Note that this interface does imply such special
- * semantics and does not constitute a general-purpose mixin!
+ * Interface to be implemented by transparent resource proxies that need to be considered as equal
+ * to the underlying resource, for example for consistent lookup key comparisons. Note that this
+ * interface does imply such special semantics and does not constitute a general-purpose mixin!
  *
- * <p>Such wrappers will automatically be unwrapped for key comparisons in
- * {@link org.springframework.transaction.support.TransactionSynchronizationManager}.
+ * <p>Such wrappers will automatically be unwrapped for key comparisons in {@link
+ * org.springframework.transaction.support.TransactionSynchronizationManager}.
  *
- * <p>Only fully transparent proxies, e.g. for redirection or service lookups,
- * are supposed to implement this interface. Proxies that decorate the target
- * object with new behavior, such as AOP proxies, do <i>not</i> qualify here!
+ * <p>Only fully transparent proxies, e.g. for redirection or service lookups, are supposed to
+ * implement this interface. Proxies that decorate the target object with new behavior, such as AOP
+ * proxies, do <i>not</i> qualify here!
  *
  * @author Juergen Hoeller
  * @since 2.5.4
@@ -35,9 +34,6 @@ package org.springframework.core;
  */
 public interface InfrastructureProxy {
 
-	/**
-	 * Return the underlying resource (never {@code null}).
-	 */
-	Object getWrappedObject();
-
+    /** Return the underlying resource (never {@code null}). */
+    Object getWrappedObject();
 }

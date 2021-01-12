@@ -35,45 +35,38 @@ import static org.junit.Assert.*;
  */
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextHierarchy(@ContextConfiguration)
-public class TestHierarchyLevelTwoWithSingleLevelContextHierarchyTests extends
-		TestHierarchyLevelOneWithSingleLevelContextHierarchyTests {
+public class TestHierarchyLevelTwoWithSingleLevelContextHierarchyTests
+        extends TestHierarchyLevelOneWithSingleLevelContextHierarchyTests {
 
-	@Configuration
-	static class Config {
+    @Configuration
+    static class Config {
 
-		@Bean
-		public String foo() {
-			return "foo-level-2";
-		}
+        @Bean
+        public String foo() {
+            return "foo-level-2";
+        }
 
-		@Bean
-		public String baz() {
-			return "baz";
-		}
-	}
+        @Bean
+        public String baz() {
+            return "baz";
+        }
+    }
 
+    @Autowired private String foo;
 
-	@Autowired
-	private String foo;
+    @Autowired private String bar;
 
-	@Autowired
-	private String bar;
+    @Autowired private String baz;
 
-	@Autowired
-	private String baz;
+    @Autowired private ApplicationContext context;
 
-	@Autowired
-	private ApplicationContext context;
-
-
-	@Test
-	@Override
-	public void loadContextHierarchy() {
-		assertNotNull("child ApplicationContext", context);
-		assertNotNull("parent ApplicationContext", context.getParent());
-		assertEquals("foo-level-2", foo);
-		assertEquals("bar", bar);
-		assertEquals("baz", baz);
-	}
-
+    @Test
+    @Override
+    public void loadContextHierarchy() {
+        assertNotNull("child ApplicationContext", context);
+        assertNotNull("parent ApplicationContext", context.getParent());
+        assertEquals("foo-level-2", foo);
+        assertEquals("bar", bar);
+        assertEquals("baz", baz);
+    }
 }

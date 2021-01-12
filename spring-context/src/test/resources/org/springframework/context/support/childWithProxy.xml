@@ -3,12 +3,16 @@
 
 <beans>
 
-	<bean name="assemblerOne" class="org.springframework.context.support.TestProxyFactoryBean">
-		<property name="target"><ref parent="assemblerOne"/></property>
-	</bean>
+    <bean name="assemblerOne" class="org.springframework.context.support.TestProxyFactoryBean">
+        <property name="target">
+            <ref parent="assemblerOne"/>
+        </property>
+    </bean>
 
-	<bean name="assemblerTwo" class="org.springframework.context.support.TestProxyFactoryBean">
-		<property name="target"><ref parent="assemblerTwo"/></property>
-	</bean>
+    <bean name="assemblerTwo" class="org.springframework.context.support.TestProxyFactoryBean">
+        <property name="target">
+            <ref parent="assemblerTwo"/>
+        </property>
+    </bean>
 
 </beans>

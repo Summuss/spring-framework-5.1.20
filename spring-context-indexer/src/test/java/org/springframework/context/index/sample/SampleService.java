@@ -24,5 +24,4 @@ import org.springframework.stereotype.Service;
  * @author Stephane Nicoll
  */
 @Service
-public class SampleService {
-}
+public class SampleService {}

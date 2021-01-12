@@ -32,30 +32,27 @@ import org.springframework.util.Assert;
  */
 public class MockHttpInputMessage implements HttpInputMessage {
 
-	private final HttpHeaders headers = new HttpHeaders();
+    private final HttpHeaders headers = new HttpHeaders();
 
-	private final InputStream body;
+    private final InputStream body;
 
+    public MockHttpInputMessage(byte[] content) {
+        Assert.notNull(content, "Byte array must not be null");
+        this.body = new ByteArrayInputStream(content);
+    }
 
-	public MockHttpInputMessage(byte[] content) {
-		Assert.notNull(content, "Byte array must not be null");
-		this.body = new ByteArrayInputStream(content);
-	}
+    public MockHttpInputMessage(InputStream body) {
+        Assert.notNull(body, "InputStream must not be null");
+        this.body = body;
+    }
 
-	public MockHttpInputMessage(InputStream body) {
-		Assert.notNull(body, "InputStream must not be null");
-		this.body = body;
-	}
+    @Override
+    public HttpHeaders getHeaders() {
+        return this.headers;
+    }
 
-
-	@Override
-	public HttpHeaders getHeaders() {
-		return this.headers;
-	}
-
-	@Override
-	public InputStream getBody() throws IOException {
-		return this.body;
-	}
-
+    @Override
+    public InputStream getBody() throws IOException {
+        return this.body;
+    }
 }

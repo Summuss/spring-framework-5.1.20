@@ -27,37 +27,37 @@ import org.springframework.context.support.LiveBeansView;
 import org.springframework.util.Assert;
 
 /**
- * {@link LiveBeansView} subclass which looks for all ApplicationContexts
- * in the web application, as exposed in ServletContext attributes.
+ * {@link LiveBeansView} subclass which looks for all ApplicationContexts in the web application, as
+ * exposed in ServletContext attributes.
  *
  * @author Juergen Hoeller
  * @since 3.2
  */
 public class ServletContextLiveBeansView extends LiveBeansView {
 
-	private final ServletContext servletContext;
+    private final ServletContext servletContext;
 
-	/**
-	 * Create a new LiveBeansView for the given ServletContext.
-	 * @param servletContext current ServletContext
-	 */
-	public ServletContextLiveBeansView(ServletContext servletContext) {
-		Assert.notNull(servletContext, "ServletContext must not be null");
-		this.servletContext = servletContext;
-	}
+    /**
+     * Create a new LiveBeansView for the given ServletContext.
+     *
+     * @param servletContext current ServletContext
+     */
+    public ServletContextLiveBeansView(ServletContext servletContext) {
+        Assert.notNull(servletContext, "ServletContext must not be null");
+        this.servletContext = servletContext;
+    }
 
-	@Override
-	protected Set<ConfigurableApplicationContext> findApplicationContexts() {
-		Set<ConfigurableApplicationContext> contexts = new LinkedHashSet<>();
-		Enumeration<String> attrNames = this.servletContext.getAttributeNames();
-		while (attrNames.hasMoreElements()) {
-			String attrName = attrNames.nextElement();
-			Object attrValue = this.servletContext.getAttribute(attrName);
-			if (attrValue instanceof ConfigurableApplicationContext) {
-				contexts.add((ConfigurableApplicationContext) attrValue);
-			}
-		}
-		return contexts;
-	}
-
+    @Override
+    protected Set<ConfigurableApplicationContext> findApplicationContexts() {
+        Set<ConfigurableApplicationContext> contexts = new LinkedHashSet<>();
+        Enumeration<String> attrNames = this.servletContext.getAttributeNames();
+        while (attrNames.hasMoreElements()) {
+            String attrName = attrNames.nextElement();
+            Object attrValue = this.servletContext.getAttribute(attrName);
+            if (attrValue instanceof ConfigurableApplicationContext) {
+                contexts.add((ConfigurableApplicationContext) attrValue);
+            }
+        }
+        return contexts;
+    }
 }

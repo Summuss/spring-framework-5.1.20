@@ -31,39 +31,34 @@ import org.springframework.core.type.AnnotationMetadata;
  */
 public class Spr12334Tests {
 
-	@Test
-	public void shouldNotScanTwice() {
-		TestImport.scanned = false;
+    @Test
+    public void shouldNotScanTwice() {
+        TestImport.scanned = false;
 
-		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
-		context.scan(TestImport.class.getPackage().getName());
-		context.refresh();
-		context.getBean(TestConfiguration.class);
-	}
+        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+        context.scan(TestImport.class.getPackage().getName());
+        context.refresh();
+        context.getBean(TestConfiguration.class);
+    }
 
+    @Import(TestImport.class)
+    public @interface AnotherImport {}
 
-	@Import(TestImport.class)
-	public @interface AnotherImport {
-	}
+    @Configuration
+    @AnotherImport
+    public static class TestConfiguration {}
 
+    public static class TestImport implements ImportBeanDefinitionRegistrar {
 
-	@Configuration
-	@AnotherImport
-	public static class TestConfiguration {
-	}
+        private static boolean scanned = false;
 
-
-	public static class TestImport implements ImportBeanDefinitionRegistrar {
-
-		private static boolean scanned = false;
-
-		@Override
-		public void registerBeanDefinitions(AnnotationMetadata metadata, BeanDefinitionRegistry registry)  {
-			if (scanned) {
-				throw new IllegalStateException("Already scanned");
-			}
-			scanned = true;
-		}
-	}
-
+        @Override
+        public void registerBeanDefinitions(
+                AnnotationMetadata metadata, BeanDefinitionRegistry registry) {
+            if (scanned) {
+                throw new IllegalStateException("Already scanned");
+            }
+            scanned = true;
+        }
+    }
 }

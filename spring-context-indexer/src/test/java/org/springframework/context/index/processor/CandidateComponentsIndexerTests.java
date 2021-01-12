@@ -74,202 +74,195 @@ import static org.springframework.context.index.processor.Metadata.*;
  */
 public class CandidateComponentsIndexerTests {
 
-	private TestCompiler compiler;
+    private TestCompiler compiler;
 
-	@Rule
-	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+    @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
+    @Rule public ExpectedException thrown = ExpectedException.none();
 
+    @Before
+    public void createCompiler() throws IOException {
+        this.compiler = new TestCompiler(this.temporaryFolder);
+    }
 
-	@Before
-	public void createCompiler() throws IOException {
-		this.compiler = new TestCompiler(this.temporaryFolder);
-	}
+    @Test
+    public void noCandidate() {
+        CandidateComponentsMetadata metadata = compile(SampleNone.class);
+        assertThat(metadata.getItems(), hasSize(0));
+    }
 
-	@Test
-	public void noCandidate() {
-		CandidateComponentsMetadata metadata = compile(SampleNone.class);
-		assertThat(metadata.getItems(), hasSize(0));
-	}
+    @Test
+    public void noAnnotation() {
+        CandidateComponentsMetadata metadata = compile(CandidateComponentsIndexerTests.class);
+        assertThat(metadata.getItems(), hasSize(0));
+    }
 
-	@Test
-	public void noAnnotation() {
-		CandidateComponentsMetadata metadata = compile(CandidateComponentsIndexerTests.class);
-		assertThat(metadata.getItems(), hasSize(0));
-	}
+    @Test
+    public void stereotypeComponent() {
+        testComponent(SampleComponent.class);
+    }
 
-	@Test
-	public void stereotypeComponent() {
-		testComponent(SampleComponent.class);
-	}
+    @Test
+    public void stereotypeService() {
+        testComponent(SampleService.class);
+    }
 
-	@Test
-	public void stereotypeService() {
-		testComponent(SampleService.class);
-	}
+    @Test
+    public void stereotypeController() {
+        testComponent(SampleController.class);
+    }
 
-	@Test
-	public void stereotypeController() {
-		testComponent(SampleController.class);
-	}
+    @Test
+    public void stereotypeControllerMetaAnnotation() {
+        testComponent(SampleMetaController.class);
+    }
 
-	@Test
-	public void stereotypeControllerMetaAnnotation() {
-		testComponent(SampleMetaController.class);
-	}
+    @Test
+    public void stereotypeRepository() {
+        testSingleComponent(SampleRepository.class, Component.class);
+    }
 
-	@Test
-	public void stereotypeRepository() {
-		testSingleComponent(SampleRepository.class, Component.class);
-	}
+    @Test
+    public void stereotypeControllerMetaIndex() {
+        testSingleComponent(
+                SampleMetaIndexedController.class, Component.class, MetaControllerIndexed.class);
+    }
 
-	@Test
-	public void stereotypeControllerMetaIndex() {
-		testSingleComponent(SampleMetaIndexedController.class,
-				Component.class, MetaControllerIndexed.class);
-	}
+    @Test
+    public void stereotypeOnAbstractClass() {
+        testComponent(AbstractController.class);
+    }
 
-	@Test
-	public void stereotypeOnAbstractClass() {
-		testComponent(AbstractController.class);
-	}
+    @Test
+    public void cdiManagedBean() {
+        testSingleComponent(SampleManagedBean.class, ManagedBean.class);
+    }
 
-	@Test
-	public void cdiManagedBean() {
-		testSingleComponent(SampleManagedBean.class, ManagedBean.class);
-	}
+    @Test
+    public void cdiNamed() {
+        testSingleComponent(SampleNamed.class, Named.class);
+    }
 
-	@Test
-	public void cdiNamed() {
-		testSingleComponent(SampleNamed.class, Named.class);
-	}
+    @Test
+    public void cdiTransactional() {
+        testSingleComponent(SampleTransactional.class, Transactional.class);
+    }
 
-	@Test
-	public void cdiTransactional() {
-		testSingleComponent(SampleTransactional.class, Transactional.class);
-	}
+    @Test
+    public void persistenceEntity() {
+        testSingleComponent(SampleEntity.class, Entity.class);
+    }
 
-	@Test
-	public void persistenceEntity() {
-		testSingleComponent(SampleEntity.class, Entity.class);
-	}
+    @Test
+    public void persistenceMappedSuperClass() {
+        testSingleComponent(SampleMappedSuperClass.class, MappedSuperclass.class);
+    }
 
-	@Test
-	public void persistenceMappedSuperClass() {
-		testSingleComponent(SampleMappedSuperClass.class, MappedSuperclass.class);
-	}
+    @Test
+    public void persistenceEmbeddable() {
+        testSingleComponent(SampleEmbeddable.class, Embeddable.class);
+    }
 
-	@Test
-	public void persistenceEmbeddable() {
-		testSingleComponent(SampleEmbeddable.class, Embeddable.class);
-	}
+    @Test
+    public void persistenceConverter() {
+        testSingleComponent(SampleConverter.class, Converter.class);
+    }
 
-	@Test
-	public void persistenceConverter() {
-		testSingleComponent(SampleConverter.class, Converter.class);
-	}
+    @Test
+    public void packageInfo() {
+        CandidateComponentsMetadata metadata =
+                compile("org/springframework/context/index/sample/jpa/package-info");
+        assertThat(
+                metadata,
+                hasComponent("org.springframework.context.index.sample.jpa", "package-info"));
+    }
 
-	@Test
-	public void packageInfo() {
-		CandidateComponentsMetadata metadata = compile(
-				"org/springframework/context/index/sample/jpa/package-info");
-		assertThat(metadata, hasComponent(
-				"org.springframework.context.index.sample.jpa", "package-info"));
-	}
+    @Test
+    public void typeStereotypeFromMetaInterface() {
+        testSingleComponent(SampleSpecializedRepo.class, Repo.class);
+    }
 
-	@Test
-	public void typeStereotypeFromMetaInterface() {
-		testSingleComponent(SampleSpecializedRepo.class, Repo.class);
-	}
+    @Test
+    public void typeStereotypeFromInterfaceFromSuperClass() {
+        testSingleComponent(SampleRepo.class, Repo.class);
+    }
 
-	@Test
-	public void typeStereotypeFromInterfaceFromSuperClass() {
-		testSingleComponent(SampleRepo.class, Repo.class);
-	}
+    @Test
+    public void typeStereotypeFromSeveralInterfaces() {
+        testSingleComponent(SampleSmartRepo.class, Repo.class, SmartRepo.class);
+    }
 
-	@Test
-	public void typeStereotypeFromSeveralInterfaces() {
-		testSingleComponent(SampleSmartRepo.class, Repo.class, SmartRepo.class);
-	}
+    @Test
+    public void typeStereotypeOnInterface() {
+        testSingleComponent(SpecializedRepo.class, Repo.class);
+    }
 
-	@Test
-	public void typeStereotypeOnInterface() {
-		testSingleComponent(SpecializedRepo.class, Repo.class);
-	}
+    @Test
+    public void typeStereotypeOnInterfaceFromSeveralInterfaces() {
+        testSingleComponent(SmartRepo.class, Repo.class, SmartRepo.class);
+    }
 
-	@Test
-	public void typeStereotypeOnInterfaceFromSeveralInterfaces() {
-		testSingleComponent(SmartRepo.class, Repo.class, SmartRepo.class);
-	}
+    @Test
+    public void typeStereotypeOnIndexedInterface() {
+        testSingleComponent(Repo.class, Repo.class);
+    }
 
-	@Test
-	public void typeStereotypeOnIndexedInterface() {
-		testSingleComponent(Repo.class, Repo.class);
-	}
+    @Test
+    public void embeddedCandidatesAreDetected() throws IOException, ClassNotFoundException {
+        // Validate nested type structure
+        String nestedType =
+                "org.springframework.context.index.sample.SampleEmbedded.Another$AnotherPublicCandidate";
+        Class<?> type = ClassUtils.forName(nestedType, getClass().getClassLoader());
+        assertThat(type, sameInstance(SampleEmbedded.Another.AnotherPublicCandidate.class));
 
-	@Test
-	public void embeddedCandidatesAreDetected()
-			throws IOException, ClassNotFoundException {
-		// Validate nested type structure
-		String nestedType = "org.springframework.context.index.sample.SampleEmbedded.Another$AnotherPublicCandidate";
-		Class<?> type = ClassUtils.forName(nestedType, getClass().getClassLoader());
-		assertThat(type, sameInstance(SampleEmbedded.Another.AnotherPublicCandidate.class));
+        CandidateComponentsMetadata metadata = compile(SampleEmbedded.class);
+        assertThat(metadata, hasComponent(SampleEmbedded.PublicCandidate.class, Component.class));
+        assertThat(metadata, hasComponent(nestedType, Component.class.getName()));
+        assertThat(metadata.getItems(), hasSize(2));
+    }
 
-		CandidateComponentsMetadata metadata = compile(SampleEmbedded.class);
-		assertThat(metadata, hasComponent(
-				SampleEmbedded.PublicCandidate.class, Component.class));
-		assertThat(metadata, hasComponent(nestedType, Component.class.getName()));
-		assertThat(metadata.getItems(), hasSize(2));
-	}
+    @Test
+    public void embeddedNonStaticCandidateAreIgnored() {
+        CandidateComponentsMetadata metadata = compile(SampleNonStaticEmbedded.class);
+        assertThat(metadata.getItems(), hasSize(0));
+    }
 
-	@Test
-	public void embeddedNonStaticCandidateAreIgnored() {
-		CandidateComponentsMetadata metadata = compile(SampleNonStaticEmbedded.class);
-		assertThat(metadata.getItems(), hasSize(0));
-	}
+    private void testComponent(Class<?>... classes) {
+        CandidateComponentsMetadata metadata = compile(classes);
+        for (Class<?> c : classes) {
+            assertThat(metadata, hasComponent(c, Component.class));
+        }
+        assertThat(metadata.getItems(), hasSize(classes.length));
+    }
 
-	private void testComponent(Class<?>... classes) {
-		CandidateComponentsMetadata metadata = compile(classes);
-		for (Class<?> c : classes) {
-			assertThat(metadata, hasComponent(c, Component.class));
-		}
-		assertThat(metadata.getItems(), hasSize(classes.length));
-	}
+    private void testSingleComponent(Class<?> target, Class<?>... stereotypes) {
+        CandidateComponentsMetadata metadata = compile(target);
+        assertThat(metadata, hasComponent(target, stereotypes));
+        assertThat(metadata.getItems(), hasSize(1));
+    }
 
-	private void testSingleComponent(Class<?> target, Class<?>... stereotypes) {
-		CandidateComponentsMetadata metadata = compile(target);
-		assertThat(metadata, hasComponent(target, stereotypes));
-		assertThat(metadata.getItems(), hasSize(1));
-	}
+    private CandidateComponentsMetadata compile(Class<?>... types) {
+        CandidateComponentsIndexer processor = new CandidateComponentsIndexer();
+        this.compiler.getTask(types).call(processor);
+        return readGeneratedMetadata(this.compiler.getOutputLocation());
+    }
 
-	private CandidateComponentsMetadata compile(Class<?>... types) {
-		CandidateComponentsIndexer processor = new CandidateComponentsIndexer();
-		this.compiler.getTask(types).call(processor);
-		return readGeneratedMetadata(this.compiler.getOutputLocation());
-	}
+    private CandidateComponentsMetadata compile(String... types) {
+        CandidateComponentsIndexer processor = new CandidateComponentsIndexer();
+        this.compiler.getTask(types).call(processor);
+        return readGeneratedMetadata(this.compiler.getOutputLocation());
+    }
 
-	private CandidateComponentsMetadata compile(String... types) {
-		CandidateComponentsIndexer processor = new CandidateComponentsIndexer();
-		this.compiler.getTask(types).call(processor);
-		return readGeneratedMetadata(this.compiler.getOutputLocation());
-	}
-
-	private CandidateComponentsMetadata readGeneratedMetadata(File outputLocation) {
-		try {
-			File metadataFile = new File(outputLocation,
-					MetadataStore.METADATA_PATH);
-			if (metadataFile.isFile()) {
-				return PropertiesMarshaller.read(new FileInputStream(metadataFile));
-			}
-			else {
-				return new CandidateComponentsMetadata();
-			}
-		}
-		catch (IOException ex) {
-			throw new IllegalStateException("Failed to read metadata from disk", ex);
-		}
-	}
-
+    private CandidateComponentsMetadata readGeneratedMetadata(File outputLocation) {
+        try {
+            File metadataFile = new File(outputLocation, MetadataStore.METADATA_PATH);
+            if (metadataFile.isFile()) {
+                return PropertiesMarshaller.read(new FileInputStream(metadataFile));
+            } else {
+                return new CandidateComponentsMetadata();
+            }
+        } catch (IOException ex) {
+            throw new IllegalStateException("Failed to read metadata from disk", ex);
+        }
+    }
 }

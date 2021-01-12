@@ -30,18 +30,17 @@ import org.springframework.util.LinkedCaseInsensitiveMap;
 import org.springframework.web.util.UriComponentsBuilder;
 
 /**
- * Extract values from "Forwarded" and "X-Forwarded-*" headers to override
- * the request URI (i.e. {@link ServerHttpRequest#getURI()}) so it reflects
- * the client-originated protocol and address.
+ * Extract values from "Forwarded" and "X-Forwarded-*" headers to override the request URI (i.e.
+ * {@link ServerHttpRequest#getURI()}) so it reflects the client-originated protocol and address.
  *
- * <p>Alternatively if {@link #setRemoveOnly removeOnly} is set to "true",
- * then "Forwarded" and "X-Forwarded-*" headers are only removed, and not used.
+ * <p>Alternatively if {@link #setRemoveOnly removeOnly} is set to "true", then "Forwarded" and
+ * "X-Forwarded-*" headers are only removed, and not used.
  *
  * <p>An instance of this class is typically declared as a bean with the name
- * "forwardedHeaderTransformer" and detected by
- * {@link WebHttpHandlerBuilder#applicationContext(ApplicationContext)}, or it
- * can also be registered directly via
- * {@link WebHttpHandlerBuilder#forwardedHeaderTransformer(ForwardedHeaderTransformer)}.
+ * "forwardedHeaderTransformer" and detected by {@link
+ * WebHttpHandlerBuilder#applicationContext(ApplicationContext)}, or it can also be registered
+ * directly via {@link
+ * WebHttpHandlerBuilder#forwardedHeaderTransformer(ForwardedHeaderTransformer)}.
  *
  * @author Rossen Stoyanchev
  * @since 5.1
@@ -49,94 +48,93 @@ import org.springframework.web.util.UriComponentsBuilder;
  */
 public class ForwardedHeaderTransformer implements Function<ServerHttpRequest, ServerHttpRequest> {
 
-	static final Set<String> FORWARDED_HEADER_NAMES =
-			Collections.newSetFromMap(new LinkedCaseInsensitiveMap<>(8, Locale.ENGLISH));
+    static final Set<String> FORWARDED_HEADER_NAMES =
+            Collections.newSetFromMap(new LinkedCaseInsensitiveMap<>(8, Locale.ENGLISH));
 
-	static {
-		FORWARDED_HEADER_NAMES.add("Forwarded");
-		FORWARDED_HEADER_NAMES.add("X-Forwarded-Host");
-		FORWARDED_HEADER_NAMES.add("X-Forwarded-Port");
-		FORWARDED_HEADER_NAMES.add("X-Forwarded-Proto");
-		FORWARDED_HEADER_NAMES.add("X-Forwarded-Prefix");
-		FORWARDED_HEADER_NAMES.add("X-Forwarded-Ssl");
-	}
+    static {
+        FORWARDED_HEADER_NAMES.add("Forwarded");
+        FORWARDED_HEADER_NAMES.add("X-Forwarded-Host");
+        FORWARDED_HEADER_NAMES.add("X-Forwarded-Port");
+        FORWARDED_HEADER_NAMES.add("X-Forwarded-Proto");
+        FORWARDED_HEADER_NAMES.add("X-Forwarded-Prefix");
+        FORWARDED_HEADER_NAMES.add("X-Forwarded-Ssl");
+    }
 
+    private boolean removeOnly;
 
-	private boolean removeOnly;
+    /**
+     * Enable mode in which any "Forwarded" or "X-Forwarded-*" headers are removed only and the
+     * information in them ignored.
+     *
+     * @param removeOnly whether to discard and ignore forwarded headers
+     */
+    public void setRemoveOnly(boolean removeOnly) {
+        this.removeOnly = removeOnly;
+    }
 
+    /**
+     * Whether the "remove only" mode is on.
+     *
+     * @see #setRemoveOnly
+     */
+    public boolean isRemoveOnly() {
+        return this.removeOnly;
+    }
 
-	/**
-	 * Enable mode in which any "Forwarded" or "X-Forwarded-*" headers are
-	 * removed only and the information in them ignored.
-	 * @param removeOnly whether to discard and ignore forwarded headers
-	 */
-	public void setRemoveOnly(boolean removeOnly) {
-		this.removeOnly = removeOnly;
-	}
+    /**
+     * Apply and remove, or remove Forwarded type headers.
+     *
+     * @param request the request
+     */
+    @Override
+    public ServerHttpRequest apply(ServerHttpRequest request) {
+        if (hasForwardedHeaders(request)) {
+            ServerHttpRequest.Builder builder = request.mutate();
+            if (!this.removeOnly) {
+                URI uri = UriComponentsBuilder.fromHttpRequest(request).build(true).toUri();
+                builder.uri(uri);
+                String prefix = getForwardedPrefix(request);
+                if (prefix != null) {
+                    builder.path(prefix + uri.getRawPath());
+                    builder.contextPath(prefix);
+                }
+            }
+            removeForwardedHeaders(builder);
+            request = builder.build();
+        }
+        return request;
+    }
 
-	/**
-	 * Whether the "remove only" mode is on.
-	 * @see #setRemoveOnly
-	 */
-	public boolean isRemoveOnly() {
-		return this.removeOnly;
-	}
+    /**
+     * Whether the request has any Forwarded headers.
+     *
+     * @param request the request
+     */
+    protected boolean hasForwardedHeaders(ServerHttpRequest request) {
+        HttpHeaders headers = request.getHeaders();
+        for (String headerName : FORWARDED_HEADER_NAMES) {
+            if (headers.containsKey(headerName)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
+    private void removeForwardedHeaders(ServerHttpRequest.Builder builder) {
+        builder.headers(map -> FORWARDED_HEADER_NAMES.forEach(map::remove));
+    }
 
-	/**
-	 * Apply and remove, or remove Forwarded type headers.
-	 * @param request the request
-	 */
-	@Override
-	public ServerHttpRequest apply(ServerHttpRequest request) {
-		if (hasForwardedHeaders(request)) {
-			ServerHttpRequest.Builder builder = request.mutate();
-			if (!this.removeOnly) {
-				URI uri = UriComponentsBuilder.fromHttpRequest(request).build(true).toUri();
-				builder.uri(uri);
-				String prefix = getForwardedPrefix(request);
-				if (prefix != null) {
-					builder.path(prefix + uri.getRawPath());
-					builder.contextPath(prefix);
-				}
-			}
-			removeForwardedHeaders(builder);
-			request = builder.build();
-		}
-		return request;
-	}
-
-	/**
-	 * Whether the request has any Forwarded headers.
-	 * @param request the request
-	 */
-	protected boolean hasForwardedHeaders(ServerHttpRequest request) {
-		HttpHeaders headers = request.getHeaders();
-		for (String headerName : FORWARDED_HEADER_NAMES) {
-			if (headers.containsKey(headerName)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	private void removeForwardedHeaders(ServerHttpRequest.Builder builder) {
-		builder.headers(map -> FORWARDED_HEADER_NAMES.forEach(map::remove));
-	}
-
-
-	@Nullable
-	private static String getForwardedPrefix(ServerHttpRequest request) {
-		HttpHeaders headers = request.getHeaders();
-		String prefix = headers.getFirst("X-Forwarded-Prefix");
-		if (prefix != null) {
-			int endIndex = prefix.length();
-			while (endIndex > 1 && prefix.charAt(endIndex - 1) == '/') {
-				endIndex--;
-			}
-			prefix = (endIndex != prefix.length() ? prefix.substring(0, endIndex) : prefix);
-		}
-		return prefix;
-	}
-
+    @Nullable
+    private static String getForwardedPrefix(ServerHttpRequest request) {
+        HttpHeaders headers = request.getHeaders();
+        String prefix = headers.getFirst("X-Forwarded-Prefix");
+        if (prefix != null) {
+            int endIndex = prefix.length();
+            while (endIndex > 1 && prefix.charAt(endIndex - 1) == '/') {
+                endIndex--;
+            }
+            prefix = (endIndex != prefix.length() ? prefix.substring(0, endIndex) : prefix);
+        }
+        return prefix;
+    }
 }

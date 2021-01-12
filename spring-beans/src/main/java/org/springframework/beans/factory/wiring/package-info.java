@@ -1,6 +1,6 @@
 /**
- * Mechanism to determine bean wiring metadata from a bean instance.
- * Foundation for aspect-driven bean configuration.
+ * Mechanism to determine bean wiring metadata from a bean instance. Foundation for aspect-driven
+ * bean configuration.
  */
 @NonNullApi
 @NonNullFields

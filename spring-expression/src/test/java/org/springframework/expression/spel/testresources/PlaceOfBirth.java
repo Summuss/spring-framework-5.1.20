@@ -1,47 +1,49 @@
 package org.springframework.expression.spel.testresources;
 
-///CLOVER:OFF
+/// CLOVER:OFF
 public class PlaceOfBirth {
-	private String city;
+    private String city;
 
-	public String Country;
+    public String Country;
 
-	/**
-	 * Keith now has a converter that supports String to X, if X has a ctor that takes a String.
-	 * In order for round tripping to work we need toString() for X to return what it was
-	 * constructed with.  This is a bit of a hack because a PlaceOfBirth also encapsulates a
-	 * country - but as it is just a test object, it is ok.
-	 */
-	@Override
-	public String toString() {return city;}
+    /**
+     * Keith now has a converter that supports String to X, if X has a ctor that takes a String. In
+     * order for round tripping to work we need toString() for X to return what it was constructed
+     * with. This is a bit of a hack because a PlaceOfBirth also encapsulates a country - but as it
+     * is just a test object, it is ok.
+     */
+    @Override
+    public String toString() {
+        return city;
+    }
 
-	public String getCity() {
-		return city;
-	}
-	public void setCity(String s) {
-		this.city = s;
-	}
+    public String getCity() {
+        return city;
+    }
 
-	public PlaceOfBirth(String string) {
-		this.city=string;
-	}
+    public void setCity(String s) {
+        this.city = s;
+    }
 
-	public int doubleIt(int i) {
-		return i*2;
-	}
+    public PlaceOfBirth(String string) {
+        this.city = string;
+    }
 
-	@Override
-	public boolean equals(Object o) {
-		if (!(o instanceof PlaceOfBirth)) {
-			return false;
-		}
-		PlaceOfBirth oPOB = (PlaceOfBirth)o;
-		return (city.equals(oPOB.city));
-	}
+    public int doubleIt(int i) {
+        return i * 2;
+    }
 
-	@Override
-	public int hashCode() {
-		return city.hashCode();
-	}
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof PlaceOfBirth)) {
+            return false;
+        }
+        PlaceOfBirth oPOB = (PlaceOfBirth) o;
+        return (city.equals(oPOB.city));
+    }
 
+    @Override
+    public int hashCode() {
+        return city.hashCode();
+    }
 }

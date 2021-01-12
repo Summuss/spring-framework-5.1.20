@@ -52,126 +52,135 @@ import static org.junit.Assert.fail;
  */
 public class PathVariableMethodArgumentResolverTests {
 
-	private PathVariableMethodArgumentResolver resolver;
+    private PathVariableMethodArgumentResolver resolver;
 
-	private final MockServerWebExchange exchange= MockServerWebExchange.from(MockServerHttpRequest.get("/"));
+    private final MockServerWebExchange exchange =
+            MockServerWebExchange.from(MockServerHttpRequest.get("/"));
 
-	private MethodParameter paramNamedString;
-	private MethodParameter paramString;
-	private MethodParameter paramNotRequired;
-	private MethodParameter paramOptional;
-	private MethodParameter paramMono;
+    private MethodParameter paramNamedString;
+    private MethodParameter paramString;
+    private MethodParameter paramNotRequired;
+    private MethodParameter paramOptional;
+    private MethodParameter paramMono;
 
+    @Before
+    public void setup() throws Exception {
+        this.resolver =
+                new PathVariableMethodArgumentResolver(
+                        null, ReactiveAdapterRegistry.getSharedInstance());
 
-	@Before
-	public void setup() throws Exception {
-		this.resolver = new PathVariableMethodArgumentResolver(null, ReactiveAdapterRegistry.getSharedInstance());
+        Method method = ReflectionUtils.findMethod(getClass(), "handle", (Class<?>[]) null);
+        paramNamedString = new SynthesizingMethodParameter(method, 0);
+        paramString = new SynthesizingMethodParameter(method, 1);
+        paramNotRequired = new SynthesizingMethodParameter(method, 2);
+        paramOptional = new SynthesizingMethodParameter(method, 3);
+        paramMono = new SynthesizingMethodParameter(method, 4);
+    }
 
-		Method method = ReflectionUtils.findMethod(getClass(), "handle", (Class<?>[]) null);
-		paramNamedString = new SynthesizingMethodParameter(method, 0);
-		paramString = new SynthesizingMethodParameter(method, 1);
-		paramNotRequired = new SynthesizingMethodParameter(method, 2);
-		paramOptional = new SynthesizingMethodParameter(method, 3);
-		paramMono = new SynthesizingMethodParameter(method, 4);
-	}
+    @Test
+    public void supportsParameter() {
+        assertTrue(this.resolver.supportsParameter(this.paramNamedString));
+        assertFalse(this.resolver.supportsParameter(this.paramString));
+        try {
+            this.resolver.supportsParameter(this.paramMono);
+            fail();
+        } catch (IllegalStateException ex) {
+            assertTrue(
+                    "Unexpected error message:\n" + ex.getMessage(),
+                    ex.getMessage()
+                            .startsWith(
+                                    "PathVariableMethodArgumentResolver doesn't support reactive type wrapper"));
+        }
+    }
 
+    @Test
+    public void resolveArgument() throws Exception {
+        Map<String, String> uriTemplateVars = new HashMap<>();
+        uriTemplateVars.put("name", "value");
+        this.exchange
+                .getAttributes()
+                .put(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, uriTemplateVars);
 
-	@Test
-	public void supportsParameter() {
-		assertTrue(this.resolver.supportsParameter(this.paramNamedString));
-		assertFalse(this.resolver.supportsParameter(this.paramString));
-		try {
-			this.resolver.supportsParameter(this.paramMono);
-			fail();
-		}
-		catch (IllegalStateException ex) {
-			assertTrue("Unexpected error message:\n" + ex.getMessage(),
-					ex.getMessage().startsWith(
-							"PathVariableMethodArgumentResolver doesn't support reactive type wrapper"));
-		}
-	}
+        BindingContext bindingContext = new BindingContext();
+        Mono<Object> mono =
+                this.resolver.resolveArgument(this.paramNamedString, bindingContext, this.exchange);
+        Object result = mono.block();
+        assertEquals("value", result);
+    }
 
-	@Test
-	public void resolveArgument() throws Exception {
-		Map<String, String> uriTemplateVars = new HashMap<>();
-		uriTemplateVars.put("name", "value");
-		this.exchange.getAttributes().put(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, uriTemplateVars);
+    @Test
+    public void resolveArgumentNotRequired() throws Exception {
+        Map<String, String> uriTemplateVars = new HashMap<>();
+        uriTemplateVars.put("name", "value");
+        this.exchange
+                .getAttributes()
+                .put(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, uriTemplateVars);
 
-		BindingContext bindingContext = new BindingContext();
-		Mono<Object> mono = this.resolver.resolveArgument(this.paramNamedString, bindingContext, this.exchange);
-		Object result = mono.block();
-		assertEquals("value", result);
-	}
+        BindingContext bindingContext = new BindingContext();
+        Mono<Object> mono =
+                this.resolver.resolveArgument(this.paramNotRequired, bindingContext, this.exchange);
+        Object result = mono.block();
+        assertEquals("value", result);
+    }
 
-	@Test
-	public void resolveArgumentNotRequired() throws Exception {
-		Map<String, String> uriTemplateVars = new HashMap<>();
-		uriTemplateVars.put("name", "value");
-		this.exchange.getAttributes().put(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, uriTemplateVars);
+    @Test
+    public void resolveArgumentWrappedAsOptional() throws Exception {
+        Map<String, String> uriTemplateVars = new HashMap<>();
+        uriTemplateVars.put("name", "value");
+        this.exchange
+                .getAttributes()
+                .put(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, uriTemplateVars);
 
-		BindingContext bindingContext = new BindingContext();
-		Mono<Object> mono = this.resolver.resolveArgument(this.paramNotRequired, bindingContext, this.exchange);
-		Object result = mono.block();
-		assertEquals("value", result);
-	}
+        ConfigurableWebBindingInitializer initializer = new ConfigurableWebBindingInitializer();
+        initializer.setConversionService(new DefaultFormattingConversionService());
+        BindingContext bindingContext = new BindingContext(initializer);
 
-	@Test
-	public void resolveArgumentWrappedAsOptional() throws Exception {
-		Map<String, String> uriTemplateVars = new HashMap<>();
-		uriTemplateVars.put("name", "value");
-		this.exchange.getAttributes().put(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, uriTemplateVars);
+        Mono<Object> mono =
+                this.resolver.resolveArgument(this.paramOptional, bindingContext, this.exchange);
+        Object result = mono.block();
+        assertEquals(Optional.of("value"), result);
+    }
 
-		ConfigurableWebBindingInitializer initializer = new ConfigurableWebBindingInitializer();
-		initializer.setConversionService(new DefaultFormattingConversionService());
-		BindingContext bindingContext = new BindingContext(initializer);
+    @Test
+    public void handleMissingValue() throws Exception {
+        BindingContext bindingContext = new BindingContext();
+        Mono<Object> mono =
+                this.resolver.resolveArgument(this.paramNamedString, bindingContext, this.exchange);
+        StepVerifier.create(mono)
+                .expectNextCount(0)
+                .expectError(ServerErrorException.class)
+                .verify();
+    }
 
-		Mono<Object> mono = this.resolver.resolveArgument(this.paramOptional, bindingContext, this.exchange);
-		Object result = mono.block();
-		assertEquals(Optional.of("value"), result);
-	}
+    @Test
+    public void nullIfNotRequired() throws Exception {
+        BindingContext bindingContext = new BindingContext();
+        Mono<Object> mono =
+                this.resolver.resolveArgument(this.paramNotRequired, bindingContext, this.exchange);
+        StepVerifier.create(mono).expectNextCount(0).expectComplete().verify();
+    }
 
-	@Test
-	public void handleMissingValue() throws Exception {
-		BindingContext bindingContext = new BindingContext();
-		Mono<Object> mono = this.resolver.resolveArgument(this.paramNamedString, bindingContext, this.exchange);
-		StepVerifier.create(mono)
-				.expectNextCount(0)
-				.expectError(ServerErrorException.class)
-				.verify();
-	}
+    @Test
+    public void wrapEmptyWithOptional() throws Exception {
+        BindingContext bindingContext = new BindingContext();
+        Mono<Object> mono =
+                this.resolver.resolveArgument(this.paramOptional, bindingContext, this.exchange);
 
-	@Test
-	public void nullIfNotRequired() throws Exception {
-		BindingContext bindingContext = new BindingContext();
-		Mono<Object> mono = this.resolver.resolveArgument(this.paramNotRequired, bindingContext, this.exchange);
-		StepVerifier.create(mono)
-				.expectNextCount(0)
-				.expectComplete()
-				.verify();
-	}
+        StepVerifier.create(mono)
+                .consumeNextWith(
+                        value -> {
+                            assertTrue(value instanceof Optional);
+                            assertFalse(((Optional<?>) value).isPresent());
+                        })
+                .expectComplete()
+                .verify();
+    }
 
-	@Test
-	public void wrapEmptyWithOptional() throws Exception {
-		BindingContext bindingContext = new BindingContext();
-		Mono<Object> mono = this.resolver.resolveArgument(this.paramOptional, bindingContext, this.exchange);
-
-		StepVerifier.create(mono)
-				.consumeNextWith(value -> {
-					assertTrue(value instanceof Optional);
-					assertFalse(((Optional<?>) value).isPresent());
-				})
-				.expectComplete()
-				.verify();
-	}
-
-
-	@SuppressWarnings({"unused", "OptionalUsedAsFieldOrParameterType"})
-	public void handle(
-			@PathVariable(value = "name") String param1,
-			String param2,
-			@PathVariable(name = "name", required = false) String param3,
-			@PathVariable("name") Optional<String> param4,
-			@PathVariable Mono<String> param5) {
-	}
-
+    @SuppressWarnings({"unused", "OptionalUsedAsFieldOrParameterType"})
+    public void handle(
+            @PathVariable(value = "name") String param1,
+            String param2,
+            @PathVariable(name = "name", required = false) String param3,
+            @PathVariable("name") Optional<String> param4,
+            @PathVariable Mono<String> param5) {}
 }

@@ -30,79 +30,67 @@ import org.springframework.lang.Nullable;
  */
 public class CallParameterMetaData {
 
-	@Nullable
-	private final String parameterName;
+    @Nullable private final String parameterName;
 
-	private final int parameterType;
+    private final int parameterType;
 
-	private final int sqlType;
+    private final int sqlType;
 
-	@Nullable
-	private final String typeName;
+    @Nullable private final String typeName;
 
-	private final boolean nullable;
+    private final boolean nullable;
 
+    /** Constructor taking all the properties. */
+    public CallParameterMetaData(
+            @Nullable String columnName,
+            int columnType,
+            int sqlType,
+            @Nullable String typeName,
+            boolean nullable) {
 
-	/**
-	 * Constructor taking all the properties.
-	 */
-	public CallParameterMetaData(
-			@Nullable String columnName, int columnType, int sqlType, @Nullable String typeName, boolean nullable) {
+        this.parameterName = columnName;
+        this.parameterType = columnType;
+        this.sqlType = sqlType;
+        this.typeName = typeName;
+        this.nullable = nullable;
+    }
 
-		this.parameterName = columnName;
-		this.parameterType = columnType;
-		this.sqlType = sqlType;
-		this.typeName = typeName;
-		this.nullable = nullable;
-	}
+    /** Return the parameter name. */
+    @Nullable
+    public String getParameterName() {
+        return this.parameterName;
+    }
 
+    /** Return the parameter type. */
+    public int getParameterType() {
+        return this.parameterType;
+    }
 
-	/**
-	 * Return the parameter name.
-	 */
-	@Nullable
-	public String getParameterName() {
-		return this.parameterName;
-	}
+    /**
+     * Determine whether the declared parameter qualifies as a 'return' parameter for our purposes:
+     * type {@link DatabaseMetaData#procedureColumnReturn} or {@link
+     * DatabaseMetaData#procedureColumnResult}.
+     *
+     * @since 4.3.15
+     */
+    public boolean isReturnParameter() {
+        return (this.parameterType == DatabaseMetaData.procedureColumnReturn
+                || this.parameterType == DatabaseMetaData.procedureColumnResult);
+    }
 
-	/**
-	 * Return the parameter type.
-	 */
-	public int getParameterType() {
-		return this.parameterType;
-	}
+    /** Return the parameter SQL type. */
+    public int getSqlType() {
+        return this.sqlType;
+    }
 
-	/**
-	 * Determine whether the declared parameter qualifies as a 'return' parameter
-	 * for our purposes: type {@link DatabaseMetaData#procedureColumnReturn} or
-	 * {@link DatabaseMetaData#procedureColumnResult}.
-	 * @since 4.3.15
-	 */
-	public boolean isReturnParameter() {
-		return (this.parameterType == DatabaseMetaData.procedureColumnReturn ||
-				this.parameterType == DatabaseMetaData.procedureColumnResult);
-	}
+    /** Return the parameter type name. */
+    @Nullable
+    public String getTypeName() {
+        return this.typeName;
+    }
 
-	/**
-	 * Return the parameter SQL type.
-	 */
-	public int getSqlType() {
-		return this.sqlType;
-	}
-
-	/**
-	 * Return the parameter type name.
-	 */
-	@Nullable
-	public String getTypeName() {
-		return this.typeName;
-	}
-
-	/**
-	 * Return whether the parameter is nullable.
-	 */
-	public boolean isNullable() {
-		return this.nullable;
-	}
-
+    /** Return whether the parameter is nullable. */
+    public boolean isNullable() {
+        return this.nullable;
+    }
 }

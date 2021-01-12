@@ -38,10 +38,9 @@ import static org.junit.Assert.*;
 import static org.springframework.test.annotation.DirtiesContext.MethodMode.*;
 
 /**
- * Integration test which verifies correct interaction between the
- * {@link DirtiesContextBeforeModesTestExecutionListener},
- * {@link DependencyInjectionTestExecutionListener}, and
- * {@link DirtiesContextTestExecutionListener} when
+ * Integration test which verifies correct interaction between the {@link
+ * DirtiesContextBeforeModesTestExecutionListener}, {@link
+ * DependencyInjectionTestExecutionListener}, and {@link DirtiesContextTestExecutionListener} when
  * {@link DirtiesContext @DirtiesContext} is used at the method level.
  *
  * @author Sam Brannen
@@ -52,60 +51,54 @@ import static org.springframework.test.annotation.DirtiesContext.MethodMode.*;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class MethodLevelDirtiesContextTests {
 
-	private static final AtomicInteger contextCount = new AtomicInteger();
+    private static final AtomicInteger contextCount = new AtomicInteger();
 
+    @Configuration
+    static class Config {
 
-	@Configuration
-	static class Config {
+        @Bean
+        Integer count() {
+            return contextCount.incrementAndGet();
+        }
+    }
 
-		@Bean
-		Integer count() {
-			return contextCount.incrementAndGet();
-		}
-	}
+    @Autowired private ConfigurableApplicationContext context;
 
+    @Autowired private Integer count;
 
-	@Autowired
-	private ConfigurableApplicationContext context;
+    @Test
+    // test## prefix required for @FixMethodOrder.
+    public void test01() throws Exception {
+        performAssertions(1);
+    }
 
-	@Autowired
-	private Integer count;
+    @Test
+    @DirtiesContext(methodMode = BEFORE_METHOD)
+    // test## prefix required for @FixMethodOrder.
+    public void test02_dirtyContextBeforeTestMethod() throws Exception {
+        performAssertions(2);
+    }
 
+    @Test
+    @DirtiesContext
+    // test## prefix required for @FixMethodOrder.
+    public void test03_dirtyContextAfterTestMethod() throws Exception {
+        performAssertions(2);
+    }
 
-	@Test
-	// test## prefix required for @FixMethodOrder.
-	public void test01() throws Exception {
-		performAssertions(1);
-	}
+    @Test
+    // test## prefix required for @FixMethodOrder.
+    public void test04() throws Exception {
+        performAssertions(3);
+    }
 
-	@Test
-	@DirtiesContext(methodMode = BEFORE_METHOD)
-	// test## prefix required for @FixMethodOrder.
-	public void test02_dirtyContextBeforeTestMethod() throws Exception {
-		performAssertions(2);
-	}
+    private void performAssertions(int expectedContextCreationCount) throws Exception {
+        assertNotNull("context must not be null", this.context);
+        assertTrue("context must be active", this.context.isActive());
 
-	@Test
-	@DirtiesContext
-	// test## prefix required for @FixMethodOrder.
-	public void test03_dirtyContextAfterTestMethod() throws Exception {
-		performAssertions(2);
-	}
+        assertNotNull("count must not be null", this.count);
+        assertEquals("count: ", expectedContextCreationCount, this.count.intValue());
 
-	@Test
-	// test## prefix required for @FixMethodOrder.
-	public void test04() throws Exception {
-		performAssertions(3);
-	}
-
-	private void performAssertions(int expectedContextCreationCount) throws Exception {
-		assertNotNull("context must not be null", this.context);
-		assertTrue("context must be active", this.context.isActive());
-
-		assertNotNull("count must not be null", this.count);
-		assertEquals("count: ", expectedContextCreationCount, this.count.intValue());
-
-		assertEquals("context creation count: ", expectedContextCreationCount, contextCount.get());
-	}
-
+        assertEquals("context creation count: ", expectedContextCreationCount, contextCount.get());
+    }
 }

@@ -46,124 +46,118 @@ import static org.junit.Assert.*;
  */
 public class ResponseStatusExceptionResolverTests {
 
-	private final ResponseStatusExceptionResolver exceptionResolver = new ResponseStatusExceptionResolver();
+    private final ResponseStatusExceptionResolver exceptionResolver =
+            new ResponseStatusExceptionResolver();
 
-	private final MockHttpServletRequest request = new MockHttpServletRequest("GET", "");
+    private final MockHttpServletRequest request = new MockHttpServletRequest("GET", "");
 
-	private final MockHttpServletResponse response = new MockHttpServletResponse();
+    private final MockHttpServletResponse response = new MockHttpServletResponse();
 
+    @Before
+    public void setup() {
+        exceptionResolver.setWarnLogCategory(exceptionResolver.getClass().getName());
+    }
 
-	@Before
-	public void setup() {
-		exceptionResolver.setWarnLogCategory(exceptionResolver.getClass().getName());
-	}
+    @Test
+    public void statusCode() {
+        StatusCodeException ex = new StatusCodeException();
+        ModelAndView mav = exceptionResolver.resolveException(request, response, null, ex);
+        assertResolved(mav, 400, null);
+    }
 
+    @Test
+    public void statusCodeFromComposedResponseStatus() {
+        StatusCodeFromComposedResponseStatusException ex =
+                new StatusCodeFromComposedResponseStatusException();
+        ModelAndView mav = exceptionResolver.resolveException(request, response, null, ex);
+        assertResolved(mav, 400, null);
+    }
 
-	@Test
-	public void statusCode() {
-		StatusCodeException ex = new StatusCodeException();
-		ModelAndView mav = exceptionResolver.resolveException(request, response, null, ex);
-		assertResolved(mav, 400, null);
-	}
+    @Test
+    public void statusCodeAndReason() {
+        StatusCodeAndReasonException ex = new StatusCodeAndReasonException();
+        ModelAndView mav = exceptionResolver.resolveException(request, response, null, ex);
+        assertResolved(mav, 410, "You suck!");
+    }
 
-	@Test
-	public void statusCodeFromComposedResponseStatus() {
-		StatusCodeFromComposedResponseStatusException ex = new StatusCodeFromComposedResponseStatusException();
-		ModelAndView mav = exceptionResolver.resolveException(request, response, null, ex);
-		assertResolved(mav, 400, null);
-	}
+    @Test
+    public void statusCodeAndReasonMessage() {
+        Locale locale = Locale.CHINESE;
+        LocaleContextHolder.setLocale(locale);
+        try {
+            StaticMessageSource messageSource = new StaticMessageSource();
+            messageSource.addMessage("gone.reason", locale, "Gone reason message");
+            exceptionResolver.setMessageSource(messageSource);
 
-	@Test
-	public void statusCodeAndReason() {
-		StatusCodeAndReasonException ex = new StatusCodeAndReasonException();
-		ModelAndView mav = exceptionResolver.resolveException(request, response, null, ex);
-		assertResolved(mav, 410, "You suck!");
-	}
+            StatusCodeAndReasonMessageException ex = new StatusCodeAndReasonMessageException();
+            exceptionResolver.resolveException(request, response, null, ex);
+            assertEquals(
+                    "Invalid status reason", "Gone reason message", response.getErrorMessage());
+        } finally {
+            LocaleContextHolder.resetLocaleContext();
+        }
+    }
 
-	@Test
-	public void statusCodeAndReasonMessage() {
-		Locale locale = Locale.CHINESE;
-		LocaleContextHolder.setLocale(locale);
-		try {
-			StaticMessageSource messageSource = new StaticMessageSource();
-			messageSource.addMessage("gone.reason", locale, "Gone reason message");
-			exceptionResolver.setMessageSource(messageSource);
+    @Test
+    public void notAnnotated() {
+        Exception ex = new Exception();
+        exceptionResolver.resolveException(request, response, null, ex);
+        ModelAndView mav = exceptionResolver.resolveException(request, response, null, ex);
+        assertNull("ModelAndView returned", mav);
+    }
 
-			StatusCodeAndReasonMessageException ex = new StatusCodeAndReasonMessageException();
-			exceptionResolver.resolveException(request, response, null, ex);
-			assertEquals("Invalid status reason", "Gone reason message", response.getErrorMessage());
-		}
-		finally {
-			LocaleContextHolder.resetLocaleContext();
-		}
-	}
+    @Test // SPR-12903
+    public void nestedException() throws Exception {
+        Exception cause = new StatusCodeAndReasonMessageException();
+        TypeMismatchException ex = new TypeMismatchException("value", ITestBean.class, cause);
+        ModelAndView mav = exceptionResolver.resolveException(request, response, null, ex);
+        assertResolved(mav, 410, "gone.reason");
+    }
 
-	@Test
-	public void notAnnotated() {
-		Exception ex = new Exception();
-		exceptionResolver.resolveException(request, response, null, ex);
-		ModelAndView mav = exceptionResolver.resolveException(request, response, null, ex);
-		assertNull("ModelAndView returned", mav);
-	}
+    @Test
+    public void responseStatusException() throws Exception {
+        ResponseStatusException ex = new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        ModelAndView mav = exceptionResolver.resolveException(request, response, null, ex);
+        assertResolved(mav, 400, null);
+    }
 
-	@Test // SPR-12903
-	public void nestedException() throws Exception {
-		Exception cause = new StatusCodeAndReasonMessageException();
-		TypeMismatchException ex = new TypeMismatchException("value", ITestBean.class, cause);
-		ModelAndView mav = exceptionResolver.resolveException(request, response, null, ex);
-		assertResolved(mav, 410, "gone.reason");
-	}
+    @Test // SPR-15524
+    public void responseStatusExceptionWithReason() throws Exception {
+        ResponseStatusException ex =
+                new ResponseStatusException(HttpStatus.BAD_REQUEST, "The reason");
+        ModelAndView mav = exceptionResolver.resolveException(request, response, null, ex);
+        assertResolved(mav, 400, "The reason");
+    }
 
-	@Test
-	public void responseStatusException() throws Exception {
-		ResponseStatusException ex = new ResponseStatusException(HttpStatus.BAD_REQUEST);
-		ModelAndView mav = exceptionResolver.resolveException(request, response, null, ex);
-		assertResolved(mav, 400, null);
-	}
+    private void assertResolved(ModelAndView mav, int status, String reason) {
+        assertTrue("No Empty ModelAndView returned", mav != null && mav.isEmpty());
+        assertEquals(status, response.getStatus());
+        assertEquals(reason, response.getErrorMessage());
+        assertTrue(response.isCommitted());
+    }
 
-	@Test  // SPR-15524
-	public void responseStatusExceptionWithReason() throws Exception {
-		ResponseStatusException ex = new ResponseStatusException(HttpStatus.BAD_REQUEST, "The reason");
-		ModelAndView mav = exceptionResolver.resolveException(request, response, null, ex);
-		assertResolved(mav, 400, "The reason");
-	}
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @SuppressWarnings("serial")
+    private static class StatusCodeException extends Exception {}
 
+    @ResponseStatus(code = HttpStatus.GONE, reason = "You suck!")
+    @SuppressWarnings("serial")
+    private static class StatusCodeAndReasonException extends Exception {}
 
-	private void assertResolved(ModelAndView mav, int status, String reason) {
-		assertTrue("No Empty ModelAndView returned", mav != null && mav.isEmpty());
-		assertEquals(status, response.getStatus());
-		assertEquals(reason, response.getErrorMessage());
-		assertTrue(response.isCommitted());
-	}
+    @ResponseStatus(code = HttpStatus.GONE, reason = "gone.reason")
+    @SuppressWarnings("serial")
+    private static class StatusCodeAndReasonMessageException extends Exception {}
 
+    @ResponseStatus
+    @Retention(RetentionPolicy.RUNTIME)
+    @SuppressWarnings("unused")
+    @interface ComposedResponseStatus {
 
-	@ResponseStatus(HttpStatus.BAD_REQUEST)
-	@SuppressWarnings("serial")
-	private static class StatusCodeException extends Exception {
-	}
+        @AliasFor(annotation = ResponseStatus.class, attribute = "code")
+        HttpStatus responseStatus() default HttpStatus.INTERNAL_SERVER_ERROR;
+    }
 
-	@ResponseStatus(code = HttpStatus.GONE, reason = "You suck!")
-	@SuppressWarnings("serial")
-	private static class StatusCodeAndReasonException extends Exception {
-	}
-
-	@ResponseStatus(code = HttpStatus.GONE, reason = "gone.reason")
-	@SuppressWarnings("serial")
-	private static class StatusCodeAndReasonMessageException extends Exception {
-	}
-
-	@ResponseStatus
-	@Retention(RetentionPolicy.RUNTIME)
-	@SuppressWarnings("unused")
-	@interface ComposedResponseStatus {
-
-		@AliasFor(annotation = ResponseStatus.class, attribute = "code")
-		HttpStatus responseStatus() default HttpStatus.INTERNAL_SERVER_ERROR;
-	}
-
-	@ComposedResponseStatus(responseStatus = HttpStatus.BAD_REQUEST)
-	@SuppressWarnings("serial")
-	private static class StatusCodeFromComposedResponseStatusException extends Exception {
-	}
-
+    @ComposedResponseStatus(responseStatus = HttpStatus.BAD_REQUEST)
+    @SuppressWarnings("serial")
+    private static class StatusCodeFromComposedResponseStatusException extends Exception {}
 }

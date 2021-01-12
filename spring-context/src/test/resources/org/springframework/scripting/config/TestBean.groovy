@@ -2,18 +2,18 @@ package org.springframework.scripting.config
 
 class TestBean implements ITestBean {
 
-	ITestBean otherBean
+    ITestBean otherBean
 
-	boolean initialized
+    boolean initialized
 
-	boolean destroyed
+    boolean destroyed
 
-	void setOtherBean(ITestBean otherBean) {
-		this.otherBean = otherBean;
-	}
+    void setOtherBean(ITestBean otherBean) {
+        this.otherBean = otherBean;
+    }
 
-	void startup() { this.initialized = true }
+    void startup() { this.initialized = true }
 
-	void shutdown() { this.destroyed = true }
+    void shutdown() { this.destroyed = true }
 
 }

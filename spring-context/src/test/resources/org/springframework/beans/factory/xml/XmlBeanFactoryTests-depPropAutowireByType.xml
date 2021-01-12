@@ -3,14 +3,14 @@
 
 <beans>
 
-	<bean id="dependingBean" class="org.springframework.beans.factory.xml.XmlBeanFactoryTests$DependingBean"
-			autowire="byType"/>
+    <bean id="dependingBean" class="org.springframework.beans.factory.xml.XmlBeanFactoryTests$DependingBean"
+          autowire="byType"/>
 
-	<bean id="preparingBean1" class="org.springframework.beans.factory.xml.XmlBeanFactoryTests$PreparingBean1"/>
+    <bean id="preparingBean1" class="org.springframework.beans.factory.xml.XmlBeanFactoryTests$PreparingBean1"/>
 
-	<bean id="preparingBean2" class="org.springframework.beans.factory.xml.XmlBeanFactoryTests$PreparingBean2"/>
+    <bean id="preparingBean2" class="org.springframework.beans.factory.xml.XmlBeanFactoryTests$PreparingBean2"/>
 
-	<bean id="abstractFactoryBean" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean"
-		abstract="true"/>
+    <bean id="abstractFactoryBean" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean"
+          abstract="true"/>
 
 </beans>

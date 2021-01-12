@@ -30,7 +30,7 @@ import reactor.core.publisher.Mono
  * @since 5.0
  */
 inline fun <reified T : Any> ServerResponse.BodyBuilder.body(publisher: Publisher<T>): Mono<ServerResponse> =
-		body(publisher, object : ParameterizedTypeReference<T>() {})
+        body(publisher, object : ParameterizedTypeReference<T>() {})
 
 /**
  * Extension for [ServerResponse.BodyBuilder.body] providing a
@@ -41,7 +41,7 @@ inline fun <reified T : Any> ServerResponse.BodyBuilder.body(publisher: Publishe
  * @since 5.0
  */
 inline fun <reified T : Any> ServerResponse.BodyBuilder.bodyToServerSentEvents(publisher: Publisher<T>): Mono<ServerResponse> =
-		contentType(MediaType.TEXT_EVENT_STREAM).body(publisher, object : ParameterizedTypeReference<T>() {})
+        contentType(MediaType.TEXT_EVENT_STREAM).body(publisher, object : ParameterizedTypeReference<T>() {})
 
 /**
  * Shortcut for setting [MediaType.APPLICATION_JSON_UTF8] `Content-Type` header.

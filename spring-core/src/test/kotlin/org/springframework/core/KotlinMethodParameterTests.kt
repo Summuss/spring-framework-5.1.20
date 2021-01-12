@@ -28,58 +28,58 @@ import java.lang.reflect.Method
  */
 class KotlinMethodParameterTests {
 
-	private val nullableMethod: Method = javaClass.getMethod("nullable", String::class.java)
+    private val nullableMethod: Method = javaClass.getMethod("nullable", String::class.java)
 
-	private val nonNullableMethod = javaClass.getMethod("nonNullable", String::class.java)
+    private val nonNullableMethod = javaClass.getMethod("nonNullable", String::class.java)
 
-	private val innerClassConstructor = InnerClass::class.java.getConstructor(KotlinMethodParameterTests::class.java)
+    private val innerClassConstructor = InnerClass::class.java.getConstructor(KotlinMethodParameterTests::class.java)
 
-	private val innerClassWithParametersConstructor = InnerClassWithParameter::class.java
-			.getConstructor(KotlinMethodParameterTests::class.java, String::class.java, String::class.java)
+    private val innerClassWithParametersConstructor = InnerClassWithParameter::class.java
+            .getConstructor(KotlinMethodParameterTests::class.java, String::class.java, String::class.java)
 
-	private val regularClassConstructor = RegularClass::class.java.getConstructor(String::class.java, String::class.java)
-
-
-	@Test
-	fun `Method parameter nullability`() {
-		assertTrue(MethodParameter(nullableMethod, 0).isOptional)
-		assertFalse(MethodParameter(nonNullableMethod, 0).isOptional)
-	}
-
-	@Test
-	fun `Method return type nullability`() {
-		assertTrue(MethodParameter(nullableMethod, -1).isOptional)
-		assertFalse(MethodParameter(nonNullableMethod, -1).isOptional)
-	}
-
-	@Test  // SPR-17222
-	fun `Inner class constructor`() {
-		assertFalse(MethodParameter(innerClassConstructor, 0).isOptional)
-
-		assertFalse(MethodParameter(innerClassWithParametersConstructor, 0).isOptional)
-		assertFalse(MethodParameter(innerClassWithParametersConstructor, 1).isOptional)
-		assertTrue(MethodParameter(innerClassWithParametersConstructor, 2).isOptional)
-	}
-
-	@Test
-	fun `Regular class constructor`() {
-		assertFalse(MethodParameter(regularClassConstructor, 0).isOptional)
-		assertTrue(MethodParameter(regularClassConstructor, 1).isOptional)
-	}
+    private val regularClassConstructor = RegularClass::class.java.getConstructor(String::class.java, String::class.java)
 
 
-	@Suppress("unused_parameter")
-	fun nullable(nullable: String?): Int? = 42
+    @Test
+    fun `Method parameter nullability`() {
+        assertTrue(MethodParameter(nullableMethod, 0).isOptional)
+        assertFalse(MethodParameter(nonNullableMethod, 0).isOptional)
+    }
 
-	@Suppress("unused_parameter")
-	fun nonNullable(nonNullable: String): Int = 42
+    @Test
+    fun `Method return type nullability`() {
+        assertTrue(MethodParameter(nullableMethod, -1).isOptional)
+        assertFalse(MethodParameter(nonNullableMethod, -1).isOptional)
+    }
 
-	inner class InnerClass
+    @Test  // SPR-17222
+    fun `Inner class constructor`() {
+        assertFalse(MethodParameter(innerClassConstructor, 0).isOptional)
 
-	@Suppress("unused_parameter")
-	inner class InnerClassWithParameter(nonNullable: String, nullable: String?)
+        assertFalse(MethodParameter(innerClassWithParametersConstructor, 0).isOptional)
+        assertFalse(MethodParameter(innerClassWithParametersConstructor, 1).isOptional)
+        assertTrue(MethodParameter(innerClassWithParametersConstructor, 2).isOptional)
+    }
 
-	@Suppress("unused_parameter")
-	class RegularClass(nonNullable: String, nullable: String?)
+    @Test
+    fun `Regular class constructor`() {
+        assertFalse(MethodParameter(regularClassConstructor, 0).isOptional)
+        assertTrue(MethodParameter(regularClassConstructor, 1).isOptional)
+    }
+
+
+    @Suppress("unused_parameter")
+    fun nullable(nullable: String?): Int? = 42
+
+    @Suppress("unused_parameter")
+    fun nonNullable(nonNullable: String): Int = 42
+
+    inner class InnerClass
+
+    @Suppress("unused_parameter")
+    inner class InnerClassWithParameter(nonNullable: String, nullable: String?)
+
+    @Suppress("unused_parameter")
+    class RegularClass(nonNullable: String, nullable: String?)
 
 }

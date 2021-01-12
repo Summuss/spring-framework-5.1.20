@@ -24,15 +24,12 @@ import java.lang.annotation.Target;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
-/**
- * @author Juergen Hoeller
- */
+/** @author Juergen Hoeller */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Service
 @Scope("prototype")
 public @interface CustomStereotype {
 
-	String value() default "thoreau";
-
+    String value() default "thoreau";
 }

@@ -20,8 +20,8 @@ import org.springframework.jms.JmsException;
 import org.springframework.lang.Nullable;
 
 /**
- * Thrown by {@link MessageConverter} implementations when the conversion
- * of an object to/from a {@link javax.jms.Message} fails.
+ * Thrown by {@link MessageConverter} implementations when the conversion of an object to/from a
+ * {@link javax.jms.Message} fails.
  *
  * @author Mark Pollack
  * @since 1.1
@@ -30,21 +30,22 @@ import org.springframework.lang.Nullable;
 @SuppressWarnings("serial")
 public class MessageConversionException extends JmsException {
 
-	/**
-	 * Create a new MessageConversionException.
-	 * @param msg the detail message
-	 */
-	public MessageConversionException(String msg) {
-		super(msg);
-	}
+    /**
+     * Create a new MessageConversionException.
+     *
+     * @param msg the detail message
+     */
+    public MessageConversionException(String msg) {
+        super(msg);
+    }
 
-	/**
-	 * Create a new MessageConversionException.
-	 * @param msg the detail message
-	 * @param cause the root cause (if any)
-	 */
-	public MessageConversionException(String msg, @Nullable Throwable cause) {
-		super(msg, cause);
-	}
-
+    /**
+     * Create a new MessageConversionException.
+     *
+     * @param msg the detail message
+     * @param cause the root cause (if any)
+     */
+    public MessageConversionException(String msg, @Nullable Throwable cause) {
+        super(msg, cause);
+    }
 }

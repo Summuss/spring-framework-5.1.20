@@ -43,202 +43,200 @@ import org.springframework.util.ExceptionTypeFilter;
  */
 abstract class AbstractJCacheOperation<A extends Annotation> implements JCacheOperation<A> {
 
-	private final CacheMethodDetails<A> methodDetails;
+    private final CacheMethodDetails<A> methodDetails;
 
-	private final CacheResolver cacheResolver;
+    private final CacheResolver cacheResolver;
 
-	protected final List<CacheParameterDetail> allParameterDetails;
+    protected final List<CacheParameterDetail> allParameterDetails;
 
+    /**
+     * Construct a new {@code AbstractJCacheOperation}.
+     *
+     * @param methodDetails the {@link CacheMethodDetails} related to the cached method
+     * @param cacheResolver the cache resolver to resolve regular caches
+     */
+    protected AbstractJCacheOperation(
+            CacheMethodDetails<A> methodDetails, CacheResolver cacheResolver) {
+        Assert.notNull(methodDetails, "CacheMethodDetails must not be null");
+        Assert.notNull(cacheResolver, "CacheResolver must not be null");
+        this.methodDetails = methodDetails;
+        this.cacheResolver = cacheResolver;
+        this.allParameterDetails = initializeAllParameterDetails(methodDetails.getMethod());
+    }
 
-	/**
-	 * Construct a new {@code AbstractJCacheOperation}.
-	 * @param methodDetails the {@link CacheMethodDetails} related to the cached method
-	 * @param cacheResolver the cache resolver to resolve regular caches
-	 */
-	protected AbstractJCacheOperation(CacheMethodDetails<A> methodDetails, CacheResolver cacheResolver) {
-		Assert.notNull(methodDetails, "CacheMethodDetails must not be null");
-		Assert.notNull(cacheResolver, "CacheResolver must not be null");
-		this.methodDetails = methodDetails;
-		this.cacheResolver = cacheResolver;
-		this.allParameterDetails = initializeAllParameterDetails(methodDetails.getMethod());
-	}
+    private static List<CacheParameterDetail> initializeAllParameterDetails(Method method) {
+        int parameterCount = method.getParameterCount();
+        List<CacheParameterDetail> result = new ArrayList<>(parameterCount);
+        for (int i = 0; i < parameterCount; i++) {
+            CacheParameterDetail detail = new CacheParameterDetail(method, i);
+            result.add(detail);
+        }
+        return result;
+    }
 
-	private static List<CacheParameterDetail> initializeAllParameterDetails(Method method) {
-		int parameterCount = method.getParameterCount();
-		List<CacheParameterDetail> result = new ArrayList<>(parameterCount);
-		for (int i = 0; i < parameterCount; i++) {
-			CacheParameterDetail detail = new CacheParameterDetail(method, i);
-			result.add(detail);
-		}
-		return result;
-	}
+    @Override
+    public Method getMethod() {
+        return this.methodDetails.getMethod();
+    }
 
+    @Override
+    public Set<Annotation> getAnnotations() {
+        return this.methodDetails.getAnnotations();
+    }
 
-	@Override
-	public Method getMethod() {
-		return this.methodDetails.getMethod();
-	}
+    @Override
+    public A getCacheAnnotation() {
+        return this.methodDetails.getCacheAnnotation();
+    }
 
-	@Override
-	public Set<Annotation> getAnnotations() {
-		return this.methodDetails.getAnnotations();
-	}
+    @Override
+    public String getCacheName() {
+        return this.methodDetails.getCacheName();
+    }
 
-	@Override
-	public A getCacheAnnotation() {
-		return this.methodDetails.getCacheAnnotation();
-	}
+    @Override
+    public Set<String> getCacheNames() {
+        return Collections.singleton(getCacheName());
+    }
 
-	@Override
-	public String getCacheName() {
-		return this.methodDetails.getCacheName();
-	}
+    @Override
+    public CacheResolver getCacheResolver() {
+        return this.cacheResolver;
+    }
 
-	@Override
-	public Set<String> getCacheNames() {
-		return Collections.singleton(getCacheName());
-	}
+    @Override
+    public CacheInvocationParameter[] getAllParameters(Object... values) {
+        if (this.allParameterDetails.size() != values.length) {
+            throw new IllegalStateException(
+                    "Values mismatch, operation has "
+                            + this.allParameterDetails.size()
+                            + " parameter(s) but got "
+                            + values.length
+                            + " value(s)");
+        }
+        List<CacheInvocationParameter> result = new ArrayList<>();
+        for (int i = 0; i < this.allParameterDetails.size(); i++) {
+            result.add(this.allParameterDetails.get(i).toCacheInvocationParameter(values[i]));
+        }
+        return result.toArray(new CacheInvocationParameter[0]);
+    }
 
-	@Override
-	public CacheResolver getCacheResolver() {
-		return this.cacheResolver;
-	}
+    /**
+     * Return the {@link ExceptionTypeFilter} to use to filter exceptions thrown while invoking the
+     * method.
+     *
+     * @see #createExceptionTypeFilter
+     */
+    public abstract ExceptionTypeFilter getExceptionTypeFilter();
 
-	@Override
-	public CacheInvocationParameter[] getAllParameters(Object... values) {
-		if (this.allParameterDetails.size() != values.length) {
-			throw new IllegalStateException("Values mismatch, operation has " +
-					this.allParameterDetails.size() + " parameter(s) but got " + values.length + " value(s)");
-		}
-		List<CacheInvocationParameter> result = new ArrayList<>();
-		for (int i = 0; i < this.allParameterDetails.size(); i++) {
-			result.add(this.allParameterDetails.get(i).toCacheInvocationParameter(values[i]));
-		}
-		return result.toArray(new CacheInvocationParameter[0]);
-	}
+    /**
+     * Convenience method for subclasses to create a specific {@code ExceptionTypeFilter}.
+     *
+     * @see #getExceptionTypeFilter()
+     */
+    protected ExceptionTypeFilter createExceptionTypeFilter(
+            Class<? extends Throwable>[] includes, Class<? extends Throwable>[] excludes) {
 
+        return new ExceptionTypeFilter(Arrays.asList(includes), Arrays.asList(excludes), true);
+    }
 
-	/**
-	 * Return the {@link ExceptionTypeFilter} to use to filter exceptions thrown while
-	 * invoking the method.
-	 * @see #createExceptionTypeFilter
-	 */
-	public abstract ExceptionTypeFilter getExceptionTypeFilter();
+    @Override
+    public String toString() {
+        return getOperationDescription().append("]").toString();
+    }
 
-	/**
-	 * Convenience method for subclasses to create a specific {@code ExceptionTypeFilter}.
-	 * @see #getExceptionTypeFilter()
-	 */
-	protected ExceptionTypeFilter createExceptionTypeFilter(
-			Class<? extends Throwable>[] includes, Class<? extends Throwable>[] excludes) {
+    /**
+     * Return an identifying description for this caching operation.
+     *
+     * <p>Available to subclasses, for inclusion in their {@code toString()} result.
+     */
+    protected StringBuilder getOperationDescription() {
+        StringBuilder result = new StringBuilder();
+        result.append(getClass().getSimpleName());
+        result.append("[");
+        result.append(this.methodDetails);
+        return result;
+    }
 
-		return new ExceptionTypeFilter(Arrays.asList(includes), Arrays.asList(excludes), true);
-	}
+    /** Details for a single cache parameter. */
+    protected static class CacheParameterDetail {
 
+        private final Class<?> rawType;
 
-	@Override
-	public String toString() {
-		return getOperationDescription().append("]").toString();
-	}
+        private final Set<Annotation> annotations;
 
-	/**
-	 * Return an identifying description for this caching operation.
-	 * <p>Available to subclasses, for inclusion in their {@code toString()} result.
-	 */
-	protected StringBuilder getOperationDescription() {
-		StringBuilder result = new StringBuilder();
-		result.append(getClass().getSimpleName());
-		result.append("[");
-		result.append(this.methodDetails);
-		return result;
-	}
+        private final int parameterPosition;
 
+        private final boolean isKey;
 
-	/**
-	 * Details for a single cache parameter.
-	 */
-	protected static class CacheParameterDetail {
+        private final boolean isValue;
 
-		private final Class<?> rawType;
+        public CacheParameterDetail(Method method, int parameterPosition) {
+            this.rawType = method.getParameterTypes()[parameterPosition];
+            this.annotations = new LinkedHashSet<>();
+            boolean foundKeyAnnotation = false;
+            boolean foundValueAnnotation = false;
+            for (Annotation annotation : method.getParameterAnnotations()[parameterPosition]) {
+                this.annotations.add(annotation);
+                if (CacheKey.class.isAssignableFrom(annotation.annotationType())) {
+                    foundKeyAnnotation = true;
+                }
+                if (CacheValue.class.isAssignableFrom(annotation.annotationType())) {
+                    foundValueAnnotation = true;
+                }
+            }
+            this.parameterPosition = parameterPosition;
+            this.isKey = foundKeyAnnotation;
+            this.isValue = foundValueAnnotation;
+        }
 
-		private final Set<Annotation> annotations;
+        public int getParameterPosition() {
+            return this.parameterPosition;
+        }
 
-		private final int parameterPosition;
+        protected boolean isKey() {
+            return this.isKey;
+        }
 
-		private final boolean isKey;
+        protected boolean isValue() {
+            return this.isValue;
+        }
 
-		private final boolean isValue;
+        public CacheInvocationParameter toCacheInvocationParameter(Object value) {
+            return new CacheInvocationParameterImpl(this, value);
+        }
+    }
 
-		public CacheParameterDetail(Method method, int parameterPosition) {
-			this.rawType = method.getParameterTypes()[parameterPosition];
-			this.annotations = new LinkedHashSet<>();
-			boolean foundKeyAnnotation = false;
-			boolean foundValueAnnotation = false;
-			for (Annotation annotation : method.getParameterAnnotations()[parameterPosition]) {
-				this.annotations.add(annotation);
-				if (CacheKey.class.isAssignableFrom(annotation.annotationType())) {
-					foundKeyAnnotation = true;
-				}
-				if (CacheValue.class.isAssignableFrom(annotation.annotationType())) {
-					foundValueAnnotation = true;
-				}
-			}
-			this.parameterPosition = parameterPosition;
-			this.isKey = foundKeyAnnotation;
-			this.isValue = foundValueAnnotation;
-		}
+    /** A single cache invocation parameter. */
+    protected static class CacheInvocationParameterImpl implements CacheInvocationParameter {
 
-		public int getParameterPosition() {
-			return this.parameterPosition;
-		}
+        private final CacheParameterDetail detail;
 
-		protected boolean isKey() {
-			return this.isKey;
-		}
+        private final Object value;
 
-		protected boolean isValue() {
-			return this.isValue;
-		}
+        public CacheInvocationParameterImpl(CacheParameterDetail detail, Object value) {
+            this.detail = detail;
+            this.value = value;
+        }
 
-		public CacheInvocationParameter toCacheInvocationParameter(Object value) {
-			return new CacheInvocationParameterImpl(this, value);
-		}
-	}
+        @Override
+        public Class<?> getRawType() {
+            return this.detail.rawType;
+        }
 
+        @Override
+        public Object getValue() {
+            return this.value;
+        }
 
-	/**
-	 * A single cache invocation parameter.
-	 */
-	protected static class CacheInvocationParameterImpl implements CacheInvocationParameter {
+        @Override
+        public Set<Annotation> getAnnotations() {
+            return this.detail.annotations;
+        }
 
-		private final CacheParameterDetail detail;
-
-		private final Object value;
-
-		public CacheInvocationParameterImpl(CacheParameterDetail detail, Object value) {
-			this.detail = detail;
-			this.value = value;
-		}
-
-		@Override
-		public Class<?> getRawType() {
-			return this.detail.rawType;
-		}
-
-		@Override
-		public Object getValue() {
-			return this.value;
-		}
-
-		@Override
-		public Set<Annotation> getAnnotations() {
-			return this.detail.annotations;
-		}
-
-		@Override
-		public int getParameterPosition() {
-			return this.detail.parameterPosition;
-		}
-	}
-
+        @Override
+        public int getParameterPosition() {
+            return this.detail.parameterPosition;
+        }
+    }
 }

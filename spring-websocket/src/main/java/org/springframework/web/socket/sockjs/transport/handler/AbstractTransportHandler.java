@@ -32,20 +32,17 @@ import org.springframework.web.socket.sockjs.transport.TransportHandler;
  */
 public abstract class AbstractTransportHandler implements TransportHandler {
 
-	protected final Log logger = LogFactory.getLog(getClass());
+    protected final Log logger = LogFactory.getLog(getClass());
 
-	@Nullable
-	private SockJsServiceConfig serviceConfig;
+    @Nullable private SockJsServiceConfig serviceConfig;
 
+    @Override
+    public void initialize(SockJsServiceConfig serviceConfig) {
+        this.serviceConfig = serviceConfig;
+    }
 
-	@Override
-	public void initialize(SockJsServiceConfig serviceConfig) {
-		this.serviceConfig = serviceConfig;
-	}
-
-	public SockJsServiceConfig getServiceConfig() {
-		Assert.state(this.serviceConfig != null, "No SockJsServiceConfig available");
-		return this.serviceConfig;
-	}
-
+    public SockJsServiceConfig getServiceConfig() {
+        Assert.state(this.serviceConfig != null, "No SockJsServiceConfig available");
+        return this.serviceConfig;
+    }
 }

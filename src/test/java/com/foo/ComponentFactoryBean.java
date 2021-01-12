@@ -21,34 +21,34 @@ import java.util.List;
 import org.springframework.beans.factory.FactoryBean;
 
 public class ComponentFactoryBean implements FactoryBean<Component> {
-	private Component parent;
-	private List<Component> children;
+    private Component parent;
+    private List<Component> children;
 
-	public void setParent(Component parent) {
-		this.parent = parent;
-	}
+    public void setParent(Component parent) {
+        this.parent = parent;
+    }
 
-	public void setChildren(List<Component> children) {
-		this.children = children;
-	}
+    public void setChildren(List<Component> children) {
+        this.children = children;
+    }
 
-	@Override
-	public Component getObject() throws Exception {
-		if (this.children != null && this.children.size() > 0) {
-			for (Component child : children) {
-				this.parent.addComponent(child);
-			}
-		}
-		return this.parent;
-	}
+    @Override
+    public Component getObject() throws Exception {
+        if (this.children != null && this.children.size() > 0) {
+            for (Component child : children) {
+                this.parent.addComponent(child);
+            }
+        }
+        return this.parent;
+    }
 
-	@Override
-	public Class<Component> getObjectType() {
-		return Component.class;
-	}
+    @Override
+    public Class<Component> getObjectType() {
+        return Component.class;
+    }
 
-	@Override
-	public boolean isSingleton() {
-		return true;
-	}
+    @Override
+    public boolean isSingleton() {
+        return true;
+    }
 }

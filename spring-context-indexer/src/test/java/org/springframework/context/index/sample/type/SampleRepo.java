@@ -21,5 +21,4 @@ package org.springframework.context.index.sample.type;
  *
  * @author Stephane Nicoll
  */
-public class SampleRepo extends AbstractRepo<SampleEntity, Long> {
-}
+public class SampleRepo extends AbstractRepo<SampleEntity, Long> {}

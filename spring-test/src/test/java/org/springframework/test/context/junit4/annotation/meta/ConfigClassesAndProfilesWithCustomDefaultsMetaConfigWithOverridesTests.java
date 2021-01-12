@@ -28,41 +28,41 @@ import org.springframework.tests.sample.beans.Pet;
 import static org.junit.Assert.*;
 
 /**
- * Integration tests for meta-annotation attribute override support, overriding
- * default attribute values defined in {@link ConfigClassesAndProfilesWithCustomDefaultsMetaConfig}.
+ * Integration tests for meta-annotation attribute override support, overriding default attribute
+ * values defined in {@link ConfigClassesAndProfilesWithCustomDefaultsMetaConfig}.
  *
  * @author Sam Brannen
  * @since 4.0
  */
 @RunWith(SpringJUnit4ClassRunner.class)
-@ConfigClassesAndProfilesWithCustomDefaultsMetaConfig(classes = { PojoAndStringConfig.class,
-	ConfigClassesAndProfilesWithCustomDefaultsMetaConfig.ProductionConfig.class }, profiles = "prod")
+@ConfigClassesAndProfilesWithCustomDefaultsMetaConfig(
+        classes = {
+            PojoAndStringConfig.class,
+            ConfigClassesAndProfilesWithCustomDefaultsMetaConfig.ProductionConfig.class
+        },
+        profiles = "prod")
 public class ConfigClassesAndProfilesWithCustomDefaultsMetaConfigWithOverridesTests {
 
-	@Autowired
-	private String foo;
+    @Autowired private String foo;
 
-	@Autowired
-	private Pet pet;
+    @Autowired private Pet pet;
 
-	@Autowired
-	protected Employee employee;
+    @Autowired protected Employee employee;
 
+    @Test
+    public void verifyEmployee() {
+        assertNotNull("The employee should have been autowired.", this.employee);
+        assertEquals("John Smith", this.employee.getName());
+    }
 
-	@Test
-	public void verifyEmployee() {
-		assertNotNull("The employee should have been autowired.", this.employee);
-		assertEquals("John Smith", this.employee.getName());
-	}
+    @Test
+    public void verifyPet() {
+        assertNotNull("The pet should have been autowired.", this.pet);
+        assertEquals("Fido", this.pet.getName());
+    }
 
-	@Test
-	public void verifyPet() {
-		assertNotNull("The pet should have been autowired.", this.pet);
-		assertEquals("Fido", this.pet.getName());
-	}
-
-	@Test
-	public void verifyFoo() {
-		assertEquals("Production Foo", this.foo);
-	}
+    @Test
+    public void verifyFoo() {
+        assertEquals("Production Foo", this.foo);
+    }
 }

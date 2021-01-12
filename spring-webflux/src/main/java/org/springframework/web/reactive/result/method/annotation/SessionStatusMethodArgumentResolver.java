@@ -25,26 +25,24 @@ import org.springframework.web.reactive.result.method.SyncHandlerMethodArgumentR
 import org.springframework.web.server.ServerWebExchange;
 
 /**
- * Resolver for a {@link SessionStatus} argument obtaining it from the
- * {@link BindingContext}.
+ * Resolver for a {@link SessionStatus} argument obtaining it from the {@link BindingContext}.
  *
  * @author Rossen Stoyanchev
  * @since 5.0
  */
 public class SessionStatusMethodArgumentResolver implements SyncHandlerMethodArgumentResolver {
 
-	@Override
-	public boolean supportsParameter(MethodParameter parameter) {
-		return SessionStatus.class == parameter.getParameterType();
-	}
+    @Override
+    public boolean supportsParameter(MethodParameter parameter) {
+        return SessionStatus.class == parameter.getParameterType();
+    }
 
-	@Nullable
-	@Override
-	public Object resolveArgumentValue(
-			MethodParameter parameter, BindingContext bindingContext, ServerWebExchange exchange) {
+    @Nullable
+    @Override
+    public Object resolveArgumentValue(
+            MethodParameter parameter, BindingContext bindingContext, ServerWebExchange exchange) {
 
-		Assert.isInstanceOf(InitBinderBindingContext.class, bindingContext);
-		return ((InitBinderBindingContext) bindingContext).getSessionStatus();
-	}
-
+        Assert.isInstanceOf(InitBinderBindingContext.class, bindingContext);
+        return ((InitBinderBindingContext) bindingContext).getSessionStatus();
+    }
 }

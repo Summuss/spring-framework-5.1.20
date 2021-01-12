@@ -48,168 +48,166 @@ import org.springframework.web.reactive.function.BodyExtractors;
  */
 class DefaultClientResponse implements ClientResponse {
 
-	private final ClientHttpResponse response;
+    private final ClientHttpResponse response;
 
-	private final Headers headers;
+    private final Headers headers;
 
-	private final ExchangeStrategies strategies;
+    private final ExchangeStrategies strategies;
 
-	private final String logPrefix;
+    private final String logPrefix;
 
+    public DefaultClientResponse(
+            ClientHttpResponse response, ExchangeStrategies strategies, String logPrefix) {
+        this.response = response;
+        this.strategies = strategies;
+        this.headers = new DefaultHeaders();
+        this.logPrefix = logPrefix;
+    }
 
-	public DefaultClientResponse(ClientHttpResponse response, ExchangeStrategies strategies, String logPrefix) {
-		this.response = response;
-		this.strategies = strategies;
-		this.headers = new DefaultHeaders();
-		this.logPrefix = logPrefix;
-	}
+    @Override
+    public ExchangeStrategies strategies() {
+        return this.strategies;
+    }
 
+    @Override
+    public HttpStatus statusCode() {
+        return this.response.getStatusCode();
+    }
 
-	@Override
-	public ExchangeStrategies strategies() {
-		return this.strategies;
-	}
+    @Override
+    public int rawStatusCode() {
+        return this.response.getRawStatusCode();
+    }
 
-	@Override
-	public HttpStatus statusCode() {
-		return this.response.getStatusCode();
-	}
+    @Override
+    public Headers headers() {
+        return this.headers;
+    }
 
-	@Override
-	public int rawStatusCode() {
-		return this.response.getRawStatusCode();
-	}
+    @Override
+    public MultiValueMap<String, ResponseCookie> cookies() {
+        return this.response.getCookies();
+    }
 
-	@Override
-	public Headers headers() {
-		return this.headers;
-	}
+    @Override
+    public <T> T body(BodyExtractor<T, ? super ClientHttpResponse> extractor) {
+        return extractor.extract(
+                this.response,
+                new BodyExtractor.Context() {
+                    @Override
+                    public List<HttpMessageReader<?>> messageReaders() {
+                        return strategies.messageReaders();
+                    }
 
-	@Override
-	public MultiValueMap<String, ResponseCookie> cookies() {
-		return this.response.getCookies();
-	}
+                    @Override
+                    public Optional<ServerHttpResponse> serverResponse() {
+                        return Optional.empty();
+                    }
 
-	@Override
-	public <T> T body(BodyExtractor<T, ? super ClientHttpResponse> extractor) {
-		return extractor.extract(this.response, new BodyExtractor.Context() {
-			@Override
-			public List<HttpMessageReader<?>> messageReaders() {
-				return strategies.messageReaders();
-			}
-			@Override
-			public Optional<ServerHttpResponse> serverResponse() {
-				return Optional.empty();
-			}
-			@Override
-			public Map<String, Object> hints() {
-				return Hints.from(Hints.LOG_PREFIX_HINT, logPrefix);
-			}
-		});
-	}
+                    @Override
+                    public Map<String, Object> hints() {
+                        return Hints.from(Hints.LOG_PREFIX_HINT, logPrefix);
+                    }
+                });
+    }
 
-	@Override
-	public <T> Mono<T> bodyToMono(Class<? extends T> elementClass) {
-		return body(BodyExtractors.toMono(elementClass));
-	}
+    @Override
+    public <T> Mono<T> bodyToMono(Class<? extends T> elementClass) {
+        return body(BodyExtractors.toMono(elementClass));
+    }
 
-	@Override
-	public <T> Mono<T> bodyToMono(ParameterizedTypeReference<T> typeReference) {
-		return body(BodyExtractors.toMono(typeReference));
-	}
+    @Override
+    public <T> Mono<T> bodyToMono(ParameterizedTypeReference<T> typeReference) {
+        return body(BodyExtractors.toMono(typeReference));
+    }
 
-	@Override
-	public <T> Flux<T> bodyToFlux(Class<? extends T> elementClass) {
-		return body(BodyExtractors.toFlux(elementClass));
-	}
+    @Override
+    public <T> Flux<T> bodyToFlux(Class<? extends T> elementClass) {
+        return body(BodyExtractors.toFlux(elementClass));
+    }
 
-	@Override
-	public <T> Flux<T> bodyToFlux(ParameterizedTypeReference<T> typeReference) {
-		return body(BodyExtractors.toFlux(typeReference));
-	}
+    @Override
+    public <T> Flux<T> bodyToFlux(ParameterizedTypeReference<T> typeReference) {
+        return body(BodyExtractors.toFlux(typeReference));
+    }
 
-	@Override
-	public <T> Mono<ResponseEntity<T>> toEntity(Class<T> bodyType) {
-		return toEntityInternal(bodyToMono(bodyType));
-	}
+    @Override
+    public <T> Mono<ResponseEntity<T>> toEntity(Class<T> bodyType) {
+        return toEntityInternal(bodyToMono(bodyType));
+    }
 
-	@Override
-	public <T> Mono<ResponseEntity<T>> toEntity(ParameterizedTypeReference<T> typeReference) {
-		return toEntityInternal(bodyToMono(typeReference));
-	}
+    @Override
+    public <T> Mono<ResponseEntity<T>> toEntity(ParameterizedTypeReference<T> typeReference) {
+        return toEntityInternal(bodyToMono(typeReference));
+    }
 
-	private <T> Mono<ResponseEntity<T>> toEntityInternal(Mono<T> bodyMono) {
-		HttpHeaders headers = headers().asHttpHeaders();
-		int status = rawStatusCode();
-		return bodyMono
-				.map(body -> createEntity(body, headers, status))
-				.switchIfEmpty(Mono.defer(
-						() -> Mono.just(createEntity(headers, status))));
-	}
+    private <T> Mono<ResponseEntity<T>> toEntityInternal(Mono<T> bodyMono) {
+        HttpHeaders headers = headers().asHttpHeaders();
+        int status = rawStatusCode();
+        return bodyMono.map(body -> createEntity(body, headers, status))
+                .switchIfEmpty(Mono.defer(() -> Mono.just(createEntity(headers, status))));
+    }
 
-	@Override
-	public <T> Mono<ResponseEntity<List<T>>> toEntityList(Class<T> responseType) {
-		return toEntityListInternal(bodyToFlux(responseType));
-	}
+    @Override
+    public <T> Mono<ResponseEntity<List<T>>> toEntityList(Class<T> responseType) {
+        return toEntityListInternal(bodyToFlux(responseType));
+    }
 
-	@Override
-	public <T> Mono<ResponseEntity<List<T>>> toEntityList(ParameterizedTypeReference<T> typeReference) {
-		return toEntityListInternal(bodyToFlux(typeReference));
-	}
+    @Override
+    public <T> Mono<ResponseEntity<List<T>>> toEntityList(
+            ParameterizedTypeReference<T> typeReference) {
+        return toEntityListInternal(bodyToFlux(typeReference));
+    }
 
-	private <T> Mono<ResponseEntity<List<T>>> toEntityListInternal(Flux<T> bodyFlux) {
-		HttpHeaders headers = headers().asHttpHeaders();
-		int status = rawStatusCode();
-		return bodyFlux
-				.collectList()
-				.map(body -> createEntity(body, headers, status));
-	}
+    private <T> Mono<ResponseEntity<List<T>>> toEntityListInternal(Flux<T> bodyFlux) {
+        HttpHeaders headers = headers().asHttpHeaders();
+        int status = rawStatusCode();
+        return bodyFlux.collectList().map(body -> createEntity(body, headers, status));
+    }
 
-	private <T> ResponseEntity<T> createEntity(HttpHeaders headers, int status) {
-		HttpStatus resolvedStatus = HttpStatus.resolve(status);
-		return resolvedStatus != null
-				? new ResponseEntity<>(headers, resolvedStatus)
-				: ResponseEntity.status(status).headers(headers).build();
-	}
+    private <T> ResponseEntity<T> createEntity(HttpHeaders headers, int status) {
+        HttpStatus resolvedStatus = HttpStatus.resolve(status);
+        return resolvedStatus != null
+                ? new ResponseEntity<>(headers, resolvedStatus)
+                : ResponseEntity.status(status).headers(headers).build();
+    }
 
-	private <T> ResponseEntity<T> createEntity(T body, HttpHeaders headers, int status) {
-		HttpStatus resolvedStatus = HttpStatus.resolve(status);
-		return resolvedStatus != null
-				? new ResponseEntity<>(body, headers, resolvedStatus)
-				: ResponseEntity.status(status).headers(headers).body(body);
-	}
+    private <T> ResponseEntity<T> createEntity(T body, HttpHeaders headers, int status) {
+        HttpStatus resolvedStatus = HttpStatus.resolve(status);
+        return resolvedStatus != null
+                ? new ResponseEntity<>(body, headers, resolvedStatus)
+                : ResponseEntity.status(status).headers(headers).body(body);
+    }
 
+    private class DefaultHeaders implements Headers {
 
-	private class DefaultHeaders implements Headers {
+        private HttpHeaders delegate() {
+            return response.getHeaders();
+        }
 
-		private HttpHeaders delegate() {
-			return response.getHeaders();
-		}
+        @Override
+        public OptionalLong contentLength() {
+            return toOptionalLong(delegate().getContentLength());
+        }
 
-		@Override
-		public OptionalLong contentLength() {
-			return toOptionalLong(delegate().getContentLength());
-		}
+        @Override
+        public Optional<MediaType> contentType() {
+            return Optional.ofNullable(delegate().getContentType());
+        }
 
-		@Override
-		public Optional<MediaType> contentType() {
-			return Optional.ofNullable(delegate().getContentType());
-		}
+        @Override
+        public List<String> header(String headerName) {
+            List<String> headerValues = delegate().get(headerName);
+            return (headerValues != null ? headerValues : Collections.emptyList());
+        }
 
-		@Override
-		public List<String> header(String headerName) {
-			List<String> headerValues = delegate().get(headerName);
-			return (headerValues != null ? headerValues : Collections.emptyList());
-		}
+        @Override
+        public HttpHeaders asHttpHeaders() {
+            return HttpHeaders.readOnlyHttpHeaders(delegate());
+        }
 
-		@Override
-		public HttpHeaders asHttpHeaders() {
-			return HttpHeaders.readOnlyHttpHeaders(delegate());
-		}
-
-		private OptionalLong toOptionalLong(long value) {
-			return (value != -1 ? OptionalLong.of(value) : OptionalLong.empty());
-		}
-	}
-
+        private OptionalLong toOptionalLong(long value) {
+            return (value != -1 ? OptionalLong.of(value) : OptionalLong.empty());
+        }
+    }
 }

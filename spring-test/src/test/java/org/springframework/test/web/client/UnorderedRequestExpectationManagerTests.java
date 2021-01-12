@@ -39,94 +39,113 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
  */
 public class UnorderedRequestExpectationManagerTests {
 
-	private UnorderedRequestExpectationManager manager = new UnorderedRequestExpectationManager();
+    private UnorderedRequestExpectationManager manager = new UnorderedRequestExpectationManager();
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
+    @Rule public ExpectedException thrown = ExpectedException.none();
 
+    @Test
+    public void unexpectedRequest() throws Exception {
+        try {
+            this.manager.validateRequest(createRequest(GET, "/foo"));
+        } catch (AssertionError error) {
+            assertEquals(
+                    "No further requests expected: HTTP GET /foo\n" + "0 request(s) executed.\n",
+                    error.getMessage());
+        }
+    }
 
-	@Test
-	public void unexpectedRequest() throws Exception {
-		try {
-			this.manager.validateRequest(createRequest(GET, "/foo"));
-		}
-		catch (AssertionError error) {
-			assertEquals("No further requests expected: HTTP GET /foo\n" +
-					"0 request(s) executed.\n", error.getMessage());
-		}
-	}
+    @Test
+    public void zeroExpectedRequests() throws Exception {
+        this.manager.verify();
+    }
 
-	@Test
-	public void zeroExpectedRequests() throws Exception {
-		this.manager.verify();
-	}
+    @Test
+    public void multipleRequests() throws Exception {
+        this.manager
+                .expectRequest(once(), requestTo("/foo"))
+                .andExpect(method(GET))
+                .andRespond(withSuccess());
+        this.manager
+                .expectRequest(once(), requestTo("/bar"))
+                .andExpect(method(GET))
+                .andRespond(withSuccess());
 
-	@Test
-	public void multipleRequests() throws Exception {
-		this.manager.expectRequest(once(), requestTo("/foo")).andExpect(method(GET)).andRespond(withSuccess());
-		this.manager.expectRequest(once(), requestTo("/bar")).andExpect(method(GET)).andRespond(withSuccess());
+        this.manager.validateRequest(createRequest(GET, "/bar"));
+        this.manager.validateRequest(createRequest(GET, "/foo"));
+        this.manager.verify();
+    }
 
-		this.manager.validateRequest(createRequest(GET, "/bar"));
-		this.manager.validateRequest(createRequest(GET, "/foo"));
-		this.manager.verify();
-	}
+    @Test
+    public void repeatedRequests() throws Exception {
+        this.manager
+                .expectRequest(twice(), requestTo("/foo"))
+                .andExpect(method(GET))
+                .andRespond(withSuccess());
+        this.manager
+                .expectRequest(twice(), requestTo("/bar"))
+                .andExpect(method(GET))
+                .andRespond(withSuccess());
 
-	@Test
-	public void repeatedRequests() throws Exception {
-		this.manager.expectRequest(twice(), requestTo("/foo")).andExpect(method(GET)).andRespond(withSuccess());
-		this.manager.expectRequest(twice(), requestTo("/bar")).andExpect(method(GET)).andRespond(withSuccess());
+        this.manager.validateRequest(createRequest(GET, "/bar"));
+        this.manager.validateRequest(createRequest(GET, "/foo"));
+        this.manager.validateRequest(createRequest(GET, "/foo"));
+        this.manager.validateRequest(createRequest(GET, "/bar"));
+        this.manager.verify();
+    }
 
-		this.manager.validateRequest(createRequest(GET, "/bar"));
-		this.manager.validateRequest(createRequest(GET, "/foo"));
-		this.manager.validateRequest(createRequest(GET, "/foo"));
-		this.manager.validateRequest(createRequest(GET, "/bar"));
-		this.manager.verify();
-	}
+    @Test
+    public void repeatedRequestsTooMany() throws Exception {
+        this.manager
+                .expectRequest(max(2), requestTo("/foo"))
+                .andExpect(method(GET))
+                .andRespond(withSuccess());
+        this.manager
+                .expectRequest(max(2), requestTo("/bar"))
+                .andExpect(method(GET))
+                .andRespond(withSuccess());
 
-	@Test
-	public void repeatedRequestsTooMany() throws Exception {
-		this.manager.expectRequest(max(2), requestTo("/foo")).andExpect(method(GET)).andRespond(withSuccess());
-		this.manager.expectRequest(max(2), requestTo("/bar")).andExpect(method(GET)).andRespond(withSuccess());
+        this.thrown.expectMessage(
+                "No further requests expected: HTTP GET /foo\n"
+                        + "4 request(s) executed:\n"
+                        + "GET /bar\n"
+                        + "GET /foo\n"
+                        + "GET /bar\n"
+                        + "GET /foo\n");
 
-		this.thrown.expectMessage("No further requests expected: HTTP GET /foo\n" +
-				"4 request(s) executed:\n" +
-				"GET /bar\n" +
-				"GET /foo\n" +
-				"GET /bar\n" +
-				"GET /foo\n");
+        this.manager.validateRequest(createRequest(GET, "/bar"));
+        this.manager.validateRequest(createRequest(GET, "/foo"));
+        this.manager.validateRequest(createRequest(GET, "/bar"));
+        this.manager.validateRequest(createRequest(GET, "/foo"));
+        this.manager.validateRequest(createRequest(GET, "/foo"));
+    }
 
-		this.manager.validateRequest(createRequest(GET, "/bar"));
-		this.manager.validateRequest(createRequest(GET, "/foo"));
-		this.manager.validateRequest(createRequest(GET, "/bar"));
-		this.manager.validateRequest(createRequest(GET, "/foo"));
-		this.manager.validateRequest(createRequest(GET, "/foo"));
-	}
+    @Test
+    public void repeatedRequestsTooFew() throws Exception {
+        this.manager
+                .expectRequest(min(2), requestTo("/foo"))
+                .andExpect(method(GET))
+                .andRespond(withSuccess());
+        this.manager
+                .expectRequest(min(2), requestTo("/bar"))
+                .andExpect(method(GET))
+                .andRespond(withSuccess());
 
-	@Test
-	public void repeatedRequestsTooFew() throws Exception {
-		this.manager.expectRequest(min(2), requestTo("/foo")).andExpect(method(GET)).andRespond(withSuccess());
-		this.manager.expectRequest(min(2), requestTo("/bar")).andExpect(method(GET)).andRespond(withSuccess());
+        this.thrown.expectMessage(
+                "3 request(s) executed:\n" + "GET /bar\n" + "GET /foo\n" + "GET /foo\n");
 
-		this.thrown.expectMessage("3 request(s) executed:\n" +
-				"GET /bar\n" +
-				"GET /foo\n" +
-				"GET /foo\n");
+        this.manager.validateRequest(createRequest(GET, "/bar"));
+        this.manager.validateRequest(createRequest(GET, "/foo"));
+        this.manager.validateRequest(createRequest(GET, "/foo"));
+        this.manager.verify();
+    }
 
-		this.manager.validateRequest(createRequest(GET, "/bar"));
-		this.manager.validateRequest(createRequest(GET, "/foo"));
-		this.manager.validateRequest(createRequest(GET, "/foo"));
-		this.manager.verify();
-	}
-
-
-	@SuppressWarnings("deprecation")
-	private ClientHttpRequest createRequest(HttpMethod method, String url) {
-		try {
-			return new org.springframework.mock.http.client.MockAsyncClientHttpRequest(method,  new URI(url));
-		}
-		catch (URISyntaxException ex) {
-			throw new IllegalStateException(ex);
-		}
-	}
-
+    @SuppressWarnings("deprecation")
+    private ClientHttpRequest createRequest(HttpMethod method, String url) {
+        try {
+            return new org.springframework.mock.http.client.MockAsyncClientHttpRequest(
+                    method, new URI(url));
+        } catch (URISyntaxException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
 }

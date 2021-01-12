@@ -22,12 +22,11 @@ package org.springframework.aop.aspectj.autoproxy;
  */
 interface AnnotatedTestBean {
 
-	String doThis();
+    String doThis();
 
-	String doThat();
+    String doThat();
 
-	String doTheOther();
+    String doTheOther();
 
-	String[] doArray();
-
+    String[] doArray();
 }

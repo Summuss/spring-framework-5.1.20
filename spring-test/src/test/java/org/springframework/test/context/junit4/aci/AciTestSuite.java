@@ -30,23 +30,22 @@ import org.springframework.test.context.junit4.aci.annotation.SingleInitializerA
 import org.springframework.test.context.junit4.aci.xml.MultipleInitializersXmlConfigTests;
 
 /**
- * Convenience test suite for integration tests that verify support for
- * {@link ApplicationContextInitializer ApplicationContextInitializers} (ACIs)
- * in the TestContext framework.
+ * Convenience test suite for integration tests that verify support for {@link
+ * ApplicationContextInitializer ApplicationContextInitializers} (ACIs) in the TestContext
+ * framework.
  *
  * @author Sam Brannen
  * @since 3.2
  */
 @RunWith(Suite.class)
 // Note: the following 'multi-line' layout is for enhanced code readability.
-@SuiteClasses({//
-	MultipleInitializersXmlConfigTests.class,//
-	SingleInitializerAnnotationConfigTests.class,//
-	MultipleInitializersAnnotationConfigTests.class,//
-	MergedInitializersAnnotationConfigTests.class,//
-	OverriddenInitializersAnnotationConfigTests.class,//
-	OrderedInitializersAnnotationConfigTests.class,//
-	InitializerWithoutConfigFilesOrClassesTests.class //
+@SuiteClasses({ //
+    MultipleInitializersXmlConfigTests.class, //
+    SingleInitializerAnnotationConfigTests.class, //
+    MultipleInitializersAnnotationConfigTests.class, //
+    MergedInitializersAnnotationConfigTests.class, //
+    OverriddenInitializersAnnotationConfigTests.class, //
+    OrderedInitializersAnnotationConfigTests.class, //
+    InitializerWithoutConfigFilesOrClassesTests.class //
 })
-public class AciTestSuite {
-}
+public class AciTestSuite {}

@@ -3,10 +3,10 @@
 
 <beans>
 
-	<bean id="transactionManager" class="org.springframework.tests.transaction.CallCountingTransactionManager"/>
+    <bean id="transactionManager" class="org.springframework.tests.transaction.CallCountingTransactionManager"/>
 
-	<bean class="org.springframework.transaction.aspectj.AnnotationTransactionAspect" factory-method="aspectOf">
-		<property name="transactionManager" ref="transactionManager"/>
-	</bean>
+    <bean class="org.springframework.transaction.aspectj.AnnotationTransactionAspect" factory-method="aspectOf">
+        <property name="transactionManager" ref="transactionManager"/>
+    </bean>
 
 </beans>

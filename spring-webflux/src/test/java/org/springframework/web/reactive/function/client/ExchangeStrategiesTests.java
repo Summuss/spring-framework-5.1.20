@@ -20,35 +20,33 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-/**
- * @author Arjen Poutsma
- */
+/** @author Arjen Poutsma */
 public class ExchangeStrategiesTests {
 
-	@Test
-	public void empty() {
-		ExchangeStrategies strategies = ExchangeStrategies.empty().build();
-		assertTrue(strategies.messageReaders().isEmpty());
-		assertTrue(strategies.messageWriters().isEmpty());
-	}
+    @Test
+    public void empty() {
+        ExchangeStrategies strategies = ExchangeStrategies.empty().build();
+        assertTrue(strategies.messageReaders().isEmpty());
+        assertTrue(strategies.messageWriters().isEmpty());
+    }
 
-	@Test
-	public void withDefaults() {
-		ExchangeStrategies strategies = ExchangeStrategies.withDefaults();
-		assertFalse(strategies.messageReaders().isEmpty());
-		assertFalse(strategies.messageWriters().isEmpty());
-	}
+    @Test
+    public void withDefaults() {
+        ExchangeStrategies strategies = ExchangeStrategies.withDefaults();
+        assertFalse(strategies.messageReaders().isEmpty());
+        assertFalse(strategies.messageWriters().isEmpty());
+    }
 
-	@Test
-	@SuppressWarnings("deprecation")
-	public void mutate() {
-		ExchangeStrategies strategies = ExchangeStrategies.empty().build();
-		assertTrue(strategies.messageReaders().isEmpty());
-		assertTrue(strategies.messageWriters().isEmpty());
+    @Test
+    @SuppressWarnings("deprecation")
+    public void mutate() {
+        ExchangeStrategies strategies = ExchangeStrategies.empty().build();
+        assertTrue(strategies.messageReaders().isEmpty());
+        assertTrue(strategies.messageWriters().isEmpty());
 
-		ExchangeStrategies mutated = strategies.mutate().codecs(codecs -> codecs.registerDefaults(true)).build();
-		assertFalse(mutated.messageReaders().isEmpty());
-		assertFalse(mutated.messageWriters().isEmpty());
-	}
-
+        ExchangeStrategies mutated =
+                strategies.mutate().codecs(codecs -> codecs.registerDefaults(true)).build();
+        assertFalse(mutated.messageReaders().isEmpty());
+        assertFalse(mutated.messageWriters().isEmpty());
+    }
 }

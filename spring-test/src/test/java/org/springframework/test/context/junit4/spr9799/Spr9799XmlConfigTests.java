@@ -23,8 +23,8 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 /**
- * Integration tests used to assess claims raised in
- * <a href="https://jira.spring.io/browse/SPR-9799" target="_blank">SPR-9799</a>.
+ * Integration tests used to assess claims raised in <a
+ * href="https://jira.spring.io/browse/SPR-9799" target="_blank">SPR-9799</a>.
  *
  * @author Sam Brannen
  * @since 3.2
@@ -34,10 +34,9 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 @ContextConfiguration
 public class Spr9799XmlConfigTests {
 
-	@Test
-	public void applicationContextLoads() {
-		// nothing to assert: we just want to make sure that the context loads without
-		// errors.
-	}
-
+    @Test
+    public void applicationContextLoads() {
+        // nothing to assert: we just want to make sure that the context loads without
+        // errors.
+    }
 }

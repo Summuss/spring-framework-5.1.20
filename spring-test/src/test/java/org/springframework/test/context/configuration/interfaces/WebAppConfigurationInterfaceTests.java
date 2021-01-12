@@ -32,13 +32,10 @@ import static org.junit.Assert.*;
 @RunWith(SpringRunner.class)
 public class WebAppConfigurationInterfaceTests implements WebAppConfigurationTestInterface {
 
-	@Autowired
-	WebApplicationContext wac;
+    @Autowired WebApplicationContext wac;
 
-
-	@Test
-	public void wacLoaded() {
-		assertNotNull(wac);
-	}
-
+    @Test
+    public void wacLoaded() {
+        assertNotNull(wac);
+    }
 }

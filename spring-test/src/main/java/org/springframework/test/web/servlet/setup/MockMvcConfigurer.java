@@ -21,13 +21,12 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.web.context.WebApplicationContext;
 
 /**
- * Contract for customizing a {@code ConfigurableMockMvcBuilder} in some
- * specific way, e.g. a 3rd party library that wants to provide shortcuts for
- * setting up a MockMvc.
+ * Contract for customizing a {@code ConfigurableMockMvcBuilder} in some specific way, e.g. a 3rd
+ * party library that wants to provide shortcuts for setting up a MockMvc.
  *
- * <p>An implementation of this interface can be plugged in via
- * {@link ConfigurableMockMvcBuilder#apply} with instances of this type likely
- * created via static methods, e.g.:
+ * <p>An implementation of this interface can be plugged in via {@link
+ * ConfigurableMockMvcBuilder#apply} with instances of this type likely created via static methods,
+ * e.g.:
  *
  * <pre class="code">
  * import static org.example.ExampleSetup.mySetup;
@@ -43,28 +42,27 @@ import org.springframework.web.context.WebApplicationContext;
  */
 public interface MockMvcConfigurer {
 
-	/**
-	 * Invoked immediately when this {@code MockMvcConfigurer} is added via
-	 * {@link ConfigurableMockMvcBuilder#apply}.
-	 * @param builder the builder for the MockMvc
-	 */
-	default void afterConfigurerAdded(ConfigurableMockMvcBuilder<?> builder) {
-	}
+    /**
+     * Invoked immediately when this {@code MockMvcConfigurer} is added via {@link
+     * ConfigurableMockMvcBuilder#apply}.
+     *
+     * @param builder the builder for the MockMvc
+     */
+    default void afterConfigurerAdded(ConfigurableMockMvcBuilder<?> builder) {}
 
-	/**
-	 * Invoked when the MockMvc instance is about to be created with the MockMvc
-	 * builder and the Spring WebApplicationContext that will be passed to the
-	 * {@code DispatcherServlet}.
-	 * @param builder the builder for the MockMvc
-	 * @param context the Spring configuration
-	 * @return a post processor to be applied to every request performed
-	 * through the {@code MockMvc} instance.
-	 */
-	@Nullable
-	default RequestPostProcessor beforeMockMvcCreated(
-			ConfigurableMockMvcBuilder<?> builder, WebApplicationContext context) {
+    /**
+     * Invoked when the MockMvc instance is about to be created with the MockMvc builder and the
+     * Spring WebApplicationContext that will be passed to the {@code DispatcherServlet}.
+     *
+     * @param builder the builder for the MockMvc
+     * @param context the Spring configuration
+     * @return a post processor to be applied to every request performed through the {@code MockMvc}
+     *     instance.
+     */
+    @Nullable
+    default RequestPostProcessor beforeMockMvcCreated(
+            ConfigurableMockMvcBuilder<?> builder, WebApplicationContext context) {
 
-		return null;
-	}
-
+        return null;
+    }
 }

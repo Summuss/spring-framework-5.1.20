@@ -25,15 +25,14 @@ import java.lang.annotation.Target;
 import org.junit.jupiter.api.Tag;
 
 /**
- * Custom annotation for tagging "fake" test cases which are supposed to fail
- * but are only intended to be used internally by "real" passing tests.
+ * Custom annotation for tagging "fake" test cases which are supposed to fail but are only intended
+ * to be used internally by "real" passing tests.
  *
  * @author Sam Brannen
  * @since 5.1
  */
-@Target({ ElementType.TYPE, ElementType.METHOD })
+@Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Tag("failing-test-case")
-public @interface FailingTestCase {
-}
+public @interface FailingTestCase {}

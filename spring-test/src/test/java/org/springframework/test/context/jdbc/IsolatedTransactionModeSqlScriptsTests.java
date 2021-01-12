@@ -28,34 +28,37 @@ import org.springframework.test.context.transaction.BeforeTransaction;
 import static org.junit.Assert.*;
 
 /**
- * Transactional integration tests that verify commit semantics for
- * {@link SqlConfig#transactionMode} and {@link TransactionMode#ISOLATED}.
+ * Transactional integration tests that verify commit semantics for {@link
+ * SqlConfig#transactionMode} and {@link TransactionMode#ISOLATED}.
  *
  * @author Sam Brannen
  * @since 4.1
  */
 @ContextConfiguration(classes = PopulatedSchemaDatabaseConfig.class)
 @DirtiesContext
-public class IsolatedTransactionModeSqlScriptsTests extends AbstractTransactionalJUnit4SpringContextTests {
+public class IsolatedTransactionModeSqlScriptsTests
+        extends AbstractTransactionalJUnit4SpringContextTests {
 
-	@BeforeTransaction
-	public void beforeTransaction() {
-		assertNumUsers(0);
-	}
+    @BeforeTransaction
+    public void beforeTransaction() {
+        assertNumUsers(0);
+    }
 
-	@Test
-	@SqlGroup(@Sql(scripts = "data-add-dogbert.sql", config = @SqlConfig(transactionMode = TransactionMode.ISOLATED)))
-	public void methodLevelScripts() {
-		assertNumUsers(1);
-	}
+    @Test
+    @SqlGroup(
+            @Sql(
+                    scripts = "data-add-dogbert.sql",
+                    config = @SqlConfig(transactionMode = TransactionMode.ISOLATED)))
+    public void methodLevelScripts() {
+        assertNumUsers(1);
+    }
 
-	@AfterTransaction
-	public void afterTransaction() {
-		assertNumUsers(1);
-	}
+    @AfterTransaction
+    public void afterTransaction() {
+        assertNumUsers(1);
+    }
 
-	protected void assertNumUsers(int expected) {
-		assertEquals("Number of rows in the 'user' table.", expected, countRowsInTable("user"));
-	}
-
+    protected void assertNumUsers(int expected) {
+        assertEquals("Number of rows in the 'user' table.", expected, countRowsInTable("user"));
+    }
 }

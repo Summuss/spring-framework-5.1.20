@@ -29,111 +29,111 @@ import org.springframework.web.servlet.ModelAndView;
  */
 public class StubMvcResult implements MvcResult {
 
-	private MockHttpServletRequest request;
+    private MockHttpServletRequest request;
 
-	private Object handler;
+    private Object handler;
 
-	private HandlerInterceptor[] interceptors;
+    private HandlerInterceptor[] interceptors;
 
-	private Exception resolvedException;
+    private Exception resolvedException;
 
-	private ModelAndView mav;
+    private ModelAndView mav;
 
-	private FlashMap flashMap;
+    private FlashMap flashMap;
 
-	private MockHttpServletResponse response;
+    private MockHttpServletResponse response;
 
-	public StubMvcResult(MockHttpServletRequest request,
-						Object handler,
-						HandlerInterceptor[] interceptors,
-						Exception resolvedException,
-						ModelAndView mav,
-						FlashMap flashMap,
-						MockHttpServletResponse response) {
-		this.request = request;
-		this.handler = handler;
-		this.interceptors = interceptors;
-		this.resolvedException = resolvedException;
-		this.mav = mav;
-		this.flashMap = flashMap;
-		this.response = response;
-	}
+    public StubMvcResult(
+            MockHttpServletRequest request,
+            Object handler,
+            HandlerInterceptor[] interceptors,
+            Exception resolvedException,
+            ModelAndView mav,
+            FlashMap flashMap,
+            MockHttpServletResponse response) {
+        this.request = request;
+        this.handler = handler;
+        this.interceptors = interceptors;
+        this.resolvedException = resolvedException;
+        this.mav = mav;
+        this.flashMap = flashMap;
+        this.response = response;
+    }
 
-	@Override
-	public MockHttpServletRequest getRequest() {
-		return request;
-	}
+    @Override
+    public MockHttpServletRequest getRequest() {
+        return request;
+    }
 
-	@Override
-	public Object getHandler() {
-		return handler;
-	}
+    @Override
+    public Object getHandler() {
+        return handler;
+    }
 
-	@Override
-	public HandlerInterceptor[] getInterceptors() {
-		return interceptors;
-	}
+    @Override
+    public HandlerInterceptor[] getInterceptors() {
+        return interceptors;
+    }
 
-	@Override
-	public Exception getResolvedException() {
-		return resolvedException;
-	}
+    @Override
+    public Exception getResolvedException() {
+        return resolvedException;
+    }
 
-	@Override
-	public ModelAndView getModelAndView() {
-		return mav;
-	}
+    @Override
+    public ModelAndView getModelAndView() {
+        return mav;
+    }
 
-	@Override
-	public FlashMap getFlashMap() {
-		return flashMap;
-	}
+    @Override
+    public FlashMap getFlashMap() {
+        return flashMap;
+    }
 
-	@Override
-	public MockHttpServletResponse getResponse() {
-		return response;
-	}
+    @Override
+    public MockHttpServletResponse getResponse() {
+        return response;
+    }
 
-	public ModelAndView getMav() {
-		return mav;
-	}
+    public ModelAndView getMav() {
+        return mav;
+    }
 
-	public void setMav(ModelAndView mav) {
-		this.mav = mav;
-	}
+    public void setMav(ModelAndView mav) {
+        this.mav = mav;
+    }
 
-	public void setRequest(MockHttpServletRequest request) {
-		this.request = request;
-	}
+    public void setRequest(MockHttpServletRequest request) {
+        this.request = request;
+    }
 
-	public void setHandler(Object handler) {
-		this.handler = handler;
-	}
+    public void setHandler(Object handler) {
+        this.handler = handler;
+    }
 
-	public void setInterceptors(HandlerInterceptor[] interceptors) {
-		this.interceptors = interceptors;
-	}
+    public void setInterceptors(HandlerInterceptor[] interceptors) {
+        this.interceptors = interceptors;
+    }
 
-	public void setResolvedException(Exception resolvedException) {
-		this.resolvedException = resolvedException;
-	}
+    public void setResolvedException(Exception resolvedException) {
+        this.resolvedException = resolvedException;
+    }
 
-	public void setFlashMap(FlashMap flashMap) {
-		this.flashMap = flashMap;
-	}
+    public void setFlashMap(FlashMap flashMap) {
+        this.flashMap = flashMap;
+    }
 
-	public void setResponse(MockHttpServletResponse response) {
-		this.response = response;
-	}
+    public void setResponse(MockHttpServletResponse response) {
+        this.response = response;
+    }
 
-	@Override
-	public Object getAsyncResult() {
-		return null;
-	}
+    @Override
+    public Object getAsyncResult() {
+        return null;
+    }
 
-	@Override
-	public Object getAsyncResult(long timeToWait) {
-		return null;
-	}
-
+    @Override
+    public Object getAsyncResult(long timeToWait) {
+        return null;
+    }
 }

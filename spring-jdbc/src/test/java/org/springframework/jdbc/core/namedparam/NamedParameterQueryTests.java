@@ -46,288 +46,299 @@ import static org.mockito.BDDMockito.*;
  */
 public class NamedParameterQueryTests {
 
-	private DataSource dataSource;
+    private DataSource dataSource;
 
-	private Connection connection;
+    private Connection connection;
 
-	private PreparedStatement preparedStatement;
+    private PreparedStatement preparedStatement;
 
-	private ResultSet resultSet;
+    private ResultSet resultSet;
 
-	private ResultSetMetaData resultSetMetaData;
+    private ResultSetMetaData resultSetMetaData;
 
-	private NamedParameterJdbcTemplate template;
+    private NamedParameterJdbcTemplate template;
 
+    @Before
+    public void setup() throws Exception {
+        connection = mock(Connection.class);
+        dataSource = mock(DataSource.class);
+        preparedStatement = mock(PreparedStatement.class);
+        resultSet = mock(ResultSet.class);
+        resultSetMetaData = mock(ResultSetMetaData.class);
+        template = new NamedParameterJdbcTemplate(dataSource);
+        given(dataSource.getConnection()).willReturn(connection);
+        given(resultSetMetaData.getColumnCount()).willReturn(1);
+        given(resultSetMetaData.getColumnLabel(1)).willReturn("age");
+        given(connection.prepareStatement(anyString())).willReturn(preparedStatement);
+        given(preparedStatement.executeQuery()).willReturn(resultSet);
+    }
 
-	@Before
-	public void setup() throws Exception {
-		connection = mock(Connection.class);
-		dataSource = mock(DataSource.class);
-		preparedStatement = mock(PreparedStatement.class);
-		resultSet = mock(ResultSet.class);
-		resultSetMetaData = mock(ResultSetMetaData.class);
-		template = new NamedParameterJdbcTemplate(dataSource);
-		given(dataSource.getConnection()).willReturn(connection);
-		given(resultSetMetaData.getColumnCount()).willReturn(1);
-		given(resultSetMetaData.getColumnLabel(1)).willReturn("age");
-		given(connection.prepareStatement(anyString())).willReturn(preparedStatement);
-		given(preparedStatement.executeQuery()).willReturn(resultSet);
-	}
+    @After
+    public void verifyClose() throws Exception {
+        verify(preparedStatement).close();
+        verify(resultSet).close();
+        verify(connection).close();
+    }
 
-	@After
-	public void verifyClose() throws Exception {
-		verify(preparedStatement).close();
-		verify(resultSet).close();
-		verify(connection).close();
-	}
+    @Test
+    public void testQueryForListWithParamMap() throws Exception {
+        given(resultSet.getMetaData()).willReturn(resultSetMetaData);
+        given(resultSet.next()).willReturn(true, true, false);
+        given(resultSet.getObject(1)).willReturn(11, 12);
 
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("id", 3);
+        List<Map<String, Object>> li =
+                template.queryForList("SELECT AGE FROM CUSTMR WHERE ID < :id", params);
 
-	@Test
-	public void testQueryForListWithParamMap() throws Exception {
-		given(resultSet.getMetaData()).willReturn(resultSetMetaData);
-		given(resultSet.next()).willReturn(true, true, false);
-		given(resultSet.getObject(1)).willReturn(11, 12);
+        assertEquals("All rows returned", 2, li.size());
+        assertEquals("First row is Integer", 11, ((Integer) li.get(0).get("age")).intValue());
+        assertEquals("Second row is Integer", 12, ((Integer) li.get(1).get("age")).intValue());
 
-		MapSqlParameterSource params = new MapSqlParameterSource();
-		params.addValue("id", 3);
-		List<Map<String, Object>> li = template.queryForList(
-				"SELECT AGE FROM CUSTMR WHERE ID < :id", params);
+        verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID < ?");
+        verify(preparedStatement).setObject(1, 3);
+    }
 
-		assertEquals("All rows returned", 2, li.size());
-		assertEquals("First row is Integer", 11,
-				((Integer) li.get(0).get("age")).intValue());
-		assertEquals("Second row is Integer", 12,
-				((Integer) li.get(1).get("age")).intValue());
+    @Test
+    public void testQueryForListWithParamMapAndEmptyResult() throws Exception {
+        given(resultSet.next()).willReturn(false);
 
-		verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID < ?");
-		verify(preparedStatement).setObject(1, 3);
-	}
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("id", 3);
+        List<Map<String, Object>> li =
+                template.queryForList("SELECT AGE FROM CUSTMR WHERE ID < :id", params);
 
-	@Test
-	public void testQueryForListWithParamMapAndEmptyResult() throws Exception {
-		given(resultSet.next()).willReturn(false);
+        assertEquals("All rows returned", 0, li.size());
+        verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID < ?");
+        verify(preparedStatement).setObject(1, 3);
+    }
 
-		MapSqlParameterSource params = new MapSqlParameterSource();
-		params.addValue("id", 3);
-		List<Map<String, Object>> li = template.queryForList(
-				"SELECT AGE FROM CUSTMR WHERE ID < :id", params);
+    @Test
+    public void testQueryForListWithParamMapAndSingleRowAndColumn() throws Exception {
+        given(resultSet.getMetaData()).willReturn(resultSetMetaData);
+        given(resultSet.next()).willReturn(true, false);
+        given(resultSet.getObject(1)).willReturn(11);
 
-		assertEquals("All rows returned", 0, li.size());
-		verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID < ?");
-		verify(preparedStatement).setObject(1, 3);
-	}
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("id", 3);
+        List<Map<String, Object>> li =
+                template.queryForList("SELECT AGE FROM CUSTMR WHERE ID < :id", params);
 
-	@Test
-	public void testQueryForListWithParamMapAndSingleRowAndColumn() throws Exception {
-		given(resultSet.getMetaData()).willReturn(resultSetMetaData);
-		given(resultSet.next()).willReturn(true, false);
-		given(resultSet.getObject(1)).willReturn(11);
+        assertEquals("All rows returned", 1, li.size());
+        assertEquals("First row is Integer", 11, ((Integer) li.get(0).get("age")).intValue());
+        verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID < ?");
+        verify(preparedStatement).setObject(1, 3);
+    }
 
-		MapSqlParameterSource params = new MapSqlParameterSource();
-		params.addValue("id", 3);
-		List<Map<String, Object>> li = template.queryForList(
-				"SELECT AGE FROM CUSTMR WHERE ID < :id", params);
+    @Test
+    public void testQueryForListWithParamMapAndIntegerElementAndSingleRowAndColumn()
+            throws Exception {
+        given(resultSet.getMetaData()).willReturn(resultSetMetaData);
+        given(resultSet.next()).willReturn(true, false);
+        given(resultSet.getInt(1)).willReturn(11);
 
-		assertEquals("All rows returned", 1, li.size());
-		assertEquals("First row is Integer", 11,
-				((Integer) li.get(0).get("age")).intValue());
-		verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID < ?");
-		verify(preparedStatement).setObject(1, 3);
-	}
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("id", 3);
+        List<Integer> li =
+                template.queryForList(
+                        "SELECT AGE FROM CUSTMR WHERE ID < :id", params, Integer.class);
 
-	@Test
-	public void testQueryForListWithParamMapAndIntegerElementAndSingleRowAndColumn()
-			throws Exception {
-		given(resultSet.getMetaData()).willReturn(resultSetMetaData);
-		given(resultSet.next()).willReturn(true, false);
-		given(resultSet.getInt(1)).willReturn(11);
+        assertEquals("All rows returned", 1, li.size());
+        assertEquals("First row is Integer", 11, li.get(0).intValue());
+        verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID < ?");
+        verify(preparedStatement).setObject(1, 3);
+    }
 
-		MapSqlParameterSource params = new MapSqlParameterSource();
-		params.addValue("id", 3);
-		List<Integer> li = template.queryForList("SELECT AGE FROM CUSTMR WHERE ID < :id",
-				params, Integer.class);
+    @Test
+    public void testQueryForMapWithParamMapAndSingleRowAndColumn() throws Exception {
+        given(resultSet.getMetaData()).willReturn(resultSetMetaData);
+        given(resultSet.next()).willReturn(true, false);
+        given(resultSet.getObject(1)).willReturn(11);
 
-		assertEquals("All rows returned", 1, li.size());
-		assertEquals("First row is Integer", 11, li.get(0).intValue());
-		verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID < ?");
-		verify(preparedStatement).setObject(1, 3);
-	}
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("id", 3);
+        Map<String, Object> map =
+                template.queryForMap("SELECT AGE FROM CUSTMR WHERE ID < :id", params);
 
-	@Test
-	public void testQueryForMapWithParamMapAndSingleRowAndColumn() throws Exception {
-		given(resultSet.getMetaData()).willReturn(resultSetMetaData);
-		given(resultSet.next()).willReturn(true, false);
-		given(resultSet.getObject(1)).willReturn(11);
+        assertEquals("Row is Integer", 11, ((Integer) map.get("age")).intValue());
+        verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID < ?");
+        verify(preparedStatement).setObject(1, 3);
+    }
 
-		MapSqlParameterSource params = new MapSqlParameterSource();
-		params.addValue("id", 3);
-		Map<String, Object> map = template.queryForMap("SELECT AGE FROM CUSTMR WHERE ID < :id", params);
+    @Test
+    public void testQueryForObjectWithParamMapAndRowMapper() throws Exception {
+        given(resultSet.next()).willReturn(true, false);
+        given(resultSet.getInt(1)).willReturn(22);
 
-		assertEquals("Row is Integer", 11, ((Integer) map.get("age")).intValue());
-		verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID < ?");
-		verify(preparedStatement).setObject(1, 3);
-	}
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("id", 3);
+        Object o =
+                template.queryForObject(
+                        "SELECT AGE FROM CUSTMR WHERE ID = :id",
+                        params,
+                        new RowMapper<Object>() {
+                            @Override
+                            public Object mapRow(ResultSet rs, int rowNum) throws SQLException {
+                                return rs.getInt(1);
+                            }
+                        });
 
-	@Test
-	public void testQueryForObjectWithParamMapAndRowMapper() throws Exception {
-		given(resultSet.next()).willReturn(true, false);
-		given(resultSet.getInt(1)).willReturn(22);
+        assertTrue("Correct result type", o instanceof Integer);
+        verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID = ?");
+        verify(preparedStatement).setObject(1, 3);
+    }
 
-		MapSqlParameterSource params = new MapSqlParameterSource();
-		params.addValue("id", 3);
-		Object o = template.queryForObject("SELECT AGE FROM CUSTMR WHERE ID = :id",
-				params, new RowMapper<Object>() {
-			@Override
-			public Object mapRow(ResultSet rs, int rowNum) throws SQLException {
-				return rs.getInt(1);
-			}
-		});
+    @Test
+    public void testQueryForObjectWithMapAndInteger() throws Exception {
+        given(resultSet.getMetaData()).willReturn(resultSetMetaData);
+        given(resultSet.next()).willReturn(true, false);
+        given(resultSet.getInt(1)).willReturn(22);
 
-		assertTrue("Correct result type", o instanceof Integer);
-		verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID = ?");
-		verify(preparedStatement).setObject(1, 3);
-	}
+        Map<String, Object> params = new HashMap<>();
+        params.put("id", 3);
+        Object o =
+                template.queryForObject(
+                        "SELECT AGE FROM CUSTMR WHERE ID = :id", params, Integer.class);
 
-	@Test
-	public void testQueryForObjectWithMapAndInteger() throws Exception {
-		given(resultSet.getMetaData()).willReturn(resultSetMetaData);
-		given(resultSet.next()).willReturn(true, false);
-		given(resultSet.getInt(1)).willReturn(22);
+        assertTrue("Correct result type", o instanceof Integer);
+        verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID = ?");
+        verify(preparedStatement).setObject(1, 3);
+    }
 
-		Map<String, Object> params = new HashMap<>();
-		params.put("id", 3);
-		Object o = template.queryForObject("SELECT AGE FROM CUSTMR WHERE ID = :id",
-				params, Integer.class);
+    @Test
+    public void testQueryForObjectWithParamMapAndInteger() throws Exception {
+        given(resultSet.getMetaData()).willReturn(resultSetMetaData);
+        given(resultSet.next()).willReturn(true, false);
+        given(resultSet.getInt(1)).willReturn(22);
 
-		assertTrue("Correct result type", o instanceof Integer);
-		verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID = ?");
-		verify(preparedStatement).setObject(1, 3);
-	}
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("id", 3);
+        Object o =
+                template.queryForObject(
+                        "SELECT AGE FROM CUSTMR WHERE ID = :id", params, Integer.class);
 
-	@Test
-	public void testQueryForObjectWithParamMapAndInteger() throws Exception {
-		given(resultSet.getMetaData()).willReturn(resultSetMetaData);
-		given(resultSet.next()).willReturn(true, false);
-		given(resultSet.getInt(1)).willReturn(22);
+        assertTrue("Correct result type", o instanceof Integer);
+        verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID = ?");
+        verify(preparedStatement).setObject(1, 3);
+    }
 
-		MapSqlParameterSource params = new MapSqlParameterSource();
-		params.addValue("id", 3);
-		Object o = template.queryForObject("SELECT AGE FROM CUSTMR WHERE ID = :id",
-				params, Integer.class);
+    @Test
+    public void testQueryForObjectWithParamMapAndList() throws Exception {
+        String sql = "SELECT AGE FROM CUSTMR WHERE ID IN (:ids)";
+        String sqlToUse = "SELECT AGE FROM CUSTMR WHERE ID IN (?, ?)";
+        given(resultSet.getMetaData()).willReturn(resultSetMetaData);
+        given(resultSet.next()).willReturn(true, false);
+        given(resultSet.getInt(1)).willReturn(22);
 
-		assertTrue("Correct result type", o instanceof Integer);
-		verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID = ?");
-		verify(preparedStatement).setObject(1, 3);
-	}
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("ids", Arrays.asList(3, 4));
+        Object o = template.queryForObject(sql, params, Integer.class);
 
-	@Test
-	public void testQueryForObjectWithParamMapAndList() throws Exception {
-		String sql = "SELECT AGE FROM CUSTMR WHERE ID IN (:ids)";
-		String sqlToUse = "SELECT AGE FROM CUSTMR WHERE ID IN (?, ?)";
-		given(resultSet.getMetaData()).willReturn(resultSetMetaData);
-		given(resultSet.next()).willReturn(true, false);
-		given(resultSet.getInt(1)).willReturn(22);
+        assertTrue("Correct result type", o instanceof Integer);
+        verify(connection).prepareStatement(sqlToUse);
+        verify(preparedStatement).setObject(1, 3);
+    }
 
-		MapSqlParameterSource params = new MapSqlParameterSource();
-		params.addValue("ids", Arrays.asList(3, 4));
-		Object o = template.queryForObject(sql, params, Integer.class);
+    @Test
+    public void testQueryForObjectWithParamMapAndListOfExpressionLists() throws Exception {
+        given(resultSet.getMetaData()).willReturn(resultSetMetaData);
+        given(resultSet.next()).willReturn(true, false);
+        given(resultSet.getInt(1)).willReturn(22);
 
-		assertTrue("Correct result type", o instanceof Integer);
-		verify(connection).prepareStatement(sqlToUse);
-		verify(preparedStatement).setObject(1, 3);
-	}
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        List<Object[]> l1 = new ArrayList<>();
+        l1.add(new Object[] {3, "Rod"});
+        l1.add(new Object[] {4, "Juergen"});
+        params.addValue("multiExpressionList", l1);
+        Object o =
+                template.queryForObject(
+                        "SELECT AGE FROM CUSTMR WHERE (ID, NAME) IN (:multiExpressionList)",
+                        params,
+                        Integer.class);
 
-	@Test
-	public void testQueryForObjectWithParamMapAndListOfExpressionLists() throws Exception {
-		given(resultSet.getMetaData()).willReturn(resultSetMetaData);
-		given(resultSet.next()).willReturn(true, false);
-		given(resultSet.getInt(1)).willReturn(22);
+        assertTrue("Correct result type", o instanceof Integer);
+        verify(connection)
+                .prepareStatement("SELECT AGE FROM CUSTMR WHERE (ID, NAME) IN ((?, ?), (?, ?))");
+        verify(preparedStatement).setObject(1, 3);
+    }
 
-		MapSqlParameterSource params = new MapSqlParameterSource();
-		List<Object[]> l1 = new ArrayList<>();
-		l1.add(new Object[] {3, "Rod"});
-		l1.add(new Object[] {4, "Juergen"});
-		params.addValue("multiExpressionList", l1);
-		Object o = template.queryForObject(
-				"SELECT AGE FROM CUSTMR WHERE (ID, NAME) IN (:multiExpressionList)",
-				params, Integer.class);
+    @Test
+    public void testQueryForIntWithParamMap() throws Exception {
+        given(resultSet.getMetaData()).willReturn(resultSetMetaData);
+        given(resultSet.next()).willReturn(true, false);
+        given(resultSet.getInt(1)).willReturn(22);
 
-		assertTrue("Correct result type", o instanceof Integer);
-		verify(connection).prepareStatement(
-				"SELECT AGE FROM CUSTMR WHERE (ID, NAME) IN ((?, ?), (?, ?))");
-		verify(preparedStatement).setObject(1, 3);
-	}
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("id", 3);
+        int i =
+                template.queryForObject(
+                                "SELECT AGE FROM CUSTMR WHERE ID = :id", params, Integer.class)
+                        .intValue();
 
-	@Test
-	public void testQueryForIntWithParamMap() throws Exception {
-		given(resultSet.getMetaData()).willReturn(resultSetMetaData);
-		given(resultSet.next()).willReturn(true, false);
-		given(resultSet.getInt(1)).willReturn(22);
+        assertEquals("Return of an int", 22, i);
+        verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID = ?");
+        verify(preparedStatement).setObject(1, 3);
+    }
 
-		MapSqlParameterSource params = new MapSqlParameterSource();
-		params.addValue("id", 3);
-		int i = template.queryForObject("SELECT AGE FROM CUSTMR WHERE ID = :id", params, Integer.class).intValue();
+    @Test
+    public void testQueryForLongWithParamBean() throws Exception {
+        given(resultSet.getMetaData()).willReturn(resultSetMetaData);
+        given(resultSet.next()).willReturn(true, false);
+        given(resultSet.getLong(1)).willReturn(87L);
 
-		assertEquals("Return of an int", 22, i);
-		verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID = ?");
-		verify(preparedStatement).setObject(1, 3);
-	}
+        BeanPropertySqlParameterSource params =
+                new BeanPropertySqlParameterSource(new ParameterBean(3));
+        long l =
+                template.queryForObject("SELECT AGE FROM CUSTMR WHERE ID = :id", params, Long.class)
+                        .longValue();
 
-	@Test
-	public void testQueryForLongWithParamBean() throws Exception {
-		given(resultSet.getMetaData()).willReturn(resultSetMetaData);
-		given(resultSet.next()).willReturn(true, false);
-		given(resultSet.getLong(1)).willReturn(87L);
+        assertEquals("Return of a long", 87, l);
+        verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID = ?");
+        verify(preparedStatement).setObject(1, 3, Types.INTEGER);
+    }
 
-		BeanPropertySqlParameterSource params = new BeanPropertySqlParameterSource(new ParameterBean(3));
-		long l = template.queryForObject("SELECT AGE FROM CUSTMR WHERE ID = :id", params, Long.class).longValue();
+    @Test
+    public void testQueryForLongWithParamBeanWithCollection() throws Exception {
+        given(resultSet.getMetaData()).willReturn(resultSetMetaData);
+        given(resultSet.next()).willReturn(true, false);
+        given(resultSet.getLong(1)).willReturn(87L);
 
-		assertEquals("Return of a long", 87, l);
-		verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID = ?");
-		verify(preparedStatement).setObject(1, 3, Types.INTEGER);
-	}
+        BeanPropertySqlParameterSource params =
+                new BeanPropertySqlParameterSource(new ParameterCollectionBean(3, 5));
+        long l =
+                template.queryForObject(
+                                "SELECT AGE FROM CUSTMR WHERE ID IN (:ids)", params, Long.class)
+                        .longValue();
 
-	@Test
-	public void testQueryForLongWithParamBeanWithCollection() throws Exception {
-		given(resultSet.getMetaData()).willReturn(resultSetMetaData);
-		given(resultSet.next()).willReturn(true, false);
-		given(resultSet.getLong(1)).willReturn(87L);
+        assertEquals("Return of a long", 87, l);
+        verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID IN (?, ?)");
+        verify(preparedStatement).setObject(1, 3);
+        verify(preparedStatement).setObject(2, 5);
+    }
 
-		BeanPropertySqlParameterSource params = new BeanPropertySqlParameterSource(new ParameterCollectionBean(3, 5));
-		long l = template.queryForObject("SELECT AGE FROM CUSTMR WHERE ID IN (:ids)", params, Long.class).longValue();
+    static class ParameterBean {
 
-		assertEquals("Return of a long", 87, l);
-		verify(connection).prepareStatement("SELECT AGE FROM CUSTMR WHERE ID IN (?, ?)");
-		verify(preparedStatement).setObject(1, 3);
-		verify(preparedStatement).setObject(2, 5);
-	}
+        private final int id;
 
+        public ParameterBean(int id) {
+            this.id = id;
+        }
 
-	static class ParameterBean {
+        public int getId() {
+            return id;
+        }
+    }
 
-		private final int id;
+    static class ParameterCollectionBean {
 
-		public ParameterBean(int id) {
-			this.id = id;
-		}
+        private final Collection<Integer> ids;
 
-		public int getId() {
-			return id;
-		}
-	}
+        public ParameterCollectionBean(Integer... ids) {
+            this.ids = Arrays.asList(ids);
+        }
 
-
-	static class ParameterCollectionBean {
-
-		private final Collection<Integer> ids;
-
-		public ParameterCollectionBean(Integer... ids) {
-			this.ids = Arrays.asList(ids);
-		}
-
-		public Collection<Integer> getIds() {
-			return ids;
-		}
-	}
-
+        public Collection<Integer> getIds() {
+            return ids;
+        }
+    }
 }

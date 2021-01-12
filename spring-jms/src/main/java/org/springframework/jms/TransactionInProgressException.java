@@ -26,8 +26,7 @@ package org.springframework.jms;
 @SuppressWarnings("serial")
 public class TransactionInProgressException extends JmsException {
 
-	public TransactionInProgressException(javax.jms.TransactionInProgressException cause) {
-		super(cause);
-	}
-
+    public TransactionInProgressException(javax.jms.TransactionInProgressException cause) {
+        super(cause);
+    }
 }

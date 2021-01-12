@@ -25,7 +25,7 @@ import java.sql.ResultSet
  * @since 5.0
  */
 inline fun <reified T : Any> JdbcOperations.queryForObject(sql: String): T? =
-		queryForObject(sql, T::class.java)
+        queryForObject(sql, T::class.java)
 
 /**
  * Extensions for [JdbcOperations.queryForObject] providing a RowMapper-like function
@@ -35,7 +35,7 @@ inline fun <reified T : Any> JdbcOperations.queryForObject(sql: String): T? =
  * @since 5.0
  */
 fun <T : Any?> JdbcOperations.queryForObject(sql: String, vararg args: Any, function: (ResultSet, Int) -> T): T? =
-		queryForObject(sql, RowMapper { resultSet, i -> function(resultSet, i) }, *args)
+        queryForObject(sql, RowMapper { resultSet, i -> function(resultSet, i) }, *args)
 
 /**
  * Extension for [JdbcOperations.queryForObject] providing a
@@ -45,7 +45,7 @@ fun <T : Any?> JdbcOperations.queryForObject(sql: String, vararg args: Any, func
  * @since 5.0
  */
 inline fun <reified T : Any> JdbcOperations.queryForObject(sql: String, args: Array<out Any>, argTypes: IntArray): T? =
-		queryForObject(sql, args, argTypes, T::class.java)
+        queryForObject(sql, args, argTypes, T::class.java)
 
 /**
  * Extension for [JdbcOperations.queryForObject] providing a
@@ -55,7 +55,7 @@ inline fun <reified T : Any> JdbcOperations.queryForObject(sql: String, args: Ar
  * @since 5.0
  */
 inline fun <reified T : Any> JdbcOperations.queryForObject(sql: String, args: Array<out Any>): T? =
-		queryForObject(sql, args, T::class.java)
+        queryForObject(sql, args, T::class.java)
 
 /**
  * Extension for [JdbcOperations.queryForList] providing a `queryForList<Foo>("...")` variant.
@@ -65,7 +65,7 @@ inline fun <reified T : Any> JdbcOperations.queryForObject(sql: String, args: Ar
  */
 @Suppress("EXTENSION_SHADOWED_BY_MEMBER")
 inline fun <reified T : Any> JdbcOperations.queryForList(sql: String): List<T> =
-		queryForList(sql, T::class.java)
+        queryForList(sql, T::class.java)
 
 /**
  * Extension for [JdbcOperations.queryForList] providing a
@@ -76,8 +76,8 @@ inline fun <reified T : Any> JdbcOperations.queryForList(sql: String): List<T> =
  */
 @Suppress("EXTENSION_SHADOWED_BY_MEMBER")
 inline fun <reified T : Any> JdbcOperations.queryForList(sql: String, args: Array<out Any>,
-		argTypes: IntArray): List<T> =
-		queryForList(sql, args, argTypes, T::class.java)
+                                                         argTypes: IntArray): List<T> =
+        queryForList(sql, args, argTypes, T::class.java)
 
 /**
  * Extension for [JdbcOperations.queryForList] providing a
@@ -87,7 +87,7 @@ inline fun <reified T : Any> JdbcOperations.queryForList(sql: String, args: Arra
  * @since 5.0
  */
 inline fun <reified T : Any> JdbcOperations.queryForList(sql: String, args: Array<out Any>): List<T> =
-		queryForList(sql, args, T::class.java)
+        queryForList(sql, args, T::class.java)
 
 /**
  * Extension for [JdbcOperations.query] providing a ResultSetExtractor-like function
@@ -97,8 +97,8 @@ inline fun <reified T : Any> JdbcOperations.queryForList(sql: String, args: Arra
  * @since 5.0
  */
 inline fun <reified T : Any?> JdbcOperations.query(sql: String, vararg args: Any,
-		crossinline function: (ResultSet) -> T): T? =
-		query(sql, ResultSetExtractor { function(it) }, *args)
+                                                   crossinline function: (ResultSet) -> T): T? =
+        query(sql, ResultSetExtractor { function(it) }, *args)
 
 /**
  * Extension for [JdbcOperations.query] providing a RowCallbackHandler-like function
@@ -108,7 +108,7 @@ inline fun <reified T : Any?> JdbcOperations.query(sql: String, vararg args: Any
  * @since 5.0
  */
 fun JdbcOperations.query(sql: String, vararg args: Any, function: (ResultSet) -> Unit): Unit =
-		query(sql, RowCallbackHandler { function(it) }, *args)
+        query(sql, RowCallbackHandler { function(it) }, *args)
 
 /**
  * Extensions for [JdbcOperations.query] providing a RowMapper-like function variant:
@@ -118,4 +118,4 @@ fun JdbcOperations.query(sql: String, vararg args: Any, function: (ResultSet) ->
  * @since 5.0
  */
 fun <T : Any> JdbcOperations.query(sql: String, vararg args: Any, function: (ResultSet, Int) -> T): List<T> =
-		query(sql, RowMapper { rs, i -> function(rs, i) }, *args)
+        query(sql, RowMapper { rs, i -> function(rs, i) }, *args)

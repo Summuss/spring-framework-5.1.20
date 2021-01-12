@@ -4,11 +4,11 @@ import org.springframework.scripting.Messenger
 
 class GroovyMessenger implements Messenger {
 
-	GroovyMessenger() {
-		println "GroovyMessenger"
-	}
+    GroovyMessenger() {
+        println "GroovyMessenger"
+    }
 
-	def String message;
+    def String message;
 }
 
 return new GroovyMessenger();

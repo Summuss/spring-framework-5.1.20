@@ -21,9 +21,8 @@ import javax.sql.DataSource;
 /**
  * {@code EmbeddedDatabase} serves as a handle to an embedded database instance.
  *
- * <p>An {@code EmbeddedDatabase} is also a {@link DataSource} and adds a
- * {@link #shutdown} operation so that the embedded database instance can be
- * shut down gracefully.
+ * <p>An {@code EmbeddedDatabase} is also a {@link DataSource} and adds a {@link #shutdown}
+ * operation so that the embedded database instance can be shut down gracefully.
  *
  * @author Keith Donald
  * @author Sam Brannen
@@ -31,9 +30,6 @@ import javax.sql.DataSource;
  */
 public interface EmbeddedDatabase extends DataSource {
 
-	/**
-	 * Shut down this embedded database.
-	 */
-	void shutdown();
-
+    /** Shut down this embedded database. */
+    void shutdown();
 }

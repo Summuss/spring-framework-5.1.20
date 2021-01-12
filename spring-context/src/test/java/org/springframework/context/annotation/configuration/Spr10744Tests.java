@@ -28,103 +28,94 @@ import org.springframework.context.annotation.ScopedProxyMode;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 
-/**
- * @author Phillip Webb
- */
+/** @author Phillip Webb */
 public class Spr10744Tests {
 
-	private static int createCount = 0;
+    private static int createCount = 0;
 
-	private static int scopeCount = 0;
+    private static int scopeCount = 0;
 
+    @Test
+    public void testSpr10744() throws Exception {
+        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+        context.getBeanFactory().registerScope("myTestScope", new MyTestScope());
+        context.register(MyTestConfiguration.class);
+        context.refresh();
 
-	@Test
-	public void testSpr10744() throws Exception {
-		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
-		context.getBeanFactory().registerScope("myTestScope", new MyTestScope());
-		context.register(MyTestConfiguration.class);
-		context.refresh();
+        Foo bean1 = context.getBean("foo", Foo.class);
+        Foo bean2 = context.getBean("foo", Foo.class);
+        assertThat(bean1, sameInstance(bean2));
 
-		Foo bean1 = context.getBean("foo", Foo.class);
-		Foo bean2 = context.getBean("foo", Foo.class);
-		assertThat(bean1, sameInstance(bean2));
+        // Should not have invoked constructor for the proxy instance
+        assertThat(createCount, equalTo(0));
+        assertThat(scopeCount, equalTo(0));
 
-		// Should not have invoked constructor for the proxy instance
-		assertThat(createCount, equalTo(0));
-		assertThat(scopeCount, equalTo(0));
+        // Proxy mode should create new scoped object on each method call
+        bean1.getMessage();
+        assertThat(createCount, equalTo(1));
+        assertThat(scopeCount, equalTo(1));
+        bean1.getMessage();
+        assertThat(createCount, equalTo(2));
+        assertThat(scopeCount, equalTo(2));
 
-		// Proxy mode should create new scoped object on each method call
-		bean1.getMessage();
-		assertThat(createCount, equalTo(1));
-		assertThat(scopeCount, equalTo(1));
-		bean1.getMessage();
-		assertThat(createCount, equalTo(2));
-		assertThat(scopeCount, equalTo(2));
+        context.close();
+    }
 
-		context.close();
-	}
+    private static class MyTestScope implements org.springframework.beans.factory.config.Scope {
 
+        @Override
+        public Object get(String name, ObjectFactory<?> objectFactory) {
+            scopeCount++;
+            return objectFactory.getObject();
+        }
 
-	private static class MyTestScope implements org.springframework.beans.factory.config.Scope {
+        @Override
+        public Object remove(String name) {
+            return null;
+        }
 
-		@Override
-		public Object get(String name, ObjectFactory<?> objectFactory) {
-			scopeCount++;
-			return objectFactory.getObject();
-		}
+        @Override
+        public void registerDestructionCallback(String name, Runnable callback) {}
 
-		@Override
-		public Object remove(String name) {
-			return null;
-		}
+        @Override
+        public Object resolveContextualObject(String key) {
+            return null;
+        }
 
-		@Override
-		public void registerDestructionCallback(String name, Runnable callback) {
-		}
+        @Override
+        public String getConversationId() {
+            return null;
+        }
+    }
 
-		@Override
-		public Object resolveContextualObject(String key) {
-			return null;
-		}
+    static class Foo {
 
-		@Override
-		public String getConversationId() {
-			return null;
-		}
-	}
+        public Foo() {
+            createCount++;
+        }
 
+        public String getMessage() {
+            return "Hello";
+        }
+    }
 
-	static class Foo {
+    @Configuration
+    static class MyConfiguration {
 
-		public Foo() {
-			createCount++;
-		}
+        @Bean
+        public Foo foo() {
+            return new Foo();
+        }
+    }
 
-		public String getMessage() {
-			return "Hello";
-		}
-	}
+    @Configuration
+    static class MyTestConfiguration extends MyConfiguration {
 
-
-	@Configuration
-	static class MyConfiguration {
-
-		@Bean
-		public Foo foo() {
-			return new Foo();
-		}
-	}
-
-
-	@Configuration
-	static class MyTestConfiguration extends MyConfiguration {
-
-		@Bean
-		@Scope(value = "myTestScope",  proxyMode = ScopedProxyMode.TARGET_CLASS)
-		@Override
-		public Foo foo() {
-			return new Foo();
-		}
-	}
-
+        @Bean
+        @Scope(value = "myTestScope", proxyMode = ScopedProxyMode.TARGET_CLASS)
+        @Override
+        public Foo foo() {
+            return new Foo();
+        }
+    }
 }

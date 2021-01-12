@@ -37,57 +37,53 @@ import static org.junit.Assert.*;
  */
 public class ContextLoaderInitializerTests {
 
-	private static final String BEAN_NAME = "myBean";
+    private static final String BEAN_NAME = "myBean";
 
-	private AbstractContextLoaderInitializer initializer;
+    private AbstractContextLoaderInitializer initializer;
 
-	private MockServletContext servletContext;
+    private MockServletContext servletContext;
 
-	private EventListener eventListener;
+    private EventListener eventListener;
 
-	@Before
-	public void setUp() throws Exception {
-		servletContext = new MyMockServletContext();
-		initializer = new MyContextLoaderInitializer();
-		eventListener = null;
-	}
+    @Before
+    public void setUp() throws Exception {
+        servletContext = new MyMockServletContext();
+        initializer = new MyContextLoaderInitializer();
+        eventListener = null;
+    }
 
-	@Test
-	public void register() throws ServletException {
-		initializer.onStartup(servletContext);
+    @Test
+    public void register() throws ServletException {
+        initializer.onStartup(servletContext);
 
-		assertTrue(eventListener instanceof ContextLoaderListener);
-		ContextLoaderListener cll = (ContextLoaderListener) eventListener;
-		cll.contextInitialized(new ServletContextEvent(servletContext));
+        assertTrue(eventListener instanceof ContextLoaderListener);
+        ContextLoaderListener cll = (ContextLoaderListener) eventListener;
+        cll.contextInitialized(new ServletContextEvent(servletContext));
 
-		WebApplicationContext applicationContext = WebApplicationContextUtils
-				.getRequiredWebApplicationContext(servletContext);
+        WebApplicationContext applicationContext =
+                WebApplicationContextUtils.getRequiredWebApplicationContext(servletContext);
 
-		assertTrue(applicationContext.containsBean(BEAN_NAME));
-		assertTrue(applicationContext.getBean(BEAN_NAME) instanceof MyBean);
-	}
+        assertTrue(applicationContext.containsBean(BEAN_NAME));
+        assertTrue(applicationContext.getBean(BEAN_NAME) instanceof MyBean);
+    }
 
-	private class MyMockServletContext extends MockServletContext {
+    private class MyMockServletContext extends MockServletContext {
 
-		@Override
-		public <T extends EventListener> void addListener(T listener) {
-			eventListener = listener;
-		}
+        @Override
+        public <T extends EventListener> void addListener(T listener) {
+            eventListener = listener;
+        }
+    }
 
-	}
+    private static class MyContextLoaderInitializer extends AbstractContextLoaderInitializer {
 
-	private static class MyContextLoaderInitializer
-			extends AbstractContextLoaderInitializer {
+        @Override
+        protected WebApplicationContext createRootApplicationContext() {
+            StaticWebApplicationContext rootContext = new StaticWebApplicationContext();
+            rootContext.registerSingleton(BEAN_NAME, MyBean.class);
+            return rootContext;
+        }
+    }
 
-		@Override
-		protected WebApplicationContext createRootApplicationContext() {
-			StaticWebApplicationContext rootContext = new StaticWebApplicationContext();
-			rootContext.registerSingleton(BEAN_NAME, MyBean.class);
-			return rootContext;
-		}
-	}
-
-	private static class MyBean {
-
-	}
+    private static class MyBean {}
 }

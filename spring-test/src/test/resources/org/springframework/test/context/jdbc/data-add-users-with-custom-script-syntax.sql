@@ -15,7 +15,8 @@ VALUES('Dilbert')
 
 @@
 
-` custom single-line comment
+`
+custom single-line comment
 
 
 INSERT INTO user VALUES('Dogbert')@@

@@ -24,8 +24,8 @@ import org.joda.time.Period;
 import org.springframework.format.Formatter;
 
 /**
- * {@link Formatter} implementation for a Joda-Time {@link Period},
- * following Joda-Time's parsing rules for a Period.
+ * {@link Formatter} implementation for a Joda-Time {@link Period}, following Joda-Time's parsing
+ * rules for a Period.
  *
  * @author Juergen Hoeller
  * @since 4.2.4
@@ -33,14 +33,13 @@ import org.springframework.format.Formatter;
  */
 class PeriodFormatter implements Formatter<Period> {
 
-	@Override
-	public Period parse(String text, Locale locale) throws ParseException {
-		return Period.parse(text);
-	}
+    @Override
+    public Period parse(String text, Locale locale) throws ParseException {
+        return Period.parse(text);
+    }
 
-	@Override
-	public String print(Period object, Locale locale) {
-		return object.toString();
-	}
-
+    @Override
+    public String print(Period object, Locale locale) {
+        return object.toString();
+    }
 }

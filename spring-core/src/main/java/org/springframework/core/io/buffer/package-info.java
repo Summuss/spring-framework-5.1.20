@@ -1,6 +1,4 @@
-/**
- * Generic abstraction for working with byte buffer implementations.
- */
+/** Generic abstraction for working with byte buffer implementations. */
 @NonNullApi
 @NonNullFields
 package org.springframework.core.io.buffer;

@@ -27,46 +27,44 @@ import org.springframework.beans.factory.BeanFactoryAware;
  */
 public class DependenciesBean implements BeanFactoryAware {
 
-	private int age;
+    private int age;
 
-	private String name;
+    private String name;
 
-	private TestBean spouse;
+    private TestBean spouse;
 
-	private BeanFactory beanFactory;
+    private BeanFactory beanFactory;
 
+    public void setAge(int age) {
+        this.age = age;
+    }
 
-	public void setAge(int age) {
-		this.age = age;
-	}
+    public int getAge() {
+        return age;
+    }
 
-	public int getAge() {
-		return age;
-	}
+    public void setName(String name) {
+        this.name = name;
+    }
 
-	public void setName(String name) {
-		this.name = name;
-	}
+    public String getName() {
+        return name;
+    }
 
-	public String getName() {
-		return name;
-	}
+    public void setSpouse(TestBean spouse) {
+        this.spouse = spouse;
+    }
 
-	public void setSpouse(TestBean spouse) {
-		this.spouse = spouse;
-	}
+    public TestBean getSpouse() {
+        return spouse;
+    }
 
-	public TestBean getSpouse() {
-		return spouse;
-	}
+    @Override
+    public void setBeanFactory(BeanFactory beanFactory) {
+        this.beanFactory = beanFactory;
+    }
 
-	@Override
-	public void setBeanFactory(BeanFactory beanFactory) {
-		this.beanFactory = beanFactory;
-	}
-
-	public BeanFactory getBeanFactory() {
-		return beanFactory;
-	}
-
+    public BeanFactory getBeanFactory() {
+        return beanFactory;
+    }
 }

@@ -49,245 +49,257 @@ import static org.mockito.BDDMockito.willThrow;
  */
 public class SockJsSessionTests extends AbstractSockJsSessionTests<TestSockJsSession> {
 
-	@Override
-	protected TestSockJsSession initSockJsSession() {
-		return new TestSockJsSession("1", this.sockJsConfig, this.webSocketHandler, Collections.<String, Object>emptyMap());
-	}
+    @Override
+    protected TestSockJsSession initSockJsSession() {
+        return new TestSockJsSession(
+                "1",
+                this.sockJsConfig,
+                this.webSocketHandler,
+                Collections.<String, Object>emptyMap());
+    }
 
+    @Test
+    public void getTimeSinceLastActive() throws Exception {
+        Thread.sleep(1);
 
-	@Test
-	public void getTimeSinceLastActive() throws Exception {
-		Thread.sleep(1);
+        long time1 = this.session.getTimeSinceLastActive();
+        assertTrue(time1 > 0);
 
-		long time1 = this.session.getTimeSinceLastActive();
-		assertTrue(time1 > 0);
+        Thread.sleep(1);
 
-		Thread.sleep(1);
+        long time2 = this.session.getTimeSinceLastActive();
+        assertTrue(time2 > time1);
 
-		long time2 = this.session.getTimeSinceLastActive();
-		assertTrue(time2 > time1);
+        this.session.delegateConnectionEstablished();
 
-		this.session.delegateConnectionEstablished();
+        Thread.sleep(1);
 
-		Thread.sleep(1);
+        this.session.setActive(false);
+        assertTrue(this.session.getTimeSinceLastActive() > 0);
 
-		this.session.setActive(false);
-		assertTrue(this.session.getTimeSinceLastActive() > 0);
+        this.session.setActive(true);
+        assertEquals(0, this.session.getTimeSinceLastActive());
+    }
 
-		this.session.setActive(true);
-		assertEquals(0, this.session.getTimeSinceLastActive());
-	}
+    @Test
+    public void delegateConnectionEstablished() throws Exception {
+        assertNew();
+        this.session.delegateConnectionEstablished();
+        assertOpen();
+        verify(this.webSocketHandler).afterConnectionEstablished(this.session);
+    }
 
-	@Test
-	public void delegateConnectionEstablished() throws Exception {
-		assertNew();
-		this.session.delegateConnectionEstablished();
-		assertOpen();
-		verify(this.webSocketHandler).afterConnectionEstablished(this.session);
-	}
+    @Test
+    public void delegateError() throws Exception {
+        Exception ex = new Exception();
+        this.session.delegateError(ex);
+        verify(this.webSocketHandler).handleTransportError(this.session, ex);
+    }
 
-	@Test
-	public void delegateError() throws Exception {
-		Exception ex = new Exception();
-		this.session.delegateError(ex);
-		verify(this.webSocketHandler).handleTransportError(this.session, ex);
-	}
+    @Test
+    public void delegateMessages() throws Exception {
+        String msg1 = "message 1";
+        String msg2 = "message 2";
+        this.session.delegateMessages(msg1, msg2);
 
-	@Test
-	public void delegateMessages() throws Exception {
-		String msg1 = "message 1";
-		String msg2 = "message 2";
-		this.session.delegateMessages(msg1, msg2);
+        verify(this.webSocketHandler).handleMessage(this.session, new TextMessage(msg1));
+        verify(this.webSocketHandler).handleMessage(this.session, new TextMessage(msg2));
+        verifyNoMoreInteractions(this.webSocketHandler);
+    }
 
-		verify(this.webSocketHandler).handleMessage(this.session, new TextMessage(msg1));
-		verify(this.webSocketHandler).handleMessage(this.session, new TextMessage(msg2));
-		verifyNoMoreInteractions(this.webSocketHandler);
-	}
+    @Test
+    public void delegateMessagesWithErrorAndConnectionClosing() throws Exception {
+        WebSocketHandler wsHandler = new ExceptionWebSocketHandlerDecorator(this.webSocketHandler);
+        TestSockJsSession sockJsSession =
+                new TestSockJsSession(
+                        "1", this.sockJsConfig, wsHandler, Collections.<String, Object>emptyMap());
 
-	@Test
-	public void delegateMessagesWithErrorAndConnectionClosing() throws Exception {
-		WebSocketHandler wsHandler = new ExceptionWebSocketHandlerDecorator(this.webSocketHandler);
-		TestSockJsSession sockJsSession = new TestSockJsSession(
-				"1", this.sockJsConfig, wsHandler, Collections.<String, Object>emptyMap());
+        String msg1 = "message 1";
+        String msg2 = "message 2";
+        String msg3 = "message 3";
 
-		String msg1 = "message 1";
-		String msg2 = "message 2";
-		String msg3 = "message 3";
+        willThrow(new IOException())
+                .given(this.webSocketHandler)
+                .handleMessage(sockJsSession, new TextMessage(msg2));
 
-		willThrow(new IOException()).given(this.webSocketHandler).handleMessage(sockJsSession, new TextMessage(msg2));
+        sockJsSession.delegateConnectionEstablished();
+        sockJsSession.delegateMessages(msg1, msg2, msg3);
 
-		sockJsSession.delegateConnectionEstablished();
-		sockJsSession.delegateMessages(msg1, msg2, msg3);
+        verify(this.webSocketHandler).afterConnectionEstablished(sockJsSession);
+        verify(this.webSocketHandler).handleMessage(sockJsSession, new TextMessage(msg1));
+        verify(this.webSocketHandler).handleMessage(sockJsSession, new TextMessage(msg2));
+        verify(this.webSocketHandler)
+                .afterConnectionClosed(sockJsSession, CloseStatus.SERVER_ERROR);
+        verifyNoMoreInteractions(this.webSocketHandler);
+    }
 
-		verify(this.webSocketHandler).afterConnectionEstablished(sockJsSession);
-		verify(this.webSocketHandler).handleMessage(sockJsSession, new TextMessage(msg1));
-		verify(this.webSocketHandler).handleMessage(sockJsSession, new TextMessage(msg2));
-		verify(this.webSocketHandler).afterConnectionClosed(sockJsSession, CloseStatus.SERVER_ERROR);
-		verifyNoMoreInteractions(this.webSocketHandler);
-	}
+    @Test
+    public void delegateConnectionClosed() throws Exception {
+        this.session.delegateConnectionEstablished();
+        this.session.delegateConnectionClosed(CloseStatus.GOING_AWAY);
 
-	@Test
-	public void delegateConnectionClosed() throws Exception {
-		this.session.delegateConnectionEstablished();
-		this.session.delegateConnectionClosed(CloseStatus.GOING_AWAY);
+        assertClosed();
+        assertEquals(1, this.session.getNumberOfLastActiveTimeUpdates());
+        verify(this.webSocketHandler).afterConnectionClosed(this.session, CloseStatus.GOING_AWAY);
+    }
 
-		assertClosed();
-		assertEquals(1, this.session.getNumberOfLastActiveTimeUpdates());
-		verify(this.webSocketHandler).afterConnectionClosed(this.session, CloseStatus.GOING_AWAY);
-	}
+    @Test
+    public void closeWhenNotOpen() throws Exception {
+        assertNew();
 
-	@Test
-	public void closeWhenNotOpen() throws Exception {
-		assertNew();
+        this.session.close();
+        assertNull("Close not ignored for a new session", this.session.getCloseStatus());
 
-		this.session.close();
-		assertNull("Close not ignored for a new session", this.session.getCloseStatus());
+        this.session.delegateConnectionEstablished();
+        assertOpen();
 
-		this.session.delegateConnectionEstablished();
-		assertOpen();
+        this.session.close();
+        assertClosed();
+        assertEquals(3000, this.session.getCloseStatus().getCode());
 
-		this.session.close();
-		assertClosed();
-		assertEquals(3000, this.session.getCloseStatus().getCode());
+        this.session.close(CloseStatus.SERVER_ERROR);
+        assertEquals(
+                "Close should be ignored if already closed",
+                3000,
+                this.session.getCloseStatus().getCode());
+    }
 
-		this.session.close(CloseStatus.SERVER_ERROR);
-		assertEquals("Close should be ignored if already closed", 3000, this.session.getCloseStatus().getCode());
-	}
+    @Test
+    public void closeWhenNotActive() throws Exception {
+        this.session.delegateConnectionEstablished();
+        assertOpen();
 
-	@Test
-	public void closeWhenNotActive() throws Exception {
-		this.session.delegateConnectionEstablished();
-		assertOpen();
+        this.session.setActive(false);
+        this.session.close();
 
-		this.session.setActive(false);
-		this.session.close();
+        assertEquals(Collections.emptyList(), this.session.getSockJsFramesWritten());
+    }
 
-		assertEquals(Collections.emptyList(), this.session.getSockJsFramesWritten());
-	}
+    @Test
+    public void close() throws Exception {
+        this.session.delegateConnectionEstablished();
+        assertOpen();
 
-	@Test
-	public void close() throws Exception {
-		this.session.delegateConnectionEstablished();
-		assertOpen();
+        this.session.setActive(true);
+        this.session.close();
 
-		this.session.setActive(true);
-		this.session.close();
+        assertEquals(1, this.session.getSockJsFramesWritten().size());
+        assertEquals(SockJsFrame.closeFrameGoAway(), this.session.getSockJsFramesWritten().get(0));
 
-		assertEquals(1, this.session.getSockJsFramesWritten().size());
-		assertEquals(SockJsFrame.closeFrameGoAway(), this.session.getSockJsFramesWritten().get(0));
+        assertEquals(1, this.session.getNumberOfLastActiveTimeUpdates());
+        assertTrue(this.session.didCancelHeartbeat());
 
-		assertEquals(1, this.session.getNumberOfLastActiveTimeUpdates());
-		assertTrue(this.session.didCancelHeartbeat());
+        assertEquals(new CloseStatus(3000, "Go away!"), this.session.getCloseStatus());
+        assertClosed();
+        verify(this.webSocketHandler)
+                .afterConnectionClosed(this.session, new CloseStatus(3000, "Go away!"));
+    }
 
-		assertEquals(new CloseStatus(3000, "Go away!"), this.session.getCloseStatus());
-		assertClosed();
-		verify(this.webSocketHandler).afterConnectionClosed(this.session, new CloseStatus(3000, "Go away!"));
-	}
+    @Test
+    public void closeWithWriteFrameExceptions() throws Exception {
+        this.session.setExceptionOnWrite(new IOException());
 
-	@Test
-	public void closeWithWriteFrameExceptions() throws Exception {
-		this.session.setExceptionOnWrite(new IOException());
+        this.session.delegateConnectionEstablished();
+        this.session.setActive(true);
+        this.session.close();
 
-		this.session.delegateConnectionEstablished();
-		this.session.setActive(true);
-		this.session.close();
+        assertEquals(new CloseStatus(3000, "Go away!"), this.session.getCloseStatus());
+        assertClosed();
+    }
 
-		assertEquals(new CloseStatus(3000, "Go away!"), this.session.getCloseStatus());
-		assertClosed();
-	}
+    @Test
+    public void closeWithWebSocketHandlerExceptions() throws Exception {
+        willThrow(new Exception())
+                .given(this.webSocketHandler)
+                .afterConnectionClosed(this.session, CloseStatus.NORMAL);
 
-	@Test
-	public void closeWithWebSocketHandlerExceptions() throws Exception {
-		willThrow(new Exception()).given(this.webSocketHandler).afterConnectionClosed(this.session, CloseStatus.NORMAL);
+        this.session.delegateConnectionEstablished();
+        this.session.setActive(true);
+        this.session.close(CloseStatus.NORMAL);
 
-		this.session.delegateConnectionEstablished();
-		this.session.setActive(true);
-		this.session.close(CloseStatus.NORMAL);
+        assertEquals(CloseStatus.NORMAL, this.session.getCloseStatus());
+        assertClosed();
+    }
 
-		assertEquals(CloseStatus.NORMAL, this.session.getCloseStatus());
-		assertClosed();
-	}
+    @Test
+    public void tryCloseWithWebSocketHandlerExceptions() throws Exception {
+        this.session.delegateConnectionEstablished();
+        this.session.setActive(true);
+        this.session.tryCloseWithSockJsTransportError(new Exception(), CloseStatus.BAD_DATA);
 
-	@Test
-	public void tryCloseWithWebSocketHandlerExceptions() throws Exception {
-		this.session.delegateConnectionEstablished();
-		this.session.setActive(true);
-		this.session.tryCloseWithSockJsTransportError(new Exception(), CloseStatus.BAD_DATA);
+        assertEquals(CloseStatus.BAD_DATA, this.session.getCloseStatus());
+        assertClosed();
+    }
 
-		assertEquals(CloseStatus.BAD_DATA, this.session.getCloseStatus());
-		assertClosed();
-	}
+    @Test
+    public void writeFrame() throws Exception {
+        this.session.writeFrame(SockJsFrame.openFrame());
 
-	@Test
-	public void writeFrame() throws Exception {
-		this.session.writeFrame(SockJsFrame.openFrame());
+        assertEquals(1, this.session.getSockJsFramesWritten().size());
+        assertEquals(SockJsFrame.openFrame(), this.session.getSockJsFramesWritten().get(0));
+    }
 
-		assertEquals(1, this.session.getSockJsFramesWritten().size());
-		assertEquals(SockJsFrame.openFrame(), this.session.getSockJsFramesWritten().get(0));
-	}
+    @Test
+    public void writeFrameIoException() throws Exception {
+        this.session.setExceptionOnWrite(new IOException());
+        this.session.delegateConnectionEstablished();
 
-	@Test
-	public void writeFrameIoException() throws Exception {
-		this.session.setExceptionOnWrite(new IOException());
-		this.session.delegateConnectionEstablished();
+        try {
+            this.session.writeFrame(SockJsFrame.openFrame());
+            fail("expected exception");
+        } catch (SockJsTransportFailureException ex) {
+            assertEquals(CloseStatus.SERVER_ERROR, this.session.getCloseStatus());
+            verify(this.webSocketHandler)
+                    .afterConnectionClosed(this.session, CloseStatus.SERVER_ERROR);
+        }
+    }
 
-		try {
-			this.session.writeFrame(SockJsFrame.openFrame());
-			fail("expected exception");
-		}
-		catch (SockJsTransportFailureException ex) {
-			assertEquals(CloseStatus.SERVER_ERROR, this.session.getCloseStatus());
-			verify(this.webSocketHandler).afterConnectionClosed(this.session, CloseStatus.SERVER_ERROR);
-		}
-	}
+    @Test
+    public void sendHeartbeat() throws Exception {
+        this.session.setActive(true);
+        this.session.sendHeartbeat();
 
-	@Test
-	public void sendHeartbeat() throws Exception {
-		this.session.setActive(true);
-		this.session.sendHeartbeat();
+        assertEquals(1, this.session.getSockJsFramesWritten().size());
+        assertEquals(SockJsFrame.heartbeatFrame(), this.session.getSockJsFramesWritten().get(0));
 
-		assertEquals(1, this.session.getSockJsFramesWritten().size());
-		assertEquals(SockJsFrame.heartbeatFrame(), this.session.getSockJsFramesWritten().get(0));
+        verify(this.taskScheduler).schedule(any(Runnable.class), any(Date.class));
+        verifyNoMoreInteractions(this.taskScheduler);
+    }
 
-		verify(this.taskScheduler).schedule(any(Runnable.class), any(Date.class));
-		verifyNoMoreInteractions(this.taskScheduler);
-	}
+    @Test
+    public void scheduleHeartbeatNotActive() throws Exception {
+        this.session.setActive(false);
+        this.session.scheduleHeartbeat();
 
-	@Test
-	public void scheduleHeartbeatNotActive() throws Exception {
-		this.session.setActive(false);
-		this.session.scheduleHeartbeat();
+        verifyNoMoreInteractions(this.taskScheduler);
+    }
 
-		verifyNoMoreInteractions(this.taskScheduler);
-	}
+    @Test
+    public void sendHeartbeatWhenDisabled() throws Exception {
+        this.session.disableHeartbeat();
+        this.session.setActive(true);
+        this.session.sendHeartbeat();
 
-	@Test
-	public void sendHeartbeatWhenDisabled() throws Exception {
-		this.session.disableHeartbeat();
-		this.session.setActive(true);
-		this.session.sendHeartbeat();
+        assertEquals(Collections.emptyList(), this.session.getSockJsFramesWritten());
+    }
 
-		assertEquals(Collections.emptyList(), this.session.getSockJsFramesWritten());
-	}
+    @Test
+    public void scheduleAndCancelHeartbeat() throws Exception {
+        ScheduledFuture<?> task = mock(ScheduledFuture.class);
+        willReturn(task).given(this.taskScheduler).schedule(any(Runnable.class), any(Date.class));
 
-	@Test
-	public void scheduleAndCancelHeartbeat() throws Exception {
-		ScheduledFuture<?> task = mock(ScheduledFuture.class);
-		willReturn(task).given(this.taskScheduler).schedule(any(Runnable.class), any(Date.class));
+        this.session.setActive(true);
+        this.session.scheduleHeartbeat();
 
-		this.session.setActive(true);
-		this.session.scheduleHeartbeat();
+        verify(this.taskScheduler).schedule(any(Runnable.class), any(Date.class));
+        verifyNoMoreInteractions(this.taskScheduler);
 
-		verify(this.taskScheduler).schedule(any(Runnable.class), any(Date.class));
-		verifyNoMoreInteractions(this.taskScheduler);
+        given(task.isCancelled()).willReturn(false);
+        given(task.cancel(false)).willReturn(true);
 
-		given(task.isCancelled()).willReturn(false);
-		given(task.cancel(false)).willReturn(true);
+        this.session.cancelHeartbeat();
 
-		this.session.cancelHeartbeat();
-
-		verify(task).cancel(false);
-		verifyNoMoreInteractions(task);
-	}
-
+        verify(task).cancel(false);
+        verifyNoMoreInteractions(task);
+    }
 }

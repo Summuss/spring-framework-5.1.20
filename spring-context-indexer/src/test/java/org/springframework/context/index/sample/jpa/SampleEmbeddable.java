@@ -24,5 +24,4 @@ import javax.persistence.Embeddable;
  * @author Stephane Nicoll
  */
 @Embeddable
-public class SampleEmbeddable {
-}
+public class SampleEmbeddable {}

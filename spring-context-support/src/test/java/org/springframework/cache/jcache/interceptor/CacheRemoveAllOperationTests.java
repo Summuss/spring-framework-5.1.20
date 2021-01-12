@@ -24,25 +24,23 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-/**
- * @author Stephane Nicoll
- */
-public class CacheRemoveAllOperationTests extends AbstractCacheOperationTests<CacheRemoveAllOperation> {
+/** @author Stephane Nicoll */
+public class CacheRemoveAllOperationTests
+        extends AbstractCacheOperationTests<CacheRemoveAllOperation> {
 
-	@Override
-	protected CacheRemoveAllOperation createSimpleOperation() {
-		CacheMethodDetails<CacheRemoveAll> methodDetails = create(CacheRemoveAll.class,
-				SampleObject.class, "simpleRemoveAll");
+    @Override
+    protected CacheRemoveAllOperation createSimpleOperation() {
+        CacheMethodDetails<CacheRemoveAll> methodDetails =
+                create(CacheRemoveAll.class, SampleObject.class, "simpleRemoveAll");
 
-		return new CacheRemoveAllOperation(methodDetails, defaultCacheResolver);
-	}
+        return new CacheRemoveAllOperation(methodDetails, defaultCacheResolver);
+    }
 
-	@Test
-	public void simpleRemoveAll() {
-		CacheRemoveAllOperation operation = createSimpleOperation();
+    @Test
+    public void simpleRemoveAll() {
+        CacheRemoveAllOperation operation = createSimpleOperation();
 
-		CacheInvocationParameter[] allParameters = operation.getAllParameters();
-		assertEquals(0, allParameters.length);
-	}
-
+        CacheInvocationParameter[] allParameters = operation.getAllParameters();
+        assertEquals(0, allParameters.length);
+    }
 }

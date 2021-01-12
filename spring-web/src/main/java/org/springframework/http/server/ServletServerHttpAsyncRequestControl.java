@@ -34,102 +34,95 @@ import org.springframework.util.Assert;
  * @author Rossen Stoyanchev
  * @since 4.0
  */
-public class ServletServerHttpAsyncRequestControl implements ServerHttpAsyncRequestControl, AsyncListener {
+public class ServletServerHttpAsyncRequestControl
+        implements ServerHttpAsyncRequestControl, AsyncListener {
 
-	private static final long NO_TIMEOUT_VALUE = Long.MIN_VALUE;
+    private static final long NO_TIMEOUT_VALUE = Long.MIN_VALUE;
 
+    private final ServletServerHttpRequest request;
 
-	private final ServletServerHttpRequest request;
+    private final ServletServerHttpResponse response;
 
-	private final ServletServerHttpResponse response;
+    @Nullable private AsyncContext asyncContext;
 
-	@Nullable
-	private AsyncContext asyncContext;
+    private AtomicBoolean asyncCompleted = new AtomicBoolean(false);
 
-	private AtomicBoolean asyncCompleted = new AtomicBoolean(false);
+    /**
+     * Constructor accepting a request and response pair that are expected to be of type {@link
+     * ServletServerHttpRequest} and {@link ServletServerHttpResponse} respectively.
+     */
+    public ServletServerHttpAsyncRequestControl(
+            ServletServerHttpRequest request, ServletServerHttpResponse response) {
+        Assert.notNull(request, "request is required");
+        Assert.notNull(response, "response is required");
 
+        Assert.isTrue(
+                request.getServletRequest().isAsyncSupported(),
+                "Async support must be enabled on a servlet and for all filters involved "
+                        + "in async request processing. This is done in Java code using the Servlet API "
+                        + "or by adding \"<async-supported>true</async-supported>\" to servlet and "
+                        + "filter declarations in web.xml. Also you must use a Servlet 3.0+ container");
 
-	/**
-	 * Constructor accepting a request and response pair that are expected to be of type
-	 * {@link ServletServerHttpRequest} and {@link ServletServerHttpResponse}
-	 * respectively.
-	 */
-	public ServletServerHttpAsyncRequestControl(ServletServerHttpRequest request, ServletServerHttpResponse response) {
-		Assert.notNull(request, "request is required");
-		Assert.notNull(response, "response is required");
+        this.request = request;
+        this.response = response;
+    }
 
-		Assert.isTrue(request.getServletRequest().isAsyncSupported(),
-				"Async support must be enabled on a servlet and for all filters involved " +
-				"in async request processing. This is done in Java code using the Servlet API " +
-				"or by adding \"<async-supported>true</async-supported>\" to servlet and " +
-				"filter declarations in web.xml. Also you must use a Servlet 3.0+ container");
+    @Override
+    public boolean isStarted() {
+        return (this.asyncContext != null && this.request.getServletRequest().isAsyncStarted());
+    }
 
-		this.request = request;
-		this.response = response;
-	}
+    @Override
+    public boolean isCompleted() {
+        return this.asyncCompleted.get();
+    }
 
+    @Override
+    public void start() {
+        start(NO_TIMEOUT_VALUE);
+    }
 
-	@Override
-	public boolean isStarted() {
-		return (this.asyncContext != null && this.request.getServletRequest().isAsyncStarted());
-	}
+    @Override
+    public void start(long timeout) {
+        Assert.state(!isCompleted(), "Async processing has already completed");
+        if (isStarted()) {
+            return;
+        }
 
-	@Override
-	public boolean isCompleted() {
-		return this.asyncCompleted.get();
-	}
+        HttpServletRequest servletRequest = this.request.getServletRequest();
+        HttpServletResponse servletResponse = this.response.getServletResponse();
 
-	@Override
-	public void start() {
-		start(NO_TIMEOUT_VALUE);
-	}
+        this.asyncContext = servletRequest.startAsync(servletRequest, servletResponse);
+        this.asyncContext.addListener(this);
 
-	@Override
-	public void start(long timeout) {
-		Assert.state(!isCompleted(), "Async processing has already completed");
-		if (isStarted()) {
-			return;
-		}
+        if (timeout != NO_TIMEOUT_VALUE) {
+            this.asyncContext.setTimeout(timeout);
+        }
+    }
 
-		HttpServletRequest servletRequest = this.request.getServletRequest();
-		HttpServletResponse servletResponse = this.response.getServletResponse();
+    @Override
+    public void complete() {
+        if (this.asyncContext != null && isStarted() && !isCompleted()) {
+            this.asyncContext.complete();
+        }
+    }
 
-		this.asyncContext = servletRequest.startAsync(servletRequest, servletResponse);
-		this.asyncContext.addListener(this);
+    // ---------------------------------------------------------------------
+    // Implementation of AsyncListener methods
+    // ---------------------------------------------------------------------
 
-		if (timeout != NO_TIMEOUT_VALUE) {
-			this.asyncContext.setTimeout(timeout);
-		}
-	}
+    @Override
+    public void onComplete(AsyncEvent event) throws IOException {
+        this.asyncContext = null;
+        this.asyncCompleted.set(true);
+    }
 
-	@Override
-	public void complete() {
-		if (this.asyncContext != null && isStarted() && !isCompleted()) {
-			this.asyncContext.complete();
-		}
-	}
+    @Override
+    public void onStartAsync(AsyncEvent event) throws IOException {}
 
+    @Override
+    public void onError(AsyncEvent event) throws IOException {}
 
-	// ---------------------------------------------------------------------
-	// Implementation of AsyncListener methods
-	// ---------------------------------------------------------------------
-
-	@Override
-	public void onComplete(AsyncEvent event) throws IOException {
-		this.asyncContext = null;
-		this.asyncCompleted.set(true);
-	}
-
-	@Override
-	public void onStartAsync(AsyncEvent event) throws IOException {
-	}
-
-	@Override
-	public void onError(AsyncEvent event) throws IOException {
-	}
-
-	@Override
-	public void onTimeout(AsyncEvent event) throws IOException {
-	}
-
+    @Override
+    public void onTimeout(AsyncEvent event) throws IOException {}
 }

@@ -28,9 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class HelloController {
 
-	@RequestMapping
-	public String header(HttpServletRequest request) {
-		return "hello";
-	}
-
+    @RequestMapping
+    public String header(HttpServletRequest request) {
+        return "hello";
+    }
 }

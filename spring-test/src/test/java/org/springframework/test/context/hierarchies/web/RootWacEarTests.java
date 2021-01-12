@@ -38,42 +38,36 @@ import static org.junit.Assert.*;
 @ContextHierarchy(@ContextConfiguration)
 public class RootWacEarTests extends EarTests {
 
-	@Configuration
-	static class RootWacConfig {
+    @Configuration
+    static class RootWacConfig {
 
-		@Bean
-		public String root() {
-			return "root";
-		}
-	}
+        @Bean
+        public String root() {
+            return "root";
+        }
+    }
 
+    // -------------------------------------------------------------------------
 
-	// -------------------------------------------------------------------------
+    @Autowired private WebApplicationContext wac;
 
-	@Autowired
-	private WebApplicationContext wac;
+    @Autowired private String ear;
 
-	@Autowired
-	private String ear;
+    @Autowired private String root;
 
-	@Autowired
-	private String root;
+    @Ignore("Superseded by verifyRootWacConfig()")
+    @Test
+    @Override
+    public void verifyEarConfig() {
+        /* no-op */
+    }
 
-
-	@Ignore("Superseded by verifyRootWacConfig()")
-	@Test
-	@Override
-	public void verifyEarConfig() {
-		/* no-op */
-	}
-
-	@Test
-	public void verifyRootWacConfig() {
-		ApplicationContext parent = wac.getParent();
-		assertNotNull(parent);
-		assertFalse(parent instanceof WebApplicationContext);
-		assertEquals("ear", ear);
-		assertEquals("root", root);
-	}
-
+    @Test
+    public void verifyRootWacConfig() {
+        ApplicationContext parent = wac.getParent();
+        assertNotNull(parent);
+        assertFalse(parent instanceof WebApplicationContext);
+        assertEquals("ear", ear);
+        assertEquals("root", root);
+    }
 }

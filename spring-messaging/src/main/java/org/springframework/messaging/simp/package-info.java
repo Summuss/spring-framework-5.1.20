@@ -1,6 +1,4 @@
-/**
- * Generic support for Simple Messaging Protocols including protocols such as STOMP.
- */
+/** Generic support for Simple Messaging Protocols including protocols such as STOMP. */
 @NonNullApi
 @NonNullFields
 package org.springframework.messaging.simp;

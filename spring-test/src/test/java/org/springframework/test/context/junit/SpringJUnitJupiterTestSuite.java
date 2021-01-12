@@ -25,19 +25,17 @@ import org.junit.platform.suite.api.UseTechnicalNames;
 import org.junit.runner.RunWith;
 
 /**
- * JUnit 4 based test suite for tests that involve the Spring TestContext
- * Framework and JUnit Jupiter (i.e., JUnit 5's programming model).
+ * JUnit 4 based test suite for tests that involve the Spring TestContext Framework and JUnit
+ * Jupiter (i.e., JUnit 5's programming model).
  *
- * <p>This class intentionally does not reside in the "jupiter" package
- * so that the entire "jupiter" package can be excluded from the Gradle
- * build. This class is therefore responsible for executing all JUnit
- * Jupiter based tests in Spring's official test suite.
+ * <p>This class intentionally does not reside in the "jupiter" package so that the entire "jupiter"
+ * package can be excluded from the Gradle build. This class is therefore responsible for executing
+ * all JUnit Jupiter based tests in Spring's official test suite.
  *
  * <h3>Logging Configuration</h3>
  *
- * <p>In order for our log4j2 configuration to be used in an IDE, you must
- * set the following system property before running any tests &mdash; for
- * example, in <em>Run Configurations</em> in Eclipse.
+ * <p>In order for our log4j2 configuration to be used in an IDE, you must set the following system
+ * property before running any tests &mdash; for example, in <em>Run Configurations</em> in Eclipse.
  *
  * <pre style="code">
  * -Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager
@@ -52,5 +50,4 @@ import org.junit.runner.RunWith;
 @IncludeClassNamePatterns(".*Tests$")
 @ExcludeTags("failing-test-case")
 @UseTechnicalNames
-public class SpringJUnitJupiterTestSuite {
-}
+public class SpringJUnitJupiterTestSuite {}

@@ -39,101 +39,107 @@ import org.springframework.web.socket.sockjs.transport.session.AbstractSockJsSes
 import org.springframework.web.socket.sockjs.transport.session.WebSocketServerSockJsSession;
 
 /**
- * WebSocket-based {@link TransportHandler}. Uses {@link SockJsWebSocketHandler} and
- * {@link WebSocketServerSockJsSession} to add SockJS processing.
+ * WebSocket-based {@link TransportHandler}. Uses {@link SockJsWebSocketHandler} and {@link
+ * WebSocketServerSockJsSession} to add SockJS processing.
  *
- * <p>Also implements {@link HandshakeHandler} to support raw WebSocket communication at
- * SockJS URL "/websocket".
+ * <p>Also implements {@link HandshakeHandler} to support raw WebSocket communication at SockJS URL
+ * "/websocket".
  *
  * @author Rossen Stoyanchev
  * @since 4.0
  */
 public class WebSocketTransportHandler extends AbstractTransportHandler
-		implements SockJsSessionFactory, HandshakeHandler, Lifecycle, ServletContextAware {
+        implements SockJsSessionFactory, HandshakeHandler, Lifecycle, ServletContextAware {
 
-	private final HandshakeHandler handshakeHandler;
+    private final HandshakeHandler handshakeHandler;
 
-	private volatile boolean running;
+    private volatile boolean running;
 
+    public WebSocketTransportHandler(HandshakeHandler handshakeHandler) {
+        Assert.notNull(handshakeHandler, "HandshakeHandler must not be null");
+        this.handshakeHandler = handshakeHandler;
+    }
 
-	public WebSocketTransportHandler(HandshakeHandler handshakeHandler) {
-		Assert.notNull(handshakeHandler, "HandshakeHandler must not be null");
-		this.handshakeHandler = handshakeHandler;
-	}
+    @Override
+    public TransportType getTransportType() {
+        return TransportType.WEBSOCKET;
+    }
 
+    public HandshakeHandler getHandshakeHandler() {
+        return this.handshakeHandler;
+    }
 
-	@Override
-	public TransportType getTransportType() {
-		return TransportType.WEBSOCKET;
-	}
+    @Override
+    public void setServletContext(ServletContext servletContext) {
+        if (this.handshakeHandler instanceof ServletContextAware) {
+            ((ServletContextAware) this.handshakeHandler).setServletContext(servletContext);
+        }
+    }
 
-	public HandshakeHandler getHandshakeHandler() {
-		return this.handshakeHandler;
-	}
+    @Override
+    public void start() {
+        if (!isRunning()) {
+            this.running = true;
+            if (this.handshakeHandler instanceof Lifecycle) {
+                ((Lifecycle) this.handshakeHandler).start();
+            }
+        }
+    }
 
-	@Override
-	public void setServletContext(ServletContext servletContext) {
-		if (this.handshakeHandler instanceof ServletContextAware) {
-			((ServletContextAware) this.handshakeHandler).setServletContext(servletContext);
-		}
-	}
+    @Override
+    public void stop() {
+        if (isRunning()) {
+            this.running = false;
+            if (this.handshakeHandler instanceof Lifecycle) {
+                ((Lifecycle) this.handshakeHandler).stop();
+            }
+        }
+    }
 
+    @Override
+    public boolean isRunning() {
+        return this.running;
+    }
 
-	@Override
-	public void start() {
-		if (!isRunning()) {
-			this.running = true;
-			if (this.handshakeHandler instanceof Lifecycle) {
-				((Lifecycle) this.handshakeHandler).start();
-			}
-		}
-	}
+    @Override
+    public boolean checkSessionType(SockJsSession session) {
+        return (session instanceof WebSocketServerSockJsSession);
+    }
 
-	@Override
-	public void stop() {
-		if (isRunning()) {
-			this.running = false;
-			if (this.handshakeHandler instanceof Lifecycle) {
-				((Lifecycle) this.handshakeHandler).stop();
-			}
-		}
-	}
+    @Override
+    public AbstractSockJsSession createSession(
+            String id, WebSocketHandler handler, Map<String, Object> attrs) {
+        return new WebSocketServerSockJsSession(id, getServiceConfig(), handler, attrs);
+    }
 
-	@Override
-	public boolean isRunning() {
-		return this.running;
-	}
+    @Override
+    public void handleRequest(
+            ServerHttpRequest request,
+            ServerHttpResponse response,
+            WebSocketHandler wsHandler,
+            SockJsSession wsSession)
+            throws SockJsException {
 
+        WebSocketServerSockJsSession sockJsSession = (WebSocketServerSockJsSession) wsSession;
+        try {
+            wsHandler = new SockJsWebSocketHandler(getServiceConfig(), wsHandler, sockJsSession);
+            this.handshakeHandler.doHandshake(
+                    request, response, wsHandler, sockJsSession.getAttributes());
+        } catch (Throwable ex) {
+            sockJsSession.tryCloseWithSockJsTransportError(ex, CloseStatus.SERVER_ERROR);
+            throw new SockJsTransportFailureException(
+                    "WebSocket handshake failure", wsSession.getId(), ex);
+        }
+    }
 
-	@Override
-	public boolean checkSessionType(SockJsSession session) {
-		return (session instanceof WebSocketServerSockJsSession);
-	}
+    @Override
+    public boolean doHandshake(
+            ServerHttpRequest request,
+            ServerHttpResponse response,
+            WebSocketHandler handler,
+            Map<String, Object> attributes)
+            throws HandshakeFailureException {
 
-	@Override
-	public AbstractSockJsSession createSession(String id, WebSocketHandler handler, Map<String, Object> attrs) {
-		return new WebSocketServerSockJsSession(id, getServiceConfig(), handler, attrs);
-	}
-
-	@Override
-	public void handleRequest(ServerHttpRequest request, ServerHttpResponse response,
-			WebSocketHandler wsHandler, SockJsSession wsSession) throws SockJsException {
-
-		WebSocketServerSockJsSession sockJsSession = (WebSocketServerSockJsSession) wsSession;
-		try {
-			wsHandler = new SockJsWebSocketHandler(getServiceConfig(), wsHandler, sockJsSession);
-			this.handshakeHandler.doHandshake(request, response, wsHandler, sockJsSession.getAttributes());
-		}
-		catch (Throwable ex) {
-			sockJsSession.tryCloseWithSockJsTransportError(ex, CloseStatus.SERVER_ERROR);
-			throw new SockJsTransportFailureException("WebSocket handshake failure", wsSession.getId(), ex);
-		}
-	}
-
-	@Override
-	public boolean doHandshake(ServerHttpRequest request, ServerHttpResponse response,
-			WebSocketHandler handler, Map<String, Object> attributes) throws HandshakeFailureException {
-
-		return this.handshakeHandler.doHandshake(request, response, handler, attributes);
-	}
+        return this.handshakeHandler.doHandshake(request, response, handler, attributes);
+    }
 }

@@ -29,20 +29,20 @@ import org.springframework.messaging.MessagingException;
 @SuppressWarnings("serial")
 public class MessageConversionException extends MessagingException {
 
-	public MessageConversionException(String description) {
-		super(description);
-	}
+    public MessageConversionException(String description) {
+        super(description);
+    }
 
-	public MessageConversionException(@Nullable String description, @Nullable Throwable cause) {
-		super(description, cause);
-	}
+    public MessageConversionException(@Nullable String description, @Nullable Throwable cause) {
+        super(description, cause);
+    }
 
-	public MessageConversionException(Message<?> failedMessage, String description) {
-		super(failedMessage, description);
-	}
+    public MessageConversionException(Message<?> failedMessage, String description) {
+        super(failedMessage, description);
+    }
 
-	public MessageConversionException(Message<?> failedMessage, @Nullable String description, @Nullable Throwable cause) {
-		super(failedMessage, description, cause);
-	}
-
+    public MessageConversionException(
+            Message<?> failedMessage, @Nullable String description, @Nullable Throwable cause) {
+        super(failedMessage, description, cause);
+    }
 }

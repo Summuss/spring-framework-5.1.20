@@ -31,253 +31,271 @@ import static org.junit.Assert.*;
  */
 public class ComponentScanParserBeanDefinitionDefaultsTests {
 
-	private static final String TEST_BEAN_NAME = "componentScanParserBeanDefinitionDefaultsTests.DefaultsTestBean";
+    private static final String TEST_BEAN_NAME =
+            "componentScanParserBeanDefinitionDefaultsTests.DefaultsTestBean";
 
-	private static final String LOCATION_PREFIX = "org/springframework/context/annotation/";
+    private static final String LOCATION_PREFIX = "org/springframework/context/annotation/";
 
+    @Before
+    public void setUp() {
+        DefaultsTestBean.INIT_COUNT = 0;
+    }
 
-	@Before
-	public void setUp() {
-		DefaultsTestBean.INIT_COUNT = 0;
-	}
+    @Test
+    public void testDefaultLazyInit() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
+        reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultWithNoOverridesTests.xml");
+        assertFalse(
+                "lazy-init should be false",
+                context.getBeanDefinition(TEST_BEAN_NAME).isLazyInit());
+        assertEquals("initCount should be 0", 0, DefaultsTestBean.INIT_COUNT);
+        context.refresh();
+        assertEquals("bean should have been instantiated", 1, DefaultsTestBean.INIT_COUNT);
+    }
 
-	@Test
-	public void testDefaultLazyInit() {
-		GenericApplicationContext context = new GenericApplicationContext();
-		XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
-		reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultWithNoOverridesTests.xml");
-		assertFalse("lazy-init should be false", context.getBeanDefinition(TEST_BEAN_NAME).isLazyInit());
-		assertEquals("initCount should be 0", 0, DefaultsTestBean.INIT_COUNT);
-		context.refresh();
-		assertEquals("bean should have been instantiated", 1, DefaultsTestBean.INIT_COUNT);
-	}
+    @Test
+    public void testLazyInitTrue() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
+        reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultLazyInitTrueTests.xml");
+        assertTrue(
+                "lazy-init should be true", context.getBeanDefinition(TEST_BEAN_NAME).isLazyInit());
+        assertEquals("initCount should be 0", 0, DefaultsTestBean.INIT_COUNT);
+        context.refresh();
+        assertEquals("bean should not have been instantiated yet", 0, DefaultsTestBean.INIT_COUNT);
+        context.getBean(TEST_BEAN_NAME);
+        assertEquals("bean should have been instantiated", 1, DefaultsTestBean.INIT_COUNT);
+    }
 
-	@Test
-	public void testLazyInitTrue() {
-		GenericApplicationContext context = new GenericApplicationContext();
-		XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
-		reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultLazyInitTrueTests.xml");
-		assertTrue("lazy-init should be true", context.getBeanDefinition(TEST_BEAN_NAME).isLazyInit());
-		assertEquals("initCount should be 0", 0, DefaultsTestBean.INIT_COUNT);
-		context.refresh();
-		assertEquals("bean should not have been instantiated yet", 0, DefaultsTestBean.INIT_COUNT);
-		context.getBean(TEST_BEAN_NAME);
-		assertEquals("bean should have been instantiated", 1, DefaultsTestBean.INIT_COUNT);
-	}
+    @Test
+    public void testLazyInitFalse() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
+        reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultLazyInitFalseTests.xml");
+        assertFalse(
+                "lazy-init should be false",
+                context.getBeanDefinition(TEST_BEAN_NAME).isLazyInit());
+        assertEquals("initCount should be 0", 0, DefaultsTestBean.INIT_COUNT);
+        context.refresh();
+        assertEquals("bean should have been instantiated", 1, DefaultsTestBean.INIT_COUNT);
+    }
 
-	@Test
-	public void testLazyInitFalse() {
-		GenericApplicationContext context = new GenericApplicationContext();
-		XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
-		reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultLazyInitFalseTests.xml");
-		assertFalse("lazy-init should be false", context.getBeanDefinition(TEST_BEAN_NAME).isLazyInit());
-		assertEquals("initCount should be 0", 0, DefaultsTestBean.INIT_COUNT);
-		context.refresh();
-		assertEquals("bean should have been instantiated", 1, DefaultsTestBean.INIT_COUNT);
-	}
+    @Test
+    public void testDefaultAutowire() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
+        reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultWithNoOverridesTests.xml");
+        context.refresh();
+        DefaultsTestBean bean = (DefaultsTestBean) context.getBean(TEST_BEAN_NAME);
+        assertNull("no dependencies should have been autowired", bean.getConstructorDependency());
+        assertNull("no dependencies should have been autowired", bean.getPropertyDependency1());
+        assertNull("no dependencies should have been autowired", bean.getPropertyDependency2());
+    }
 
-	@Test
-	public void testDefaultAutowire() {
-		GenericApplicationContext context = new GenericApplicationContext();
-		XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
-		reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultWithNoOverridesTests.xml");
-		context.refresh();
-		DefaultsTestBean bean = (DefaultsTestBean) context.getBean(TEST_BEAN_NAME);
-		assertNull("no dependencies should have been autowired", bean.getConstructorDependency());
-		assertNull("no dependencies should have been autowired", bean.getPropertyDependency1());
-		assertNull("no dependencies should have been autowired", bean.getPropertyDependency2());
-	}
+    @Test
+    public void testAutowireNo() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
+        reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultAutowireNoTests.xml");
+        context.refresh();
+        DefaultsTestBean bean = (DefaultsTestBean) context.getBean(TEST_BEAN_NAME);
+        assertNull("no dependencies should have been autowired", bean.getConstructorDependency());
+        assertNull("no dependencies should have been autowired", bean.getPropertyDependency1());
+        assertNull("no dependencies should have been autowired", bean.getPropertyDependency2());
+    }
 
-	@Test
-	public void testAutowireNo() {
-		GenericApplicationContext context = new GenericApplicationContext();
-		XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
-		reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultAutowireNoTests.xml");
-		context.refresh();
-		DefaultsTestBean bean = (DefaultsTestBean) context.getBean(TEST_BEAN_NAME);
-		assertNull("no dependencies should have been autowired", bean.getConstructorDependency());
-		assertNull("no dependencies should have been autowired", bean.getPropertyDependency1());
-		assertNull("no dependencies should have been autowired", bean.getPropertyDependency2());
-	}
+    @Test
+    public void testAutowireConstructor() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
+        reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultAutowireConstructorTests.xml");
+        context.refresh();
+        DefaultsTestBean bean = (DefaultsTestBean) context.getBean(TEST_BEAN_NAME);
+        assertNotNull(
+                "constructor dependency should have been autowired",
+                bean.getConstructorDependency());
+        assertEquals("cd", bean.getConstructorDependency().getName());
+        assertNull(
+                "property dependencies should not have been autowired",
+                bean.getPropertyDependency1());
+        assertNull(
+                "property dependencies should not have been autowired",
+                bean.getPropertyDependency2());
+    }
 
-	@Test
-	public void testAutowireConstructor() {
-		GenericApplicationContext context = new GenericApplicationContext();
-		XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
-		reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultAutowireConstructorTests.xml");
-		context.refresh();
-		DefaultsTestBean bean = (DefaultsTestBean) context.getBean(TEST_BEAN_NAME);
-		assertNotNull("constructor dependency should have been autowired", bean.getConstructorDependency());
-		assertEquals("cd", bean.getConstructorDependency().getName());
-		assertNull("property dependencies should not have been autowired", bean.getPropertyDependency1());
-		assertNull("property dependencies should not have been autowired", bean.getPropertyDependency2());
-	}
+    @Test
+    public void testAutowireByType() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
+        reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultAutowireByTypeTests.xml");
+        try {
+            context.refresh();
+            fail("expected exception due to multiple matches for byType autowiring");
+        } catch (UnsatisfiedDependencyException ex) {
+            // expected
+        }
+    }
 
-	@Test
-	public void testAutowireByType() {
-		GenericApplicationContext context = new GenericApplicationContext();
-		XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
-		reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultAutowireByTypeTests.xml");
-		try {
-			context.refresh();
-			fail("expected exception due to multiple matches for byType autowiring");
-		}
-		catch (UnsatisfiedDependencyException ex) {
-			// expected
-		}
-	}
+    @Test
+    public void testAutowireByName() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
+        reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultAutowireByNameTests.xml");
+        context.refresh();
+        DefaultsTestBean bean = (DefaultsTestBean) context.getBean(TEST_BEAN_NAME);
+        assertNull(
+                "constructor dependency should not have been autowired",
+                bean.getConstructorDependency());
+        assertNull(
+                "propertyDependency1 should not have been autowired",
+                bean.getPropertyDependency1());
+        assertNotNull(
+                "propertyDependency2 should have been autowired", bean.getPropertyDependency2());
+        assertEquals("pd2", bean.getPropertyDependency2().getName());
+    }
 
-	@Test
-	public void testAutowireByName() {
-		GenericApplicationContext context = new GenericApplicationContext();
-		XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
-		reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultAutowireByNameTests.xml");
-		context.refresh();
-		DefaultsTestBean bean = (DefaultsTestBean) context.getBean(TEST_BEAN_NAME);
-		assertNull("constructor dependency should not have been autowired", bean.getConstructorDependency());
-		assertNull("propertyDependency1 should not have been autowired", bean.getPropertyDependency1());
-		assertNotNull("propertyDependency2 should have been autowired", bean.getPropertyDependency2());
-		assertEquals("pd2", bean.getPropertyDependency2().getName());
-	}
+    @Test
+    public void testDefaultDependencyCheck() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
+        reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultWithNoOverridesTests.xml");
+        context.refresh();
+        DefaultsTestBean bean = (DefaultsTestBean) context.getBean(TEST_BEAN_NAME);
+        assertNull(
+                "constructor dependency should not have been autowired",
+                bean.getConstructorDependency());
+        assertNull(
+                "property dependencies should not have been autowired",
+                bean.getPropertyDependency1());
+        assertNull(
+                "property dependencies should not have been autowired",
+                bean.getPropertyDependency2());
+    }
 
-	@Test
-	public void testDefaultDependencyCheck() {
-		GenericApplicationContext context = new GenericApplicationContext();
-		XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
-		reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultWithNoOverridesTests.xml");
-		context.refresh();
-		DefaultsTestBean bean = (DefaultsTestBean) context.getBean(TEST_BEAN_NAME);
-		assertNull("constructor dependency should not have been autowired", bean.getConstructorDependency());
-		assertNull("property dependencies should not have been autowired", bean.getPropertyDependency1());
-		assertNull("property dependencies should not have been autowired", bean.getPropertyDependency2());
-	}
+    @Test
+    public void testDefaultInitAndDestroyMethodsNotDefined() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
+        reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultWithNoOverridesTests.xml");
+        context.refresh();
+        DefaultsTestBean bean = (DefaultsTestBean) context.getBean(TEST_BEAN_NAME);
+        assertFalse("bean should not have been initialized", bean.isInitialized());
+        context.close();
+        assertFalse("bean should not have been destroyed", bean.isDestroyed());
+    }
 
-	@Test
-	public void testDefaultInitAndDestroyMethodsNotDefined() {
-		GenericApplicationContext context = new GenericApplicationContext();
-		XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
-		reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultWithNoOverridesTests.xml");
-		context.refresh();
-		DefaultsTestBean bean = (DefaultsTestBean) context.getBean(TEST_BEAN_NAME);
-		assertFalse("bean should not have been initialized", bean.isInitialized());
-		context.close();
-		assertFalse("bean should not have been destroyed", bean.isDestroyed());
-	}
+    @Test
+    public void testDefaultInitAndDestroyMethodsDefined() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
+        reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultInitAndDestroyMethodsTests.xml");
+        context.refresh();
+        DefaultsTestBean bean = (DefaultsTestBean) context.getBean(TEST_BEAN_NAME);
+        assertTrue("bean should have been initialized", bean.isInitialized());
+        context.close();
+        assertTrue("bean should have been destroyed", bean.isDestroyed());
+    }
 
-	@Test
-	public void testDefaultInitAndDestroyMethodsDefined() {
-		GenericApplicationContext context = new GenericApplicationContext();
-		XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
-		reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultInitAndDestroyMethodsTests.xml");
-		context.refresh();
-		DefaultsTestBean bean = (DefaultsTestBean) context.getBean(TEST_BEAN_NAME);
-		assertTrue("bean should have been initialized", bean.isInitialized());
-		context.close();
-		assertTrue("bean should have been destroyed", bean.isDestroyed());
-	}
+    @Test
+    public void testDefaultNonExistingInitAndDestroyMethodsDefined() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
+        reader.loadBeanDefinitions(
+                LOCATION_PREFIX + "defaultNonExistingInitAndDestroyMethodsTests.xml");
+        context.refresh();
+        DefaultsTestBean bean = (DefaultsTestBean) context.getBean(TEST_BEAN_NAME);
+        assertFalse("bean should not have been initialized", bean.isInitialized());
+        context.close();
+        assertFalse("bean should not have been destroyed", bean.isDestroyed());
+    }
 
-	@Test
-	public void testDefaultNonExistingInitAndDestroyMethodsDefined() {
-		GenericApplicationContext context = new GenericApplicationContext();
-		XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(context);
-		reader.loadBeanDefinitions(LOCATION_PREFIX + "defaultNonExistingInitAndDestroyMethodsTests.xml");
-		context.refresh();
-		DefaultsTestBean bean = (DefaultsTestBean) context.getBean(TEST_BEAN_NAME);
-		assertFalse("bean should not have been initialized", bean.isInitialized());
-		context.close();
-		assertFalse("bean should not have been destroyed", bean.isDestroyed());
-	}
+    @SuppressWarnings("unused")
+    private static class DefaultsTestBean {
 
+        static int INIT_COUNT;
 
-	@SuppressWarnings("unused")
-	private static class DefaultsTestBean {
+        private ConstructorDependencyTestBean constructorDependency;
 
-		static int INIT_COUNT;
+        private PropertyDependencyTestBean propertyDependency1;
 
-		private ConstructorDependencyTestBean constructorDependency;
+        private PropertyDependencyTestBean propertyDependency2;
 
-		private PropertyDependencyTestBean propertyDependency1;
+        private boolean initialized;
 
-		private PropertyDependencyTestBean propertyDependency2;
+        private boolean destroyed;
 
-		private boolean initialized;
+        public DefaultsTestBean() {
+            INIT_COUNT++;
+        }
 
-		private boolean destroyed;
+        public DefaultsTestBean(ConstructorDependencyTestBean cdtb) {
+            this();
+            this.constructorDependency = cdtb;
+        }
 
-		public DefaultsTestBean() {
-			INIT_COUNT++;
-		}
+        public void init() {
+            this.initialized = true;
+        }
 
-		public DefaultsTestBean(ConstructorDependencyTestBean cdtb) {
-			this();
-			this.constructorDependency = cdtb;
-		}
+        public boolean isInitialized() {
+            return this.initialized;
+        }
 
-		public void init() {
-			this.initialized = true;
-		}
+        public void destroy() {
+            this.destroyed = true;
+        }
 
-		public boolean isInitialized() {
-			return this.initialized;
-		}
+        public boolean isDestroyed() {
+            return this.destroyed;
+        }
 
-		public void destroy() {
-			this.destroyed = true;
-		}
+        public void setPropertyDependency1(PropertyDependencyTestBean pdtb) {
+            this.propertyDependency1 = pdtb;
+        }
 
-		public boolean isDestroyed() {
-			return this.destroyed;
-		}
+        public void setPropertyDependency2(PropertyDependencyTestBean pdtb) {
+            this.propertyDependency2 = pdtb;
+        }
 
-		public void setPropertyDependency1(PropertyDependencyTestBean pdtb) {
-			this.propertyDependency1 = pdtb;
-		}
+        public ConstructorDependencyTestBean getConstructorDependency() {
+            return this.constructorDependency;
+        }
 
-		public void setPropertyDependency2(PropertyDependencyTestBean pdtb) {
-			this.propertyDependency2 = pdtb;
-		}
+        public PropertyDependencyTestBean getPropertyDependency1() {
+            return this.propertyDependency1;
+        }
 
-		public ConstructorDependencyTestBean getConstructorDependency() {
-			return this.constructorDependency;
-		}
+        public PropertyDependencyTestBean getPropertyDependency2() {
+            return this.propertyDependency2;
+        }
+    }
 
-		public PropertyDependencyTestBean getPropertyDependency1() {
-			return this.propertyDependency1;
-		}
+    @SuppressWarnings("unused")
+    private static class PropertyDependencyTestBean {
 
-		public PropertyDependencyTestBean getPropertyDependency2() {
-			return this.propertyDependency2;
-		}
-	}
+        private String name;
 
+        public PropertyDependencyTestBean(String name) {
+            this.name = name;
+        }
 
-	@SuppressWarnings("unused")
-	private static class PropertyDependencyTestBean {
+        public String getName() {
+            return this.name;
+        }
+    }
 
-		private String name;
+    @SuppressWarnings("unused")
+    private static class ConstructorDependencyTestBean {
 
-		public PropertyDependencyTestBean(String name) {
-			this.name = name;
-		}
+        private String name;
 
-		public String getName() {
-			return this.name;
-		}
-	}
+        public ConstructorDependencyTestBean(String name) {
+            this.name = name;
+        }
 
-
-	@SuppressWarnings("unused")
-	private static class ConstructorDependencyTestBean {
-
-		private String name;
-
-		public ConstructorDependencyTestBean(String name) {
-			this.name = name;
-		}
-
-		public String getName() {
-			return this.name;
-		}
-	}
-
+        public String getName() {
+            return this.name;
+        }
+    }
 }

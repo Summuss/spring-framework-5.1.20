@@ -1,6 +1,6 @@
 /**
- * Context metadata abstraction for the configuration and execution
- * of table inserts and stored procedure calls.
+ * Context metadata abstraction for the configuration and execution of table inserts and stored
+ * procedure calls.
  */
 @NonNullApi
 @NonNullFields

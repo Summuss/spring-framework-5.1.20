@@ -1,7 +1,6 @@
 /**
- * Provides a utility class for easy DataSource access,
- * a PlatformTransactionManager for a single DataSource,
- * and various simple DataSource implementations.
+ * Provides a utility class for easy DataSource access, a PlatformTransactionManager for a single
+ * DataSource, and various simple DataSource implementations.
  */
 @NonNullApi
 @NonNullFields

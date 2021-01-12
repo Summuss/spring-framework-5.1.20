@@ -28,23 +28,20 @@ import org.springframework.expression.spel.SpelNode;
  */
 public class Identifier extends SpelNodeImpl {
 
-	private final TypedValue id;
+    private final TypedValue id;
 
+    public Identifier(String payload, int pos) {
+        super(pos);
+        this.id = new TypedValue(payload);
+    }
 
-	public Identifier(String payload, int pos) {
-		super(pos);
-		this.id = new TypedValue(payload);
-	}
+    @Override
+    public String toStringAST() {
+        return String.valueOf(this.id.getValue());
+    }
 
-
-	@Override
-	public String toStringAST() {
-		return String.valueOf(this.id.getValue());
-	}
-
-	@Override
-	public TypedValue getValueInternal(ExpressionState state) {
-		return this.id;
-	}
-
+    @Override
+    public TypedValue getValueInternal(ExpressionState state) {
+        return this.id;
+    }
 }

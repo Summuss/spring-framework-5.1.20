@@ -1,6 +1,6 @@
 /**
- * General exceptions for Spring's scheduling support,
- * independent of any specific scheduling system.
+ * General exceptions for Spring's scheduling support, independent of any specific scheduling
+ * system.
  */
 @NonNullApi
 @NonNullFields

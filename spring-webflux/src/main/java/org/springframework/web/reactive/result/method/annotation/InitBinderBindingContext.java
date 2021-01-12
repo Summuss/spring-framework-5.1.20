@@ -40,87 +40,90 @@ import org.springframework.web.server.WebSession;
  */
 class InitBinderBindingContext extends BindingContext {
 
-	private final List<SyncInvocableHandlerMethod> binderMethods;
+    private final List<SyncInvocableHandlerMethod> binderMethods;
 
-	private final BindingContext binderMethodContext;
+    private final BindingContext binderMethodContext;
 
-	private final SessionStatus sessionStatus = new SimpleSessionStatus();
+    private final SessionStatus sessionStatus = new SimpleSessionStatus();
 
-	@Nullable
-	private Runnable saveModelOperation;
+    @Nullable private Runnable saveModelOperation;
 
+    InitBinderBindingContext(
+            @Nullable WebBindingInitializer initializer,
+            List<SyncInvocableHandlerMethod> binderMethods) {
 
-	InitBinderBindingContext(@Nullable WebBindingInitializer initializer,
-			List<SyncInvocableHandlerMethod> binderMethods) {
+        super(initializer);
+        this.binderMethods = binderMethods;
+        this.binderMethodContext = new BindingContext(initializer);
+    }
 
-		super(initializer);
-		this.binderMethods = binderMethods;
-		this.binderMethodContext = new BindingContext(initializer);
-	}
+    /**
+     * Return the {@link SessionStatus} instance to use that can be used to signal that session
+     * processing is complete.
+     */
+    public SessionStatus getSessionStatus() {
+        return this.sessionStatus;
+    }
 
+    @Override
+    protected WebExchangeDataBinder initDataBinder(
+            WebExchangeDataBinder dataBinder, ServerWebExchange exchange) {
+        this.binderMethods.stream()
+                .filter(
+                        binderMethod -> {
+                            InitBinder ann = binderMethod.getMethodAnnotation(InitBinder.class);
+                            Assert.state(ann != null, "No InitBinder annotation");
+                            String[] names = ann.value();
+                            return (ObjectUtils.isEmpty(names)
+                                    || ObjectUtils.containsElement(
+                                            names, dataBinder.getObjectName()));
+                        })
+                .forEach(method -> invokeBinderMethod(dataBinder, exchange, method));
 
-	/**
-	 * Return the {@link SessionStatus} instance to use that can be used to
-	 * signal that session processing is complete.
-	 */
-	public SessionStatus getSessionStatus() {
-		return this.sessionStatus;
-	}
+        return dataBinder;
+    }
 
+    private void invokeBinderMethod(
+            WebExchangeDataBinder dataBinder,
+            ServerWebExchange exchange,
+            SyncInvocableHandlerMethod binderMethod) {
 
-	@Override
-	protected WebExchangeDataBinder initDataBinder(WebExchangeDataBinder dataBinder, ServerWebExchange exchange) {
-		this.binderMethods.stream()
-				.filter(binderMethod -> {
-					InitBinder ann = binderMethod.getMethodAnnotation(InitBinder.class);
-					Assert.state(ann != null, "No InitBinder annotation");
-					String[] names = ann.value();
-					return (ObjectUtils.isEmpty(names) ||
-							ObjectUtils.containsElement(names, dataBinder.getObjectName()));
-				})
-				.forEach(method -> invokeBinderMethod(dataBinder, exchange, method));
+        HandlerResult result =
+                binderMethod.invokeForHandlerResult(exchange, this.binderMethodContext, dataBinder);
+        if (result != null && result.getReturnValue() != null) {
+            throw new IllegalStateException(
+                    "@InitBinder methods must not return a value (should be void): "
+                            + binderMethod);
+        }
+        // Should not happen (no Model argument resolution) ...
+        if (!this.binderMethodContext.getModel().asMap().isEmpty()) {
+            throw new IllegalStateException(
+                    "@InitBinder methods are not allowed to add model attributes: " + binderMethod);
+        }
+    }
 
-		return dataBinder;
-	}
+    /**
+     * Provide the context required to apply {@link #saveModel()} after the controller method has
+     * been invoked.
+     */
+    public void setSessionContext(SessionAttributesHandler attributesHandler, WebSession session) {
+        this.saveModelOperation =
+                () -> {
+                    if (getSessionStatus().isComplete()) {
+                        attributesHandler.cleanupAttributes(session);
+                    } else {
+                        attributesHandler.storeAttributes(session, getModel().asMap());
+                    }
+                };
+    }
 
-	private void invokeBinderMethod(
-			WebExchangeDataBinder dataBinder, ServerWebExchange exchange, SyncInvocableHandlerMethod binderMethod) {
-
-		HandlerResult result = binderMethod.invokeForHandlerResult(exchange, this.binderMethodContext, dataBinder);
-		if (result != null && result.getReturnValue() != null) {
-			throw new IllegalStateException(
-					"@InitBinder methods must not return a value (should be void): " + binderMethod);
-		}
-		// Should not happen (no Model argument resolution) ...
-		if (!this.binderMethodContext.getModel().asMap().isEmpty()) {
-			throw new IllegalStateException(
-					"@InitBinder methods are not allowed to add model attributes: " + binderMethod);
-		}
-	}
-
-	/**
-	 * Provide the context required to apply {@link #saveModel()} after the
-	 * controller method has been invoked.
-	 */
-	public void setSessionContext(SessionAttributesHandler attributesHandler, WebSession session) {
-		this.saveModelOperation = () -> {
-			if (getSessionStatus().isComplete()) {
-				attributesHandler.cleanupAttributes(session);
-			}
-			else {
-				attributesHandler.storeAttributes(session, getModel().asMap());
-			}
-		};
-	}
-
-	/**
-	 * Save model attributes in the session based on a type-level declarations
-	 * in an {@code @SessionAttributes} annotation.
-	 */
-	public void saveModel() {
-		if (this.saveModelOperation != null) {
-			this.saveModelOperation.run();
-		}
-	}
-
+    /**
+     * Save model attributes in the session based on a type-level declarations in an
+     * {@code @SessionAttributes} annotation.
+     */
+    public void saveModel() {
+        if (this.saveModelOperation != null) {
+            this.saveModelOperation.run();
+        }
+    }
 }

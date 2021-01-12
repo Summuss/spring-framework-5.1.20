@@ -1,4 +1,2 @@
-/**
- * General purpose sample beans that can be used with tests.
- */
+/** General purpose sample beans that can be used with tests. */
 package org.springframework.tests.sample.beans;

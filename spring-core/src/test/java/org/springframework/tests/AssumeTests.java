@@ -37,88 +37,90 @@ import static org.springframework.tests.TestGroup.*;
  */
 public class AssumeTests {
 
-	private String originalTestGroups;
+    private String originalTestGroups;
 
+    @Before
+    public void trackOriginalTestGroups() {
+        this.originalTestGroups = System.getProperty(TEST_GROUPS_SYSTEM_PROPERTY);
+    }
 
-	@Before
-	public void trackOriginalTestGroups() {
-		this.originalTestGroups = System.getProperty(TEST_GROUPS_SYSTEM_PROPERTY);
-	}
+    @After
+    public void restoreOriginalTestGroups() {
+        if (this.originalTestGroups != null) {
+            setTestGroups(this.originalTestGroups);
+        } else {
+            setTestGroups("");
+        }
+    }
 
-	@After
-	public void restoreOriginalTestGroups() {
-		if (this.originalTestGroups != null) {
-			setTestGroups(this.originalTestGroups);
-		}
-		else {
-			setTestGroups("");
-		}
-	}
+    @Test
+    public void assumeGroupWithNoActiveTestGroups() {
+        setTestGroups("");
+        Assume.group(JMXMP);
+        fail("assumption should have failed");
+    }
 
-	@Test
-	public void assumeGroupWithNoActiveTestGroups() {
-		setTestGroups("");
-		Assume.group(JMXMP);
-		fail("assumption should have failed");
-	}
+    @Test
+    public void assumeGroupWithNoMatchingActiveTestGroup() {
+        setTestGroups(PERFORMANCE, CI);
+        Assume.group(JMXMP);
+        fail("assumption should have failed");
+    }
 
-	@Test
-	public void assumeGroupWithNoMatchingActiveTestGroup() {
-		setTestGroups(PERFORMANCE, CI);
-		Assume.group(JMXMP);
-		fail("assumption should have failed");
-	}
+    @Test
+    public void assumeGroupWithMatchingActiveTestGroup() {
+        setTestGroups(JMXMP);
+        try {
+            Assume.group(JMXMP);
+        } catch (AssumptionViolatedException ex) {
+            fail("assumption should NOT have failed");
+        }
+    }
 
-	@Test
-	public void assumeGroupWithMatchingActiveTestGroup() {
-		setTestGroups(JMXMP);
-		try {
-			Assume.group(JMXMP);
-		}
-		catch (AssumptionViolatedException ex) {
-			fail("assumption should NOT have failed");
-		}
-	}
+    @Test
+    public void assumeGroupWithBogusActiveTestGroup() {
+        assertBogusActiveTestGroupBehavior("bogus");
+    }
 
-	@Test
-	public void assumeGroupWithBogusActiveTestGroup() {
-		assertBogusActiveTestGroupBehavior("bogus");
-	}
+    @Test
+    public void assumeGroupWithAllMinusBogusActiveTestGroup() {
+        assertBogusActiveTestGroupBehavior("all-bogus");
+    }
 
-	@Test
-	public void assumeGroupWithAllMinusBogusActiveTestGroup() {
-		assertBogusActiveTestGroupBehavior("all-bogus");
-	}
+    private void assertBogusActiveTestGroupBehavior(String testGroups) {
+        // Should result in something similar to the following:
+        //
+        // java.lang.IllegalStateException: Failed to parse 'testGroups' system property:
+        // Unable to find test group 'bogus' when parsing testGroups value: 'all-bogus'.
+        // Available groups include: [LONG_RUNNING,PERFORMANCE,JMXMP,CI]
 
-	private void assertBogusActiveTestGroupBehavior(String testGroups) {
-		// Should result in something similar to the following:
-		//
-		// java.lang.IllegalStateException: Failed to parse 'testGroups' system property:
-		// Unable to find test group 'bogus' when parsing testGroups value: 'all-bogus'.
-		// Available groups include: [LONG_RUNNING,PERFORMANCE,JMXMP,CI]
+        setTestGroups(testGroups);
+        try {
+            Assume.group(JMXMP);
+            fail("assumption should have failed");
+        } catch (IllegalStateException ex) {
+            assertThat(
+                    ex.getMessage(),
+                    startsWith(
+                            "Failed to parse '"
+                                    + TEST_GROUPS_SYSTEM_PROPERTY
+                                    + "' system property: "));
 
-		setTestGroups(testGroups);
-		try {
-			Assume.group(JMXMP);
-			fail("assumption should have failed");
-		}
-		catch (IllegalStateException ex) {
-			assertThat(ex.getMessage(),
-				startsWith("Failed to parse '" + TEST_GROUPS_SYSTEM_PROPERTY + "' system property: "));
+            assertThat(ex.getCause(), instanceOf(IllegalArgumentException.class));
+            assertThat(
+                    ex.getCause().getMessage(),
+                    equalTo(
+                            "Unable to find test group 'bogus' when parsing testGroups value: '"
+                                    + testGroups
+                                    + "'. Available groups include: [LONG_RUNNING,PERFORMANCE,JMXMP,CI]"));
+        }
+    }
 
-			assertThat(ex.getCause(), instanceOf(IllegalArgumentException.class));
-			assertThat(ex.getCause().getMessage(),
-				equalTo("Unable to find test group 'bogus' when parsing testGroups value: '" + testGroups
-						+ "'. Available groups include: [LONG_RUNNING,PERFORMANCE,JMXMP,CI]"));
-		}
-	}
+    private void setTestGroups(TestGroup... testGroups) {
+        setTestGroups(Arrays.stream(testGroups).map(TestGroup::name).collect(joining(", ")));
+    }
 
-	private void setTestGroups(TestGroup... testGroups) {
-		setTestGroups(Arrays.stream(testGroups).map(TestGroup::name).collect(joining(", ")));
-	}
-
-	private void setTestGroups(String testGroups) {
-		System.setProperty(TEST_GROUPS_SYSTEM_PROPERTY, testGroups);
-	}
-
+    private void setTestGroups(String testGroups) {
+        System.setProperty(TEST_GROUPS_SYSTEM_PROPERTY, testGroups);
+    }
 }

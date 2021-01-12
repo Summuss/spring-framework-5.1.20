@@ -16,11 +16,10 @@
 package org.springframework.core.io.buffer;
 
 /**
- * Exception that indicates the cumulative number of bytes consumed from a
- * stream of {@link DataBuffer DataBuffer}'s exceeded some pre-configured limit.
- * This can be raised when data buffers are cached and aggregated, e.g.
- * {@link DataBufferUtils#join}. Or it could also be raised when data buffers
- * have been released but a parsed representation is being aggregated, e.g. async
+ * Exception that indicates the cumulative number of bytes consumed from a stream of {@link
+ * DataBuffer DataBuffer}'s exceeded some pre-configured limit. This can be raised when data buffers
+ * are cached and aggregated, e.g. {@link DataBufferUtils#join}. Or it could also be raised when
+ * data buffers have been released but a parsed representation is being aggregated, e.g. async
  * parsing with Jackson.
  *
  * @author Rossen Stoyanchev
@@ -29,9 +28,7 @@ package org.springframework.core.io.buffer;
 @SuppressWarnings("serial")
 public class DataBufferLimitException extends IllegalStateException {
 
-
-	public DataBufferLimitException(String message) {
-		super(message);
-	}
-
+    public DataBufferLimitException(String message) {
+        super(message);
+    }
 }

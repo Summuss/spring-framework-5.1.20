@@ -3,16 +3,11 @@
 
 package org.springframework.web.reactive.protobuf;
 
-public interface SecondMsgOrBuilder
-    extends com.google.protobuf.MessageOrBuilder {
+public interface SecondMsgOrBuilder extends com.google.protobuf.MessageOrBuilder {
 
-  // optional int32 blah = 1;
-  /**
-   * <code>optional int32 blah = 1;</code>
-   */
-  boolean hasBlah();
-  /**
-   * <code>optional int32 blah = 1;</code>
-   */
-  int getBlah();
+    // optional int32 blah = 1;
+    /** <code>optional int32 blah = 1;</code> */
+    boolean hasBlah();
+    /** <code>optional int32 blah = 1;</code> */
+    int getBlah();
 }

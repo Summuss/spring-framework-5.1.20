@@ -35,67 +35,73 @@ import static org.junit.Assert.*;
  */
 public class MappingContentNegotiationStrategyTests {
 
-	@Test
-	public void resolveMediaTypes() throws Exception {
-		Map<String, MediaType> mapping = Collections.singletonMap("json", MediaType.APPLICATION_JSON);
-		TestMappingContentNegotiationStrategy strategy = new TestMappingContentNegotiationStrategy("json", mapping);
+    @Test
+    public void resolveMediaTypes() throws Exception {
+        Map<String, MediaType> mapping =
+                Collections.singletonMap("json", MediaType.APPLICATION_JSON);
+        TestMappingContentNegotiationStrategy strategy =
+                new TestMappingContentNegotiationStrategy("json", mapping);
 
-		List<MediaType> mediaTypes = strategy.resolveMediaTypes(null);
+        List<MediaType> mediaTypes = strategy.resolveMediaTypes(null);
 
-		assertEquals(1, mediaTypes.size());
-		assertEquals("application/json", mediaTypes.get(0).toString());
-	}
+        assertEquals(1, mediaTypes.size());
+        assertEquals("application/json", mediaTypes.get(0).toString());
+    }
 
-	@Test
-	public void resolveMediaTypesNoMatch() throws Exception {
-		Map<String, MediaType> mapping = null;
-		TestMappingContentNegotiationStrategy strategy = new TestMappingContentNegotiationStrategy("blah", mapping);
+    @Test
+    public void resolveMediaTypesNoMatch() throws Exception {
+        Map<String, MediaType> mapping = null;
+        TestMappingContentNegotiationStrategy strategy =
+                new TestMappingContentNegotiationStrategy("blah", mapping);
 
-		List<MediaType> mediaTypes = strategy.resolveMediaTypes(null);
+        List<MediaType> mediaTypes = strategy.resolveMediaTypes(null);
 
-		assertEquals(ContentNegotiationStrategy.MEDIA_TYPE_ALL_LIST, mediaTypes);
-	}
+        assertEquals(ContentNegotiationStrategy.MEDIA_TYPE_ALL_LIST, mediaTypes);
+    }
 
-	@Test
-	public void resolveMediaTypesNoKey() throws Exception {
-		Map<String, MediaType> mapping = Collections.singletonMap("json", MediaType.APPLICATION_JSON);
-		TestMappingContentNegotiationStrategy strategy = new TestMappingContentNegotiationStrategy(null, mapping);
+    @Test
+    public void resolveMediaTypesNoKey() throws Exception {
+        Map<String, MediaType> mapping =
+                Collections.singletonMap("json", MediaType.APPLICATION_JSON);
+        TestMappingContentNegotiationStrategy strategy =
+                new TestMappingContentNegotiationStrategy(null, mapping);
 
-		List<MediaType> mediaTypes = strategy.resolveMediaTypes(null);
+        List<MediaType> mediaTypes = strategy.resolveMediaTypes(null);
 
-		assertEquals(ContentNegotiationStrategy.MEDIA_TYPE_ALL_LIST, mediaTypes);
-	}
+        assertEquals(ContentNegotiationStrategy.MEDIA_TYPE_ALL_LIST, mediaTypes);
+    }
 
-	@Test
-	public void resolveMediaTypesHandleNoMatch() throws Exception {
-		Map<String, MediaType> mapping = null;
-		TestMappingContentNegotiationStrategy strategy = new TestMappingContentNegotiationStrategy("xml", mapping);
+    @Test
+    public void resolveMediaTypesHandleNoMatch() throws Exception {
+        Map<String, MediaType> mapping = null;
+        TestMappingContentNegotiationStrategy strategy =
+                new TestMappingContentNegotiationStrategy("xml", mapping);
 
-		List<MediaType> mediaTypes = strategy.resolveMediaTypes(null);
+        List<MediaType> mediaTypes = strategy.resolveMediaTypes(null);
 
-		assertEquals(1, mediaTypes.size());
-		assertEquals("application/xml", mediaTypes.get(0).toString());
-	}
+        assertEquals(1, mediaTypes.size());
+        assertEquals("application/xml", mediaTypes.get(0).toString());
+    }
 
+    private static class TestMappingContentNegotiationStrategy
+            extends AbstractMappingContentNegotiationStrategy {
 
-	private static class TestMappingContentNegotiationStrategy extends AbstractMappingContentNegotiationStrategy {
+        private final String extension;
 
-		private final String extension;
+        public TestMappingContentNegotiationStrategy(
+                String extension, Map<String, MediaType> mapping) {
+            super(mapping);
+            this.extension = extension;
+        }
 
-		public TestMappingContentNegotiationStrategy(String extension, Map<String, MediaType> mapping) {
-			super(mapping);
-			this.extension = extension;
-		}
+        @Override
+        protected String getMediaTypeKey(NativeWebRequest request) {
+            return this.extension;
+        }
 
-		@Override
-		protected String getMediaTypeKey(NativeWebRequest request) {
-			return this.extension;
-		}
-
-		@Override
-		protected MediaType handleNoMatch(NativeWebRequest request, String mappingKey) {
-			return "xml".equals(mappingKey) ? MediaType.APPLICATION_XML : null;
-		}
-	}
-
+        @Override
+        protected MediaType handleNoMatch(NativeWebRequest request, String mappingKey) {
+            return "xml".equals(mappingKey) ? MediaType.APPLICATION_XML : null;
+        }
+    }
 }

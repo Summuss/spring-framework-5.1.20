@@ -39,167 +39,166 @@ import static org.junit.Assert.*;
  */
 public class DataBinderFieldAccessTests {
 
-	@Rule
-	public final ExpectedException thrown = ExpectedException.none();
+    @Rule public final ExpectedException thrown = ExpectedException.none();
 
-	@Test
-	public void bindingNoErrors() throws Exception {
-		FieldAccessBean rod = new FieldAccessBean();
-		DataBinder binder = new DataBinder(rod, "person");
-		assertTrue(binder.isIgnoreUnknownFields());
-		binder.initDirectFieldAccess();
-		MutablePropertyValues pvs = new MutablePropertyValues();
-		pvs.addPropertyValue(new PropertyValue("name", "Rod"));
-		pvs.addPropertyValue(new PropertyValue("age", new Integer(32)));
-		pvs.addPropertyValue(new PropertyValue("nonExisting", "someValue"));
+    @Test
+    public void bindingNoErrors() throws Exception {
+        FieldAccessBean rod = new FieldAccessBean();
+        DataBinder binder = new DataBinder(rod, "person");
+        assertTrue(binder.isIgnoreUnknownFields());
+        binder.initDirectFieldAccess();
+        MutablePropertyValues pvs = new MutablePropertyValues();
+        pvs.addPropertyValue(new PropertyValue("name", "Rod"));
+        pvs.addPropertyValue(new PropertyValue("age", new Integer(32)));
+        pvs.addPropertyValue(new PropertyValue("nonExisting", "someValue"));
 
-		binder.bind(pvs);
-		binder.close();
+        binder.bind(pvs);
+        binder.close();
 
-		assertTrue("changed name correctly", rod.getName().equals("Rod"));
-		assertTrue("changed age correctly", rod.getAge() == 32);
+        assertTrue("changed name correctly", rod.getName().equals("Rod"));
+        assertTrue("changed age correctly", rod.getAge() == 32);
 
-		Map<?, ?> m = binder.getBindingResult().getModel();
-		assertTrue("There is one element in map", m.size() == 2);
-		FieldAccessBean tb = (FieldAccessBean) m.get("person");
-		assertTrue("Same object", tb.equals(rod));
-	}
+        Map<?, ?> m = binder.getBindingResult().getModel();
+        assertTrue("There is one element in map", m.size() == 2);
+        FieldAccessBean tb = (FieldAccessBean) m.get("person");
+        assertTrue("Same object", tb.equals(rod));
+    }
 
-	@Test
-	public void bindingNoErrorsNotIgnoreUnknown() throws Exception {
-		FieldAccessBean rod = new FieldAccessBean();
-		DataBinder binder = new DataBinder(rod, "person");
-		binder.initDirectFieldAccess();
-		binder.setIgnoreUnknownFields(false);
-		MutablePropertyValues pvs = new MutablePropertyValues();
-		pvs.addPropertyValue(new PropertyValue("name", "Rod"));
-		pvs.addPropertyValue(new PropertyValue("age", new Integer(32)));
-		pvs.addPropertyValue(new PropertyValue("nonExisting", "someValue"));
+    @Test
+    public void bindingNoErrorsNotIgnoreUnknown() throws Exception {
+        FieldAccessBean rod = new FieldAccessBean();
+        DataBinder binder = new DataBinder(rod, "person");
+        binder.initDirectFieldAccess();
+        binder.setIgnoreUnknownFields(false);
+        MutablePropertyValues pvs = new MutablePropertyValues();
+        pvs.addPropertyValue(new PropertyValue("name", "Rod"));
+        pvs.addPropertyValue(new PropertyValue("age", new Integer(32)));
+        pvs.addPropertyValue(new PropertyValue("nonExisting", "someValue"));
 
-		try {
-			binder.bind(pvs);
-			fail("Should have thrown NotWritablePropertyException");
-		}
-		catch (NotWritablePropertyException ex) {
-			// expected
-		}
-	}
+        try {
+            binder.bind(pvs);
+            fail("Should have thrown NotWritablePropertyException");
+        } catch (NotWritablePropertyException ex) {
+            // expected
+        }
+    }
 
-	@Test
-	public void bindingWithErrors() throws Exception {
-		FieldAccessBean rod = new FieldAccessBean();
-		DataBinder binder = new DataBinder(rod, "person");
-		binder.initDirectFieldAccess();
-		MutablePropertyValues pvs = new MutablePropertyValues();
-		pvs.addPropertyValue(new PropertyValue("name", "Rod"));
-		pvs.addPropertyValue(new PropertyValue("age", "32x"));
-		binder.bind(pvs);
+    @Test
+    public void bindingWithErrors() throws Exception {
+        FieldAccessBean rod = new FieldAccessBean();
+        DataBinder binder = new DataBinder(rod, "person");
+        binder.initDirectFieldAccess();
+        MutablePropertyValues pvs = new MutablePropertyValues();
+        pvs.addPropertyValue(new PropertyValue("name", "Rod"));
+        pvs.addPropertyValue(new PropertyValue("age", "32x"));
+        binder.bind(pvs);
 
-		try {
-			binder.close();
-			fail("Should have thrown BindException");
-		}
-		catch (BindException ex) {
-			assertTrue("changed name correctly", rod.getName().equals("Rod"));
-			//assertTrue("changed age correctly", rod.getAge() == 32);
+        try {
+            binder.close();
+            fail("Should have thrown BindException");
+        } catch (BindException ex) {
+            assertTrue("changed name correctly", rod.getName().equals("Rod"));
+            // assertTrue("changed age correctly", rod.getAge() == 32);
 
-			Map<?, ?> map = binder.getBindingResult().getModel();
-			//assertTrue("There are 3 element in map", m.size() == 1);
-			FieldAccessBean tb = (FieldAccessBean) map.get("person");
-			assertTrue("Same object", tb.equals(rod));
+            Map<?, ?> map = binder.getBindingResult().getModel();
+            // assertTrue("There are 3 element in map", m.size() == 1);
+            FieldAccessBean tb = (FieldAccessBean) map.get("person");
+            assertTrue("Same object", tb.equals(rod));
 
-			BindingResult br = (BindingResult) map.get(BindingResult.MODEL_KEY_PREFIX + "person");
-			assertTrue("Added itself to map", br == binder.getBindingResult());
-			assertTrue(br.hasErrors());
-			assertTrue("Correct number of errors", br.getErrorCount() == 1);
+            BindingResult br = (BindingResult) map.get(BindingResult.MODEL_KEY_PREFIX + "person");
+            assertTrue("Added itself to map", br == binder.getBindingResult());
+            assertTrue(br.hasErrors());
+            assertTrue("Correct number of errors", br.getErrorCount() == 1);
 
-			assertTrue("Has age errors", br.hasFieldErrors("age"));
-			assertTrue("Correct number of age errors", br.getFieldErrorCount("age") == 1);
-			assertEquals("32x", binder.getBindingResult().getFieldValue("age"));
-			assertEquals("32x", binder.getBindingResult().getFieldError("age").getRejectedValue());
-			assertEquals(0, tb.getAge());
-		}
-	}
+            assertTrue("Has age errors", br.hasFieldErrors("age"));
+            assertTrue("Correct number of age errors", br.getFieldErrorCount("age") == 1);
+            assertEquals("32x", binder.getBindingResult().getFieldValue("age"));
+            assertEquals("32x", binder.getBindingResult().getFieldError("age").getRejectedValue());
+            assertEquals(0, tb.getAge());
+        }
+    }
 
-	@Test
-	public void nestedBindingWithDefaultConversionNoErrors() throws Exception {
-		FieldAccessBean rod = new FieldAccessBean();
-		DataBinder binder = new DataBinder(rod, "person");
-		assertTrue(binder.isIgnoreUnknownFields());
-		binder.initDirectFieldAccess();
-		MutablePropertyValues pvs = new MutablePropertyValues();
-		pvs.addPropertyValue(new PropertyValue("spouse.name", "Kerry"));
-		pvs.addPropertyValue(new PropertyValue("spouse.jedi", "on"));
+    @Test
+    public void nestedBindingWithDefaultConversionNoErrors() throws Exception {
+        FieldAccessBean rod = new FieldAccessBean();
+        DataBinder binder = new DataBinder(rod, "person");
+        assertTrue(binder.isIgnoreUnknownFields());
+        binder.initDirectFieldAccess();
+        MutablePropertyValues pvs = new MutablePropertyValues();
+        pvs.addPropertyValue(new PropertyValue("spouse.name", "Kerry"));
+        pvs.addPropertyValue(new PropertyValue("spouse.jedi", "on"));
 
-		binder.bind(pvs);
-		binder.close();
+        binder.bind(pvs);
+        binder.close();
 
-		assertEquals("Kerry", rod.getSpouse().getName());
-		assertTrue((rod.getSpouse()).isJedi());
-	}
+        assertEquals("Kerry", rod.getSpouse().getName());
+        assertTrue((rod.getSpouse()).isJedi());
+    }
 
-	@Test
-	public void nestedBindingWithDisabledAutoGrow() throws Exception {
-		FieldAccessBean rod = new FieldAccessBean();
-		DataBinder binder = new DataBinder(rod, "person");
-		binder.setAutoGrowNestedPaths(false);
-		binder.initDirectFieldAccess();
-		MutablePropertyValues pvs = new MutablePropertyValues();
-		pvs.addPropertyValue(new PropertyValue("spouse.name", "Kerry"));
+    @Test
+    public void nestedBindingWithDisabledAutoGrow() throws Exception {
+        FieldAccessBean rod = new FieldAccessBean();
+        DataBinder binder = new DataBinder(rod, "person");
+        binder.setAutoGrowNestedPaths(false);
+        binder.initDirectFieldAccess();
+        MutablePropertyValues pvs = new MutablePropertyValues();
+        pvs.addPropertyValue(new PropertyValue("spouse.name", "Kerry"));
 
-		thrown.expect(NullValueInNestedPathException.class);
-		binder.bind(pvs);
-	}
+        thrown.expect(NullValueInNestedPathException.class);
+        binder.bind(pvs);
+    }
 
-	@Test
-	public void bindingWithErrorsAndCustomEditors() throws Exception {
-		FieldAccessBean rod = new FieldAccessBean();
-		DataBinder binder = new DataBinder(rod, "person");
-		binder.initDirectFieldAccess();
-		binder.registerCustomEditor(TestBean.class, "spouse", new PropertyEditorSupport() {
-			@Override
-			public void setAsText(String text) throws IllegalArgumentException {
-				setValue(new TestBean(text, 0));
-			}
-			@Override
-			public String getAsText() {
-				return ((TestBean) getValue()).getName();
-			}
-		});
-		MutablePropertyValues pvs = new MutablePropertyValues();
-		pvs.addPropertyValue(new PropertyValue("name", "Rod"));
-		pvs.addPropertyValue(new PropertyValue("age", "32x"));
-		pvs.addPropertyValue(new PropertyValue("spouse", "Kerry"));
-		binder.bind(pvs);
+    @Test
+    public void bindingWithErrorsAndCustomEditors() throws Exception {
+        FieldAccessBean rod = new FieldAccessBean();
+        DataBinder binder = new DataBinder(rod, "person");
+        binder.initDirectFieldAccess();
+        binder.registerCustomEditor(
+                TestBean.class,
+                "spouse",
+                new PropertyEditorSupport() {
+                    @Override
+                    public void setAsText(String text) throws IllegalArgumentException {
+                        setValue(new TestBean(text, 0));
+                    }
 
-		try {
-			binder.close();
-			fail("Should have thrown BindException");
-		}
-		catch (BindException ex) {
-			assertTrue("changed name correctly", rod.getName().equals("Rod"));
-			//assertTrue("changed age correctly", rod.getAge() == 32);
+                    @Override
+                    public String getAsText() {
+                        return ((TestBean) getValue()).getName();
+                    }
+                });
+        MutablePropertyValues pvs = new MutablePropertyValues();
+        pvs.addPropertyValue(new PropertyValue("name", "Rod"));
+        pvs.addPropertyValue(new PropertyValue("age", "32x"));
+        pvs.addPropertyValue(new PropertyValue("spouse", "Kerry"));
+        binder.bind(pvs);
 
-			Map<?, ?> model = binder.getBindingResult().getModel();
-			//assertTrue("There are 3 element in map", m.size() == 1);
-			FieldAccessBean tb = (FieldAccessBean) model.get("person");
-			assertTrue("Same object", tb.equals(rod));
+        try {
+            binder.close();
+            fail("Should have thrown BindException");
+        } catch (BindException ex) {
+            assertTrue("changed name correctly", rod.getName().equals("Rod"));
+            // assertTrue("changed age correctly", rod.getAge() == 32);
 
-			BindingResult br = (BindingResult) model.get(BindingResult.MODEL_KEY_PREFIX + "person");
-			assertTrue("Added itself to map", br == binder.getBindingResult());
-			assertTrue(br.hasErrors());
-			assertTrue("Correct number of errors", br.getErrorCount() == 1);
+            Map<?, ?> model = binder.getBindingResult().getModel();
+            // assertTrue("There are 3 element in map", m.size() == 1);
+            FieldAccessBean tb = (FieldAccessBean) model.get("person");
+            assertTrue("Same object", tb.equals(rod));
 
-			assertTrue("Has age errors", br.hasFieldErrors("age"));
-			assertTrue("Correct number of age errors", br.getFieldErrorCount("age") == 1);
-			assertEquals("32x", binder.getBindingResult().getFieldValue("age"));
-			assertEquals("32x", binder.getBindingResult().getFieldError("age").getRejectedValue());
-			assertEquals(0, tb.getAge());
+            BindingResult br = (BindingResult) model.get(BindingResult.MODEL_KEY_PREFIX + "person");
+            assertTrue("Added itself to map", br == binder.getBindingResult());
+            assertTrue(br.hasErrors());
+            assertTrue("Correct number of errors", br.getErrorCount() == 1);
 
-			assertTrue("Does not have spouse errors", !br.hasFieldErrors("spouse"));
-			assertEquals("Kerry", binder.getBindingResult().getFieldValue("spouse"));
-			assertNotNull(tb.getSpouse());
-		}
-	}
+            assertTrue("Has age errors", br.hasFieldErrors("age"));
+            assertTrue("Correct number of age errors", br.getFieldErrorCount("age") == 1);
+            assertEquals("32x", binder.getBindingResult().getFieldValue("age"));
+            assertEquals("32x", binder.getBindingResult().getFieldError("age").getRejectedValue());
+            assertEquals(0, tb.getAge());
 
+            assertTrue("Does not have spouse errors", !br.hasFieldErrors("spouse"));
+            assertEquals("Kerry", binder.getBindingResult().getFieldValue("spouse"));
+            assertNotNull(tb.getSpouse());
+        }
+    }
 }

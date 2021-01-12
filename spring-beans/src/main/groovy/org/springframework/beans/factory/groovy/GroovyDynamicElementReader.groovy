@@ -32,94 +32,91 @@ import org.w3c.dom.Element
 @groovy.transform.PackageScope
 class GroovyDynamicElementReader extends GroovyObjectSupport {
 
-	private final String rootNamespace
+    private final String rootNamespace
 
-	private final Map<String, String> xmlNamespaces
+    private final Map<String, String> xmlNamespaces
 
-	private final BeanDefinitionParserDelegate delegate
+    private final BeanDefinitionParserDelegate delegate
 
-	private final GroovyBeanDefinitionWrapper beanDefinition
+    private final GroovyBeanDefinitionWrapper beanDefinition
 
-	protected final boolean decorating;
+    protected final boolean decorating;
 
-	private boolean callAfterInvocation = true
-
-
-	public GroovyDynamicElementReader(String namespace, Map<String, String> namespaceMap,
-			BeanDefinitionParserDelegate delegate, GroovyBeanDefinitionWrapper beanDefinition, boolean decorating) {
-		super();
-		this.rootNamespace = namespace
-		this.xmlNamespaces = namespaceMap
-		this.delegate = delegate
-		this.beanDefinition = beanDefinition;
-		this.decorating = decorating;
-	}
+    private boolean callAfterInvocation = true
 
 
-	@Override
-	public Object invokeMethod(String name, Object args) {
-		if (name.equals("doCall")) {
-			def callable = args[0]
-			callable.resolveStrategy = Closure.DELEGATE_FIRST
-			callable.delegate = this
-			def result = callable.call()
+    public GroovyDynamicElementReader(String namespace, Map<String, String> namespaceMap,
+                                      BeanDefinitionParserDelegate delegate, GroovyBeanDefinitionWrapper beanDefinition, boolean decorating) {
+        super();
+        this.rootNamespace = namespace
+        this.xmlNamespaces = namespaceMap
+        this.delegate = delegate
+        this.beanDefinition = beanDefinition;
+        this.decorating = decorating;
+    }
 
-			if (this.callAfterInvocation) {
-				afterInvocation()
-				this.callAfterInvocation = false
-			}
-			return result
-		}
 
-		else {
-			StreamingMarkupBuilder builder = new StreamingMarkupBuilder();
-			def myNamespace = this.rootNamespace
-			def myNamespaces = this.xmlNamespaces
+    @Override
+    public Object invokeMethod(String name, Object args) {
+        if (name.equals("doCall")) {
+            def callable = args[0]
+            callable.resolveStrategy = Closure.DELEGATE_FIRST
+            callable.delegate = this
+            def result = callable.call()
 
-			def callable = {
-				for (namespace in myNamespaces) {
-					mkp.declareNamespace([(namespace.key):namespace.value])
-				}
-				if (args && (args[-1] instanceof Closure)) {
-					args[-1].resolveStrategy = Closure.DELEGATE_FIRST
-					args[-1].delegate = builder
-				}
-				delegate."$myNamespace"."$name"(*args)
-			}
+            if (this.callAfterInvocation) {
+                afterInvocation()
+                this.callAfterInvocation = false
+            }
+            return result
+        } else {
+            StreamingMarkupBuilder builder = new StreamingMarkupBuilder();
+            def myNamespace = this.rootNamespace
+            def myNamespaces = this.xmlNamespaces
 
-			callable.resolveStrategy = Closure.DELEGATE_FIRST
-			callable.delegate = builder
-			def writable = builder.bind(callable)
-			def sw = new StringWriter()
-			writable.writeTo(sw)
+            def callable = {
+                for (namespace in myNamespaces) {
+                    mkp.declareNamespace([(namespace.key): namespace.value])
+                }
+                if (args && (args[-1] instanceof Closure)) {
+                    args[-1].resolveStrategy = Closure.DELEGATE_FIRST
+                    args[-1].delegate = builder
+                }
+                delegate."$myNamespace"."$name"(*args)
+            }
 
-			Element element = this.delegate.readerContext.readDocumentFromString(sw.toString()).documentElement
-			this.delegate.initDefaults(element)
-			if (this.decorating) {
-				BeanDefinitionHolder holder = this.beanDefinition.beanDefinitionHolder;
-				holder = this.delegate.decorateIfRequired(element, holder, null)
-				this.beanDefinition.setBeanDefinitionHolder(holder)
-			}
-			else {
-				def beanDefinition = this.delegate.parseCustomElement(element)
-				if (beanDefinition) {
-					this.beanDefinition.setBeanDefinition(beanDefinition)
-				}
-			}
-			if (this.callAfterInvocation) {
-				afterInvocation()
-				this.callAfterInvocation = false
-			}
-			return element
-		}
-	}
+            callable.resolveStrategy = Closure.DELEGATE_FIRST
+            callable.delegate = builder
+            def writable = builder.bind(callable)
+            def sw = new StringWriter()
+            writable.writeTo(sw)
 
-	/**
-	 * Hook that subclass or anonymous classes can overwrite to implement custom behavior
-	 * after invocation completes.
-	 */
-	protected void afterInvocation() {
-		// NOOP
-	}
+            Element element = this.delegate.readerContext.readDocumentFromString(sw.toString()).documentElement
+            this.delegate.initDefaults(element)
+            if (this.decorating) {
+                BeanDefinitionHolder holder = this.beanDefinition.beanDefinitionHolder;
+                holder = this.delegate.decorateIfRequired(element, holder, null)
+                this.beanDefinition.setBeanDefinitionHolder(holder)
+            } else {
+                def beanDefinition = this.delegate.parseCustomElement(element)
+                if (beanDefinition) {
+                    this.beanDefinition.setBeanDefinition(beanDefinition)
+                }
+            }
+            if (this.callAfterInvocation) {
+                afterInvocation()
+                this.callAfterInvocation = false
+            }
+            return element
+        }
+    }
+
+    /**
+     * Hook that subclass or anonymous classes can overwrite to implement custom behavior
+     * after invocation completes.
+     */
+    protected void afterInvocation() {
+        // NOOP
+    }
 
 }

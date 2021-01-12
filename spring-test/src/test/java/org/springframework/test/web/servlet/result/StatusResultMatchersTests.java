@@ -42,79 +42,77 @@ import static org.junit.Assert.*;
  */
 public class StatusResultMatchersTests {
 
-	private StatusResultMatchers matchers;
+    private StatusResultMatchers matchers;
 
-	private MockHttpServletRequest request;
+    private MockHttpServletRequest request;
 
+    @Before
+    public void setup() {
+        this.matchers = new StatusResultMatchers();
+        this.request = new MockHttpServletRequest();
+    }
 
-	@Before
-	public void setup() {
-		this.matchers = new StatusResultMatchers();
-		this.request = new MockHttpServletRequest();
-	}
+    @Test
+    public void testHttpStatusCodeResultMatchers() throws Exception {
 
+        List<AssertionError> failures = new ArrayList<>();
 
-	@Test
-	public void testHttpStatusCodeResultMatchers() throws Exception {
+        for (HttpStatus status : HttpStatus.values()) {
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            response.setStatus(status.value());
+            MvcResult mvcResult =
+                    new StubMvcResult(request, null, null, null, null, null, response);
+            try {
+                Method method = getMethodForHttpStatus(status);
+                ResultMatcher matcher =
+                        (ResultMatcher) ReflectionUtils.invokeMethod(method, this.matchers);
+                try {
+                    matcher.match(mvcResult);
+                } catch (AssertionError error) {
+                    failures.add(error);
+                }
+            } catch (Exception ex) {
+                throw new Exception("Failed to obtain ResultMatcher for status " + status, ex);
+            }
+        }
 
-		List<AssertionError> failures = new ArrayList<>();
+        if (!failures.isEmpty()) {
+            fail("Failed status codes: " + failures);
+        }
+    }
 
-		for (HttpStatus status : HttpStatus.values()) {
-			MockHttpServletResponse response = new MockHttpServletResponse();
-			response.setStatus(status.value());
-			MvcResult mvcResult = new StubMvcResult(request, null, null, null, null, null, response);
-			try {
-				Method method = getMethodForHttpStatus(status);
-				ResultMatcher matcher = (ResultMatcher) ReflectionUtils.invokeMethod(method, this.matchers);
-				try {
-					matcher.match(mvcResult);
-				}
-				catch (AssertionError error) {
-					failures.add(error);
-				}
-			}
-			catch (Exception ex) {
-				throw new Exception("Failed to obtain ResultMatcher for status " + status, ex);
-			}
-		}
+    private Method getMethodForHttpStatus(HttpStatus status) throws NoSuchMethodException {
+        String name = status.name().toLowerCase().replace("_", "-");
+        name = "is" + StringUtils.capitalize(Conventions.attributeNameToPropertyName(name));
+        return StatusResultMatchers.class.getMethod(name);
+    }
 
-		if (!failures.isEmpty()) {
-			fail("Failed status codes: " + failures);
-		}
-	}
-
-	private Method getMethodForHttpStatus(HttpStatus status) throws NoSuchMethodException {
-		String name = status.name().toLowerCase().replace("_", "-");
-		name = "is" + StringUtils.capitalize(Conventions.attributeNameToPropertyName(name));
-		return StatusResultMatchers.class.getMethod(name);
-	}
-
-	@Test
-	public void statusRanges() throws Exception {
-		for (HttpStatus status : HttpStatus.values()) {
-			MockHttpServletResponse response = new MockHttpServletResponse();
-			response.setStatus(status.value());
-			MvcResult mvcResult = new StubMvcResult(request, null, null, null, null, null, response);
-			switch (status.series().value()) {
-				case 1:
-					this.matchers.is1xxInformational().match(mvcResult);
-					break;
-				case 2:
-					this.matchers.is2xxSuccessful().match(mvcResult);
-					break;
-				case 3:
-					this.matchers.is3xxRedirection().match(mvcResult);
-					break;
-				case 4:
-					this.matchers.is4xxClientError().match(mvcResult);
-					break;
-				case 5:
-					this.matchers.is5xxServerError().match(mvcResult);
-					break;
-				default:
-					fail("Unexpected range for status code value " + status);
-			}
-		}
-	}
-
+    @Test
+    public void statusRanges() throws Exception {
+        for (HttpStatus status : HttpStatus.values()) {
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            response.setStatus(status.value());
+            MvcResult mvcResult =
+                    new StubMvcResult(request, null, null, null, null, null, response);
+            switch (status.series().value()) {
+                case 1:
+                    this.matchers.is1xxInformational().match(mvcResult);
+                    break;
+                case 2:
+                    this.matchers.is2xxSuccessful().match(mvcResult);
+                    break;
+                case 3:
+                    this.matchers.is3xxRedirection().match(mvcResult);
+                    break;
+                case 4:
+                    this.matchers.is4xxClientError().match(mvcResult);
+                    break;
+                case 5:
+                    this.matchers.is5xxServerError().match(mvcResult);
+                    break;
+                default:
+                    fail("Unexpected range for status code value " + status);
+            }
+        }
+    }
 }

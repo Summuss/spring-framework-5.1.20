@@ -7,19 +7,19 @@ import org.springframework.tests.sample.beans.TestBean
 
 class GroovyScriptBean implements ContextScriptBean, ApplicationContextAware {
 
-	private int age
+    private int age
 
-	int getAge() {
-		return this.age
-	}
+    int getAge() {
+        return this.age
+    }
 
-	void setAge(int age) {
-		this.age = age
-	}
+    void setAge(int age) {
+        this.age = age
+    }
 
-	def String name
+    def String name
 
-	def TestBean testBean;
+    def TestBean testBean;
 
-	def ApplicationContext applicationContext
+    def ApplicationContext applicationContext
 }

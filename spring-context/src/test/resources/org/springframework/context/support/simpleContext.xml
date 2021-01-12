@@ -3,11 +3,11 @@
 
 <beans>
 
-	<bean id="someMessageSource" name="yourMessageSource"
-			class="org.springframework.context.support.StaticMessageSource"/>
+    <bean id="someMessageSource" name="yourMessageSource"
+          class="org.springframework.context.support.StaticMessageSource"/>
 
-	<bean class="org.springframework.context.support.ClassPathXmlApplicationContext" lazy-init="true">
-		<constructor-arg value="someNonExistentFile.xml"/>
-	</bean>
+    <bean class="org.springframework.context.support.ClassPathXmlApplicationContext" lazy-init="true">
+        <constructor-arg value="someNonExistentFile.xml"/>
+    </bean>
 
 </beans>

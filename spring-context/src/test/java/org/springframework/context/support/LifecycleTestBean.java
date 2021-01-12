@@ -18,46 +18,41 @@ package org.springframework.context.support;
 
 import org.springframework.context.Lifecycle;
 
-/**
- * @author Mark Fisher
- */
+/** @author Mark Fisher */
 public class LifecycleTestBean implements Lifecycle {
 
-	private static int startCounter;
+    private static int startCounter;
 
-	private static int stopCounter;
+    private static int stopCounter;
 
+    private int startOrder;
 
-	private int startOrder;
+    private int stopOrder;
 
-	private int stopOrder;
+    private boolean running;
 
-	private boolean running;
+    public int getStartOrder() {
+        return startOrder;
+    }
 
+    public int getStopOrder() {
+        return stopOrder;
+    }
 
-	public int getStartOrder() {
-		return startOrder;
-	}
+    @Override
+    public boolean isRunning() {
+        return this.running;
+    }
 
-	public int getStopOrder() {
-		return stopOrder;
-	}
+    @Override
+    public void start() {
+        this.startOrder = ++startCounter;
+        this.running = true;
+    }
 
-	@Override
-	public boolean isRunning() {
-		return this.running;
-	}
-
-	@Override
-	public void start() {
-		this.startOrder = ++startCounter;
-		this.running = true;
-	}
-
-	@Override
-	public void stop() {
-		this.stopOrder = ++stopCounter;
-		this.running = false;
-	}
-
+    @Override
+    public void stop() {
+        this.stopOrder = ++stopCounter;
+        this.running = false;
+    }
 }

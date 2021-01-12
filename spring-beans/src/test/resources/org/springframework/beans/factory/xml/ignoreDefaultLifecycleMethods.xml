@@ -3,6 +3,6 @@
 
 <beans default-init-method="foo" default-destroy-method="bar">
 
-	<bean id="foo" class="org.springframework.beans.factory.xml.DefaultLifecycleMethodsTests$LifecycleAwareBean"/>
+    <bean id="foo" class="org.springframework.beans.factory.xml.DefaultLifecycleMethodsTests$LifecycleAwareBean"/>
 
 </beans>

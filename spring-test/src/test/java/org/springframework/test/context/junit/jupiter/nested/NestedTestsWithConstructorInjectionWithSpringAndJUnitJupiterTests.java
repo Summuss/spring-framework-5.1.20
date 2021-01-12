@@ -33,13 +33,12 @@ import org.springframework.test.context.junit.jupiter.nested.NestedTestsWithCons
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Integration tests that verify support for {@code @Nested} test classes in conjunction
- * with the {@link SpringExtension} in a JUnit Jupiter environment ... when using
- * constructor injection as opposed to field injection (see SPR-16653).
+ * Integration tests that verify support for {@code @Nested} test classes in conjunction with the
+ * {@link SpringExtension} in a JUnit Jupiter environment ... when using constructor injection as
+ * opposed to field injection (see SPR-16653).
  *
- * <p>
- * To run these tests in an IDE that does not have built-in support for the JUnit
- * Platform, simply run {@link SpringJUnitJupiterTestSuite} as a JUnit 4 test.
+ * <p>To run these tests in an IDE that does not have built-in support for the JUnit Platform,
+ * simply run {@link SpringJUnitJupiterTestSuite} as a JUnit 4 test.
  *
  * @author Sam Brannen
  * @since 5.0.5
@@ -49,107 +48,108 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringJUnitConfig(TopLevelConfig.class)
 class NestedTestsWithConstructorInjectionWithSpringAndJUnitJupiterTests {
 
-	final String foo;
+    final String foo;
 
-	NestedTestsWithConstructorInjectionWithSpringAndJUnitJupiterTests(TestInfo testInfo, @Autowired String foo) {
-		this.foo = foo;
-	}
+    NestedTestsWithConstructorInjectionWithSpringAndJUnitJupiterTests(
+            TestInfo testInfo, @Autowired String foo) {
+        this.foo = foo;
+    }
 
-	@Test
-	void topLevelTest() {
-		assertEquals("foo", foo);
-	}
+    @Test
+    void topLevelTest() {
+        assertEquals("foo", foo);
+    }
 
-	@Nested
-	@SpringJUnitConfig(NestedConfig.class)
-	class AutowiredConstructorTests {
+    @Nested
+    @SpringJUnitConfig(NestedConfig.class)
+    class AutowiredConstructorTests {
 
-		final String bar;
+        final String bar;
 
-		@Autowired
-		AutowiredConstructorTests(String bar) {
-			this.bar = bar;
-		}
+        @Autowired
+        AutowiredConstructorTests(String bar) {
+            this.bar = bar;
+        }
 
-		@Test
-		void nestedTest() throws Exception {
-			assertEquals("foo", foo);
-			assertEquals("bar", bar);
-		}
-	}
+        @Test
+        void nestedTest() throws Exception {
+            assertEquals("foo", foo);
+            assertEquals("bar", bar);
+        }
+    }
 
-	@Nested
-	@SpringJUnitConfig(NestedConfig.class)
-	class AutowiredConstructorParameterTests {
+    @Nested
+    @SpringJUnitConfig(NestedConfig.class)
+    class AutowiredConstructorParameterTests {
 
-		final String bar;
+        final String bar;
 
-		AutowiredConstructorParameterTests(@Autowired String bar) {
-			this.bar = bar;
-		}
+        AutowiredConstructorParameterTests(@Autowired String bar) {
+            this.bar = bar;
+        }
 
-		@Test
-		void nestedTest() throws Exception {
-			assertEquals("foo", foo);
-			assertEquals("bar", bar);
-		}
-	}
+        @Test
+        void nestedTest() throws Exception {
+            assertEquals("foo", foo);
+            assertEquals("bar", bar);
+        }
+    }
 
-	@Nested
-	@SpringJUnitConfig(NestedConfig.class)
-	class QualifiedConstructorParameterTests {
+    @Nested
+    @SpringJUnitConfig(NestedConfig.class)
+    class QualifiedConstructorParameterTests {
 
-		final String bar;
+        final String bar;
 
-		QualifiedConstructorParameterTests(TestInfo testInfo, @Qualifier("bar") String s) {
-			this.bar = s;
-		}
+        QualifiedConstructorParameterTests(TestInfo testInfo, @Qualifier("bar") String s) {
+            this.bar = s;
+        }
 
-		@Test
-		void nestedTest() throws Exception {
-			assertEquals("foo", foo);
-			assertEquals("bar", bar);
-		}
-	}
+        @Test
+        void nestedTest() throws Exception {
+            assertEquals("foo", foo);
+            assertEquals("bar", bar);
+        }
+    }
 
-	@Nested
-	@SpringJUnitConfig(NestedConfig.class)
-	class SpelConstructorParameterTests {
+    @Nested
+    @SpringJUnitConfig(NestedConfig.class)
+    class SpelConstructorParameterTests {
 
-		final String bar;
-		final int answer;
+        final String bar;
+        final int answer;
 
-		SpelConstructorParameterTests(@Autowired String bar, TestInfo testInfo, @Value("#{ 6 * 7 }") int answer) {
-			this.bar = bar;
-			this.answer = answer;
-		}
+        SpelConstructorParameterTests(
+                @Autowired String bar, TestInfo testInfo, @Value("#{ 6 * 7 }") int answer) {
+            this.bar = bar;
+            this.answer = answer;
+        }
 
-		@Test
-		void nestedTest() throws Exception {
-			assertEquals("foo", foo);
-			assertEquals("bar", bar);
-			assertEquals(42, answer);
-		}
-	}
+        @Test
+        void nestedTest() throws Exception {
+            assertEquals("foo", foo);
+            assertEquals("bar", bar);
+            assertEquals(42, answer);
+        }
+    }
 
-	// -------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
 
-	@Configuration
-	static class TopLevelConfig {
+    @Configuration
+    static class TopLevelConfig {
 
-		@Bean
-		String foo() {
-			return "foo";
-		}
-	}
+        @Bean
+        String foo() {
+            return "foo";
+        }
+    }
 
-	@Configuration
-	static class NestedConfig {
+    @Configuration
+    static class NestedConfig {
 
-		@Bean
-		String bar() {
-			return "bar";
-		}
-	}
-
+        @Bean
+        String bar() {
+            return "bar";
+        }
+    }
 }

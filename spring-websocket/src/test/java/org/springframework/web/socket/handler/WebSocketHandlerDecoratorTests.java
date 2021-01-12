@@ -27,14 +27,12 @@ import static org.junit.Assert.*;
  */
 public class WebSocketHandlerDecoratorTests {
 
-	@Test
-	public void getLastHandler() {
-		AbstractWebSocketHandler h1 = new AbstractWebSocketHandler() {
-		};
-		WebSocketHandlerDecorator h2 = new WebSocketHandlerDecorator(h1);
-		WebSocketHandlerDecorator h3 = new WebSocketHandlerDecorator(h2);
+    @Test
+    public void getLastHandler() {
+        AbstractWebSocketHandler h1 = new AbstractWebSocketHandler() {};
+        WebSocketHandlerDecorator h2 = new WebSocketHandlerDecorator(h1);
+        WebSocketHandlerDecorator h3 = new WebSocketHandlerDecorator(h2);
 
-		assertSame(h1, h3.getLastHandler());
-	}
-
+        assertSame(h1, h3.getLastHandler());
+    }
 }

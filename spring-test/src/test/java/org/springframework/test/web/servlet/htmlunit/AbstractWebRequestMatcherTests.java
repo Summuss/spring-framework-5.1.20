@@ -31,12 +31,13 @@ import static org.junit.Assert.*;
  */
 public class AbstractWebRequestMatcherTests {
 
-	protected void assertMatches(WebRequestMatcher matcher, String url) throws MalformedURLException {
-		assertTrue(matcher.matches(new WebRequest(new URL(url))));
-	}
+    protected void assertMatches(WebRequestMatcher matcher, String url)
+            throws MalformedURLException {
+        assertTrue(matcher.matches(new WebRequest(new URL(url))));
+    }
 
-	protected void assertDoesNotMatch(WebRequestMatcher matcher, String url) throws MalformedURLException {
-		assertFalse(matcher.matches(new WebRequest(new URL(url))));
-	}
-
+    protected void assertDoesNotMatch(WebRequestMatcher matcher, String url)
+            throws MalformedURLException {
+        assertFalse(matcher.matches(new WebRequest(new URL(url))));
+    }
 }

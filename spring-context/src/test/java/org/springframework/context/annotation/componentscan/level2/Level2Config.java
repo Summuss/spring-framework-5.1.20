@@ -24,8 +24,8 @@ import org.springframework.tests.sample.beans.TestBean;
 @Configuration
 @ComponentScan("org.springframework.context.annotation.componentscan.level3")
 public class Level2Config {
-	@Bean
-	public TestBean level2Bean() {
-		return new TestBean("level2Bean");
-	}
+    @Bean
+    public TestBean level2Bean() {
+        return new TestBean("level2Bean");
+    }
 }

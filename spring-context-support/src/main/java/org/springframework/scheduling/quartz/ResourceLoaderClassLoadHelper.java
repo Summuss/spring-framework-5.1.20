@@ -32,9 +32,9 @@ import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 
 /**
- * Wrapper that adapts from the Quartz {@link ClassLoadHelper} interface
- * onto Spring's {@link ResourceLoader} interface. Used by default when
- * the SchedulerFactoryBean runs in a Spring ApplicationContext.
+ * Wrapper that adapts from the Quartz {@link ClassLoadHelper} interface onto Spring's {@link
+ * ResourceLoader} interface. Used by default when the SchedulerFactoryBean runs in a Spring
+ * ApplicationContext.
  *
  * @author Juergen Hoeller
  * @since 2.5.5
@@ -42,99 +42,92 @@ import org.springframework.util.ClassUtils;
  */
 public class ResourceLoaderClassLoadHelper implements ClassLoadHelper {
 
-	protected static final Log logger = LogFactory.getLog(ResourceLoaderClassLoadHelper.class);
+    protected static final Log logger = LogFactory.getLog(ResourceLoaderClassLoadHelper.class);
 
-	@Nullable
-	private ResourceLoader resourceLoader;
+    @Nullable private ResourceLoader resourceLoader;
 
+    /**
+     * Create a new ResourceLoaderClassLoadHelper for the default ResourceLoader.
+     *
+     * @see SchedulerFactoryBean#getConfigTimeResourceLoader()
+     */
+    public ResourceLoaderClassLoadHelper() {}
 
-	/**
-	 * Create a new ResourceLoaderClassLoadHelper for the default
-	 * ResourceLoader.
-	 * @see SchedulerFactoryBean#getConfigTimeResourceLoader()
-	 */
-	public ResourceLoaderClassLoadHelper() {
-	}
+    /**
+     * Create a new ResourceLoaderClassLoadHelper for the given ResourceLoader.
+     *
+     * @param resourceLoader the ResourceLoader to delegate to
+     */
+    public ResourceLoaderClassLoadHelper(@Nullable ResourceLoader resourceLoader) {
+        this.resourceLoader = resourceLoader;
+    }
 
-	/**
-	 * Create a new ResourceLoaderClassLoadHelper for the given ResourceLoader.
-	 * @param resourceLoader the ResourceLoader to delegate to
-	 */
-	public ResourceLoaderClassLoadHelper(@Nullable ResourceLoader resourceLoader) {
-		this.resourceLoader = resourceLoader;
-	}
+    @Override
+    public void initialize() {
+        if (this.resourceLoader == null) {
+            this.resourceLoader = SchedulerFactoryBean.getConfigTimeResourceLoader();
+            if (this.resourceLoader == null) {
+                this.resourceLoader = new DefaultResourceLoader();
+            }
+        }
+    }
 
+    @Override
+    public Class<?> loadClass(String name) throws ClassNotFoundException {
+        Assert.state(this.resourceLoader != null, "ResourceLoaderClassLoadHelper not initialized");
+        return ClassUtils.forName(name, this.resourceLoader.getClassLoader());
+    }
 
-	@Override
-	public void initialize() {
-		if (this.resourceLoader == null) {
-			this.resourceLoader = SchedulerFactoryBean.getConfigTimeResourceLoader();
-			if (this.resourceLoader == null) {
-				this.resourceLoader = new DefaultResourceLoader();
-			}
-		}
-	}
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T> Class<? extends T> loadClass(String name, Class<T> clazz)
+            throws ClassNotFoundException {
+        return (Class<? extends T>) loadClass(name);
+    }
 
-	@Override
-	public Class<?> loadClass(String name) throws ClassNotFoundException {
-		Assert.state(this.resourceLoader != null, "ResourceLoaderClassLoadHelper not initialized");
-		return ClassUtils.forName(name, this.resourceLoader.getClassLoader());
-	}
+    @Override
+    @Nullable
+    public URL getResource(String name) {
+        Assert.state(this.resourceLoader != null, "ResourceLoaderClassLoadHelper not initialized");
+        Resource resource = this.resourceLoader.getResource(name);
+        if (resource.exists()) {
+            try {
+                return resource.getURL();
+            } catch (IOException ex) {
+                if (logger.isWarnEnabled()) {
+                    logger.warn("Could not load " + resource);
+                }
+                return null;
+            }
+        } else {
+            return getClassLoader().getResource(name);
+        }
+    }
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public <T> Class<? extends T> loadClass(String name, Class<T> clazz) throws ClassNotFoundException {
-		return (Class<? extends T>) loadClass(name);
-	}
+    @Override
+    @Nullable
+    public InputStream getResourceAsStream(String name) {
+        Assert.state(this.resourceLoader != null, "ResourceLoaderClassLoadHelper not initialized");
+        Resource resource = this.resourceLoader.getResource(name);
+        if (resource.exists()) {
+            try {
+                return resource.getInputStream();
+            } catch (IOException ex) {
+                if (logger.isWarnEnabled()) {
+                    logger.warn("Could not load " + resource);
+                }
+                return null;
+            }
+        } else {
+            return getClassLoader().getResourceAsStream(name);
+        }
+    }
 
-	@Override
-	@Nullable
-	public URL getResource(String name) {
-		Assert.state(this.resourceLoader != null, "ResourceLoaderClassLoadHelper not initialized");
-		Resource resource = this.resourceLoader.getResource(name);
-		if (resource.exists()) {
-			try {
-				return resource.getURL();
-			}
-			catch (IOException ex) {
-				if (logger.isWarnEnabled()) {
-					logger.warn("Could not load " + resource);
-				}
-				return null;
-			}
-		}
-		else {
-			return getClassLoader().getResource(name);
-		}
-	}
-
-	@Override
-	@Nullable
-	public InputStream getResourceAsStream(String name) {
-		Assert.state(this.resourceLoader != null, "ResourceLoaderClassLoadHelper not initialized");
-		Resource resource = this.resourceLoader.getResource(name);
-		if (resource.exists()) {
-			try {
-				return resource.getInputStream();
-			}
-			catch (IOException ex) {
-				if (logger.isWarnEnabled()) {
-					logger.warn("Could not load " + resource);
-				}
-				return null;
-			}
-		}
-		else {
-			return getClassLoader().getResourceAsStream(name);
-		}
-	}
-
-	@Override
-	public ClassLoader getClassLoader() {
-		Assert.state(this.resourceLoader != null, "ResourceLoaderClassLoadHelper not initialized");
-		ClassLoader classLoader = this.resourceLoader.getClassLoader();
-		Assert.state(classLoader != null, "No ClassLoader");
-		return classLoader;
-	}
-
+    @Override
+    public ClassLoader getClassLoader() {
+        Assert.state(this.resourceLoader != null, "ResourceLoaderClassLoadHelper not initialized");
+        ClassLoader classLoader = this.resourceLoader.getClassLoader();
+        Assert.state(classLoader != null, "No ClassLoader");
+        return classLoader;
+    }
 }

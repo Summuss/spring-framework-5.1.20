@@ -43,73 +43,71 @@ import static org.junit.Assert.fail;
  */
 public class ExpressionValueMethodArgumentResolverTests {
 
-	private ExpressionValueMethodArgumentResolver resolver;
+    private ExpressionValueMethodArgumentResolver resolver;
 
-	private final MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/"));
+    private final MockServerWebExchange exchange =
+            MockServerWebExchange.from(MockServerHttpRequest.get("/"));
 
-	private MethodParameter paramSystemProperty;
-	private MethodParameter paramNotSupported;
-	private MethodParameter paramAlsoNotSupported;
+    private MethodParameter paramSystemProperty;
+    private MethodParameter paramNotSupported;
+    private MethodParameter paramAlsoNotSupported;
 
+    @Before
+    @SuppressWarnings("resource")
+    public void setup() throws Exception {
+        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+        context.refresh();
+        ReactiveAdapterRegistry adapterRegistry = ReactiveAdapterRegistry.getSharedInstance();
+        this.resolver =
+                new ExpressionValueMethodArgumentResolver(
+                        context.getBeanFactory(), adapterRegistry);
 
-	@Before
-	@SuppressWarnings("resource")
-	public void setup() throws Exception {
-		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
-		context.refresh();
-		ReactiveAdapterRegistry adapterRegistry = ReactiveAdapterRegistry.getSharedInstance();
-		this.resolver = new ExpressionValueMethodArgumentResolver(context.getBeanFactory(), adapterRegistry);
+        Method method = ReflectionUtils.findMethod(getClass(), "params", (Class<?>[]) null);
+        this.paramSystemProperty = new MethodParameter(method, 0);
+        this.paramNotSupported = new MethodParameter(method, 1);
+        this.paramAlsoNotSupported = new MethodParameter(method, 2);
+    }
 
-		Method method = ReflectionUtils.findMethod(getClass(), "params", (Class<?>[]) null);
-		this.paramSystemProperty = new MethodParameter(method, 0);
-		this.paramNotSupported = new MethodParameter(method, 1);
-		this.paramAlsoNotSupported = new MethodParameter(method, 2);
-	}
+    @Test
+    public void supportsParameter() throws Exception {
+        assertTrue(this.resolver.supportsParameter(this.paramSystemProperty));
+    }
 
+    @Test
+    public void doesNotSupport() throws Exception {
+        assertFalse(this.resolver.supportsParameter(this.paramNotSupported));
+        try {
+            this.resolver.supportsParameter(this.paramAlsoNotSupported);
+            fail();
+        } catch (IllegalStateException ex) {
+            assertTrue(
+                    "Unexpected error message:\n" + ex.getMessage(),
+                    ex.getMessage()
+                            .startsWith(
+                                    "ExpressionValueMethodArgumentResolver doesn't support reactive type wrapper"));
+        }
+    }
 
-	@Test
-	public void supportsParameter() throws Exception {
-		assertTrue(this.resolver.supportsParameter(this.paramSystemProperty));
-	}
+    @Test
+    public void resolveSystemProperty() throws Exception {
+        System.setProperty("systemProperty", "22");
+        try {
+            Mono<Object> mono =
+                    this.resolver.resolveArgument(
+                            this.paramSystemProperty, new BindingContext(), this.exchange);
 
-	@Test
-	public void doesNotSupport() throws Exception {
-		assertFalse(this.resolver.supportsParameter(this.paramNotSupported));
-		try {
-			this.resolver.supportsParameter(this.paramAlsoNotSupported);
-			fail();
-		}
-		catch (IllegalStateException ex) {
-			assertTrue("Unexpected error message:\n" + ex.getMessage(),
-					ex.getMessage().startsWith(
-							"ExpressionValueMethodArgumentResolver doesn't support reactive type wrapper"));
-		}
-	}
+            Object value = mono.block();
+            assertEquals(22, value);
+        } finally {
+            System.clearProperty("systemProperty");
+        }
+    }
 
-	@Test
-	public void resolveSystemProperty() throws Exception {
-		System.setProperty("systemProperty", "22");
-		try {
-			Mono<Object> mono = this.resolver.resolveArgument(
-					this.paramSystemProperty,  new BindingContext(), this.exchange);
+    // TODO: test with expression for ServerWebExchange
 
-			Object value = mono.block();
-			assertEquals(22, value);
-		}
-		finally {
-			System.clearProperty("systemProperty");
-		}
-
-	}
-
-	// TODO: test with expression for ServerWebExchange
-
-
-	@SuppressWarnings("unused")
-	public void params(
-			@Value("#{systemProperties.systemProperty}") int param1,
-			String notSupported,
-			@Value("#{systemProperties.foo}") Mono<String> alsoNotSupported) {
-	}
-
+    @SuppressWarnings("unused")
+    public void params(
+            @Value("#{systemProperties.systemProperty}") int param1,
+            String notSupported,
+            @Value("#{systemProperties.foo}") Mono<String> alsoNotSupported) {}
 }

@@ -41,119 +41,116 @@ import org.springframework.context.annotation.Configuration;
 
 import static org.junit.Assert.*;
 
-/**
- *
- * @author Stephane Nicoll
- */
+/** @author Stephane Nicoll */
 public class JCacheKeyGeneratorTests {
 
-	private TestKeyGenerator keyGenerator;
+    private TestKeyGenerator keyGenerator;
 
-	private SimpleService simpleService;
+    private SimpleService simpleService;
 
-	private Cache cache;
+    private Cache cache;
 
-	@Before
-	public void setup() {
-		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(Config.class);
-		this.keyGenerator = context.getBean(TestKeyGenerator.class);
-		this.simpleService = context.getBean(SimpleService.class);
-		this.cache = context.getBean(CacheManager.class).getCache("test");
-	}
+    @Before
+    public void setup() {
+        AnnotationConfigApplicationContext context =
+                new AnnotationConfigApplicationContext(Config.class);
+        this.keyGenerator = context.getBean(TestKeyGenerator.class);
+        this.simpleService = context.getBean(SimpleService.class);
+        this.cache = context.getBean(CacheManager.class).getCache("test");
+    }
 
-	@Test
-	public void getSimple() {
-		this.keyGenerator.expect(1L);
-		Object first = this.simpleService.get(1L);
-		Object second = this.simpleService.get(1L);
-		assertSame(first, second);
+    @Test
+    public void getSimple() {
+        this.keyGenerator.expect(1L);
+        Object first = this.simpleService.get(1L);
+        Object second = this.simpleService.get(1L);
+        assertSame(first, second);
 
-		Object key = new SimpleKey(1L);
-		assertEquals(first, cache.get(key).get());
-	}
+        Object key = new SimpleKey(1L);
+        assertEquals(first, cache.get(key).get());
+    }
 
-	@Test
-	public void getFlattenVararg() {
-		this.keyGenerator.expect(1L, "foo", "bar");
-		Object first = this.simpleService.get(1L, "foo", "bar");
-		Object second = this.simpleService.get(1L, "foo", "bar");
-		assertSame(first, second);
+    @Test
+    public void getFlattenVararg() {
+        this.keyGenerator.expect(1L, "foo", "bar");
+        Object first = this.simpleService.get(1L, "foo", "bar");
+        Object second = this.simpleService.get(1L, "foo", "bar");
+        assertSame(first, second);
 
-		Object key = new SimpleKey(1L, "foo", "bar");
-		assertEquals(first, cache.get(key).get());
-	}
+        Object key = new SimpleKey(1L, "foo", "bar");
+        assertEquals(first, cache.get(key).get());
+    }
 
-	@Test
-	public void getFiltered() {
-		this.keyGenerator.expect(1L);
-		Object first = this.simpleService.getFiltered(1L, "foo", "bar");
-		Object second = this.simpleService.getFiltered(1L, "foo", "bar");
-		assertSame(first, second);
+    @Test
+    public void getFiltered() {
+        this.keyGenerator.expect(1L);
+        Object first = this.simpleService.getFiltered(1L, "foo", "bar");
+        Object second = this.simpleService.getFiltered(1L, "foo", "bar");
+        assertSame(first, second);
 
-		Object key = new SimpleKey(1L);
-		assertEquals(first, cache.get(key).get());
-	}
+        Object key = new SimpleKey(1L);
+        assertEquals(first, cache.get(key).get());
+    }
 
+    @Configuration
+    @EnableCaching
+    static class Config extends JCacheConfigurerSupport {
 
-	@Configuration
-	@EnableCaching
-	static class Config extends JCacheConfigurerSupport {
+        @Bean
+        @Override
+        public CacheManager cacheManager() {
+            return new ConcurrentMapCacheManager();
+        }
 
-		@Bean
-		@Override
-		public CacheManager cacheManager() {
-			return new ConcurrentMapCacheManager();
-		}
+        @Bean
+        @Override
+        public KeyGenerator keyGenerator() {
+            return new TestKeyGenerator();
+        }
 
-		@Bean
-		@Override
-		public KeyGenerator keyGenerator() {
-			return new TestKeyGenerator();
-		}
+        @Bean
+        public SimpleService simpleService() {
+            return new SimpleService();
+        }
+    }
 
-		@Bean
-		public SimpleService simpleService() {
-			return new SimpleService();
-		}
+    @CacheDefaults(cacheName = "test")
+    public static class SimpleService {
+        private AtomicLong counter = new AtomicLong();
 
-	}
+        @CacheResult
+        public Object get(long id) {
+            return counter.getAndIncrement();
+        }
 
-	@CacheDefaults(cacheName = "test")
-	public static class SimpleService {
-		private AtomicLong counter = new AtomicLong();
+        @CacheResult
+        public Object get(long id, String... items) {
+            return counter.getAndIncrement();
+        }
 
-		@CacheResult
-		public Object get(long id) {
-			return counter.getAndIncrement();
-		}
+        @CacheResult
+        public Object getFiltered(@CacheKey long id, String... items) {
+            return counter.getAndIncrement();
+        }
+    }
 
-		@CacheResult
-		public Object get(long id, String... items) {
-			return counter.getAndIncrement();
-		}
+    private static class TestKeyGenerator extends SimpleKeyGenerator {
 
-		@CacheResult
-		public Object getFiltered(@CacheKey long id, String... items) {
-			return counter.getAndIncrement();
-		}
+        private Object[] expectedParams;
 
-	}
+        private void expect(Object... params) {
+            this.expectedParams = params;
+        }
 
-
-	private static class TestKeyGenerator extends SimpleKeyGenerator {
-
-		private Object[] expectedParams;
-
-		private void expect(Object... params) {
-			this.expectedParams = params;
-		}
-
-		@Override
-		public Object generate(Object target, Method method, Object... params) {
-			assertTrue("Unexpected parameters: expected: "
-							+ Arrays.toString(this.expectedParams) + " but got: " + Arrays.toString(params),
-					Arrays.equals(expectedParams, params));
-			return new SimpleKey(params);
-		}
-	}
+        @Override
+        public Object generate(Object target, Method method, Object... params) {
+            assertTrue(
+                    "Unexpected parameters: expected: "
+                            + Arrays.toString(this.expectedParams)
+                            + " but got: "
+                            + Arrays.toString(params),
+                    Arrays.equals(expectedParams, params));
+            return new SimpleKey(params);
+        }
+    }
 }

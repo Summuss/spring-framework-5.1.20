@@ -31,28 +31,26 @@ import static org.junit.Assert.*;
  */
 public class PropertyPlaceholderConfigurerTests extends AbstractJmxTests {
 
-	@Override
-	protected String getApplicationContextPath() {
-		return "org/springframework/jmx/export/propertyPlaceholderConfigurer.xml";
-	}
+    @Override
+    protected String getApplicationContextPath() {
+        return "org/springframework/jmx/export/propertyPlaceholderConfigurer.xml";
+    }
 
-	@Test
-	public void testPropertiesReplaced() {
-		IJmxTestBean bean = (IJmxTestBean) getContext().getBean("testBean");
+    @Test
+    public void testPropertiesReplaced() {
+        IJmxTestBean bean = (IJmxTestBean) getContext().getBean("testBean");
 
-		assertEquals("Name is incorrect", "Rob Harrop", bean.getName());
-		assertEquals("Age is incorrect", 100, bean.getAge());
-	}
+        assertEquals("Name is incorrect", "Rob Harrop", bean.getName());
+        assertEquals("Age is incorrect", 100, bean.getAge());
+    }
 
-	@Test
-	public void testPropertiesCorrectInJmx() throws Exception {
-		ObjectName oname = new ObjectName("bean:name=proxyTestBean1");
-		Object name = getServer().getAttribute(oname, "Name");
-		Integer age = (Integer) getServer().getAttribute(oname, "Age");
+    @Test
+    public void testPropertiesCorrectInJmx() throws Exception {
+        ObjectName oname = new ObjectName("bean:name=proxyTestBean1");
+        Object name = getServer().getAttribute(oname, "Name");
+        Integer age = (Integer) getServer().getAttribute(oname, "Age");
 
-		assertEquals("Name is incorrect in JMX", "Rob Harrop", name);
-		assertEquals("Age is incorrect in JMX", 100, age.intValue());
-	}
-
+        assertEquals("Name is incorrect in JMX", "Rob Harrop", name);
+        assertEquals("Age is incorrect in JMX", 100, age.intValue());
+    }
 }
-

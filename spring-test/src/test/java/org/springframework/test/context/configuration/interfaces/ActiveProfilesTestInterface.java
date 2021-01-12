@@ -23,5 +23,4 @@ import org.springframework.test.context.ActiveProfiles;
  * @since 4.3
  */
 @ActiveProfiles("dev")
-interface ActiveProfilesTestInterface {
-}
+interface ActiveProfilesTestInterface {}

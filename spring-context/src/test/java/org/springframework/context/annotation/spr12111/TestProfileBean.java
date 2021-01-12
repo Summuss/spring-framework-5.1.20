@@ -21,5 +21,4 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Profile("test")
-public class TestProfileBean {
-}
+public class TestProfileBean {}

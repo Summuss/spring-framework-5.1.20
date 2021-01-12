@@ -35,23 +35,22 @@ import org.springframework.jdbc.support.MetaDataAccessException;
 import org.springframework.lang.Nullable;
 
 /**
- * Subclass of Quartz's {@link JobStoreCMT} class that delegates to a Spring-managed
- * {@link DataSource} instead of using a Quartz-managed JDBC connection pool.
- * This JobStore will be used if SchedulerFactoryBean's "dataSource" property is set.
+ * Subclass of Quartz's {@link JobStoreCMT} class that delegates to a Spring-managed {@link
+ * DataSource} instead of using a Quartz-managed JDBC connection pool. This JobStore will be used if
+ * SchedulerFactoryBean's "dataSource" property is set.
  *
- * <p>Supports both transactional and non-transactional DataSource access.
- * With a non-XA DataSource and local Spring transactions, a single DataSource
- * argument is sufficient. In case of an XA DataSource and global JTA transactions,
- * SchedulerFactoryBean's "nonTransactionalDataSource" property should be set,
- * passing in a non-XA DataSource that will not participate in global transactions.
+ * <p>Supports both transactional and non-transactional DataSource access. With a non-XA DataSource
+ * and local Spring transactions, a single DataSource argument is sufficient. In case of an XA
+ * DataSource and global JTA transactions, SchedulerFactoryBean's "nonTransactionalDataSource"
+ * property should be set, passing in a non-XA DataSource that will not participate in global
+ * transactions.
  *
- * <p>Operations performed by this JobStore will properly participate in any
- * kind of Spring-managed transaction, as it uses Spring's DataSourceUtils
- * connection handling methods that are aware of a current transaction.
+ * <p>Operations performed by this JobStore will properly participate in any kind of Spring-managed
+ * transaction, as it uses Spring's DataSourceUtils connection handling methods that are aware of a
+ * current transaction.
  *
- * <p>Note that all Quartz Scheduler operations that affect the persistent
- * job store should usually be performed within active transactions,
- * as they assume to get proper locks etc.
+ * <p>Note that all Quartz Scheduler operations that affect the persistent job store should usually
+ * be performed within active transactions, as they assume to get proper locks etc.
  *
  * @author Juergen Hoeller
  * @since 1.1
@@ -60,112 +59,116 @@ import org.springframework.lang.Nullable;
  * @see org.springframework.jdbc.datasource.DataSourceUtils#doGetConnection
  * @see org.springframework.jdbc.datasource.DataSourceUtils#releaseConnection
  */
-@SuppressWarnings("unchecked")  // due to a warning in Quartz 2.2's JobStoreCMT
+@SuppressWarnings("unchecked") // due to a warning in Quartz 2.2's JobStoreCMT
 public class LocalDataSourceJobStore extends JobStoreCMT {
 
-	/**
-	 * Name used for the transactional ConnectionProvider for Quartz.
-	 * This provider will delegate to the local Spring-managed DataSource.
-	 * @see org.quartz.utils.DBConnectionManager#addConnectionProvider
-	 * @see SchedulerFactoryBean#setDataSource
-	 */
-	public static final String TX_DATA_SOURCE_PREFIX = "springTxDataSource.";
+    /**
+     * Name used for the transactional ConnectionProvider for Quartz. This provider will delegate to
+     * the local Spring-managed DataSource.
+     *
+     * @see org.quartz.utils.DBConnectionManager#addConnectionProvider
+     * @see SchedulerFactoryBean#setDataSource
+     */
+    public static final String TX_DATA_SOURCE_PREFIX = "springTxDataSource.";
 
-	/**
-	 * Name used for the non-transactional ConnectionProvider for Quartz.
-	 * This provider will delegate to the local Spring-managed DataSource.
-	 * @see org.quartz.utils.DBConnectionManager#addConnectionProvider
-	 * @see SchedulerFactoryBean#setDataSource
-	 */
-	public static final String NON_TX_DATA_SOURCE_PREFIX = "springNonTxDataSource.";
+    /**
+     * Name used for the non-transactional ConnectionProvider for Quartz. This provider will
+     * delegate to the local Spring-managed DataSource.
+     *
+     * @see org.quartz.utils.DBConnectionManager#addConnectionProvider
+     * @see SchedulerFactoryBean#setDataSource
+     */
+    public static final String NON_TX_DATA_SOURCE_PREFIX = "springNonTxDataSource.";
 
+    @Nullable private DataSource dataSource;
 
-	@Nullable
-	private DataSource dataSource;
+    @Override
+    public void initialize(ClassLoadHelper loadHelper, SchedulerSignaler signaler)
+            throws SchedulerConfigException {
+        // Absolutely needs thread-bound DataSource to initialize.
+        this.dataSource = SchedulerFactoryBean.getConfigTimeDataSource();
+        if (this.dataSource == null) {
+            throw new SchedulerConfigException(
+                    "No local DataSource found for configuration - "
+                            + "'dataSource' property must be set on SchedulerFactoryBean");
+        }
 
+        // Configure transactional connection settings for Quartz.
+        setDataSource(TX_DATA_SOURCE_PREFIX + getInstanceName());
+        setDontSetAutoCommitFalse(true);
 
-	@Override
-	public void initialize(ClassLoadHelper loadHelper, SchedulerSignaler signaler) throws SchedulerConfigException {
-		// Absolutely needs thread-bound DataSource to initialize.
-		this.dataSource = SchedulerFactoryBean.getConfigTimeDataSource();
-		if (this.dataSource == null) {
-			throw new SchedulerConfigException("No local DataSource found for configuration - " +
-					"'dataSource' property must be set on SchedulerFactoryBean");
-		}
+        // Register transactional ConnectionProvider for Quartz.
+        DBConnectionManager.getInstance()
+                .addConnectionProvider(
+                        TX_DATA_SOURCE_PREFIX + getInstanceName(),
+                        new ConnectionProvider() {
+                            @Override
+                            public Connection getConnection() throws SQLException {
+                                // Return a transactional Connection, if any.
+                                return DataSourceUtils.doGetConnection(dataSource);
+                            }
 
-		// Configure transactional connection settings for Quartz.
-		setDataSource(TX_DATA_SOURCE_PREFIX + getInstanceName());
-		setDontSetAutoCommitFalse(true);
+                            @Override
+                            public void shutdown() {
+                                // Do nothing - a Spring-managed DataSource has its own lifecycle.
+                            }
 
-		// Register transactional ConnectionProvider for Quartz.
-		DBConnectionManager.getInstance().addConnectionProvider(
-				TX_DATA_SOURCE_PREFIX + getInstanceName(),
-				new ConnectionProvider() {
-					@Override
-					public Connection getConnection() throws SQLException {
-						// Return a transactional Connection, if any.
-						return DataSourceUtils.doGetConnection(dataSource);
-					}
-					@Override
-					public void shutdown() {
-						// Do nothing - a Spring-managed DataSource has its own lifecycle.
-					}
-					@Override
-					public void initialize() {
-						// Do nothing - a Spring-managed DataSource has its own lifecycle.
-					}
-				}
-		);
+                            @Override
+                            public void initialize() {
+                                // Do nothing - a Spring-managed DataSource has its own lifecycle.
+                            }
+                        });
 
-		// Non-transactional DataSource is optional: fall back to default
-		// DataSource if not explicitly specified.
-		DataSource nonTxDataSource = SchedulerFactoryBean.getConfigTimeNonTransactionalDataSource();
-		final DataSource nonTxDataSourceToUse = (nonTxDataSource != null ? nonTxDataSource : this.dataSource);
+        // Non-transactional DataSource is optional: fall back to default
+        // DataSource if not explicitly specified.
+        DataSource nonTxDataSource = SchedulerFactoryBean.getConfigTimeNonTransactionalDataSource();
+        final DataSource nonTxDataSourceToUse =
+                (nonTxDataSource != null ? nonTxDataSource : this.dataSource);
 
-		// Configure non-transactional connection settings for Quartz.
-		setNonManagedTXDataSource(NON_TX_DATA_SOURCE_PREFIX + getInstanceName());
+        // Configure non-transactional connection settings for Quartz.
+        setNonManagedTXDataSource(NON_TX_DATA_SOURCE_PREFIX + getInstanceName());
 
-		// Register non-transactional ConnectionProvider for Quartz.
-		DBConnectionManager.getInstance().addConnectionProvider(
-				NON_TX_DATA_SOURCE_PREFIX + getInstanceName(),
-				new ConnectionProvider() {
-					@Override
-					public Connection getConnection() throws SQLException {
-						// Always return a non-transactional Connection.
-						return nonTxDataSourceToUse.getConnection();
-					}
-					@Override
-					public void shutdown() {
-						// Do nothing - a Spring-managed DataSource has its own lifecycle.
-					}
-					@Override
-					public void initialize() {
-						// Do nothing - a Spring-managed DataSource has its own lifecycle.
-					}
-				}
-		);
+        // Register non-transactional ConnectionProvider for Quartz.
+        DBConnectionManager.getInstance()
+                .addConnectionProvider(
+                        NON_TX_DATA_SOURCE_PREFIX + getInstanceName(),
+                        new ConnectionProvider() {
+                            @Override
+                            public Connection getConnection() throws SQLException {
+                                // Always return a non-transactional Connection.
+                                return nonTxDataSourceToUse.getConnection();
+                            }
 
-		// No, if HSQL is the platform, we really don't want to use locks...
-		try {
-			String productName = JdbcUtils.extractDatabaseMetaData(this.dataSource, "getDatabaseProductName");
-			productName = JdbcUtils.commonDatabaseName(productName);
-			if (productName != null && productName.toLowerCase().contains("hsql")) {
-				setUseDBLocks(false);
-				setLockHandler(new SimpleSemaphore());
-			}
-		}
-		catch (MetaDataAccessException ex) {
-			logWarnIfNonZero(1, "Could not detect database type. Assuming locks can be taken.");
-		}
+                            @Override
+                            public void shutdown() {
+                                // Do nothing - a Spring-managed DataSource has its own lifecycle.
+                            }
 
-		super.initialize(loadHelper, signaler);
+                            @Override
+                            public void initialize() {
+                                // Do nothing - a Spring-managed DataSource has its own lifecycle.
+                            }
+                        });
 
-	}
+        // No, if HSQL is the platform, we really don't want to use locks...
+        try {
+            String productName =
+                    JdbcUtils.extractDatabaseMetaData(this.dataSource, "getDatabaseProductName");
+            productName = JdbcUtils.commonDatabaseName(productName);
+            if (productName != null && productName.toLowerCase().contains("hsql")) {
+                setUseDBLocks(false);
+                setLockHandler(new SimpleSemaphore());
+            }
+        } catch (MetaDataAccessException ex) {
+            logWarnIfNonZero(1, "Could not detect database type. Assuming locks can be taken.");
+        }
 
-	@Override
-	protected void closeConnection(Connection con) {
-		// Will work for transactional and non-transactional connections.
-		DataSourceUtils.releaseConnection(con, this.dataSource);
-	}
+        super.initialize(loadHelper, signaler);
+    }
 
+    @Override
+    protected void closeConnection(Connection con) {
+        // Will work for transactional and non-transactional connections.
+        DataSourceUtils.releaseConnection(con, this.dataSource);
+    }
 }

@@ -26,53 +26,54 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 
 /**
- * A Pointcut that matches if the underlying {@link CacheOperationSource}
- * has an attribute for a given method.
+ * A Pointcut that matches if the underlying {@link CacheOperationSource} has an attribute for a
+ * given method.
  *
  * @author Costin Leau
  * @author Juergen Hoeller
  * @since 3.1
  */
 @SuppressWarnings("serial")
-abstract class CacheOperationSourcePointcut extends StaticMethodMatcherPointcut implements Serializable {
+abstract class CacheOperationSourcePointcut extends StaticMethodMatcherPointcut
+        implements Serializable {
 
-	@Override
-	public boolean matches(Method method, Class<?> targetClass) {
-		if (CacheManager.class.isAssignableFrom(targetClass)) {
-			return false;
-		}
-		CacheOperationSource cas = getCacheOperationSource();
-		return (cas != null && !CollectionUtils.isEmpty(cas.getCacheOperations(method, targetClass)));
-	}
+    @Override
+    public boolean matches(Method method, Class<?> targetClass) {
+        if (CacheManager.class.isAssignableFrom(targetClass)) {
+            return false;
+        }
+        CacheOperationSource cas = getCacheOperationSource();
+        return (cas != null
+                && !CollectionUtils.isEmpty(cas.getCacheOperations(method, targetClass)));
+    }
 
-	@Override
-	public boolean equals(Object other) {
-		if (this == other) {
-			return true;
-		}
-		if (!(other instanceof CacheOperationSourcePointcut)) {
-			return false;
-		}
-		CacheOperationSourcePointcut otherPc = (CacheOperationSourcePointcut) other;
-		return ObjectUtils.nullSafeEquals(getCacheOperationSource(), otherPc.getCacheOperationSource());
-	}
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof CacheOperationSourcePointcut)) {
+            return false;
+        }
+        CacheOperationSourcePointcut otherPc = (CacheOperationSourcePointcut) other;
+        return ObjectUtils.nullSafeEquals(
+                getCacheOperationSource(), otherPc.getCacheOperationSource());
+    }
 
-	@Override
-	public int hashCode() {
-		return CacheOperationSourcePointcut.class.hashCode();
-	}
+    @Override
+    public int hashCode() {
+        return CacheOperationSourcePointcut.class.hashCode();
+    }
 
-	@Override
-	public String toString() {
-		return getClass().getName() + ": " + getCacheOperationSource();
-	}
+    @Override
+    public String toString() {
+        return getClass().getName() + ": " + getCacheOperationSource();
+    }
 
-
-	/**
-	 * Obtain the underlying {@link CacheOperationSource} (may be {@code null}).
-	 * To be implemented by subclasses.
-	 */
-	@Nullable
-	protected abstract CacheOperationSource getCacheOperationSource();
-
+    /**
+     * Obtain the underlying {@link CacheOperationSource} (may be {@code null}). To be implemented
+     * by subclasses.
+     */
+    @Nullable
+    protected abstract CacheOperationSource getCacheOperationSource();
 }

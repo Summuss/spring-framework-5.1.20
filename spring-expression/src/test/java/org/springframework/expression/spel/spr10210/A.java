@@ -22,7 +22,5 @@ import org.springframework.expression.spel.spr10210.infra.C;
 @SuppressWarnings("serial")
 abstract class A extends B<C> {
 
-	public void bridgeMethod() {
-	}
-
+    public void bridgeMethod() {}
 }

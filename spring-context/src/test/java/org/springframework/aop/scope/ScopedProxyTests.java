@@ -41,105 +41,108 @@ import static org.junit.Assert.*;
  */
 public class ScopedProxyTests {
 
-	private static final Class<?> CLASS = ScopedProxyTests.class;
-	private static final String CLASSNAME = CLASS.getSimpleName();
+    private static final Class<?> CLASS = ScopedProxyTests.class;
+    private static final String CLASSNAME = CLASS.getSimpleName();
 
-	private static final ClassPathResource LIST_CONTEXT = new ClassPathResource(CLASSNAME + "-list.xml", CLASS);
-	private static final ClassPathResource MAP_CONTEXT = new ClassPathResource(CLASSNAME + "-map.xml", CLASS);
-	private static final ClassPathResource OVERRIDE_CONTEXT = new ClassPathResource(CLASSNAME + "-override.xml", CLASS);
-	private static final ClassPathResource TESTBEAN_CONTEXT = new ClassPathResource(CLASSNAME + "-testbean.xml", CLASS);
+    private static final ClassPathResource LIST_CONTEXT =
+            new ClassPathResource(CLASSNAME + "-list.xml", CLASS);
+    private static final ClassPathResource MAP_CONTEXT =
+            new ClassPathResource(CLASSNAME + "-map.xml", CLASS);
+    private static final ClassPathResource OVERRIDE_CONTEXT =
+            new ClassPathResource(CLASSNAME + "-override.xml", CLASS);
+    private static final ClassPathResource TESTBEAN_CONTEXT =
+            new ClassPathResource(CLASSNAME + "-testbean.xml", CLASS);
 
+    @Test // SPR-2108
+    public void testProxyAssignable() throws Exception {
+        DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
+        new XmlBeanDefinitionReader(bf).loadBeanDefinitions(MAP_CONTEXT);
+        Object baseMap = bf.getBean("singletonMap");
+        assertTrue(baseMap instanceof Map);
+    }
 
-	@Test  // SPR-2108
-	public void testProxyAssignable() throws Exception {
-		DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
-		new XmlBeanDefinitionReader(bf).loadBeanDefinitions(MAP_CONTEXT);
-		Object baseMap = bf.getBean("singletonMap");
-		assertTrue(baseMap instanceof Map);
-	}
+    @Test
+    public void testSimpleProxy() throws Exception {
+        DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
+        new XmlBeanDefinitionReader(bf).loadBeanDefinitions(MAP_CONTEXT);
+        Object simpleMap = bf.getBean("simpleMap");
+        assertTrue(simpleMap instanceof Map);
+        assertTrue(simpleMap instanceof HashMap);
+    }
 
-	@Test
-	public void testSimpleProxy() throws Exception {
-		DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
-		new XmlBeanDefinitionReader(bf).loadBeanDefinitions(MAP_CONTEXT);
-		Object simpleMap = bf.getBean("simpleMap");
-		assertTrue(simpleMap instanceof Map);
-		assertTrue(simpleMap instanceof HashMap);
-	}
+    @Test
+    public void testScopedOverride() throws Exception {
+        GenericApplicationContext ctx = new GenericApplicationContext();
+        new XmlBeanDefinitionReader(ctx).loadBeanDefinitions(OVERRIDE_CONTEXT);
+        SimpleMapScope scope = new SimpleMapScope();
+        ctx.getBeanFactory().registerScope("request", scope);
+        ctx.refresh();
 
-	@Test
-	public void testScopedOverride() throws Exception {
-		GenericApplicationContext ctx = new GenericApplicationContext();
-		new XmlBeanDefinitionReader(ctx).loadBeanDefinitions(OVERRIDE_CONTEXT);
-		SimpleMapScope scope = new SimpleMapScope();
-		ctx.getBeanFactory().registerScope("request", scope);
-		ctx.refresh();
+        ITestBean bean = (ITestBean) ctx.getBean("testBean");
+        assertEquals("male", bean.getName());
+        assertEquals(99, bean.getAge());
 
-		ITestBean bean = (ITestBean) ctx.getBean("testBean");
-		assertEquals("male", bean.getName());
-		assertEquals(99, bean.getAge());
+        assertTrue(scope.getMap().containsKey("scopedTarget.testBean"));
+        assertEquals(TestBean.class, scope.getMap().get("scopedTarget.testBean").getClass());
+    }
 
-		assertTrue(scope.getMap().containsKey("scopedTarget.testBean"));
-		assertEquals(TestBean.class, scope.getMap().get("scopedTarget.testBean").getClass());
-	}
+    @Test
+    public void testJdkScopedProxy() throws Exception {
+        DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
+        new XmlBeanDefinitionReader(bf).loadBeanDefinitions(TESTBEAN_CONTEXT);
+        bf.setSerializationId("X");
+        SimpleMapScope scope = new SimpleMapScope();
+        bf.registerScope("request", scope);
 
-	@Test
-	public void testJdkScopedProxy() throws Exception {
-		DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
-		new XmlBeanDefinitionReader(bf).loadBeanDefinitions(TESTBEAN_CONTEXT);
-		bf.setSerializationId("X");
-		SimpleMapScope scope = new SimpleMapScope();
-		bf.registerScope("request", scope);
+        ITestBean bean = (ITestBean) bf.getBean("testBean");
+        assertNotNull(bean);
+        assertTrue(AopUtils.isJdkDynamicProxy(bean));
+        assertTrue(bean instanceof ScopedObject);
+        ScopedObject scoped = (ScopedObject) bean;
+        assertEquals(TestBean.class, scoped.getTargetObject().getClass());
+        bean.setAge(101);
 
-		ITestBean bean = (ITestBean) bf.getBean("testBean");
-		assertNotNull(bean);
-		assertTrue(AopUtils.isJdkDynamicProxy(bean));
-		assertTrue(bean instanceof ScopedObject);
-		ScopedObject scoped = (ScopedObject) bean;
-		assertEquals(TestBean.class, scoped.getTargetObject().getClass());
-		bean.setAge(101);
+        assertTrue(scope.getMap().containsKey("testBeanTarget"));
+        assertEquals(TestBean.class, scope.getMap().get("testBeanTarget").getClass());
 
-		assertTrue(scope.getMap().containsKey("testBeanTarget"));
-		assertEquals(TestBean.class, scope.getMap().get("testBeanTarget").getClass());
+        ITestBean deserialized = (ITestBean) SerializationTestUtils.serializeAndDeserialize(bean);
+        assertNotNull(deserialized);
+        assertTrue(AopUtils.isJdkDynamicProxy(deserialized));
+        assertEquals(101, bean.getAge());
+        assertTrue(deserialized instanceof ScopedObject);
+        ScopedObject scopedDeserialized = (ScopedObject) deserialized;
+        assertEquals(TestBean.class, scopedDeserialized.getTargetObject().getClass());
 
-		ITestBean deserialized = (ITestBean) SerializationTestUtils.serializeAndDeserialize(bean);
-		assertNotNull(deserialized);
-		assertTrue(AopUtils.isJdkDynamicProxy(deserialized));
-		assertEquals(101, bean.getAge());
-		assertTrue(deserialized instanceof ScopedObject);
-		ScopedObject scopedDeserialized = (ScopedObject) deserialized;
-		assertEquals(TestBean.class, scopedDeserialized.getTargetObject().getClass());
+        bf.setSerializationId(null);
+    }
 
-		bf.setSerializationId(null);
-	}
+    @Test
+    public void testCglibScopedProxy() throws Exception {
+        DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
+        new XmlBeanDefinitionReader(bf).loadBeanDefinitions(LIST_CONTEXT);
+        bf.setSerializationId("Y");
+        SimpleMapScope scope = new SimpleMapScope();
+        bf.registerScope("request", scope);
 
-	@Test
-	public void testCglibScopedProxy() throws Exception {
-		DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
-		new XmlBeanDefinitionReader(bf).loadBeanDefinitions(LIST_CONTEXT);
-		bf.setSerializationId("Y");
-		SimpleMapScope scope = new SimpleMapScope();
-		bf.registerScope("request", scope);
+        TestBean tb = (TestBean) bf.getBean("testBean");
+        assertTrue(AopUtils.isCglibProxy(tb.getFriends()));
+        assertTrue(tb.getFriends() instanceof ScopedObject);
+        ScopedObject scoped = (ScopedObject) tb.getFriends();
+        assertEquals(ArrayList.class, scoped.getTargetObject().getClass());
+        tb.getFriends().add("myFriend");
 
-		TestBean tb = (TestBean) bf.getBean("testBean");
-		assertTrue(AopUtils.isCglibProxy(tb.getFriends()));
-		assertTrue(tb.getFriends() instanceof ScopedObject);
-		ScopedObject scoped = (ScopedObject) tb.getFriends();
-		assertEquals(ArrayList.class, scoped.getTargetObject().getClass());
-		tb.getFriends().add("myFriend");
+        assertTrue(scope.getMap().containsKey("scopedTarget.scopedList"));
+        assertEquals(ArrayList.class, scope.getMap().get("scopedTarget.scopedList").getClass());
 
-		assertTrue(scope.getMap().containsKey("scopedTarget.scopedList"));
-		assertEquals(ArrayList.class, scope.getMap().get("scopedTarget.scopedList").getClass());
+        ArrayList<?> deserialized =
+                (ArrayList<?>) SerializationTestUtils.serializeAndDeserialize(tb.getFriends());
+        assertNotNull(deserialized);
+        assertTrue(AopUtils.isCglibProxy(deserialized));
+        assertTrue(deserialized.contains("myFriend"));
+        assertTrue(deserialized instanceof ScopedObject);
+        ScopedObject scopedDeserialized = (ScopedObject) deserialized;
+        assertEquals(ArrayList.class, scopedDeserialized.getTargetObject().getClass());
 
-		ArrayList<?> deserialized = (ArrayList<?>) SerializationTestUtils.serializeAndDeserialize(tb.getFriends());
-		assertNotNull(deserialized);
-		assertTrue(AopUtils.isCglibProxy(deserialized));
-		assertTrue(deserialized.contains("myFriend"));
-		assertTrue(deserialized instanceof ScopedObject);
-		ScopedObject scopedDeserialized = (ScopedObject) deserialized;
-		assertEquals(ArrayList.class, scopedDeserialized.getTargetObject().getClass());
-
-		bf.setSerializationId(null);
-	}
-
+        bf.setSerializationId(null);
+    }
 }

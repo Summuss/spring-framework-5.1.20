@@ -29,8 +29,8 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import static org.junit.Assert.*;
 
 /**
- * Integration tests that verify detection of a default properties file
- * when {@link TestPropertySource @TestPropertySource} is <em>empty</em>.
+ * Integration tests that verify detection of a default properties file when {@link
+ * TestPropertySource @TestPropertySource} is <em>empty</em>.
  *
  * @author Sam Brannen
  * @since 4.1
@@ -40,26 +40,22 @@ import static org.junit.Assert.*;
 @TestPropertySource
 public class DefaultPropertiesFileDetectionTestPropertySourceTests {
 
-	@Autowired
-	protected Environment env;
+    @Autowired protected Environment env;
 
+    @Test
+    public void verifyPropertiesAreAvailableInEnvironment() {
+        // from DefaultPropertiesFileDetectionTestPropertySourceTests.properties
+        assertEnvironmentValue("riddle", "auto detected");
+    }
 
-	@Test
-	public void verifyPropertiesAreAvailableInEnvironment() {
-		// from DefaultPropertiesFileDetectionTestPropertySourceTests.properties
-		assertEnvironmentValue("riddle", "auto detected");
-	}
+    protected void assertEnvironmentValue(String key, String expected) {
+        assertEquals("Value of key [" + key + "].", expected, env.getProperty(key));
+    }
 
-	protected void assertEnvironmentValue(String key, String expected) {
-		assertEquals("Value of key [" + key + "].", expected, env.getProperty(key));
-	}
+    // -------------------------------------------------------------------
 
-
-	// -------------------------------------------------------------------
-
-	@Configuration
-	static class Config {
-		/* no user beans required for these tests */
-	}
-
+    @Configuration
+    static class Config {
+        /* no user beans required for these tests */
+    }
 }

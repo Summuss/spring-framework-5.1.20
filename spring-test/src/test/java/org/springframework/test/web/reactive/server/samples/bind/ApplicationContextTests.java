@@ -28,54 +28,54 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.config.EnableWebFlux;
 
 /**
- * Sample tests demonstrating "mock" server tests binding to server infrastructure
- * declared in a Spring ApplicationContext.
+ * Sample tests demonstrating "mock" server tests binding to server infrastructure declared in a
+ * Spring ApplicationContext.
  *
  * @author Rossen Stoyanchev
  * @since 5.0
  */
 public class ApplicationContextTests {
 
-	private WebTestClient client;
+    private WebTestClient client;
 
+    @Before
+    public void setUp() throws Exception {
 
-	@Before
-	public void setUp() throws Exception {
+        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+        context.register(WebConfig.class);
+        context.refresh();
 
-		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
-		context.register(WebConfig.class);
-		context.refresh();
+        this.client = WebTestClient.bindToApplicationContext(context).build();
+    }
 
-		this.client = WebTestClient.bindToApplicationContext(context).build();
-	}
+    @Test
+    public void test() throws Exception {
+        this.client
+                .get()
+                .uri("/test")
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectBody(String.class)
+                .isEqualTo("It works!");
+    }
 
-	@Test
-	public void test() throws Exception {
-		this.client.get().uri("/test")
-				.exchange()
-				.expectStatus().isOk()
-				.expectBody(String.class).isEqualTo("It works!");
-	}
+    @Configuration
+    @EnableWebFlux
+    static class WebConfig {
 
+        @Bean
+        public TestController controller() {
+            return new TestController();
+        }
+    }
 
-	@Configuration
-	@EnableWebFlux
-	static class WebConfig {
+    @RestController
+    static class TestController {
 
-		@Bean
-		public TestController controller() {
-			return new TestController();
-		}
-
-	}
-
-	@RestController
-	static class TestController {
-
-		@GetMapping("/test")
-		public String handle() {
-			return "It works!";
-		}
-	}
-
+        @GetMapping("/test")
+        public String handle() {
+            return "It works!";
+        }
+    }
 }

@@ -32,15 +32,14 @@ import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 
 /**
- * An implementation of the {@link ObjectNamingStrategy} interface
- * that reads the {@code ObjectName} from the source-level metadata.
- * Falls back to the bean key (bean name) if no {@code ObjectName}
+ * An implementation of the {@link ObjectNamingStrategy} interface that reads the {@code ObjectName}
+ * from the source-level metadata. Falls back to the bean key (bean name) if no {@code ObjectName}
  * can be found in source-level metadata.
  *
- * <p>Uses the {@link JmxAttributeSource} strategy interface, so that
- * metadata can be read using any supported implementation. Out of the box,
- * {@link org.springframework.jmx.export.annotation.AnnotationJmxAttributeSource}
- * introspects a well-defined set of Java 5 annotations that come with Spring.
+ * <p>Uses the {@link JmxAttributeSource} strategy interface, so that metadata can be read using any
+ * supported implementation. Out of the box, {@link
+ * org.springframework.jmx.export.annotation.AnnotationJmxAttributeSource} introspects a
+ * well-defined set of Java 5 annotations that come with Spring.
  *
  * @author Rob Harrop
  * @author Juergen Hoeller
@@ -50,92 +49,82 @@ import org.springframework.util.StringUtils;
  */
 public class MetadataNamingStrategy implements ObjectNamingStrategy, InitializingBean {
 
-	/**
-	 * The {@code JmxAttributeSource} implementation to use for reading metadata.
-	 */
-	@Nullable
-	private JmxAttributeSource attributeSource;
+    /** The {@code JmxAttributeSource} implementation to use for reading metadata. */
+    @Nullable private JmxAttributeSource attributeSource;
 
-	@Nullable
-	private String defaultDomain;
+    @Nullable private String defaultDomain;
 
+    /**
+     * Create a new {@code MetadataNamingStrategy} which needs to be configured through the {@link
+     * #setAttributeSource} method.
+     */
+    public MetadataNamingStrategy() {}
 
-	/**
-	 * Create a new {@code MetadataNamingStrategy} which needs to be
-	 * configured through the {@link #setAttributeSource} method.
-	 */
-	public MetadataNamingStrategy() {
-	}
+    /**
+     * Create a new {@code MetadataNamingStrategy} for the given {@code JmxAttributeSource}.
+     *
+     * @param attributeSource the JmxAttributeSource to use
+     */
+    public MetadataNamingStrategy(JmxAttributeSource attributeSource) {
+        Assert.notNull(attributeSource, "JmxAttributeSource must not be null");
+        this.attributeSource = attributeSource;
+    }
 
-	/**
-	 * Create a new {@code MetadataNamingStrategy} for the given
-	 * {@code JmxAttributeSource}.
-	 * @param attributeSource the JmxAttributeSource to use
-	 */
-	public MetadataNamingStrategy(JmxAttributeSource attributeSource) {
-		Assert.notNull(attributeSource, "JmxAttributeSource must not be null");
-		this.attributeSource = attributeSource;
-	}
+    /**
+     * Set the implementation of the {@code JmxAttributeSource} interface to use when reading the
+     * source-level metadata.
+     */
+    public void setAttributeSource(JmxAttributeSource attributeSource) {
+        Assert.notNull(attributeSource, "JmxAttributeSource must not be null");
+        this.attributeSource = attributeSource;
+    }
 
+    /**
+     * Specify the default domain to be used for generating ObjectNames when no source-level
+     * metadata has been specified.
+     *
+     * <p>The default is to use the domain specified in the bean name (if the bean name follows the
+     * JMX ObjectName syntax); else, the package name of the managed bean class.
+     */
+    public void setDefaultDomain(String defaultDomain) {
+        this.defaultDomain = defaultDomain;
+    }
 
-	/**
-	 * Set the implementation of the {@code JmxAttributeSource} interface to use
-	 * when reading the source-level metadata.
-	 */
-	public void setAttributeSource(JmxAttributeSource attributeSource) {
-		Assert.notNull(attributeSource, "JmxAttributeSource must not be null");
-		this.attributeSource = attributeSource;
-	}
+    @Override
+    public void afterPropertiesSet() {
+        if (this.attributeSource == null) {
+            throw new IllegalArgumentException("Property 'attributeSource' is required");
+        }
+    }
 
-	/**
-	 * Specify the default domain to be used for generating ObjectNames
-	 * when no source-level metadata has been specified.
-	 * <p>The default is to use the domain specified in the bean name
-	 * (if the bean name follows the JMX ObjectName syntax); else,
-	 * the package name of the managed bean class.
-	 */
-	public void setDefaultDomain(String defaultDomain) {
-		this.defaultDomain = defaultDomain;
-	}
+    /**
+     * Reads the {@code ObjectName} from the source-level metadata associated with the managed
+     * resource's {@code Class}.
+     */
+    @Override
+    public ObjectName getObjectName(Object managedBean, @Nullable String beanKey)
+            throws MalformedObjectNameException {
+        Assert.state(this.attributeSource != null, "No JmxAttributeSource set");
+        Class<?> managedClass = AopUtils.getTargetClass(managedBean);
+        ManagedResource mr = this.attributeSource.getManagedResource(managedClass);
 
-	@Override
-	public void afterPropertiesSet() {
-		if (this.attributeSource == null) {
-			throw new IllegalArgumentException("Property 'attributeSource' is required");
-		}
-	}
-
-
-	/**
-	 * Reads the {@code ObjectName} from the source-level metadata associated
-	 * with the managed resource's {@code Class}.
-	 */
-	@Override
-	public ObjectName getObjectName(Object managedBean, @Nullable String beanKey) throws MalformedObjectNameException {
-		Assert.state(this.attributeSource != null, "No JmxAttributeSource set");
-		Class<?> managedClass = AopUtils.getTargetClass(managedBean);
-		ManagedResource mr = this.attributeSource.getManagedResource(managedClass);
-
-		// Check that an object name has been specified.
-		if (mr != null && StringUtils.hasText(mr.getObjectName())) {
-			return ObjectNameManager.getInstance(mr.getObjectName());
-		}
-		else {
-			Assert.state(beanKey != null, "No ManagedResource attribute and no bean key specified");
-			try {
-				return ObjectNameManager.getInstance(beanKey);
-			}
-			catch (MalformedObjectNameException ex) {
-				String domain = this.defaultDomain;
-				if (domain == null) {
-					domain = ClassUtils.getPackageName(managedClass);
-				}
-				Hashtable<String, String> properties = new Hashtable<>();
-				properties.put("type", ClassUtils.getShortName(managedClass));
-				properties.put("name", beanKey);
-				return ObjectNameManager.getInstance(domain, properties);
-			}
-		}
-	}
-
+        // Check that an object name has been specified.
+        if (mr != null && StringUtils.hasText(mr.getObjectName())) {
+            return ObjectNameManager.getInstance(mr.getObjectName());
+        } else {
+            Assert.state(beanKey != null, "No ManagedResource attribute and no bean key specified");
+            try {
+                return ObjectNameManager.getInstance(beanKey);
+            } catch (MalformedObjectNameException ex) {
+                String domain = this.defaultDomain;
+                if (domain == null) {
+                    domain = ClassUtils.getPackageName(managedClass);
+                }
+                Hashtable<String, String> properties = new Hashtable<>();
+                properties.put("type", ClassUtils.getShortName(managedClass));
+                properties.put("name", beanKey);
+                return ObjectNameManager.getInstance(domain, properties);
+            }
+        }
+    }
 }

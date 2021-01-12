@@ -11,5 +11,5 @@ import org.springframework.beans.factory.annotation.Qualifier;
 @Retention(RetentionPolicy.RUNTIME)
 @Qualifier
 public @interface BeanAge {
-	int value();
+    int value();
 }

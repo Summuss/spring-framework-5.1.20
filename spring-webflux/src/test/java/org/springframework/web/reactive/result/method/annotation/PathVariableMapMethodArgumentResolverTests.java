@@ -46,72 +46,75 @@ import static org.junit.Assert.fail;
  */
 public class PathVariableMapMethodArgumentResolverTests {
 
-	private PathVariableMapMethodArgumentResolver resolver;
+    private PathVariableMapMethodArgumentResolver resolver;
 
-	private final MockServerWebExchange exchange= MockServerWebExchange.from(MockServerHttpRequest.get("/"));
+    private final MockServerWebExchange exchange =
+            MockServerWebExchange.from(MockServerHttpRequest.get("/"));
 
-	private MethodParameter paramMap;
-	private MethodParameter paramNamedMap;
-	private MethodParameter paramMapNoAnnot;
-	private MethodParameter paramMonoMap;
+    private MethodParameter paramMap;
+    private MethodParameter paramNamedMap;
+    private MethodParameter paramMapNoAnnot;
+    private MethodParameter paramMonoMap;
 
+    @Before
+    public void setup() throws Exception {
+        this.resolver =
+                new PathVariableMapMethodArgumentResolver(
+                        ReactiveAdapterRegistry.getSharedInstance());
 
-	@Before
-	public void setup() throws Exception {
-		this.resolver = new PathVariableMapMethodArgumentResolver(ReactiveAdapterRegistry.getSharedInstance());
+        Method method = ReflectionUtils.findMethod(getClass(), "handle", (Class<?>[]) null);
+        this.paramMap = new MethodParameter(method, 0);
+        this.paramNamedMap = new MethodParameter(method, 1);
+        this.paramMapNoAnnot = new MethodParameter(method, 2);
+        this.paramMonoMap = new MethodParameter(method, 3);
+    }
 
-		Method method = ReflectionUtils.findMethod(getClass(), "handle", (Class<?>[]) null);
-		this.paramMap = new MethodParameter(method, 0);
-		this.paramNamedMap = new MethodParameter(method, 1);
-		this.paramMapNoAnnot = new MethodParameter(method, 2);
-		this.paramMonoMap = new MethodParameter(method, 3);
-	}
+    @Test
+    public void supportsParameter() {
+        assertTrue(resolver.supportsParameter(paramMap));
+        assertFalse(resolver.supportsParameter(paramNamedMap));
+        assertFalse(resolver.supportsParameter(paramMapNoAnnot));
+        try {
+            this.resolver.supportsParameter(this.paramMonoMap);
+            fail();
+        } catch (IllegalStateException ex) {
+            assertTrue(
+                    "Unexpected error message:\n" + ex.getMessage(),
+                    ex.getMessage()
+                            .startsWith(
+                                    "PathVariableMapMethodArgumentResolver doesn't support reactive type wrapper"));
+        }
+    }
 
+    @Test
+    public void resolveArgument() throws Exception {
+        Map<String, String> uriTemplateVars = new HashMap<>();
+        uriTemplateVars.put("name1", "value1");
+        uriTemplateVars.put("name2", "value2");
+        this.exchange
+                .getAttributes()
+                .put(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, uriTemplateVars);
 
-	@Test
-	public void supportsParameter() {
-		assertTrue(resolver.supportsParameter(paramMap));
-		assertFalse(resolver.supportsParameter(paramNamedMap));
-		assertFalse(resolver.supportsParameter(paramMapNoAnnot));
-		try {
-			this.resolver.supportsParameter(this.paramMonoMap);
-			fail();
-		}
-		catch (IllegalStateException ex) {
-			assertTrue("Unexpected error message:\n" + ex.getMessage(),
-					ex.getMessage().startsWith(
-							"PathVariableMapMethodArgumentResolver doesn't support reactive type wrapper"));
-		}
-	}
+        Mono<Object> mono =
+                this.resolver.resolveArgument(this.paramMap, new BindingContext(), this.exchange);
+        Object result = mono.block();
 
-	@Test
-	public void resolveArgument() throws Exception {
-		Map<String, String> uriTemplateVars = new HashMap<>();
-		uriTemplateVars.put("name1", "value1");
-		uriTemplateVars.put("name2", "value2");
-		this.exchange.getAttributes().put(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, uriTemplateVars);
+        assertEquals(uriTemplateVars, result);
+    }
 
-		Mono<Object> mono = this.resolver.resolveArgument(this.paramMap, new BindingContext(), this.exchange);
-		Object result = mono.block();
+    @Test
+    public void resolveArgumentNoUriVars() throws Exception {
+        Mono<Object> mono =
+                this.resolver.resolveArgument(this.paramMap, new BindingContext(), this.exchange);
+        Object result = mono.block();
 
-		assertEquals(uriTemplateVars, result);
-	}
+        assertEquals(Collections.emptyMap(), result);
+    }
 
-	@Test
-	public void resolveArgumentNoUriVars() throws Exception {
-		Mono<Object> mono = this.resolver.resolveArgument(this.paramMap, new BindingContext(), this.exchange);
-		Object result = mono.block();
-
-		assertEquals(Collections.emptyMap(), result);
-	}
-
-
-	@SuppressWarnings("unused")
-	public void handle(
-			@PathVariable Map<String, String> map,
-			@PathVariable(value = "name") Map<String, String> namedMap,
-			Map<String, String> mapWithoutAnnotat,
-			@PathVariable Mono<Map<?, ?>> monoMap) {
-	}
-
+    @SuppressWarnings("unused")
+    public void handle(
+            @PathVariable Map<String, String> map,
+            @PathVariable(value = "name") Map<String, String> namedMap,
+            Map<String, String> mapWithoutAnnotat,
+            @PathVariable Mono<Map<?, ?>> monoMap) {}
 }

@@ -33,9 +33,9 @@ import org.springframework.util.StreamUtils;
 /**
  * Implementation of {@link HttpMessageConverter} that can read and write strings.
  *
- * <p>By default, this converter supports all media types ({@code &#42;&#47;&#42;}),
- * and writes with a {@code Content-Type} of {@code text/plain}. This can be overridden
- * by setting the {@link #setSupportedMediaTypes supportedMediaTypes} property.
+ * <p>By default, this converter supports all media types ({@code &#42;&#47;&#42;}), and writes with
+ * a {@code Content-Type} of {@code text/plain}. This can be overridden by setting the {@link
+ * #setSupportedMediaTypes supportedMediaTypes} property.
  *
  * @author Arjen Poutsma
  * @author Juergen Hoeller
@@ -43,102 +43,96 @@ import org.springframework.util.StreamUtils;
  */
 public class StringHttpMessageConverter extends AbstractHttpMessageConverter<String> {
 
-	/**
-	 * The default charset used by the converter.
-	 */
-	public static final Charset DEFAULT_CHARSET = StandardCharsets.ISO_8859_1;
+    /** The default charset used by the converter. */
+    public static final Charset DEFAULT_CHARSET = StandardCharsets.ISO_8859_1;
 
+    @Nullable private volatile List<Charset> availableCharsets;
 
-	@Nullable
-	private volatile List<Charset> availableCharsets;
+    private boolean writeAcceptCharset = true;
 
-	private boolean writeAcceptCharset = true;
+    /**
+     * A default constructor that uses {@code "ISO-8859-1"} as the default charset.
+     *
+     * @see #StringHttpMessageConverter(Charset)
+     */
+    public StringHttpMessageConverter() {
+        this(DEFAULT_CHARSET);
+    }
 
+    /**
+     * A constructor accepting a default charset to use if the requested content type does not
+     * specify one.
+     */
+    public StringHttpMessageConverter(Charset defaultCharset) {
+        super(defaultCharset, MediaType.TEXT_PLAIN, MediaType.ALL);
+    }
 
-	/**
-	 * A default constructor that uses {@code "ISO-8859-1"} as the default charset.
-	 * @see #StringHttpMessageConverter(Charset)
-	 */
-	public StringHttpMessageConverter() {
-		this(DEFAULT_CHARSET);
-	}
+    /**
+     * Whether the {@code Accept-Charset} header should be written to any outgoing request sourced
+     * from the value of {@link Charset#availableCharsets()}. The behavior is suppressed if the
+     * header has already been set.
+     *
+     * <p>Default is {@code true}.
+     */
+    public void setWriteAcceptCharset(boolean writeAcceptCharset) {
+        this.writeAcceptCharset = writeAcceptCharset;
+    }
 
-	/**
-	 * A constructor accepting a default charset to use if the requested content
-	 * type does not specify one.
-	 */
-	public StringHttpMessageConverter(Charset defaultCharset) {
-		super(defaultCharset, MediaType.TEXT_PLAIN, MediaType.ALL);
-	}
+    @Override
+    public boolean supports(Class<?> clazz) {
+        return String.class == clazz;
+    }
 
+    @Override
+    protected String readInternal(Class<? extends String> clazz, HttpInputMessage inputMessage)
+            throws IOException {
+        Charset charset = getContentTypeCharset(inputMessage.getHeaders().getContentType());
+        return StreamUtils.copyToString(inputMessage.getBody(), charset);
+    }
 
-	/**
-	 * Whether the {@code Accept-Charset} header should be written to any outgoing
-	 * request sourced from the value of {@link Charset#availableCharsets()}.
-	 * The behavior is suppressed if the header has already been set.
-	 * <p>Default is {@code true}.
-	 */
-	public void setWriteAcceptCharset(boolean writeAcceptCharset) {
-		this.writeAcceptCharset = writeAcceptCharset;
-	}
+    @Override
+    protected Long getContentLength(String str, @Nullable MediaType contentType) {
+        Charset charset = getContentTypeCharset(contentType);
+        return (long) str.getBytes(charset).length;
+    }
 
+    @Override
+    protected void writeInternal(String str, HttpOutputMessage outputMessage) throws IOException {
+        HttpHeaders headers = outputMessage.getHeaders();
+        if (this.writeAcceptCharset && headers.get(HttpHeaders.ACCEPT_CHARSET) == null) {
+            headers.setAcceptCharset(getAcceptedCharsets());
+        }
+        Charset charset = getContentTypeCharset(headers.getContentType());
+        StreamUtils.copy(str, charset, outputMessage.getBody());
+    }
 
-	@Override
-	public boolean supports(Class<?> clazz) {
-		return String.class == clazz;
-	}
+    /**
+     * Return the list of supported {@link Charset Charsets}.
+     *
+     * <p>By default, returns {@link Charset#availableCharsets()}. Can be overridden in subclasses.
+     *
+     * @return the list of accepted charsets
+     */
+    protected List<Charset> getAcceptedCharsets() {
+        List<Charset> charsets = this.availableCharsets;
+        if (charsets == null) {
+            charsets = new ArrayList<>(Charset.availableCharsets().values());
+            this.availableCharsets = charsets;
+        }
+        return charsets;
+    }
 
-	@Override
-	protected String readInternal(Class<? extends String> clazz, HttpInputMessage inputMessage) throws IOException {
-		Charset charset = getContentTypeCharset(inputMessage.getHeaders().getContentType());
-		return StreamUtils.copyToString(inputMessage.getBody(), charset);
-	}
-
-	@Override
-	protected Long getContentLength(String str, @Nullable MediaType contentType) {
-		Charset charset = getContentTypeCharset(contentType);
-		return (long) str.getBytes(charset).length;
-	}
-
-	@Override
-	protected void writeInternal(String str, HttpOutputMessage outputMessage) throws IOException {
-		HttpHeaders headers = outputMessage.getHeaders();
-		if (this.writeAcceptCharset && headers.get(HttpHeaders.ACCEPT_CHARSET) == null) {
-			headers.setAcceptCharset(getAcceptedCharsets());
-		}
-		Charset charset = getContentTypeCharset(headers.getContentType());
-		StreamUtils.copy(str, charset, outputMessage.getBody());
-	}
-
-
-	/**
-	 * Return the list of supported {@link Charset Charsets}.
-	 * <p>By default, returns {@link Charset#availableCharsets()}.
-	 * Can be overridden in subclasses.
-	 * @return the list of accepted charsets
-	 */
-	protected List<Charset> getAcceptedCharsets() {
-		List<Charset> charsets = this.availableCharsets;
-		if (charsets == null) {
-			charsets = new ArrayList<>(Charset.availableCharsets().values());
-			this.availableCharsets = charsets;
-		}
-		return charsets;
-	}
-
-	private Charset getContentTypeCharset(@Nullable MediaType contentType) {
-		if (contentType != null && contentType.getCharset() != null) {
-			return contentType.getCharset();
-		}
-		else if (contentType != null && contentType.isCompatibleWith(MediaType.APPLICATION_JSON)) {
-			// Matching to AbstractJackson2HttpMessageConverter#DEFAULT_CHARSET
-			return StandardCharsets.UTF_8;
-		}
-		else {
-			Charset charset = getDefaultCharset();
-			Assert.state(charset != null, "No default charset");
-			return charset;
-		}
-	}
-
+    private Charset getContentTypeCharset(@Nullable MediaType contentType) {
+        if (contentType != null && contentType.getCharset() != null) {
+            return contentType.getCharset();
+        } else if (contentType != null
+                && contentType.isCompatibleWith(MediaType.APPLICATION_JSON)) {
+            // Matching to AbstractJackson2HttpMessageConverter#DEFAULT_CHARSET
+            return StandardCharsets.UTF_8;
+        } else {
+            Charset charset = getDefaultCharset();
+            Assert.state(charset != null, "No default charset");
+            return charset;
+        }
+    }
 }

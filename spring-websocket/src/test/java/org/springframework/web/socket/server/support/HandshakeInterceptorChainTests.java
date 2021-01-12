@@ -37,67 +37,64 @@ import static org.mockito.BDDMockito.*;
  */
 public class HandshakeInterceptorChainTests extends AbstractHttpRequestTests {
 
-	private HandshakeInterceptor i1;
+    private HandshakeInterceptor i1;
 
-	private HandshakeInterceptor i2;
+    private HandshakeInterceptor i2;
 
-	private HandshakeInterceptor i3;
+    private HandshakeInterceptor i3;
 
-	private List<HandshakeInterceptor> interceptors;
+    private List<HandshakeInterceptor> interceptors;
 
-	private WebSocketHandler wsHandler;
+    private WebSocketHandler wsHandler;
 
-	private Map<String, Object> attributes;
+    private Map<String, Object> attributes;
 
+    @Before
+    public void setup() {
+        super.setup();
 
-	@Before
-	public void setup() {
-		super.setup();
+        i1 = mock(HandshakeInterceptor.class);
+        i2 = mock(HandshakeInterceptor.class);
+        i3 = mock(HandshakeInterceptor.class);
+        interceptors = Arrays.asList(i1, i2, i3);
+        wsHandler = mock(WebSocketHandler.class);
+        attributes = new HashMap<>();
+    }
 
-		i1 = mock(HandshakeInterceptor.class);
-		i2 = mock(HandshakeInterceptor.class);
-		i3 = mock(HandshakeInterceptor.class);
-		interceptors = Arrays.asList(i1, i2, i3);
-		wsHandler = mock(WebSocketHandler.class);
-		attributes = new HashMap<>();
-	}
+    @Test
+    public void success() throws Exception {
+        given(i1.beforeHandshake(request, response, wsHandler, attributes)).willReturn(true);
+        given(i2.beforeHandshake(request, response, wsHandler, attributes)).willReturn(true);
+        given(i3.beforeHandshake(request, response, wsHandler, attributes)).willReturn(true);
 
+        HandshakeInterceptorChain chain = new HandshakeInterceptorChain(interceptors, wsHandler);
+        chain.applyBeforeHandshake(request, response, attributes);
 
-	@Test
-	public void success() throws Exception {
-		given(i1.beforeHandshake(request, response, wsHandler, attributes)).willReturn(true);
-		given(i2.beforeHandshake(request, response, wsHandler, attributes)).willReturn(true);
-		given(i3.beforeHandshake(request, response, wsHandler, attributes)).willReturn(true);
+        verify(i1).beforeHandshake(request, response, wsHandler, attributes);
+        verify(i2).beforeHandshake(request, response, wsHandler, attributes);
+        verify(i3).beforeHandshake(request, response, wsHandler, attributes);
+        verifyNoMoreInteractions(i1, i2, i3);
+    }
 
-		HandshakeInterceptorChain chain = new HandshakeInterceptorChain(interceptors, wsHandler);
-		chain.applyBeforeHandshake(request, response, attributes);
+    @Test
+    public void applyBeforeHandshakeWithFalseReturnValue() throws Exception {
+        given(i1.beforeHandshake(request, response, wsHandler, attributes)).willReturn(true);
+        given(i2.beforeHandshake(request, response, wsHandler, attributes)).willReturn(false);
 
-		verify(i1).beforeHandshake(request, response, wsHandler, attributes);
-		verify(i2).beforeHandshake(request, response, wsHandler, attributes);
-		verify(i3).beforeHandshake(request, response, wsHandler, attributes);
-		verifyNoMoreInteractions(i1, i2, i3);
-	}
+        HandshakeInterceptorChain chain = new HandshakeInterceptorChain(interceptors, wsHandler);
+        chain.applyBeforeHandshake(request, response, attributes);
 
-	@Test
-	public void applyBeforeHandshakeWithFalseReturnValue() throws Exception {
-		given(i1.beforeHandshake(request, response, wsHandler, attributes)).willReturn(true);
-		given(i2.beforeHandshake(request, response, wsHandler, attributes)).willReturn(false);
+        verify(i1).beforeHandshake(request, response, wsHandler, attributes);
+        verify(i1).afterHandshake(request, response, wsHandler, null);
+        verify(i2).beforeHandshake(request, response, wsHandler, attributes);
+        verifyNoMoreInteractions(i1, i2, i3);
+    }
 
-		HandshakeInterceptorChain chain = new HandshakeInterceptorChain(interceptors, wsHandler);
-		chain.applyBeforeHandshake(request, response, attributes);
+    @Test
+    public void applyAfterHandshakeOnly() {
+        HandshakeInterceptorChain chain = new HandshakeInterceptorChain(interceptors, wsHandler);
+        chain.applyAfterHandshake(request, response, null);
 
-		verify(i1).beforeHandshake(request, response, wsHandler, attributes);
-		verify(i1).afterHandshake(request, response, wsHandler, null);
-		verify(i2).beforeHandshake(request, response, wsHandler, attributes);
-		verifyNoMoreInteractions(i1, i2, i3);
-	}
-
-	@Test
-	public void applyAfterHandshakeOnly() {
-		HandshakeInterceptorChain chain = new HandshakeInterceptorChain(interceptors, wsHandler);
-		chain.applyAfterHandshake(request, response, null);
-
-		verifyNoMoreInteractions(i1, i2, i3);
-	}
-
+        verifyNoMoreInteractions(i1, i2, i3);
+    }
 }

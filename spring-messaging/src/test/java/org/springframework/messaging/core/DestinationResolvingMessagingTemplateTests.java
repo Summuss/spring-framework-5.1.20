@@ -37,220 +37,221 @@ import static org.junit.Assert.*;
  */
 public class DestinationResolvingMessagingTemplateTests {
 
-	private TestDestinationResolvingMessagingTemplate template;
+    private TestDestinationResolvingMessagingTemplate template;
 
-	private ExecutorSubscribableChannel myChannel;
+    private ExecutorSubscribableChannel myChannel;
 
-	private Map<String, Object> headers;
+    private Map<String, Object> headers;
 
-	private TestMessagePostProcessor postProcessor;
+    private TestMessagePostProcessor postProcessor;
 
+    @Before
+    public void setup() {
 
-	@Before
-	public void setup() {
+        TestMessageChannelDestinationResolver resolver =
+                new TestMessageChannelDestinationResolver();
 
-		TestMessageChannelDestinationResolver resolver = new TestMessageChannelDestinationResolver();
+        this.myChannel = new ExecutorSubscribableChannel();
+        resolver.registerMessageChannel("myChannel", this.myChannel);
 
-		this.myChannel = new ExecutorSubscribableChannel();
-		resolver.registerMessageChannel("myChannel", this.myChannel);
+        this.template = new TestDestinationResolvingMessagingTemplate();
+        this.template.setDestinationResolver(resolver);
 
-		this.template = new TestDestinationResolvingMessagingTemplate();
-		this.template.setDestinationResolver(resolver);
+        this.headers = Collections.<String, Object>singletonMap("key", "value");
 
-		this.headers = Collections.<String, Object>singletonMap("key", "value");
+        this.postProcessor = new TestMessagePostProcessor();
+    }
 
-		this.postProcessor = new TestMessagePostProcessor();
-	}
+    @Test
+    public void send() {
+        Message<?> message = new GenericMessage<Object>("payload");
+        this.template.send("myChannel", message);
 
+        assertSame(this.myChannel, this.template.messageChannel);
+        assertSame(message, this.template.message);
+    }
 
-	@Test
-	public void send() {
-		Message<?> message = new GenericMessage<Object>("payload");
-		this.template.send("myChannel", message);
+    @Test(expected = IllegalStateException.class)
+    public void sendNoDestinationResolver() {
+        TestDestinationResolvingMessagingTemplate template =
+                new TestDestinationResolvingMessagingTemplate();
+        template.send("myChannel", new GenericMessage<Object>("payload"));
+    }
 
-		assertSame(this.myChannel, this.template.messageChannel);
-		assertSame(message, this.template.message);
-	}
+    @Test
+    public void convertAndSendPayload() {
+        this.template.convertAndSend("myChannel", "payload");
 
-	@Test(expected = IllegalStateException.class)
-	public void sendNoDestinationResolver() {
-		TestDestinationResolvingMessagingTemplate template = new TestDestinationResolvingMessagingTemplate();
-		template.send("myChannel", new GenericMessage<Object>("payload"));
-	}
+        assertSame(this.myChannel, this.template.messageChannel);
+        assertNotNull(this.template.message);
+        assertSame("payload", this.template.message.getPayload());
+    }
 
-	@Test
-	public void convertAndSendPayload() {
-		this.template.convertAndSend("myChannel", "payload");
+    @Test
+    public void convertAndSendPayloadAndHeaders() {
+        this.template.convertAndSend("myChannel", "payload", this.headers);
 
-		assertSame(this.myChannel, this.template.messageChannel);
-		assertNotNull(this.template.message);
-		assertSame("payload", this.template.message.getPayload());
-	}
+        assertSame(this.myChannel, this.template.messageChannel);
+        assertNotNull(this.template.message);
+        assertEquals("value", this.template.message.getHeaders().get("key"));
+        assertEquals("payload", this.template.message.getPayload());
+    }
 
-	@Test
-	public void convertAndSendPayloadAndHeaders() {
-		this.template.convertAndSend("myChannel", "payload", this.headers);
+    @Test
+    public void convertAndSendPayloadWithPostProcessor() {
+        this.template.convertAndSend("myChannel", "payload", this.postProcessor);
 
-		assertSame(this.myChannel, this.template.messageChannel);
-		assertNotNull(this.template.message);
-		assertEquals("value", this.template.message.getHeaders().get("key"));
-		assertEquals("payload", this.template.message.getPayload());
-	}
+        assertSame(this.myChannel, this.template.messageChannel);
+        assertNotNull(this.template.message);
+        assertEquals("payload", this.template.message.getPayload());
 
-	@Test
-	public void convertAndSendPayloadWithPostProcessor() {
-		this.template.convertAndSend("myChannel", "payload", this.postProcessor);
+        assertNotNull(this.postProcessor.getMessage());
+        assertSame(this.postProcessor.getMessage(), this.template.message);
+    }
 
-		assertSame(this.myChannel, this.template.messageChannel);
-		assertNotNull(this.template.message);
-		assertEquals("payload", this.template.message.getPayload());
+    @Test
+    public void convertAndSendPayloadAndHeadersWithPostProcessor() {
+        this.template.convertAndSend("myChannel", "payload", this.headers, this.postProcessor);
 
-		assertNotNull(this.postProcessor.getMessage());
-		assertSame(this.postProcessor.getMessage(), this.template.message);
-	}
+        assertSame(this.myChannel, this.template.messageChannel);
+        assertNotNull(this.template.message);
+        assertEquals("value", this.template.message.getHeaders().get("key"));
+        assertEquals("payload", this.template.message.getPayload());
 
-	@Test
-	public void convertAndSendPayloadAndHeadersWithPostProcessor() {
-		this.template.convertAndSend("myChannel", "payload", this.headers, this.postProcessor);
+        assertNotNull(this.postProcessor.getMessage());
+        assertSame(this.postProcessor.getMessage(), this.template.message);
+    }
 
-		assertSame(this.myChannel, this.template.messageChannel);
-		assertNotNull(this.template.message);
-		assertEquals("value", this.template.message.getHeaders().get("key"));
-		assertEquals("payload", this.template.message.getPayload());
+    @Test
+    public void receive() {
+        Message<?> expected = new GenericMessage<Object>("payload");
+        this.template.setReceiveMessage(expected);
+        Message<?> actual = this.template.receive("myChannel");
 
-		assertNotNull(this.postProcessor.getMessage());
-		assertSame(this.postProcessor.getMessage(), this.template.message);
-	}
+        assertSame(expected, actual);
+        assertSame(this.myChannel, this.template.messageChannel);
+    }
 
-	@Test
-	public void receive() {
-		Message<?> expected = new GenericMessage<Object>("payload");
-		this.template.setReceiveMessage(expected);
-		Message<?> actual = this.template.receive("myChannel");
+    @Test
+    public void receiveAndConvert() {
+        Message<?> expected = new GenericMessage<Object>("payload");
+        this.template.setReceiveMessage(expected);
+        String payload = this.template.receiveAndConvert("myChannel", String.class);
 
-		assertSame(expected, actual);
-		assertSame(this.myChannel, this.template.messageChannel);
-	}
+        assertEquals("payload", payload);
+        assertSame(this.myChannel, this.template.messageChannel);
+    }
 
-	@Test
-	public void receiveAndConvert() {
-		Message<?> expected = new GenericMessage<Object>("payload");
-		this.template.setReceiveMessage(expected);
-		String payload = this.template.receiveAndConvert("myChannel", String.class);
+    @Test
+    public void sendAndReceive() {
+        Message<?> requestMessage = new GenericMessage<Object>("request");
+        Message<?> responseMessage = new GenericMessage<Object>("response");
+        this.template.setReceiveMessage(responseMessage);
+        Message<?> actual = this.template.sendAndReceive("myChannel", requestMessage);
 
-		assertEquals("payload", payload);
-		assertSame(this.myChannel, this.template.messageChannel);
-	}
+        assertEquals(requestMessage, this.template.message);
+        assertSame(responseMessage, actual);
+        assertSame(this.myChannel, this.template.messageChannel);
+    }
 
-	@Test
-	public void sendAndReceive() {
-		Message<?> requestMessage = new GenericMessage<Object>("request");
-		Message<?> responseMessage = new GenericMessage<Object>("response");
-		this.template.setReceiveMessage(responseMessage);
-		Message<?> actual = this.template.sendAndReceive("myChannel", requestMessage);
+    @Test
+    public void convertSendAndReceive() {
+        Message<?> responseMessage = new GenericMessage<Object>("response");
+        this.template.setReceiveMessage(responseMessage);
+        String actual = this.template.convertSendAndReceive("myChannel", "request", String.class);
 
-		assertEquals(requestMessage, this.template.message);
-		assertSame(responseMessage, actual);
-		assertSame(this.myChannel, this.template.messageChannel);
-	}
+        assertEquals("request", this.template.message.getPayload());
+        assertSame("response", actual);
+        assertSame(this.myChannel, this.template.messageChannel);
+    }
 
-	@Test
-	public void convertSendAndReceive() {
-		Message<?> responseMessage = new GenericMessage<Object>("response");
-		this.template.setReceiveMessage(responseMessage);
-		String actual = this.template.convertSendAndReceive("myChannel", "request", String.class);
+    @Test
+    public void convertSendAndReceiveWithHeaders() {
+        Message<?> responseMessage = new GenericMessage<Object>("response");
+        this.template.setReceiveMessage(responseMessage);
+        String actual =
+                this.template.convertSendAndReceive(
+                        "myChannel", "request", this.headers, String.class);
 
-		assertEquals("request", this.template.message.getPayload());
-		assertSame("response", actual);
-		assertSame(this.myChannel, this.template.messageChannel);
-	}
+        assertEquals("value", this.template.message.getHeaders().get("key"));
+        assertEquals("request", this.template.message.getPayload());
+        assertSame("response", actual);
+        assertSame(this.myChannel, this.template.messageChannel);
+    }
 
-	@Test
-	public void convertSendAndReceiveWithHeaders() {
-		Message<?> responseMessage = new GenericMessage<Object>("response");
-		this.template.setReceiveMessage(responseMessage);
-		String actual = this.template.convertSendAndReceive("myChannel", "request", this.headers, String.class);
+    @Test
+    public void convertSendAndReceiveWithPostProcessor() {
+        Message<?> responseMessage = new GenericMessage<Object>("response");
+        this.template.setReceiveMessage(responseMessage);
+        String actual =
+                this.template.convertSendAndReceive(
+                        "myChannel", "request", String.class, this.postProcessor);
 
-		assertEquals("value", this.template.message.getHeaders().get("key"));
-		assertEquals("request", this.template.message.getPayload());
-		assertSame("response", actual);
-		assertSame(this.myChannel, this.template.messageChannel);
-	}
+        assertEquals("request", this.template.message.getPayload());
+        assertSame("request", this.postProcessor.getMessage().getPayload());
+        assertSame("response", actual);
+        assertSame(this.myChannel, this.template.messageChannel);
+    }
 
-	@Test
-	public void convertSendAndReceiveWithPostProcessor() {
-		Message<?> responseMessage = new GenericMessage<Object>("response");
-		this.template.setReceiveMessage(responseMessage);
-		String actual = this.template.convertSendAndReceive("myChannel", "request", String.class, this.postProcessor);
+    @Test
+    public void convertSendAndReceiveWithHeadersAndPostProcessor() {
+        Message<?> responseMessage = new GenericMessage<Object>("response");
+        this.template.setReceiveMessage(responseMessage);
+        String actual =
+                this.template.convertSendAndReceive(
+                        "myChannel", "request", this.headers, String.class, this.postProcessor);
 
-		assertEquals("request", this.template.message.getPayload());
-		assertSame("request", this.postProcessor.getMessage().getPayload());
-		assertSame("response", actual);
-		assertSame(this.myChannel, this.template.messageChannel);
-	}
+        assertEquals("value", this.template.message.getHeaders().get("key"));
+        assertEquals("request", this.template.message.getPayload());
+        assertSame("request", this.postProcessor.getMessage().getPayload());
+        assertSame("response", actual);
+        assertSame(this.myChannel, this.template.messageChannel);
+    }
 
-	@Test
-	public void convertSendAndReceiveWithHeadersAndPostProcessor() {
-		Message<?> responseMessage = new GenericMessage<Object>("response");
-		this.template.setReceiveMessage(responseMessage);
-		String actual = this.template.convertSendAndReceive("myChannel", "request", this.headers,
-				String.class, this.postProcessor);
+    private static class TestDestinationResolvingMessagingTemplate
+            extends AbstractDestinationResolvingMessagingTemplate<MessageChannel> {
 
-		assertEquals("value", this.template.message.getHeaders().get("key"));
-		assertEquals("request", this.template.message.getPayload());
-		assertSame("request", this.postProcessor.getMessage().getPayload());
-		assertSame("response", actual);
-		assertSame(this.myChannel, this.template.messageChannel);
-	}
+        private MessageChannel messageChannel;
 
+        private Message<?> message;
 
-	private static class TestDestinationResolvingMessagingTemplate
-			extends AbstractDestinationResolvingMessagingTemplate<MessageChannel> {
+        private Message<?> receiveMessage;
 
-		private MessageChannel messageChannel;
+        private void setReceiveMessage(Message<?> receiveMessage) {
+            this.receiveMessage = receiveMessage;
+        }
 
-		private Message<?> message;
+        @Override
+        protected void doSend(MessageChannel channel, Message<?> message) {
+            this.messageChannel = channel;
+            this.message = message;
+        }
 
-		private Message<?> receiveMessage;
+        @Override
+        protected Message<?> doReceive(MessageChannel channel) {
+            this.messageChannel = channel;
+            return this.receiveMessage;
+        }
 
-
-		private void setReceiveMessage(Message<?> receiveMessage) {
-			this.receiveMessage = receiveMessage;
-		}
-
-		@Override
-		protected void doSend(MessageChannel channel, Message<?> message) {
-			this.messageChannel = channel;
-			this.message = message;
-		}
-
-		@Override
-		protected Message<?> doReceive(MessageChannel channel) {
-			this.messageChannel = channel;
-			return this.receiveMessage;
-		}
-
-		@Override
-		protected Message<?> doSendAndReceive(MessageChannel channel, Message<?> requestMessage) {
-			this.message = requestMessage;
-			this.messageChannel = channel;
-			return this.receiveMessage;
-		}
-	}
-
+        @Override
+        protected Message<?> doSendAndReceive(MessageChannel channel, Message<?> requestMessage) {
+            this.message = requestMessage;
+            this.messageChannel = channel;
+            return this.receiveMessage;
+        }
+    }
 }
 
 class TestMessageChannelDestinationResolver implements DestinationResolver<MessageChannel> {
 
-	private final Map<String, MessageChannel> channels = new HashMap<>();
+    private final Map<String, MessageChannel> channels = new HashMap<>();
 
+    public void registerMessageChannel(String name, MessageChannel channel) {
+        this.channels.put(name, channel);
+    }
 
-	public void registerMessageChannel(String name, MessageChannel channel) {
-		this.channels.put(name, channel);
-	}
-
-	@Override
-	public MessageChannel resolveDestination(String name) throws DestinationResolutionException {
-		return this.channels.get(name);
-	}
+    @Override
+    public MessageChannel resolveDestination(String name) throws DestinationResolutionException {
+        return this.channels.get(name);
+    }
 }

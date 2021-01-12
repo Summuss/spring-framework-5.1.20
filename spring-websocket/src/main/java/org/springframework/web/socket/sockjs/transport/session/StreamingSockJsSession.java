@@ -35,58 +35,62 @@ import org.springframework.web.socket.sockjs.transport.SockJsServiceConfig;
  */
 public abstract class StreamingSockJsSession extends AbstractHttpSockJsSession {
 
-	private int byteCount;
+    private int byteCount;
 
+    public StreamingSockJsSession(
+            String sessionId,
+            SockJsServiceConfig config,
+            WebSocketHandler wsHandler,
+            Map<String, Object> attributes) {
 
-	public StreamingSockJsSession(String sessionId, SockJsServiceConfig config,
-			WebSocketHandler wsHandler, Map<String, Object> attributes) {
+        super(sessionId, config, wsHandler, attributes);
+    }
 
-		super(sessionId, config, wsHandler, attributes);
-	}
+    /**
+     * Get the prelude to write to the response before any other data.
+     *
+     * @since 4.2
+     */
+    protected abstract byte[] getPrelude(ServerHttpRequest request);
 
+    @Override
+    protected void handleRequestInternal(
+            ServerHttpRequest request, ServerHttpResponse response, boolean initialRequest)
+            throws IOException {
 
-	/**
-	 * Get the prelude to write to the response before any other data.
-	 * @since 4.2
-	 */
-	protected abstract byte[] getPrelude(ServerHttpRequest request);
+        byte[] prelude = getPrelude(request);
+        response.getBody().write(prelude);
+        response.flush();
 
+        if (initialRequest) {
+            writeFrame(SockJsFrame.openFrame());
+        }
+        flushCache();
+    }
 
-	@Override
-	protected void handleRequestInternal(ServerHttpRequest request, ServerHttpResponse response,
-			boolean initialRequest) throws IOException {
+    @Override
+    protected void flushCache() throws SockJsTransportFailureException {
+        while (!getMessageCache().isEmpty()) {
+            String message = getMessageCache().poll();
+            SockJsMessageCodec messageCodec = getSockJsServiceConfig().getMessageCodec();
+            SockJsFrame frame = SockJsFrame.messageFrame(messageCodec, message);
+            writeFrame(frame);
 
-		byte[] prelude = getPrelude(request);
-		response.getBody().write(prelude);
-		response.flush();
-
-		if (initialRequest) {
-			writeFrame(SockJsFrame.openFrame());
-		}
-		flushCache();
-	}
-
-	@Override
-	protected void flushCache() throws SockJsTransportFailureException {
-		while (!getMessageCache().isEmpty()) {
-			String message = getMessageCache().poll();
-			SockJsMessageCodec messageCodec = getSockJsServiceConfig().getMessageCodec();
-			SockJsFrame frame = SockJsFrame.messageFrame(messageCodec, message);
-			writeFrame(frame);
-
-			this.byteCount += (frame.getContentBytes().length + 1);
-			if (logger.isTraceEnabled()) {
-				logger.trace(this.byteCount + " bytes written so far, " +
-						getMessageCache().size() + " more messages not flushed");
-			}
-			if (this.byteCount >= getSockJsServiceConfig().getStreamBytesLimit()) {
-				logger.trace("Streamed bytes limit reached, recycling current request");
-				resetRequest();
-				this.byteCount = 0;
-				break;
-			}
-		}
-		scheduleHeartbeat();
-	}
-
+            this.byteCount += (frame.getContentBytes().length + 1);
+            if (logger.isTraceEnabled()) {
+                logger.trace(
+                        this.byteCount
+                                + " bytes written so far, "
+                                + getMessageCache().size()
+                                + " more messages not flushed");
+            }
+            if (this.byteCount >= getSockJsServiceConfig().getStreamBytesLimit()) {
+                logger.trace("Streamed bytes limit reached, recycling current request");
+                resetRequest();
+                this.byteCount = 0;
+                break;
+            }
+        }
+        scheduleHeartbeat();
+    }
 }

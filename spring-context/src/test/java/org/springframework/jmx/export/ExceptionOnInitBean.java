@@ -16,31 +16,28 @@
 
 package org.springframework.jmx.export;
 
-/**
- * @author Rob Harrop
- */
+/** @author Rob Harrop */
 public class ExceptionOnInitBean {
 
-	private boolean exceptOnInit = false;
+    private boolean exceptOnInit = false;
 
-	private String name;
+    private String name;
 
-	public String getName() {
-		return name;
-	}
+    public String getName() {
+        return name;
+    }
 
-	public void setName(String name) {
-		this.name = name;
-	}
+    public void setName(String name) {
+        this.name = name;
+    }
 
-	public void setExceptOnInit(boolean exceptOnInit) {
-		this.exceptOnInit = exceptOnInit;
-	}
+    public void setExceptOnInit(boolean exceptOnInit) {
+        this.exceptOnInit = exceptOnInit;
+    }
 
-	public ExceptionOnInitBean() {
-		if (exceptOnInit) {
-			throw new RuntimeException("I am being init'd!");
-		}
-	}
-
+    public ExceptionOnInitBean() {
+        if (exceptOnInit) {
+            throw new RuntimeException("I am being init'd!");
+        }
+    }
 }

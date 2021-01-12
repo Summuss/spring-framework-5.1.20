@@ -30,32 +30,30 @@ import static org.junit.Assert.*;
 
 /**
  * Integration tests that verify support for {@link ApplicationContextInitializer
- * ApplicationContextInitializers} in conjunction with annotation-driven
- * configuration in the TestContext framework.
+ * ApplicationContextInitializers} in conjunction with annotation-driven configuration in the
+ * TestContext framework.
  *
  * @author Sam Brannen
  * @since 3.2
  */
 @RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration(classes = { GlobalConfig.class, DevProfileConfig.class }, initializers = FooBarAliasInitializer.class)
+@ContextConfiguration(
+        classes = {GlobalConfig.class, DevProfileConfig.class},
+        initializers = FooBarAliasInitializer.class)
 public class SingleInitializerAnnotationConfigTests {
 
-	@Autowired
-	protected String foo;
+    @Autowired protected String foo;
 
-	@Autowired(required = false)
-	@Qualifier("bar")
-	protected String bar;
+    @Autowired(required = false)
+    @Qualifier("bar")
+    protected String bar;
 
-	@Autowired
-	protected String baz;
+    @Autowired protected String baz;
 
-
-	@Test
-	public void activeBeans() {
-		assertEquals("foo", foo);
-		assertEquals("foo", bar);
-		assertEquals("global config", baz);
-	}
-
+    @Test
+    public void activeBeans() {
+        assertEquals("foo", foo);
+        assertEquals("foo", bar);
+        assertEquals("global config", baz);
+    }
 }

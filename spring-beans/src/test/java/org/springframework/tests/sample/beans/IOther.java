@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2002-2018 the original author or authors.
  *
@@ -19,6 +18,5 @@ package org.springframework.tests.sample.beans;
 
 public interface IOther {
 
-	void absquatulate();
-
+    void absquatulate();
 }

@@ -39,204 +39,200 @@ import static org.junit.Assert.*;
 @SuppressWarnings("serial")
 public class JdkDynamicProxyTests extends AbstractAopProxyTests implements Serializable {
 
-	@Override
-	protected Object createProxy(ProxyCreatorSupport as) {
-		assertFalse("Not forcible CGLIB", as.isProxyTargetClass());
-		Object proxy = as.createAopProxy().getProxy();
-		assertTrue("Should be a JDK proxy: " + proxy.getClass(), AopUtils.isJdkDynamicProxy(proxy));
-		return proxy;
-	}
+    @Override
+    protected Object createProxy(ProxyCreatorSupport as) {
+        assertFalse("Not forcible CGLIB", as.isProxyTargetClass());
+        Object proxy = as.createAopProxy().getProxy();
+        assertTrue("Should be a JDK proxy: " + proxy.getClass(), AopUtils.isJdkDynamicProxy(proxy));
+        return proxy;
+    }
 
-	@Override
-	protected AopProxy createAopProxy(AdvisedSupport as) {
-		return new JdkDynamicAopProxy(as);
-	}
+    @Override
+    protected AopProxy createAopProxy(AdvisedSupport as) {
+        return new JdkDynamicAopProxy(as);
+    }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void testNullConfig() {
+        new JdkDynamicAopProxy(null);
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testNullConfig() {
-		new JdkDynamicAopProxy(null);
-	}
+    @Test
+    public void testProxyIsJustInterface() {
+        TestBean raw = new TestBean();
+        raw.setAge(32);
+        AdvisedSupport pc = new AdvisedSupport(ITestBean.class);
+        pc.setTarget(raw);
+        JdkDynamicAopProxy aop = new JdkDynamicAopProxy(pc);
 
-	@Test
-	public void testProxyIsJustInterface() {
-		TestBean raw = new TestBean();
-		raw.setAge(32);
-		AdvisedSupport pc = new AdvisedSupport(ITestBean.class);
-		pc.setTarget(raw);
-		JdkDynamicAopProxy aop = new JdkDynamicAopProxy(pc);
+        Object proxy = aop.getProxy();
+        assertTrue(proxy instanceof ITestBean);
+        assertFalse(proxy instanceof TestBean);
+    }
 
-		Object proxy = aop.getProxy();
-		assertTrue(proxy instanceof ITestBean);
-		assertFalse(proxy instanceof TestBean);
-	}
+    @Test
+    public void testInterceptorIsInvokedWithNoTarget() {
+        // Test return value
+        final int age = 25;
+        MethodInterceptor mi = (invocation -> age);
 
-	@Test
-	public void testInterceptorIsInvokedWithNoTarget() {
-		// Test return value
-		final int age = 25;
-		MethodInterceptor mi = (invocation -> age);
+        AdvisedSupport pc = new AdvisedSupport(ITestBean.class);
+        pc.addAdvice(mi);
+        AopProxy aop = createAopProxy(pc);
 
-		AdvisedSupport pc = new AdvisedSupport(ITestBean.class);
-		pc.addAdvice(mi);
-		AopProxy aop = createAopProxy(pc);
+        ITestBean tb = (ITestBean) aop.getProxy();
+        assertEquals("correct return value", age, tb.getAge());
+    }
 
-		ITestBean tb = (ITestBean) aop.getProxy();
-		assertEquals("correct return value", age, tb.getAge());
-	}
+    @Test
+    public void testTargetCanGetInvocationWithPrivateClass() {
+        final ExposedInvocationTestBean expectedTarget =
+                new ExposedInvocationTestBean() {
+                    @Override
+                    protected void assertions(MethodInvocation invocation) {
+                        assertEquals(this, invocation.getThis());
+                        assertEquals(
+                                "Invocation should be on ITestBean: " + invocation.getMethod(),
+                                ITestBean.class,
+                                invocation.getMethod().getDeclaringClass());
+                    }
+                };
 
-	@Test
-	public void testTargetCanGetInvocationWithPrivateClass() {
-		final ExposedInvocationTestBean expectedTarget = new ExposedInvocationTestBean() {
-			@Override
-			protected void assertions(MethodInvocation invocation) {
-				assertEquals(this, invocation.getThis());
-				assertEquals("Invocation should be on ITestBean: " + invocation.getMethod(),
-						ITestBean.class, invocation.getMethod().getDeclaringClass());
-			}
-		};
+        AdvisedSupport pc = new AdvisedSupport(ITestBean.class, IOther.class);
+        pc.addAdvice(ExposeInvocationInterceptor.INSTANCE);
+        TrapTargetInterceptor tii =
+                new TrapTargetInterceptor() {
+                    @Override
+                    public Object invoke(MethodInvocation invocation) throws Throwable {
+                        // Assert that target matches BEFORE invocation returns
+                        assertEquals("Target is correct", expectedTarget, invocation.getThis());
+                        return super.invoke(invocation);
+                    }
+                };
+        pc.addAdvice(tii);
+        pc.setTarget(expectedTarget);
+        AopProxy aop = createAopProxy(pc);
 
-		AdvisedSupport pc = new AdvisedSupport(ITestBean.class, IOther.class);
-		pc.addAdvice(ExposeInvocationInterceptor.INSTANCE);
-		TrapTargetInterceptor tii = new TrapTargetInterceptor() {
-			@Override
-			public Object invoke(MethodInvocation invocation) throws Throwable {
-				// Assert that target matches BEFORE invocation returns
-				assertEquals("Target is correct", expectedTarget, invocation.getThis());
-				return super.invoke(invocation);
-			}
-		};
-		pc.addAdvice(tii);
-		pc.setTarget(expectedTarget);
-		AopProxy aop = createAopProxy(pc);
+        ITestBean tb = (ITestBean) aop.getProxy();
+        tb.getName();
+    }
 
-		ITestBean tb = (ITestBean) aop.getProxy();
-		tb.getName();
-	}
+    @Test
+    public void testProxyNotWrappedIfIncompatible() {
+        FooBar bean = new FooBar();
+        ProxyCreatorSupport as = new ProxyCreatorSupport();
+        as.setInterfaces(Foo.class);
+        as.setTarget(bean);
 
-	@Test
-	public void testProxyNotWrappedIfIncompatible() {
-		FooBar bean = new FooBar();
-		ProxyCreatorSupport as = new ProxyCreatorSupport();
-		as.setInterfaces(Foo.class);
-		as.setTarget(bean);
+        Foo proxy = (Foo) createProxy(as);
+        assertSame(
+                "Target should be returned when return types are incompatible",
+                bean,
+                proxy.getBarThis());
+        assertSame(
+                "Proxy should be returned when return types are compatible",
+                proxy,
+                proxy.getFooThis());
+    }
 
-		Foo proxy = (Foo) createProxy(as);
-		assertSame("Target should be returned when return types are incompatible", bean, proxy.getBarThis());
-		assertSame("Proxy should be returned when return types are compatible", proxy, proxy.getFooThis());
-	}
+    @Test
+    public void testEqualsAndHashCodeDefined() {
+        AdvisedSupport as = new AdvisedSupport(Named.class);
+        as.setTarget(new Person());
+        JdkDynamicAopProxy aopProxy = new JdkDynamicAopProxy(as);
+        Named proxy = (Named) aopProxy.getProxy();
+        Named named = new Person();
+        assertEquals("equals()", proxy, named);
+        assertEquals("hashCode()", proxy.hashCode(), named.hashCode());
+    }
 
-	@Test
-	public void testEqualsAndHashCodeDefined() {
-		AdvisedSupport as = new AdvisedSupport(Named.class);
-		as.setTarget(new Person());
-		JdkDynamicAopProxy aopProxy = new JdkDynamicAopProxy(as);
-		Named proxy = (Named) aopProxy.getProxy();
-		Named named = new Person();
-		assertEquals("equals()", proxy, named);
-		assertEquals("hashCode()", proxy.hashCode(), named.hashCode());
-	}
+    @Test // SPR-13328
+    public void testVarargsWithEnumArray() {
+        ProxyFactory proxyFactory = new ProxyFactory(new VarargTestBean());
+        VarargTestInterface proxy = (VarargTestInterface) proxyFactory.getProxy();
+        assertTrue(proxy.doWithVarargs(MyEnum.A, MyOtherEnum.C));
+    }
 
-	@Test  // SPR-13328
-	public void testVarargsWithEnumArray() {
-		ProxyFactory proxyFactory = new ProxyFactory(new VarargTestBean());
-		VarargTestInterface proxy = (VarargTestInterface) proxyFactory.getProxy();
-		assertTrue(proxy.doWithVarargs(MyEnum.A, MyOtherEnum.C));
-	}
+    public interface Foo {
 
+        Bar getBarThis();
 
-	public interface Foo {
+        Foo getFooThis();
+    }
 
-		Bar getBarThis();
+    public interface Bar {}
 
-		Foo getFooThis();
-	}
+    public static class FooBar implements Foo, Bar {
 
+        @Override
+        public Bar getBarThis() {
+            return this;
+        }
 
-	public interface Bar {
-	}
+        @Override
+        public Foo getFooThis() {
+            return this;
+        }
+    }
 
+    public interface Named {
 
-	public static class FooBar implements Foo, Bar {
+        String getName();
 
-		@Override
-		public Bar getBarThis() {
-			return this;
-		}
+        @Override
+        boolean equals(Object other);
 
-		@Override
-		public Foo getFooThis() {
-			return this;
-		}
-	}
+        @Override
+        int hashCode();
+    }
 
+    public static class Person implements Named {
 
-	public interface Named {
+        private final String name = "Rob Harrop";
 
-		String getName();
+        @Override
+        public String getName() {
+            return this.name;
+        }
 
-		@Override
-		boolean equals(Object other);
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Person person = (Person) o;
+            if (!name.equals(person.name)) return false;
+            return true;
+        }
 
-		@Override
-		int hashCode();
-	}
+        @Override
+        public int hashCode() {
+            return name.hashCode();
+        }
+    }
 
+    public interface VarargTestInterface {
 
-	public static class Person implements Named {
+        <V extends MyInterface> boolean doWithVarargs(V... args);
+    }
 
-		private final String name = "Rob Harrop";
+    public static class VarargTestBean implements VarargTestInterface {
 
-		@Override
-		public String getName() {
-			return this.name;
-		}
+        @SuppressWarnings("unchecked")
+        @Override
+        public <V extends MyInterface> boolean doWithVarargs(V... args) {
+            return true;
+        }
+    }
 
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
-			Person person = (Person) o;
-			if (!name.equals(person.name)) return false;
-			return true;
-		}
+    public interface MyInterface {}
 
-		@Override
-		public int hashCode() {
-			return name.hashCode();
-		}
-	}
+    public enum MyEnum implements MyInterface {
+        A,
+        B;
+    }
 
-
-	public interface VarargTestInterface {
-
-		<V extends MyInterface> boolean doWithVarargs(V... args);
-	}
-
-
-	public static class VarargTestBean implements VarargTestInterface {
-
-		@SuppressWarnings("unchecked")
-		@Override
-		public <V extends MyInterface> boolean doWithVarargs(V... args) {
-			return true;
-		}
-	}
-
-
-	public interface MyInterface {
-	}
-
-
-	public enum MyEnum implements MyInterface {
-
-		A, B;
-	}
-
-
-	public enum MyOtherEnum implements MyInterface {
-
-		C, D;
-	}
-
+    public enum MyOtherEnum implements MyInterface {
+        C,
+        D;
+    }
 }

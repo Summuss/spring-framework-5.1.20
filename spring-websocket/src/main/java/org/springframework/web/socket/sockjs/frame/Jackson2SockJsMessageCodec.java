@@ -32,9 +32,10 @@ import org.springframework.util.Assert;
  * A Jackson 2.6+ codec for encoding and decoding SockJS messages.
  *
  * <p>It customizes Jackson's default properties with the following ones:
+ *
  * <ul>
- * <li>{@link MapperFeature#DEFAULT_VIEW_INCLUSION} is disabled</li>
- * <li>{@link DeserializationFeature#FAIL_ON_UNKNOWN_PROPERTIES} is disabled</li>
+ *   <li>{@link MapperFeature#DEFAULT_VIEW_INCLUSION} is disabled
+ *   <li>{@link DeserializationFeature#FAIL_ON_UNKNOWN_PROPERTIES} is disabled
  * </ul>
  *
  * <p>Note that Jackson's JSR-310 and Joda-Time support modules will be registered automatically
@@ -45,35 +46,32 @@ import org.springframework.util.Assert;
  */
 public class Jackson2SockJsMessageCodec extends AbstractSockJsMessageCodec {
 
-	private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
 
+    public Jackson2SockJsMessageCodec() {
+        this.objectMapper = Jackson2ObjectMapperBuilder.json().build();
+    }
 
-	public Jackson2SockJsMessageCodec() {
-		this.objectMapper = Jackson2ObjectMapperBuilder.json().build();
-	}
+    public Jackson2SockJsMessageCodec(ObjectMapper objectMapper) {
+        Assert.notNull(objectMapper, "ObjectMapper must not be null");
+        this.objectMapper = objectMapper;
+    }
 
-	public Jackson2SockJsMessageCodec(ObjectMapper objectMapper) {
-		Assert.notNull(objectMapper, "ObjectMapper must not be null");
-		this.objectMapper = objectMapper;
-	}
+    @Override
+    @Nullable
+    public String[] decode(String content) throws IOException {
+        return this.objectMapper.readValue(content, String[].class);
+    }
 
+    @Override
+    @Nullable
+    public String[] decodeInputStream(InputStream content) throws IOException {
+        return this.objectMapper.readValue(content, String[].class);
+    }
 
-	@Override
-	@Nullable
-	public String[] decode(String content) throws IOException {
-		return this.objectMapper.readValue(content, String[].class);
-	}
-
-	@Override
-	@Nullable
-	public String[] decodeInputStream(InputStream content) throws IOException {
-		return this.objectMapper.readValue(content, String[].class);
-	}
-
-	@Override
-	@SuppressWarnings("deprecation")
-	protected char[] applyJsonQuoting(String content) {
-		return JsonStringEncoder.getInstance().quoteAsString(content);
-	}
-
+    @Override
+    @SuppressWarnings("deprecation")
+    protected char[] applyJsonQuoting(String content) {
+        return JsonStringEncoder.getInstance().quoteAsString(content);
+    }
 }

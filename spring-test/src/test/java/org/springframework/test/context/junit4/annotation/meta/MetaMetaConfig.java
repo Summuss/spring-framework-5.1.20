@@ -36,6 +36,4 @@ import org.springframework.test.context.ActiveProfiles;
 // Override default "dev" profile from
 // @ConfigClassesAndProfilesWithCustomDefaultsMetaConfig:
 @ActiveProfiles("prod")
-public @interface MetaMetaConfig {
-
-}
+public @interface MetaMetaConfig {}

@@ -41,106 +41,111 @@ import static org.junit.Assert.*;
  */
 public class HeadersMethodArgumentResolverTests {
 
-	private HeadersMethodArgumentResolver resolver;
+    private HeadersMethodArgumentResolver resolver;
 
-	private MethodParameter paramAnnotated;
-	private MethodParameter paramAnnotatedNotMap;
-	private MethodParameter paramMessageHeaders;
-	private MethodParameter paramMessageHeaderAccessor;
-	private MethodParameter paramMessageHeaderAccessorSubclass;
+    private MethodParameter paramAnnotated;
+    private MethodParameter paramAnnotatedNotMap;
+    private MethodParameter paramMessageHeaders;
+    private MethodParameter paramMessageHeaderAccessor;
+    private MethodParameter paramMessageHeaderAccessorSubclass;
 
-	private Message<byte[]> message;
+    private Message<byte[]> message;
 
+    @Before
+    public void setup() throws Exception {
+        this.resolver = new HeadersMethodArgumentResolver();
 
-	@Before
-	public void setup() throws Exception {
-		this.resolver = new HeadersMethodArgumentResolver();
+        Method method =
+                getClass()
+                        .getDeclaredMethod(
+                                "handleMessage",
+                                Map.class,
+                                String.class,
+                                MessageHeaders.class,
+                                MessageHeaderAccessor.class,
+                                TestMessageHeaderAccessor.class);
 
-		Method method = getClass().getDeclaredMethod("handleMessage", Map.class, String.class,
-				MessageHeaders.class, MessageHeaderAccessor.class, TestMessageHeaderAccessor.class);
+        this.paramAnnotated = new MethodParameter(method, 0);
+        this.paramAnnotatedNotMap = new MethodParameter(method, 1);
+        this.paramMessageHeaders = new MethodParameter(method, 2);
+        this.paramMessageHeaderAccessor = new MethodParameter(method, 3);
+        this.paramMessageHeaderAccessorSubclass = new MethodParameter(method, 4);
 
-		this.paramAnnotated = new MethodParameter(method, 0);
-		this.paramAnnotatedNotMap = new MethodParameter(method, 1);
-		this.paramMessageHeaders = new MethodParameter(method, 2);
-		this.paramMessageHeaderAccessor = new MethodParameter(method, 3);
-		this.paramMessageHeaderAccessorSubclass = new MethodParameter(method, 4);
+        Map<String, Object> headers = new HashMap<>();
+        headers.put("foo", "bar");
+        this.message = MessageBuilder.withPayload(new byte[0]).copyHeaders(headers).build();
+    }
 
-		Map<String, Object> headers = new HashMap<>();
-		headers.put("foo", "bar");
-		this.message = MessageBuilder.withPayload(new byte[0]).copyHeaders(headers).build();
-	}
+    @Test
+    public void supportsParameter() {
+        assertTrue(this.resolver.supportsParameter(this.paramAnnotated));
+        assertFalse(this.resolver.supportsParameter(this.paramAnnotatedNotMap));
+        assertTrue(this.resolver.supportsParameter(this.paramMessageHeaders));
+        assertTrue(this.resolver.supportsParameter(this.paramMessageHeaderAccessor));
+        assertTrue(this.resolver.supportsParameter(this.paramMessageHeaderAccessorSubclass));
+    }
 
-	@Test
-	public void supportsParameter() {
-		assertTrue(this.resolver.supportsParameter(this.paramAnnotated));
-		assertFalse(this.resolver.supportsParameter(this.paramAnnotatedNotMap));
-		assertTrue(this.resolver.supportsParameter(this.paramMessageHeaders));
-		assertTrue(this.resolver.supportsParameter(this.paramMessageHeaderAccessor));
-		assertTrue(this.resolver.supportsParameter(this.paramMessageHeaderAccessorSubclass));
-	}
+    @Test
+    public void resolveArgumentAnnotated() throws Exception {
+        Object resolved = this.resolver.resolveArgument(this.paramAnnotated, this.message);
 
-	@Test
-	public void resolveArgumentAnnotated() throws Exception {
-		Object resolved = this.resolver.resolveArgument(this.paramAnnotated, this.message);
+        assertTrue(resolved instanceof Map);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> headers = (Map<String, Object>) resolved;
+        assertEquals("bar", headers.get("foo"));
+    }
 
-		assertTrue(resolved instanceof Map);
-		@SuppressWarnings("unchecked")
-		Map<String, Object> headers = (Map<String, Object>) resolved;
-		assertEquals("bar", headers.get("foo"));
-	}
+    @Test(expected = IllegalStateException.class)
+    public void resolveArgumentAnnotatedNotMap() throws Exception {
+        this.resolver.resolveArgument(this.paramAnnotatedNotMap, this.message);
+    }
 
-	@Test(expected = IllegalStateException.class)
-	public void resolveArgumentAnnotatedNotMap() throws Exception {
-		this.resolver.resolveArgument(this.paramAnnotatedNotMap, this.message);
-	}
+    @Test
+    public void resolveArgumentMessageHeaders() throws Exception {
+        Object resolved = this.resolver.resolveArgument(this.paramMessageHeaders, this.message);
 
-	@Test
-	public void resolveArgumentMessageHeaders() throws Exception {
-		Object resolved = this.resolver.resolveArgument(this.paramMessageHeaders, this.message);
+        assertTrue(resolved instanceof MessageHeaders);
+        MessageHeaders headers = (MessageHeaders) resolved;
+        assertEquals("bar", headers.get("foo"));
+    }
 
-		assertTrue(resolved instanceof MessageHeaders);
-		MessageHeaders headers = (MessageHeaders) resolved;
-		assertEquals("bar", headers.get("foo"));
-	}
+    @Test
+    public void resolveArgumentMessageHeaderAccessor() throws Exception {
+        Object resolved =
+                this.resolver.resolveArgument(this.paramMessageHeaderAccessor, this.message);
 
-	@Test
-	public void resolveArgumentMessageHeaderAccessor() throws Exception {
-		Object resolved = this.resolver.resolveArgument(this.paramMessageHeaderAccessor, this.message);
+        assertTrue(resolved instanceof MessageHeaderAccessor);
+        MessageHeaderAccessor headers = (MessageHeaderAccessor) resolved;
+        assertEquals("bar", headers.getHeader("foo"));
+    }
 
-		assertTrue(resolved instanceof MessageHeaderAccessor);
-		MessageHeaderAccessor headers = (MessageHeaderAccessor) resolved;
-		assertEquals("bar", headers.getHeader("foo"));
-	}
+    @Test
+    public void resolveArgumentMessageHeaderAccessorSubclass() throws Exception {
+        Object resolved =
+                this.resolver.resolveArgument(
+                        this.paramMessageHeaderAccessorSubclass, this.message);
 
-	@Test
-	public void resolveArgumentMessageHeaderAccessorSubclass() throws Exception {
-		Object resolved = this.resolver.resolveArgument(this.paramMessageHeaderAccessorSubclass, this.message);
+        assertTrue(resolved instanceof TestMessageHeaderAccessor);
+        TestMessageHeaderAccessor headers = (TestMessageHeaderAccessor) resolved;
+        assertEquals("bar", headers.getHeader("foo"));
+    }
 
-		assertTrue(resolved instanceof TestMessageHeaderAccessor);
-		TestMessageHeaderAccessor headers = (TestMessageHeaderAccessor) resolved;
-		assertEquals("bar", headers.getHeader("foo"));
-	}
+    @SuppressWarnings("unused")
+    private void handleMessage(
+            @Headers Map<String, ?> param1,
+            @Headers String param2,
+            MessageHeaders param3,
+            MessageHeaderAccessor param4,
+            TestMessageHeaderAccessor param5) {}
 
+    public static class TestMessageHeaderAccessor extends NativeMessageHeaderAccessor {
 
-	@SuppressWarnings("unused")
-	private void handleMessage(
-			@Headers Map<String, ?> param1,
-			@Headers String param2,
-			MessageHeaders param3,
-			MessageHeaderAccessor param4,
-			TestMessageHeaderAccessor param5) {
-	}
+        protected TestMessageHeaderAccessor(Message<?> message) {
+            super(message);
+        }
 
-
-	public static class TestMessageHeaderAccessor extends NativeMessageHeaderAccessor {
-
-		protected TestMessageHeaderAccessor(Message<?> message) {
-			super(message);
-		}
-
-		public static TestMessageHeaderAccessor wrap(Message<?> message) {
-			return new TestMessageHeaderAccessor(message);
-		}
-	}
-
+        public static TestMessageHeaderAccessor wrap(Message<?> message) {
+            return new TestMessageHeaderAccessor(message);
+        }
+    }
 }

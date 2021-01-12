@@ -31,47 +31,52 @@ import org.springframework.util.ReflectionUtils;
 
 import static org.junit.Assert.*;
 
-/**
- * @author Stephane Nicoll
- */
-public abstract class AbstractCacheOperationTests<O extends JCacheOperation<?>> extends AbstractJCacheTests {
+/** @author Stephane Nicoll */
+public abstract class AbstractCacheOperationTests<O extends JCacheOperation<?>>
+        extends AbstractJCacheTests {
 
-	protected final SampleObject sampleInstance = new SampleObject();
+    protected final SampleObject sampleInstance = new SampleObject();
 
-	protected abstract O createSimpleOperation();
+    protected abstract O createSimpleOperation();
 
+    @Test
+    public void simple() {
+        O operation = createSimpleOperation();
+        assertEquals("Wrong cache name", "simpleCache", operation.getCacheName());
+        assertEquals(
+                "Unexpected number of annotation on " + operation.getMethod(),
+                1,
+                operation.getAnnotations().size());
+        assertEquals(
+                "Wrong method annotation",
+                operation.getCacheAnnotation(),
+                operation.getAnnotations().iterator().next());
 
-	@Test
-	public void simple() {
-		O operation = createSimpleOperation();
-		assertEquals("Wrong cache name", "simpleCache", operation.getCacheName());
-		assertEquals("Unexpected number of annotation on " + operation.getMethod(),
-				1, operation.getAnnotations().size());
-		assertEquals("Wrong method annotation", operation.getCacheAnnotation(),
-				operation.getAnnotations().iterator().next());
+        assertNotNull("cache resolver should be set", operation.getCacheResolver());
+    }
 
-		assertNotNull("cache resolver should be set", operation.getCacheResolver());
-	}
+    protected void assertCacheInvocationParameter(
+            CacheInvocationParameter actual, Class<?> targetType, Object value, int position) {
+        assertEquals("wrong parameter type for " + actual, targetType, actual.getRawType());
+        assertEquals("wrong parameter value for " + actual, value, actual.getValue());
+        assertEquals(
+                "wrong parameter position for " + actual, position, actual.getParameterPosition());
+    }
 
-	protected void assertCacheInvocationParameter(CacheInvocationParameter actual, Class<?> targetType,
-			Object value, int position) {
-		assertEquals("wrong parameter type for " + actual, targetType, actual.getRawType());
-		assertEquals("wrong parameter value for " + actual, value, actual.getValue());
-		assertEquals("wrong parameter position for " + actual, position, actual.getParameterPosition());
-	}
+    protected <A extends Annotation> CacheMethodDetails<A> create(
+            Class<A> annotationType,
+            Class<?> targetType,
+            String methodName,
+            Class<?>... parameterTypes) {
+        Method method = ReflectionUtils.findMethod(targetType, methodName, parameterTypes);
+        Assert.notNull(method, "requested method '" + methodName + "'does not exist");
+        A cacheAnnotation = method.getAnnotation(annotationType);
+        return new DefaultCacheMethodDetails<>(
+                method, cacheAnnotation, getCacheName(cacheAnnotation));
+    }
 
-	protected <A extends Annotation> CacheMethodDetails<A> create(Class<A> annotationType,
-			Class<?> targetType, String methodName,
-			Class<?>... parameterTypes) {
-		Method method = ReflectionUtils.findMethod(targetType, methodName, parameterTypes);
-		Assert.notNull(method, "requested method '" + methodName + "'does not exist");
-		A cacheAnnotation = method.getAnnotation(annotationType);
-		return new DefaultCacheMethodDetails<>(method, cacheAnnotation, getCacheName(cacheAnnotation));
-	}
-
-	private static String getCacheName(Annotation annotation) {
-		Object cacheName = AnnotationUtils.getValue(annotation, "cacheName");
-		return cacheName != null ? cacheName.toString() : "test";
-	}
-
+    private static String getCacheName(Annotation annotation) {
+        Object cacheName = AnnotationUtils.getValue(annotation, "cacheName");
+        return cacheName != null ? cacheName.toString() : "test";
+    }
 }

@@ -32,18 +32,19 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import static org.junit.Assert.*;
 
 /**
- * This set of tests refutes the claims made in
- * <a href="https://jira.spring.io/browse/SPR-9051" target="_blank">SPR-9051</a>.
+ * This set of tests refutes the claims made in <a href="https://jira.spring.io/browse/SPR-9051"
+ * target="_blank">SPR-9051</a>.
  *
  * <p><b>The Claims</b>:
  *
  * <blockquote>
- * When a {@code @ContextConfiguration} test class references a config class
- * missing an {@code @Configuration} annotation, {@code @Bean} dependencies are
- * wired successfully but the bean lifecycle is not applied (no init methods are
- * invoked, for example). Adding the missing {@code @Configuration} annotation
- * solves the problem, however the problem and solution isn't obvious since
- * wiring/injection appeared to work.
+ *
+ * When a {@code @ContextConfiguration} test class references a config class missing an
+ * {@code @Configuration} annotation, {@code @Bean} dependencies are wired successfully but the bean
+ * lifecycle is not applied (no init methods are invoked, for example). Adding the missing
+ * {@code @Configuration} annotation solves the problem, however the problem and solution isn't
+ * obvious since wiring/injection appeared to work.
+ *
  * </blockquote>
  *
  * @author Sam Brannen
@@ -51,51 +52,47 @@ import static org.junit.Assert.*;
  * @since 3.2
  */
 @RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration(classes = AnnotatedConfigClassesWithoutAtConfigurationTests.AnnotatedFactoryBeans.class)
+@ContextConfiguration(
+        classes = AnnotatedConfigClassesWithoutAtConfigurationTests.AnnotatedFactoryBeans.class)
 public class AnnotatedConfigClassesWithoutAtConfigurationTests {
 
-	/**
-	 * This is intentionally <b>not</b> annotated with {@code @Configuration}.
-	 * Consequently, this class contains what we call <i>annotated factory bean
-	 * methods</i> instead of standard bean definition methods.
-	 */
-	static class AnnotatedFactoryBeans {
+    /**
+     * This is intentionally <b>not</b> annotated with {@code @Configuration}. Consequently, this
+     * class contains what we call <i>annotated factory bean methods</i> instead of standard bean
+     * definition methods.
+     */
+    static class AnnotatedFactoryBeans {
 
-		static final AtomicInteger enigmaCallCount = new AtomicInteger();
+        static final AtomicInteger enigmaCallCount = new AtomicInteger();
 
+        @Bean
+        public String enigma() {
+            return "enigma #" + enigmaCallCount.incrementAndGet();
+        }
 
-		@Bean
-		public String enigma() {
-			return "enigma #" + enigmaCallCount.incrementAndGet();
-		}
+        @Bean
+        public LifecycleBean lifecycleBean() {
+            // The following call to enigma() literally invokes the local
+            // enigma() method, not a CGLIB proxied version, since these methods
+            // are essentially factory bean methods.
+            LifecycleBean bean = new LifecycleBean(enigma());
+            assertFalse(bean.isInitialized());
+            return bean;
+        }
+    }
 
-		@Bean
-		public LifecycleBean lifecycleBean() {
-			// The following call to enigma() literally invokes the local
-			// enigma() method, not a CGLIB proxied version, since these methods
-			// are essentially factory bean methods.
-			LifecycleBean bean = new LifecycleBean(enigma());
-			assertFalse(bean.isInitialized());
-			return bean;
-		}
-	}
+    @Autowired private String enigma;
 
+    @Autowired private LifecycleBean lifecycleBean;
 
-	@Autowired
-	private String enigma;
-
-	@Autowired
-	private LifecycleBean lifecycleBean;
-
-
-	@Test
-	public void testSPR_9051() throws Exception {
-		assertNotNull(enigma);
-		assertNotNull(lifecycleBean);
-		assertTrue(lifecycleBean.isInitialized());
-		Set<String> names = new HashSet<>();
-		names.add(enigma.toString());
-		names.add(lifecycleBean.getName());
-		assertEquals(names, new HashSet<>(Arrays.asList("enigma #1", "enigma #2")));
-	}
+    @Test
+    public void testSPR_9051() throws Exception {
+        assertNotNull(enigma);
+        assertNotNull(lifecycleBean);
+        assertTrue(lifecycleBean.isInitialized());
+        Set<String> names = new HashSet<>();
+        names.add(enigma.toString());
+        names.add(lifecycleBean.getName());
+        assertEquals(names, new HashSet<>(Arrays.asList("enigma #1", "enigma #2")));
+    }
 }

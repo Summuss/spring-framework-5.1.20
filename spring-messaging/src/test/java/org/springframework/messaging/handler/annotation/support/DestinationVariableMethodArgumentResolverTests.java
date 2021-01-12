@@ -41,63 +41,71 @@ import static org.junit.Assert.*;
  */
 public class DestinationVariableMethodArgumentResolverTests {
 
-	private DestinationVariableMethodArgumentResolver resolver;
+    private DestinationVariableMethodArgumentResolver resolver;
 
-	private MethodParameter paramAnnotated;
-	private MethodParameter paramAnnotatedValue;
-	private MethodParameter paramNotAnnotated;
+    private MethodParameter paramAnnotated;
+    private MethodParameter paramAnnotatedValue;
+    private MethodParameter paramNotAnnotated;
 
+    @Before
+    public void setup() throws Exception {
+        this.resolver =
+                new DestinationVariableMethodArgumentResolver(new DefaultConversionService());
 
-	@Before
-	public void setup() throws Exception {
-		this.resolver = new DestinationVariableMethodArgumentResolver(new DefaultConversionService());
+        Method method =
+                getClass()
+                        .getDeclaredMethod(
+                                "handleMessage", String.class, String.class, String.class);
+        this.paramAnnotated = new MethodParameter(method, 0);
+        this.paramAnnotatedValue = new MethodParameter(method, 1);
+        this.paramNotAnnotated = new MethodParameter(method, 2);
 
-		Method method = getClass().getDeclaredMethod("handleMessage", String.class, String.class, String.class);
-		this.paramAnnotated = new MethodParameter(method, 0);
-		this.paramAnnotatedValue = new MethodParameter(method, 1);
-		this.paramNotAnnotated = new MethodParameter(method, 2);
+        this.paramAnnotated.initParameterNameDiscovery(new DefaultParameterNameDiscoverer());
+        GenericTypeResolver.resolveParameterType(
+                this.paramAnnotated, DestinationVariableMethodArgumentResolver.class);
+        this.paramAnnotatedValue.initParameterNameDiscovery(new DefaultParameterNameDiscoverer());
+        GenericTypeResolver.resolveParameterType(
+                this.paramAnnotatedValue, DestinationVariableMethodArgumentResolver.class);
+    }
 
-		this.paramAnnotated.initParameterNameDiscovery(new DefaultParameterNameDiscoverer());
-		GenericTypeResolver.resolveParameterType(this.paramAnnotated, DestinationVariableMethodArgumentResolver.class);
-		this.paramAnnotatedValue.initParameterNameDiscovery(new DefaultParameterNameDiscoverer());
-		GenericTypeResolver.resolveParameterType(this.paramAnnotatedValue, DestinationVariableMethodArgumentResolver.class);
-	}
+    @Test
+    public void supportsParameter() {
+        assertTrue(resolver.supportsParameter(paramAnnotated));
+        assertTrue(resolver.supportsParameter(paramAnnotatedValue));
+        assertFalse(resolver.supportsParameter(paramNotAnnotated));
+    }
 
-	@Test
-	public void supportsParameter() {
-		assertTrue(resolver.supportsParameter(paramAnnotated));
-		assertTrue(resolver.supportsParameter(paramAnnotatedValue));
-		assertFalse(resolver.supportsParameter(paramNotAnnotated));
-	}
+    @Test
+    public void resolveArgument() throws Exception {
 
-	@Test
-	public void resolveArgument() throws Exception {
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("foo", "bar");
+        vars.put("name", "value");
 
-		Map<String, Object> vars = new HashMap<>();
-		vars.put("foo", "bar");
-		vars.put("name", "value");
+        Message<byte[]> message =
+                MessageBuilder.withPayload(new byte[0])
+                        .setHeader(
+                                DestinationVariableMethodArgumentResolver
+                                        .DESTINATION_TEMPLATE_VARIABLES_HEADER,
+                                vars)
+                        .build();
 
-		Message<byte[]> message = MessageBuilder.withPayload(new byte[0]).setHeader(
-			DestinationVariableMethodArgumentResolver.DESTINATION_TEMPLATE_VARIABLES_HEADER, vars).build();
+        Object result = this.resolver.resolveArgument(this.paramAnnotated, message);
+        assertEquals("bar", result);
 
-		Object result = this.resolver.resolveArgument(this.paramAnnotated, message);
-		assertEquals("bar", result);
+        result = this.resolver.resolveArgument(this.paramAnnotatedValue, message);
+        assertEquals("value", result);
+    }
 
-		result = this.resolver.resolveArgument(this.paramAnnotatedValue, message);
-		assertEquals("value", result);
-	}
+    @Test(expected = MessageHandlingException.class)
+    public void resolveArgumentNotFound() throws Exception {
+        Message<byte[]> message = MessageBuilder.withPayload(new byte[0]).build();
+        this.resolver.resolveArgument(this.paramAnnotated, message);
+    }
 
-	@Test(expected = MessageHandlingException.class)
-	public void resolveArgumentNotFound() throws Exception {
-		Message<byte[]> message = MessageBuilder.withPayload(new byte[0]).build();
-		this.resolver.resolveArgument(this.paramAnnotated, message);
-	}
-
-	@SuppressWarnings("unused")
-	private void handleMessage(
-			@DestinationVariable String foo,
-			@DestinationVariable(value = "name") String param1,
-			String param3) {
-	}
-
+    @SuppressWarnings("unused")
+    private void handleMessage(
+            @DestinationVariable String foo,
+            @DestinationVariable(value = "name") String param1,
+            String param3) {}
 }

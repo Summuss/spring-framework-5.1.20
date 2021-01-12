@@ -16,11 +16,8 @@
 
 package org.springframework.scripting;
 
-/**
- * @author Rob Harrop
- */
+/** @author Rob Harrop */
 public interface Calculator {
 
-	int add(int x, int y);
-
+    int add(int x, int y);
 }

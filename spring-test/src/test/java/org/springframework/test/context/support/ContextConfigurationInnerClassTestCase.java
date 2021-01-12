@@ -27,8 +27,6 @@ import org.springframework.context.annotation.Configuration;
  */
 public class ContextConfigurationInnerClassTestCase {
 
-	@Configuration
-	static class ContextConfiguration {
-	}
-
+    @Configuration
+    static class ContextConfiguration {}
 }

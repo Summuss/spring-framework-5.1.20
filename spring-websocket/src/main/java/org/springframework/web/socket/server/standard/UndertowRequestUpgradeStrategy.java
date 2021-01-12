@@ -36,8 +36,8 @@ import org.springframework.lang.Nullable;
 import org.springframework.web.socket.server.HandshakeFailureException;
 
 /**
- * A WebSocket {@code RequestUpgradeStrategy} for WildFly and its underlying
- * Undertow web server. Also compatible with embedded Undertow usage.
+ * A WebSocket {@code RequestUpgradeStrategy} for WildFly and its underlying Undertow web server.
+ * Also compatible with embedded Undertow usage.
  *
  * <p>Requires Undertow 1.3.5+ as of Spring Framework 5.0.
  *
@@ -46,50 +46,52 @@ import org.springframework.web.socket.server.HandshakeFailureException;
  */
 public class UndertowRequestUpgradeStrategy extends AbstractStandardUpgradeStrategy {
 
-	private static final String[] VERSIONS = new String[] {
-			WebSocketVersion.V13.toHttpHeaderValue(),
-			WebSocketVersion.V08.toHttpHeaderValue(),
-			WebSocketVersion.V07.toHttpHeaderValue()
-	};
+    private static final String[] VERSIONS =
+            new String[] {
+                WebSocketVersion.V13.toHttpHeaderValue(),
+                WebSocketVersion.V08.toHttpHeaderValue(),
+                WebSocketVersion.V07.toHttpHeaderValue()
+            };
 
+    @Override
+    public String[] getSupportedVersions() {
+        return VERSIONS;
+    }
 
-	@Override
-	public String[] getSupportedVersions() {
-		return VERSIONS;
-	}
+    @Override
+    protected void upgradeInternal(
+            ServerHttpRequest request,
+            ServerHttpResponse response,
+            @Nullable String selectedProtocol,
+            List<Extension> selectedExtensions,
+            Endpoint endpoint)
+            throws HandshakeFailureException {
 
-	@Override
-	protected void upgradeInternal(ServerHttpRequest request, ServerHttpResponse response,
-			@Nullable String selectedProtocol, List<Extension> selectedExtensions, Endpoint endpoint)
-			throws HandshakeFailureException {
+        HttpServletRequest servletRequest = getHttpServletRequest(request);
+        HttpServletResponse servletResponse = getHttpServletResponse(response);
 
-		HttpServletRequest servletRequest = getHttpServletRequest(request);
-		HttpServletResponse servletResponse = getHttpServletResponse(response);
+        StringBuffer requestUrl = servletRequest.getRequestURL();
+        String path = servletRequest.getRequestURI(); // shouldn't matter
+        Map<String, String> pathParams = Collections.emptyMap();
 
-		StringBuffer requestUrl = servletRequest.getRequestURL();
-		String path = servletRequest.getRequestURI();  // shouldn't matter
-		Map<String, String> pathParams = Collections.emptyMap();
+        ServerEndpointRegistration endpointConfig = new ServerEndpointRegistration(path, endpoint);
+        endpointConfig.setSubprotocols(Collections.singletonList(selectedProtocol));
+        endpointConfig.setExtensions(selectedExtensions);
 
-		ServerEndpointRegistration endpointConfig = new ServerEndpointRegistration(path, endpoint);
-		endpointConfig.setSubprotocols(Collections.singletonList(selectedProtocol));
-		endpointConfig.setExtensions(selectedExtensions);
+        try {
+            getContainer(servletRequest)
+                    .doUpgrade(servletRequest, servletResponse, endpointConfig, pathParams);
+        } catch (ServletException ex) {
+            throw new HandshakeFailureException(
+                    "Servlet request failed to upgrade to WebSocket: " + requestUrl, ex);
+        } catch (IOException ex) {
+            throw new HandshakeFailureException(
+                    "Response update failed during upgrade to WebSocket: " + requestUrl, ex);
+        }
+    }
 
-		try {
-			getContainer(servletRequest).doUpgrade(servletRequest, servletResponse, endpointConfig, pathParams);
-		}
-		catch (ServletException ex) {
-			throw new HandshakeFailureException(
-					"Servlet request failed to upgrade to WebSocket: " + requestUrl, ex);
-		}
-		catch (IOException ex) {
-			throw new HandshakeFailureException(
-					"Response update failed during upgrade to WebSocket: " + requestUrl, ex);
-		}
-	}
-
-	@Override
-	public ServerWebSocketContainer getContainer(HttpServletRequest request) {
-		return (ServerWebSocketContainer) super.getContainer(request);
-	}
-
+    @Override
+    public ServerWebSocketContainer getContainer(HttpServletRequest request) {
+        return (ServerWebSocketContainer) super.getContainer(request);
+    }
 }

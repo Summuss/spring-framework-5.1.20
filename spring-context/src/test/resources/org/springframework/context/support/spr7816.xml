@@ -3,17 +3,17 @@
 
 <beans>
 
-	<bean id="conversionService" class="org.springframework.context.support.ConversionServiceFactoryBean" />
+    <bean id="conversionService" class="org.springframework.context.support.ConversionServiceFactoryBean"/>
 
-	<bean id="filterAdapter" class="org.springframework.context.support.Spr7816Tests$FilterAdapter">
-		<constructor-arg value="building:" />
-		<constructor-arg>
-			<map>
-				<entry key="Building" value="org.springframework.context.support.Spr7816Tests$Building" />
-				<entry key="Entrance" value="org.springframework.context.support.Spr7816Tests$Entrance" />
-				<entry key="Dwelling" value="org.springframework.context.support.Spr7816Tests$Dwelling" />
-			</map>
-		</constructor-arg>
-	</bean>
+    <bean id="filterAdapter" class="org.springframework.context.support.Spr7816Tests$FilterAdapter">
+        <constructor-arg value="building:"/>
+        <constructor-arg>
+            <map>
+                <entry key="Building" value="org.springframework.context.support.Spr7816Tests$Building"/>
+                <entry key="Entrance" value="org.springframework.context.support.Spr7816Tests$Entrance"/>
+                <entry key="Dwelling" value="org.springframework.context.support.Spr7816Tests$Dwelling"/>
+            </map>
+        </constructor-arg>
+    </bean>
 
 </beans>

@@ -36,40 +36,45 @@ import static org.springframework.mock.http.server.reactive.test.MockServerHttpR
 
 /**
  * Unit tests for {@link ModelArgumentResolver}.
+ *
  * @author Rossen Stoyanchev
  */
 public class ModelArgumentResolverTests {
 
-	private final ModelArgumentResolver resolver =
-			new ModelArgumentResolver(ReactiveAdapterRegistry.getSharedInstance());
+    private final ModelArgumentResolver resolver =
+            new ModelArgumentResolver(ReactiveAdapterRegistry.getSharedInstance());
 
-	private final ServerWebExchange exchange = MockServerWebExchange.from(get("/"));
+    private final ServerWebExchange exchange = MockServerWebExchange.from(get("/"));
 
-	private final ResolvableMethod testMethod = ResolvableMethod.on(getClass()).named("handle").build();
+    private final ResolvableMethod testMethod =
+            ResolvableMethod.on(getClass()).named("handle").build();
 
+    @Test
+    public void supportsParameter() throws Exception {
+        assertTrue(this.resolver.supportsParameter(this.testMethod.arg(Model.class)));
+        assertTrue(
+                this.resolver.supportsParameter(
+                        this.testMethod.arg(Map.class, String.class, Object.class)));
+        assertTrue(this.resolver.supportsParameter(this.testMethod.arg(ModelMap.class)));
+        assertFalse(this.resolver.supportsParameter(this.testMethod.arg(Object.class)));
+    }
 
-	@Test
-	public void supportsParameter() throws Exception {
-		assertTrue(this.resolver.supportsParameter(this.testMethod.arg(Model.class)));
-		assertTrue(this.resolver.supportsParameter(this.testMethod.arg(Map.class, String.class, Object.class)));
-		assertTrue(this.resolver.supportsParameter(this.testMethod.arg(ModelMap.class)));
-		assertFalse(this.resolver.supportsParameter(this.testMethod.arg(Object.class)));
-	}
+    @Test
+    public void resolveArgument() throws Exception {
+        testResolveArgument(this.testMethod.arg(Model.class));
+        testResolveArgument(this.testMethod.arg(Map.class, String.class, Object.class));
+        testResolveArgument(this.testMethod.arg(ModelMap.class));
+    }
 
-	@Test
-	public void resolveArgument() throws Exception {
-		testResolveArgument(this.testMethod.arg(Model.class));
-		testResolveArgument(this.testMethod.arg(Map.class, String.class, Object.class));
-		testResolveArgument(this.testMethod.arg(ModelMap.class));
-	}
+    private void testResolveArgument(MethodParameter parameter) {
+        BindingContext context = new BindingContext();
+        Object result =
+                this.resolver
+                        .resolveArgument(parameter, context, this.exchange)
+                        .block(Duration.ZERO);
+        assertSame(context.getModel(), result);
+    }
 
-	private void testResolveArgument(MethodParameter parameter) {
-		BindingContext context = new BindingContext();
-		Object result = this.resolver.resolveArgument(parameter, context, this.exchange).block(Duration.ZERO);
-		assertSame(context.getModel(), result);
-	}
-
-	@SuppressWarnings("unused")
-	void handle(Model model, Map<String, Object> map, ModelMap modelMap, Object object) {}
-
+    @SuppressWarnings("unused")
+    void handle(Model model, Map<String, Object> map, ModelMap modelMap, Object object) {}
 }

@@ -33,90 +33,88 @@ import static org.junit.Assert.*;
  */
 public class DefaultComparatorUnitTests {
 
-	@Test
-	public void testPrimitives() throws EvaluationException {
-		TypeComparator comparator = new StandardTypeComparator();
-		// primitive int
-		assertTrue(comparator.compare(1, 2) < 0);
-		assertTrue(comparator.compare(1, 1) == 0);
-		assertTrue(comparator.compare(2, 1) > 0);
+    @Test
+    public void testPrimitives() throws EvaluationException {
+        TypeComparator comparator = new StandardTypeComparator();
+        // primitive int
+        assertTrue(comparator.compare(1, 2) < 0);
+        assertTrue(comparator.compare(1, 1) == 0);
+        assertTrue(comparator.compare(2, 1) > 0);
 
-		assertTrue(comparator.compare(1.0d, 2) < 0);
-		assertTrue(comparator.compare(1.0d, 1) == 0);
-		assertTrue(comparator.compare(2.0d, 1) > 0);
+        assertTrue(comparator.compare(1.0d, 2) < 0);
+        assertTrue(comparator.compare(1.0d, 1) == 0);
+        assertTrue(comparator.compare(2.0d, 1) > 0);
 
-		assertTrue(comparator.compare(1.0f, 2) < 0);
-		assertTrue(comparator.compare(1.0f, 1) == 0);
-		assertTrue(comparator.compare(2.0f, 1) > 0);
+        assertTrue(comparator.compare(1.0f, 2) < 0);
+        assertTrue(comparator.compare(1.0f, 1) == 0);
+        assertTrue(comparator.compare(2.0f, 1) > 0);
 
-		assertTrue(comparator.compare(1L, 2) < 0);
-		assertTrue(comparator.compare(1L, 1) == 0);
-		assertTrue(comparator.compare(2L, 1) > 0);
+        assertTrue(comparator.compare(1L, 2) < 0);
+        assertTrue(comparator.compare(1L, 1) == 0);
+        assertTrue(comparator.compare(2L, 1) > 0);
 
-		assertTrue(comparator.compare(1, 2L) < 0);
-		assertTrue(comparator.compare(1, 1L) == 0);
-		assertTrue(comparator.compare(2, 1L) > 0);
+        assertTrue(comparator.compare(1, 2L) < 0);
+        assertTrue(comparator.compare(1, 1L) == 0);
+        assertTrue(comparator.compare(2, 1L) > 0);
 
-		assertTrue(comparator.compare(1L, 2L) < 0);
-		assertTrue(comparator.compare(1L, 1L) == 0);
-		assertTrue(comparator.compare(2L, 1L) > 0);
-	}
+        assertTrue(comparator.compare(1L, 2L) < 0);
+        assertTrue(comparator.compare(1L, 1L) == 0);
+        assertTrue(comparator.compare(2L, 1L) > 0);
+    }
 
-	@Test
-	public void testNonPrimitiveNumbers() throws EvaluationException {
-		TypeComparator comparator = new StandardTypeComparator();
+    @Test
+    public void testNonPrimitiveNumbers() throws EvaluationException {
+        TypeComparator comparator = new StandardTypeComparator();
 
-		BigDecimal bdOne = new BigDecimal("1");
-		BigDecimal bdTwo = new BigDecimal("2");
+        BigDecimal bdOne = new BigDecimal("1");
+        BigDecimal bdTwo = new BigDecimal("2");
 
-		assertTrue(comparator.compare(bdOne, bdTwo) < 0);
-		assertTrue(comparator.compare(bdOne, new BigDecimal("1")) == 0);
-		assertTrue(comparator.compare(bdTwo, bdOne) > 0);
+        assertTrue(comparator.compare(bdOne, bdTwo) < 0);
+        assertTrue(comparator.compare(bdOne, new BigDecimal("1")) == 0);
+        assertTrue(comparator.compare(bdTwo, bdOne) > 0);
 
-		assertTrue(comparator.compare(1, bdTwo) < 0);
-		assertTrue(comparator.compare(1, bdOne) == 0);
-		assertTrue(comparator.compare(2, bdOne) > 0);
+        assertTrue(comparator.compare(1, bdTwo) < 0);
+        assertTrue(comparator.compare(1, bdOne) == 0);
+        assertTrue(comparator.compare(2, bdOne) > 0);
 
-		assertTrue(comparator.compare(1.0d, bdTwo) < 0);
-		assertTrue(comparator.compare(1.0d, bdOne) == 0);
-		assertTrue(comparator.compare(2.0d, bdOne) > 0);
+        assertTrue(comparator.compare(1.0d, bdTwo) < 0);
+        assertTrue(comparator.compare(1.0d, bdOne) == 0);
+        assertTrue(comparator.compare(2.0d, bdOne) > 0);
 
-		assertTrue(comparator.compare(1.0f, bdTwo) < 0);
-		assertTrue(comparator.compare(1.0f, bdOne) == 0);
-		assertTrue(comparator.compare(2.0f, bdOne) > 0);
+        assertTrue(comparator.compare(1.0f, bdTwo) < 0);
+        assertTrue(comparator.compare(1.0f, bdOne) == 0);
+        assertTrue(comparator.compare(2.0f, bdOne) > 0);
 
-		assertTrue(comparator.compare(1L, bdTwo) < 0);
-		assertTrue(comparator.compare(1L, bdOne) == 0);
-		assertTrue(comparator.compare(2L, bdOne) > 0);
+        assertTrue(comparator.compare(1L, bdTwo) < 0);
+        assertTrue(comparator.compare(1L, bdOne) == 0);
+        assertTrue(comparator.compare(2L, bdOne) > 0);
+    }
 
-	}
+    @Test
+    public void testNulls() throws EvaluationException {
+        TypeComparator comparator = new StandardTypeComparator();
+        assertTrue(comparator.compare(null, "abc") < 0);
+        assertTrue(comparator.compare(null, null) == 0);
+        assertTrue(comparator.compare("abc", null) > 0);
+    }
 
-	@Test
-	public void testNulls() throws EvaluationException {
-		TypeComparator comparator = new StandardTypeComparator();
-		assertTrue(comparator.compare(null,"abc")<0);
-		assertTrue(comparator.compare(null,null)==0);
-		assertTrue(comparator.compare("abc",null)>0);
-	}
+    @Test
+    public void testObjects() throws EvaluationException {
+        TypeComparator comparator = new StandardTypeComparator();
+        assertTrue(comparator.compare("a", "a") == 0);
+        assertTrue(comparator.compare("a", "b") < 0);
+        assertTrue(comparator.compare("b", "a") > 0);
+    }
 
-	@Test
-	public void testObjects() throws EvaluationException {
-		TypeComparator comparator = new StandardTypeComparator();
-		assertTrue(comparator.compare("a","a")==0);
-		assertTrue(comparator.compare("a","b")<0);
-		assertTrue(comparator.compare("b","a")>0);
-	}
+    @Test
+    public void testCanCompare() throws EvaluationException {
+        TypeComparator comparator = new StandardTypeComparator();
+        assertTrue(comparator.canCompare(null, 1));
+        assertTrue(comparator.canCompare(1, null));
 
-	@Test
-	public void testCanCompare() throws EvaluationException {
-		TypeComparator comparator = new StandardTypeComparator();
-		assertTrue(comparator.canCompare(null,1));
-		assertTrue(comparator.canCompare(1,null));
-
-		assertTrue(comparator.canCompare(2,1));
-		assertTrue(comparator.canCompare("abc","def"));
-		assertTrue(comparator.canCompare("abc",3));
-		assertFalse(comparator.canCompare(String.class,3));
-	}
-
+        assertTrue(comparator.canCompare(2, 1));
+        assertTrue(comparator.canCompare("abc", "def"));
+        assertTrue(comparator.canCompare("abc", 3));
+        assertFalse(comparator.canCompare(String.class, 3));
+    }
 }

@@ -27,9 +27,7 @@ import org.springframework.context.annotation.Configuration;
  */
 public class FinalConfigInnerClassTestCase {
 
-	// Intentionally FINAL.
-	@Configuration
-	static final class Config {
-	}
-
+    // Intentionally FINAL.
+    @Configuration
+    static final class Config {}
 }

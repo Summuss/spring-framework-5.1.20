@@ -53,200 +53,219 @@ import static org.springframework.web.method.MvcAnnotationPredicates.requestPara
  */
 public class RequestParamMethodArgumentResolverTests {
 
-	private RequestParamMethodArgumentResolver resolver;
+    private RequestParamMethodArgumentResolver resolver;
 
-	private BindingContext bindContext;
+    private BindingContext bindContext;
 
-	private ResolvableMethod testMethod = ResolvableMethod.on(getClass()).named("handle").build();
+    private ResolvableMethod testMethod = ResolvableMethod.on(getClass()).named("handle").build();
 
+    @Before
+    public void setup() throws Exception {
 
-	@Before
-	public void setup() throws Exception {
+        ReactiveAdapterRegistry adapterRegistry = ReactiveAdapterRegistry.getSharedInstance();
+        this.resolver = new RequestParamMethodArgumentResolver(null, adapterRegistry, true);
 
-		ReactiveAdapterRegistry adapterRegistry = ReactiveAdapterRegistry.getSharedInstance();
-		this.resolver = new RequestParamMethodArgumentResolver(null, adapterRegistry, true);
+        ConfigurableWebBindingInitializer initializer = new ConfigurableWebBindingInitializer();
+        initializer.setConversionService(new DefaultFormattingConversionService());
+        this.bindContext = new BindingContext(initializer);
+    }
 
-		ConfigurableWebBindingInitializer initializer = new ConfigurableWebBindingInitializer();
-		initializer.setConversionService(new DefaultFormattingConversionService());
-		this.bindContext = new BindingContext(initializer);
-	}
+    @Test
+    public void supportsParameter() {
 
+        MethodParameter param =
+                this.testMethod.annot(requestParam().notRequired("bar")).arg(String.class);
+        assertTrue(this.resolver.supportsParameter(param));
 
-	@Test
-	public void supportsParameter() {
+        param = this.testMethod.annotPresent(RequestParam.class).arg(String[].class);
+        assertTrue(this.resolver.supportsParameter(param));
 
-		MethodParameter param = this.testMethod.annot(requestParam().notRequired("bar")).arg(String.class);
-		assertTrue(this.resolver.supportsParameter(param));
+        param = this.testMethod.annot(requestParam().name("name")).arg(Map.class);
+        assertTrue(this.resolver.supportsParameter(param));
 
-		param = this.testMethod.annotPresent(RequestParam.class).arg(String[].class);
-		assertTrue(this.resolver.supportsParameter(param));
+        param = this.testMethod.annot(requestParam().name("")).arg(Map.class);
+        assertFalse(this.resolver.supportsParameter(param));
 
-		param = this.testMethod.annot(requestParam().name("name")).arg(Map.class);
-		assertTrue(this.resolver.supportsParameter(param));
+        param = this.testMethod.annotNotPresent(RequestParam.class).arg(String.class);
+        assertTrue(this.resolver.supportsParameter(param));
 
-		param = this.testMethod.annot(requestParam().name("")).arg(Map.class);
-		assertFalse(this.resolver.supportsParameter(param));
+        param = this.testMethod.annot(requestParam()).arg(String.class);
+        assertTrue(this.resolver.supportsParameter(param));
 
-		param = this.testMethod.annotNotPresent(RequestParam.class).arg(String.class);
-		assertTrue(this.resolver.supportsParameter(param));
+        param = this.testMethod.annot(requestParam().notRequired()).arg(String.class);
+        assertTrue(this.resolver.supportsParameter(param));
+    }
 
-		param = this.testMethod.annot(requestParam()).arg(String.class);
-		assertTrue(this.resolver.supportsParameter(param));
+    @Test
+    public void doesNotSupportParameterWithDefaultResolutionTurnedOff() {
+        ReactiveAdapterRegistry adapterRegistry = ReactiveAdapterRegistry.getSharedInstance();
+        this.resolver = new RequestParamMethodArgumentResolver(null, adapterRegistry, false);
 
-		param = this.testMethod.annot(requestParam().notRequired()).arg(String.class);
-		assertTrue(this.resolver.supportsParameter(param));
+        MethodParameter param =
+                this.testMethod.annotNotPresent(RequestParam.class).arg(String.class);
+        assertFalse(this.resolver.supportsParameter(param));
+    }
 
-	}
+    @Test
+    public void doesNotSupportReactiveWrapper() {
+        MethodParameter param;
+        try {
+            param = this.testMethod.annot(requestParam()).arg(Mono.class, String.class);
+            this.resolver.supportsParameter(param);
+            fail();
+        } catch (IllegalStateException ex) {
+            assertTrue(
+                    "Unexpected error message:\n" + ex.getMessage(),
+                    ex.getMessage()
+                            .startsWith(
+                                    "RequestParamMethodArgumentResolver doesn't support reactive type wrapper"));
+        }
+        try {
+            param =
+                    this.testMethod
+                            .annotNotPresent(RequestParam.class)
+                            .arg(Mono.class, String.class);
+            this.resolver.supportsParameter(param);
+            fail();
+        } catch (IllegalStateException ex) {
+            assertTrue(
+                    "Unexpected error message:\n" + ex.getMessage(),
+                    ex.getMessage()
+                            .startsWith(
+                                    "RequestParamMethodArgumentResolver doesn't support reactive type wrapper"));
+        }
+    }
 
-	@Test
-	public void doesNotSupportParameterWithDefaultResolutionTurnedOff() {
-		ReactiveAdapterRegistry adapterRegistry = ReactiveAdapterRegistry.getSharedInstance();
-		this.resolver = new RequestParamMethodArgumentResolver(null, adapterRegistry, false);
+    @Test
+    public void resolveWithQueryString() {
+        MethodParameter param =
+                this.testMethod.annot(requestParam().notRequired("bar")).arg(String.class);
+        MockServerWebExchange exchange =
+                MockServerWebExchange.from(MockServerHttpRequest.get("/path?name=foo"));
+        assertEquals("foo", resolve(param, exchange));
+    }
 
-		MethodParameter param = this.testMethod.annotNotPresent(RequestParam.class).arg(String.class);
-		assertFalse(this.resolver.supportsParameter(param));
-	}
+    @Test
+    public void resolveStringArray() {
+        MethodParameter param =
+                this.testMethod.annotPresent(RequestParam.class).arg(String[].class);
+        MockServerHttpRequest request =
+                MockServerHttpRequest.get("/path?name=foo&name=bar").build();
+        Object result = resolve(param, MockServerWebExchange.from(request));
+        assertTrue(result instanceof String[]);
+        assertArrayEquals(new String[] {"foo", "bar"}, (String[]) result);
+    }
 
-	@Test
-	public void doesNotSupportReactiveWrapper() {
-		MethodParameter param;
-		try {
-			param = this.testMethod.annot(requestParam()).arg(Mono.class, String.class);
-			this.resolver.supportsParameter(param);
-			fail();
-		}
-		catch (IllegalStateException ex) {
-			assertTrue("Unexpected error message:\n" + ex.getMessage(),
-					ex.getMessage().startsWith(
-							"RequestParamMethodArgumentResolver doesn't support reactive type wrapper"));
-		}
-		try {
-			param = this.testMethod.annotNotPresent(RequestParam.class).arg(Mono.class, String.class);
-			this.resolver.supportsParameter(param);
-			fail();
-		}
-		catch (IllegalStateException ex) {
-			assertTrue("Unexpected error message:\n" + ex.getMessage(),
-					ex.getMessage().startsWith(
-							"RequestParamMethodArgumentResolver doesn't support reactive type wrapper"));
-		}
-	}
+    @Test
+    public void resolveDefaultValue() {
+        MethodParameter param =
+                this.testMethod.annot(requestParam().notRequired("bar")).arg(String.class);
+        assertEquals(
+                "bar", resolve(param, MockServerWebExchange.from(MockServerHttpRequest.get("/"))));
+    }
 
-	@Test
-	public void resolveWithQueryString() {
-		MethodParameter param = this.testMethod.annot(requestParam().notRequired("bar")).arg(String.class);
-		MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/path?name=foo"));
-		assertEquals("foo", resolve(param, exchange));
-	}
+    @Test // SPR-17050
+    public void resolveAndConvertNullValue() {
+        MethodParameter param =
+                this.testMethod.annot(requestParam().notRequired()).arg(Integer.class);
+        assertNull(
+                resolve(
+                        param,
+                        MockServerWebExchange.from(MockServerHttpRequest.get("/?nullParam="))));
+    }
 
-	@Test
-	public void resolveStringArray() {
-		MethodParameter param = this.testMethod.annotPresent(RequestParam.class).arg(String[].class);
-		MockServerHttpRequest request = MockServerHttpRequest.get("/path?name=foo&name=bar").build();
-		Object result = resolve(param, MockServerWebExchange.from(request));
-		assertTrue(result instanceof String[]);
-		assertArrayEquals(new String[] {"foo", "bar"}, (String[]) result);
-	}
+    @Test
+    public void missingRequestParam() {
 
-	@Test
-	public void resolveDefaultValue() {
-		MethodParameter param = this.testMethod.annot(requestParam().notRequired("bar")).arg(String.class);
-		assertEquals("bar", resolve(param, MockServerWebExchange.from(MockServerHttpRequest.get("/"))));
-	}
+        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/"));
+        MethodParameter param =
+                this.testMethod.annotPresent(RequestParam.class).arg(String[].class);
+        Mono<Object> mono = this.resolver.resolveArgument(param, this.bindContext, exchange);
 
-	@Test // SPR-17050
-	public void resolveAndConvertNullValue() {
-		MethodParameter param = this.testMethod
-				.annot(requestParam().notRequired())
-				.arg(Integer.class);
-		assertNull(resolve(param, MockServerWebExchange.from(MockServerHttpRequest.get("/?nullParam="))));
-	}
+        StepVerifier.create(mono)
+                .expectNextCount(0)
+                .expectError(ServerWebInputException.class)
+                .verify();
+    }
 
-	@Test
-	public void missingRequestParam() {
+    @Test
+    public void resolveSimpleTypeParam() {
+        MockServerHttpRequest request =
+                MockServerHttpRequest.get("/path?stringNotAnnot=plainValue").build();
+        ServerWebExchange exchange = MockServerWebExchange.from(request);
+        MethodParameter param =
+                this.testMethod.annotNotPresent(RequestParam.class).arg(String.class);
+        Object result = resolve(param, exchange);
+        assertEquals("plainValue", result);
+    }
 
-		MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/"));
-		MethodParameter param = this.testMethod.annotPresent(RequestParam.class).arg(String[].class);
-		Mono<Object> mono = this.resolver.resolveArgument(param, this.bindContext, exchange);
+    @Test // SPR-8561
+    public void resolveSimpleTypeParamToNull() {
+        MethodParameter param =
+                this.testMethod.annotNotPresent(RequestParam.class).arg(String.class);
+        assertNull(resolve(param, MockServerWebExchange.from(MockServerHttpRequest.get("/"))));
+    }
 
-		StepVerifier.create(mono)
-				.expectNextCount(0)
-				.expectError(ServerWebInputException.class)
-				.verify();
-	}
+    @Test // SPR-10180
+    public void resolveEmptyValueToDefault() {
+        ServerWebExchange exchange =
+                MockServerWebExchange.from(MockServerHttpRequest.get("/path?name="));
+        MethodParameter param =
+                this.testMethod.annot(requestParam().notRequired("bar")).arg(String.class);
+        Object result = resolve(param, exchange);
+        assertEquals("bar", result);
+    }
 
-	@Test
-	public void resolveSimpleTypeParam() {
-		MockServerHttpRequest request = MockServerHttpRequest.get("/path?stringNotAnnot=plainValue").build();
-		ServerWebExchange exchange = MockServerWebExchange.from(request);
-		MethodParameter param = this.testMethod.annotNotPresent(RequestParam.class).arg(String.class);
-		Object result = resolve(param, exchange);
-		assertEquals("plainValue", result);
-	}
+    @Test
+    public void resolveEmptyValueWithoutDefault() {
+        MethodParameter param =
+                this.testMethod.annotNotPresent(RequestParam.class).arg(String.class);
+        MockServerHttpRequest request = MockServerHttpRequest.get("/path?stringNotAnnot=").build();
+        assertEquals("", resolve(param, MockServerWebExchange.from(request)));
+    }
 
-	@Test  // SPR-8561
-	public void resolveSimpleTypeParamToNull() {
-		MethodParameter param = this.testMethod.annotNotPresent(RequestParam.class).arg(String.class);
-		assertNull(resolve(param, MockServerWebExchange.from(MockServerHttpRequest.get("/"))));
-	}
+    @Test
+    public void resolveEmptyValueRequiredWithoutDefault() {
+        MethodParameter param = this.testMethod.annot(requestParam()).arg(String.class);
+        MockServerWebExchange exchange =
+                MockServerWebExchange.from(MockServerHttpRequest.get("/path?name="));
+        assertEquals("", resolve(param, exchange));
+    }
 
-	@Test  // SPR-10180
-	public void resolveEmptyValueToDefault() {
-		ServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/path?name="));
-		MethodParameter param = this.testMethod.annot(requestParam().notRequired("bar")).arg(String.class);
-		Object result = resolve(param, exchange);
-		assertEquals("bar", result);
-	}
+    @Test
+    public void resolveOptionalParamValue() {
+        ServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/"));
+        MethodParameter param =
+                this.testMethod.arg(forClassWithGenerics(Optional.class, Integer.class));
+        Object result = resolve(param, exchange);
+        assertEquals(Optional.empty(), result);
 
-	@Test
-	public void resolveEmptyValueWithoutDefault() {
-		MethodParameter param = this.testMethod.annotNotPresent(RequestParam.class).arg(String.class);
-		MockServerHttpRequest request = MockServerHttpRequest.get("/path?stringNotAnnot=").build();
-		assertEquals("", resolve(param, MockServerWebExchange.from(request)));
-	}
+        exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/path?name=123"));
+        result = resolve(param, exchange);
 
-	@Test
-	public void resolveEmptyValueRequiredWithoutDefault() {
-		MethodParameter param = this.testMethod.annot(requestParam()).arg(String.class);
-		MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/path?name="));
-		assertEquals("", resolve(param, exchange));
-	}
+        assertEquals(Optional.class, result.getClass());
+        Optional<?> value = (Optional<?>) result;
+        assertTrue(value.isPresent());
+        assertEquals(123, value.get());
+    }
 
-	@Test
-	public void resolveOptionalParamValue() {
-		ServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/"));
-		MethodParameter param = this.testMethod.arg(forClassWithGenerics(Optional.class, Integer.class));
-		Object result = resolve(param, exchange);
-		assertEquals(Optional.empty(), result);
+    private Object resolve(MethodParameter parameter, ServerWebExchange exchange) {
+        return this.resolver
+                .resolveArgument(parameter, this.bindContext, exchange)
+                .block(Duration.ZERO);
+    }
 
-		exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/path?name=123"));
-		result = resolve(param, exchange);
-
-		assertEquals(Optional.class, result.getClass());
-		Optional<?> value = (Optional<?>) result;
-		assertTrue(value.isPresent());
-		assertEquals(123, value.get());
-	}
-
-
-	private Object resolve(MethodParameter parameter, ServerWebExchange exchange) {
-		return this.resolver.resolveArgument(parameter, this.bindContext, exchange).block(Duration.ZERO);
-	}
-
-
-	@SuppressWarnings({"unused", "OptionalUsedAsFieldOrParameterType"})
-	public void handle(
-			@RequestParam(name = "name", defaultValue = "bar") String param1,
-			@RequestParam("name") String[] param2,
-			@RequestParam("name") Map<?, ?> param3,
-			@RequestParam Map<?, ?> param4,
-			String stringNotAnnot,
-			Mono<String> monoStringNotAnnot,
-			@RequestParam("name") String paramRequired,
-			@RequestParam(name = "name", required = false) String paramNotRequired,
-			@RequestParam("name") Optional<Integer> paramOptional,
-			@RequestParam Mono<String> paramMono,
-			@RequestParam(required = false) Integer nullParam) {
-	}
-
+    @SuppressWarnings({"unused", "OptionalUsedAsFieldOrParameterType"})
+    public void handle(
+            @RequestParam(name = "name", defaultValue = "bar") String param1,
+            @RequestParam("name") String[] param2,
+            @RequestParam("name") Map<?, ?> param3,
+            @RequestParam Map<?, ?> param4,
+            String stringNotAnnot,
+            Mono<String> monoStringNotAnnot,
+            @RequestParam("name") String paramRequired,
+            @RequestParam(name = "name", required = false) String paramNotRequired,
+            @RequestParam("name") Optional<Integer> paramOptional,
+            @RequestParam Mono<String> paramMono,
+            @RequestParam(required = false) Integer nullParam) {}
 }

@@ -30,70 +30,65 @@ import static org.junit.Assert.*;
 import static org.mockito.BDDMockito.*;
 import static org.springframework.http.HttpStatus.*;
 
-/**
- * Unit tests for {@link DefaultResponseErrorHandler} handling of specific
- * HTTP status codes.
- */
+/** Unit tests for {@link DefaultResponseErrorHandler} handling of specific HTTP status codes. */
 @RunWith(Parameterized.class)
 public class DefaultResponseErrorHandlerHttpStatusTests {
 
-	@Parameters(name = "error: [{0}], exception: [{1}]")
-	public static Object[][] errorCodes() {
-		return new Object[][]{
-				// 4xx
-				{BAD_REQUEST, HttpClientErrorException.BadRequest.class},
-				{UNAUTHORIZED, HttpClientErrorException.Unauthorized.class},
-				{FORBIDDEN, HttpClientErrorException.Forbidden.class},
-				{NOT_FOUND, HttpClientErrorException.NotFound.class},
-				{METHOD_NOT_ALLOWED, HttpClientErrorException.MethodNotAllowed.class},
-				{NOT_ACCEPTABLE, HttpClientErrorException.NotAcceptable.class},
-				{CONFLICT, HttpClientErrorException.Conflict.class},
-				{TOO_MANY_REQUESTS, HttpClientErrorException.TooManyRequests.class},
-				{UNPROCESSABLE_ENTITY, HttpClientErrorException.UnprocessableEntity.class},
-				{I_AM_A_TEAPOT, HttpClientErrorException.class},
-				// 5xx
-				{INTERNAL_SERVER_ERROR, HttpServerErrorException.InternalServerError.class},
-				{NOT_IMPLEMENTED, HttpServerErrorException.NotImplemented.class},
-				{BAD_GATEWAY, HttpServerErrorException.BadGateway.class},
-				{SERVICE_UNAVAILABLE, HttpServerErrorException.ServiceUnavailable.class},
-				{GATEWAY_TIMEOUT, HttpServerErrorException.GatewayTimeout.class},
-				{HTTP_VERSION_NOT_SUPPORTED, HttpServerErrorException.class}
-		};
-	}
+    @Parameters(name = "error: [{0}], exception: [{1}]")
+    public static Object[][] errorCodes() {
+        return new Object[][] {
+            // 4xx
+            {BAD_REQUEST, HttpClientErrorException.BadRequest.class},
+            {UNAUTHORIZED, HttpClientErrorException.Unauthorized.class},
+            {FORBIDDEN, HttpClientErrorException.Forbidden.class},
+            {NOT_FOUND, HttpClientErrorException.NotFound.class},
+            {METHOD_NOT_ALLOWED, HttpClientErrorException.MethodNotAllowed.class},
+            {NOT_ACCEPTABLE, HttpClientErrorException.NotAcceptable.class},
+            {CONFLICT, HttpClientErrorException.Conflict.class},
+            {TOO_MANY_REQUESTS, HttpClientErrorException.TooManyRequests.class},
+            {UNPROCESSABLE_ENTITY, HttpClientErrorException.UnprocessableEntity.class},
+            {I_AM_A_TEAPOT, HttpClientErrorException.class},
+            // 5xx
+            {INTERNAL_SERVER_ERROR, HttpServerErrorException.InternalServerError.class},
+            {NOT_IMPLEMENTED, HttpServerErrorException.NotImplemented.class},
+            {BAD_GATEWAY, HttpServerErrorException.BadGateway.class},
+            {SERVICE_UNAVAILABLE, HttpServerErrorException.ServiceUnavailable.class},
+            {GATEWAY_TIMEOUT, HttpServerErrorException.GatewayTimeout.class},
+            {HTTP_VERSION_NOT_SUPPORTED, HttpServerErrorException.class}
+        };
+    }
 
-	@Parameterized.Parameter
-	public HttpStatus httpStatus;
+    @Parameterized.Parameter public HttpStatus httpStatus;
 
-	@Parameterized.Parameter(1)
-	public Class<? extends Throwable> expectedExceptionClass;
+    @Parameterized.Parameter(1)
+    public Class<? extends Throwable> expectedExceptionClass;
 
-	private final DefaultResponseErrorHandler handler = new DefaultResponseErrorHandler();
+    private final DefaultResponseErrorHandler handler = new DefaultResponseErrorHandler();
 
-	private final ClientHttpResponse response = mock(ClientHttpResponse.class);
+    private final ClientHttpResponse response = mock(ClientHttpResponse.class);
 
+    @Test
+    public void hasErrorTrue() throws Exception {
+        given(this.response.getRawStatusCode()).willReturn(this.httpStatus.value());
+        assertTrue(this.handler.hasError(this.response));
+    }
 
-	@Test
-	public void hasErrorTrue() throws Exception {
-		given(this.response.getRawStatusCode()).willReturn(this.httpStatus.value());
-		assertTrue(this.handler.hasError(this.response));
-	}
+    @Test
+    public void handleErrorException() throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.TEXT_PLAIN);
 
-	@Test
-	public void handleErrorException() throws Exception {
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.TEXT_PLAIN);
+        given(this.response.getRawStatusCode()).willReturn(this.httpStatus.value());
+        given(this.response.getHeaders()).willReturn(headers);
 
-		given(this.response.getRawStatusCode()).willReturn(this.httpStatus.value());
-		given(this.response.getHeaders()).willReturn(headers);
-
-		try {
-			this.handler.handleError(this.response);
-			fail("expected " + this.expectedExceptionClass.getSimpleName());
-		}
-		catch (HttpStatusCodeException ex) {
-			assertEquals("Expected " + this.expectedExceptionClass.getSimpleName(),
-					this.expectedExceptionClass, ex.getClass());
-		}
-	}
-
+        try {
+            this.handler.handleError(this.response);
+            fail("expected " + this.expectedExceptionClass.getSimpleName());
+        } catch (HttpStatusCodeException ex) {
+            assertEquals(
+                    "Expected " + this.expectedExceptionClass.getSimpleName(),
+                    this.expectedExceptionClass,
+                    ex.getClass());
+        }
+    }
 }

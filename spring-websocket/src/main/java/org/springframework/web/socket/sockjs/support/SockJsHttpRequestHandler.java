@@ -42,115 +42,111 @@ import org.springframework.web.socket.sockjs.SockJsException;
 import org.springframework.web.socket.sockjs.SockJsService;
 
 /**
- * An {@link HttpRequestHandler} that allows mapping a {@link SockJsService} to requests
- * in a Servlet container.
+ * An {@link HttpRequestHandler} that allows mapping a {@link SockJsService} to requests in a
+ * Servlet container.
  *
  * @author Rossen Stoyanchev
  * @author Sebastien Deleuze
  * @since 4.0
  */
 public class SockJsHttpRequestHandler
-		implements HttpRequestHandler, CorsConfigurationSource, Lifecycle, ServletContextAware {
+        implements HttpRequestHandler, CorsConfigurationSource, Lifecycle, ServletContextAware {
 
-	// No logging: HTTP transports too verbose and we don't know enough to log anything of value
+    // No logging: HTTP transports too verbose and we don't know enough to log anything of value
 
-	private final SockJsService sockJsService;
+    private final SockJsService sockJsService;
 
-	private final WebSocketHandler webSocketHandler;
+    private final WebSocketHandler webSocketHandler;
 
-	private volatile boolean running = false;
+    private volatile boolean running = false;
 
+    /**
+     * Create a new SockJsHttpRequestHandler.
+     *
+     * @param sockJsService the SockJS service
+     * @param webSocketHandler the websocket handler
+     */
+    public SockJsHttpRequestHandler(
+            SockJsService sockJsService, WebSocketHandler webSocketHandler) {
+        Assert.notNull(sockJsService, "SockJsService must not be null");
+        Assert.notNull(webSocketHandler, "WebSocketHandler must not be null");
+        this.sockJsService = sockJsService;
+        this.webSocketHandler =
+                new ExceptionWebSocketHandlerDecorator(
+                        new LoggingWebSocketHandlerDecorator(webSocketHandler));
+    }
 
-	/**
-	 * Create a new SockJsHttpRequestHandler.
-	 * @param sockJsService the SockJS service
-	 * @param webSocketHandler the websocket handler
-	 */
-	public SockJsHttpRequestHandler(SockJsService sockJsService, WebSocketHandler webSocketHandler) {
-		Assert.notNull(sockJsService, "SockJsService must not be null");
-		Assert.notNull(webSocketHandler, "WebSocketHandler must not be null");
-		this.sockJsService = sockJsService;
-		this.webSocketHandler =
-				new ExceptionWebSocketHandlerDecorator(new LoggingWebSocketHandlerDecorator(webSocketHandler));
-	}
+    /** Return the {@link SockJsService}. */
+    public SockJsService getSockJsService() {
+        return this.sockJsService;
+    }
 
+    /** Return the {@link WebSocketHandler}. */
+    public WebSocketHandler getWebSocketHandler() {
+        return this.webSocketHandler;
+    }
 
-	/**
-	 * Return the {@link SockJsService}.
-	 */
-	public SockJsService getSockJsService() {
-		return this.sockJsService;
-	}
+    @Override
+    public void setServletContext(ServletContext servletContext) {
+        if (this.sockJsService instanceof ServletContextAware) {
+            ((ServletContextAware) this.sockJsService).setServletContext(servletContext);
+        }
+    }
 
-	/**
-	 * Return the {@link WebSocketHandler}.
-	 */
-	public WebSocketHandler getWebSocketHandler() {
-		return this.webSocketHandler;
-	}
+    @Override
+    public void start() {
+        if (!isRunning()) {
+            this.running = true;
+            if (this.sockJsService instanceof Lifecycle) {
+                ((Lifecycle) this.sockJsService).start();
+            }
+        }
+    }
 
-	@Override
-	public void setServletContext(ServletContext servletContext) {
-		if (this.sockJsService instanceof ServletContextAware) {
-			((ServletContextAware) this.sockJsService).setServletContext(servletContext);
-		}
-	}
+    @Override
+    public void stop() {
+        if (isRunning()) {
+            this.running = false;
+            if (this.sockJsService instanceof Lifecycle) {
+                ((Lifecycle) this.sockJsService).stop();
+            }
+        }
+    }
 
+    @Override
+    public boolean isRunning() {
+        return this.running;
+    }
 
-	@Override
-	public void start() {
-		if (!isRunning()) {
-			this.running = true;
-			if (this.sockJsService instanceof Lifecycle) {
-				((Lifecycle) this.sockJsService).start();
-			}
-		}
-	}
+    @Override
+    public void handleRequest(
+            HttpServletRequest servletRequest, HttpServletResponse servletResponse)
+            throws ServletException, IOException {
 
-	@Override
-	public void stop() {
-		if (isRunning()) {
-			this.running = false;
-			if (this.sockJsService instanceof Lifecycle) {
-				((Lifecycle) this.sockJsService).stop();
-			}
-		}
-	}
+        ServerHttpRequest request = new ServletServerHttpRequest(servletRequest);
+        ServerHttpResponse response = new ServletServerHttpResponse(servletResponse);
 
-	@Override
-	public boolean isRunning() {
-		return this.running;
-	}
+        try {
+            this.sockJsService.handleRequest(
+                    request, response, getSockJsPath(servletRequest), this.webSocketHandler);
+        } catch (Throwable ex) {
+            throw new SockJsException(
+                    "Uncaught failure in SockJS request, uri=" + request.getURI(), ex);
+        }
+    }
 
+    private String getSockJsPath(HttpServletRequest servletRequest) {
+        String attribute = HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE;
+        String path = (String) servletRequest.getAttribute(attribute);
+        return (path.length() > 0 && path.charAt(0) != '/' ? "/" + path : path);
+    }
 
-	@Override
-	public void handleRequest(HttpServletRequest servletRequest, HttpServletResponse servletResponse)
-			throws ServletException, IOException {
-
-		ServerHttpRequest request = new ServletServerHttpRequest(servletRequest);
-		ServerHttpResponse response = new ServletServerHttpResponse(servletResponse);
-
-		try {
-			this.sockJsService.handleRequest(request, response, getSockJsPath(servletRequest), this.webSocketHandler);
-		}
-		catch (Throwable ex) {
-			throw new SockJsException("Uncaught failure in SockJS request, uri=" + request.getURI(), ex);
-		}
-	}
-
-	private String getSockJsPath(HttpServletRequest servletRequest) {
-		String attribute = HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE;
-		String path = (String) servletRequest.getAttribute(attribute);
-		return (path.length() > 0 && path.charAt(0) != '/' ? "/" + path : path);
-	}
-
-	@Override
-	@Nullable
-	public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
-		if (this.sockJsService instanceof CorsConfigurationSource) {
-			return ((CorsConfigurationSource) this.sockJsService).getCorsConfiguration(request);
-		}
-		return null;
-	}
-
+    @Override
+    @Nullable
+    public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
+        if (this.sockJsService instanceof CorsConfigurationSource) {
+            return ((CorsConfigurationSource) this.sockJsService).getCorsConfiguration(request);
+        }
+        return null;
+    }
 }

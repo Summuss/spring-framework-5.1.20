@@ -22,31 +22,29 @@ package org.springframework.tests.context;
  */
 public class TestMethodInvokingTask {
 
-	public int counter = 0;
+    public int counter = 0;
 
-	private Object lock = new Object();
+    private Object lock = new Object();
 
-	public void doSomething() {
-		this.counter++;
-	}
+    public void doSomething() {
+        this.counter++;
+    }
 
-	public void doWait() {
-		this.counter++;
-		// wait until stop is called
-		synchronized (this.lock) {
-			try {
-				this.lock.wait();
-			}
-			catch (InterruptedException e) {
-				// fall through
-			}
-		}
-	}
+    public void doWait() {
+        this.counter++;
+        // wait until stop is called
+        synchronized (this.lock) {
+            try {
+                this.lock.wait();
+            } catch (InterruptedException e) {
+                // fall through
+            }
+        }
+    }
 
-	public void stop() {
-		synchronized(this.lock) {
-			this.lock.notify();
-		}
-	}
-
+    public void stop() {
+        synchronized (this.lock) {
+            this.lock.notify();
+        }
+    }
 }

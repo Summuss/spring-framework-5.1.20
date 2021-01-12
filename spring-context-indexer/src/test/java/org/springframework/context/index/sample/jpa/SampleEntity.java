@@ -24,5 +24,4 @@ import javax.persistence.Entity;
  * @author Stephane Nicoll
  */
 @Entity
-public class SampleEntity {
-}
+public class SampleEntity {}

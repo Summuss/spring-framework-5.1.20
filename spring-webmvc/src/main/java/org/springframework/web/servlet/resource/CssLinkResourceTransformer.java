@@ -35,218 +35,210 @@ import org.springframework.util.FileCopyUtils;
 import org.springframework.util.StringUtils;
 
 /**
- * A {@link ResourceTransformer} implementation that modifies links in a CSS
- * file to match the public URL paths that should be exposed to clients (e.g.
- * with an MD5 content-based hash inserted in the URL).
+ * A {@link ResourceTransformer} implementation that modifies links in a CSS file to match the
+ * public URL paths that should be exposed to clients (e.g. with an MD5 content-based hash inserted
+ * in the URL).
  *
- * <p>The implementation looks for links in CSS {@code @import} statements and
- * also inside CSS {@code url()} functions. All links are then passed through the
- * {@link ResourceResolverChain} and resolved relative to the location of the
- * containing CSS file. If successfully resolved, the link is modified, otherwise
- * the original link is preserved.
+ * <p>The implementation looks for links in CSS {@code @import} statements and also inside CSS
+ * {@code url()} functions. All links are then passed through the {@link ResourceResolverChain} and
+ * resolved relative to the location of the containing CSS file. If successfully resolved, the link
+ * is modified, otherwise the original link is preserved.
  *
  * @author Rossen Stoyanchev
  * @since 4.1
  */
 public class CssLinkResourceTransformer extends ResourceTransformerSupport {
 
-	private static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
+    private static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
-	private static final Log logger = LogFactory.getLog(CssLinkResourceTransformer.class);
+    private static final Log logger = LogFactory.getLog(CssLinkResourceTransformer.class);
 
-	private final List<LinkParser> linkParsers = new ArrayList<>(2);
+    private final List<LinkParser> linkParsers = new ArrayList<>(2);
 
+    public CssLinkResourceTransformer() {
+        this.linkParsers.add(new ImportStatementLinkParser());
+        this.linkParsers.add(new UrlFunctionLinkParser());
+    }
 
-	public CssLinkResourceTransformer() {
-		this.linkParsers.add(new ImportStatementLinkParser());
-		this.linkParsers.add(new UrlFunctionLinkParser());
-	}
+    @SuppressWarnings("deprecation")
+    @Override
+    public Resource transform(
+            HttpServletRequest request,
+            Resource resource,
+            ResourceTransformerChain transformerChain)
+            throws IOException {
 
+        resource = transformerChain.transform(request, resource);
 
-	@SuppressWarnings("deprecation")
-	@Override
-	public Resource transform(HttpServletRequest request, Resource resource, ResourceTransformerChain transformerChain)
-			throws IOException {
+        String filename = resource.getFilename();
+        if (!"css".equals(StringUtils.getFilenameExtension(filename))
+                || resource instanceof EncodedResourceResolver.EncodedResource
+                || resource instanceof GzipResourceResolver.GzippedResource) {
+            return resource;
+        }
 
-		resource = transformerChain.transform(request, resource);
+        byte[] bytes = FileCopyUtils.copyToByteArray(resource.getInputStream());
+        String content = new String(bytes, DEFAULT_CHARSET);
 
-		String filename = resource.getFilename();
-		if (!"css".equals(StringUtils.getFilenameExtension(filename)) ||
-				resource instanceof EncodedResourceResolver.EncodedResource ||
-				resource instanceof GzipResourceResolver.GzippedResource) {
-			return resource;
-		}
+        SortedSet<ContentChunkInfo> links = new TreeSet<>();
+        for (LinkParser parser : this.linkParsers) {
+            parser.parse(content, links);
+        }
 
-		byte[] bytes = FileCopyUtils.copyToByteArray(resource.getInputStream());
-		String content = new String(bytes, DEFAULT_CHARSET);
+        if (links.isEmpty()) {
+            return resource;
+        }
 
-		SortedSet<ContentChunkInfo> links = new TreeSet<>();
-		for (LinkParser parser : this.linkParsers) {
-			parser.parse(content, links);
-		}
+        int index = 0;
+        StringWriter writer = new StringWriter();
+        for (ContentChunkInfo linkContentChunkInfo : links) {
+            writer.write(content.substring(index, linkContentChunkInfo.getStart()));
+            String link =
+                    content.substring(
+                            linkContentChunkInfo.getStart(), linkContentChunkInfo.getEnd());
+            String newLink = null;
+            if (!hasScheme(link)) {
+                String absolutePath = toAbsolutePath(link, request);
+                newLink = resolveUrlPath(absolutePath, request, resource, transformerChain);
+            }
+            writer.write(newLink != null ? newLink : link);
+            index = linkContentChunkInfo.getEnd();
+        }
+        writer.write(content.substring(index));
 
-		if (links.isEmpty()) {
-			return resource;
-		}
+        return new TransformedResource(resource, writer.toString().getBytes(DEFAULT_CHARSET));
+    }
 
-		int index = 0;
-		StringWriter writer = new StringWriter();
-		for (ContentChunkInfo linkContentChunkInfo : links) {
-			writer.write(content.substring(index, linkContentChunkInfo.getStart()));
-			String link = content.substring(linkContentChunkInfo.getStart(), linkContentChunkInfo.getEnd());
-			String newLink = null;
-			if (!hasScheme(link)) {
-				String absolutePath = toAbsolutePath(link, request);
-				newLink = resolveUrlPath(absolutePath, request, resource, transformerChain);
-			}
-			writer.write(newLink != null ? newLink : link);
-			index = linkContentChunkInfo.getEnd();
-		}
-		writer.write(content.substring(index));
+    private boolean hasScheme(String link) {
+        int schemeIndex = link.indexOf(':');
+        return ((schemeIndex > 0 && !link.substring(0, schemeIndex).contains("/"))
+                || link.indexOf("//") == 0);
+    }
 
-		return new TransformedResource(resource, writer.toString().getBytes(DEFAULT_CHARSET));
-	}
+    /** Extract content chunks that represent links. */
+    @FunctionalInterface
+    protected interface LinkParser {
 
-	private boolean hasScheme(String link) {
-		int schemeIndex = link.indexOf(':');
-		return ((schemeIndex > 0 && !link.substring(0, schemeIndex).contains("/")) || link.indexOf("//") == 0);
-	}
+        void parse(String content, SortedSet<ContentChunkInfo> result);
+    }
 
+    /** Abstract base class for {@link LinkParser} implementations. */
+    protected abstract static class AbstractLinkParser implements LinkParser {
 
-	/**
-	 * Extract content chunks that represent links.
-	 */
-	@FunctionalInterface
-	protected interface LinkParser {
+        /** Return the keyword to use to search for links, e.g. "@import", "url(" */
+        protected abstract String getKeyword();
 
-		void parse(String content, SortedSet<ContentChunkInfo> result);
+        @Override
+        public void parse(String content, SortedSet<ContentChunkInfo> result) {
+            int position = 0;
+            while (true) {
+                position = content.indexOf(getKeyword(), position);
+                if (position == -1) {
+                    return;
+                }
+                position += getKeyword().length();
+                while (Character.isWhitespace(content.charAt(position))) {
+                    position++;
+                }
+                if (content.charAt(position) == '\'') {
+                    position = extractLink(position, "'", content, result);
+                } else if (content.charAt(position) == '"') {
+                    position = extractLink(position, "\"", content, result);
+                } else {
+                    position = extractLink(position, content, result);
+                }
+            }
+        }
 
-	}
+        protected int extractLink(
+                int index, String endKey, String content, SortedSet<ContentChunkInfo> linksToAdd) {
+            int start = index + 1;
+            int end = content.indexOf(endKey, start);
+            linksToAdd.add(new ContentChunkInfo(start, end));
+            return end + endKey.length();
+        }
 
+        /**
+         * Invoked after a keyword match, after whitespaces removed, and when the next char is
+         * neither a single nor double quote.
+         */
+        protected abstract int extractLink(
+                int index, String content, SortedSet<ContentChunkInfo> linksToAdd);
+    }
 
-	/**
-	 * Abstract base class for {@link LinkParser} implementations.
-	 */
-	protected abstract static class AbstractLinkParser implements LinkParser {
+    private static class ImportStatementLinkParser extends AbstractLinkParser {
 
-		/** Return the keyword to use to search for links, e.g. "@import", "url(" */
-		protected abstract String getKeyword();
+        @Override
+        protected String getKeyword() {
+            return "@import";
+        }
 
-		@Override
-		public void parse(String content, SortedSet<ContentChunkInfo> result) {
-			int position = 0;
-			while (true) {
-				position = content.indexOf(getKeyword(), position);
-				if (position == -1) {
-					return;
-				}
-				position += getKeyword().length();
-				while (Character.isWhitespace(content.charAt(position))) {
-					position++;
-				}
-				if (content.charAt(position) == '\'') {
-					position = extractLink(position, "'", content, result);
-				}
-				else if (content.charAt(position) == '"') {
-					position = extractLink(position, "\"", content, result);
-				}
-				else {
-					position = extractLink(position, content, result);
+        @Override
+        protected int extractLink(
+                int index, String content, SortedSet<ContentChunkInfo> linksToAdd) {
+            if (content.substring(index, index + 4).equals("url(")) {
+                // Ignore, UrlLinkParser will take care
+            } else if (logger.isTraceEnabled()) {
+                logger.trace("Unexpected syntax for @import link at index " + index);
+            }
+            return index;
+        }
+    }
 
-				}
-			}
-		}
+    private static class UrlFunctionLinkParser extends AbstractLinkParser {
 
-		protected int extractLink(int index, String endKey, String content, SortedSet<ContentChunkInfo> linksToAdd) {
-			int start = index + 1;
-			int end = content.indexOf(endKey, start);
-			linksToAdd.add(new ContentChunkInfo(start, end));
-			return end + endKey.length();
-		}
+        @Override
+        protected String getKeyword() {
+            return "url(";
+        }
 
-		/**
-		 * Invoked after a keyword match, after whitespaces removed, and when
-		 * the next char is neither a single nor double quote.
-		 */
-		protected abstract int extractLink(int index, String content, SortedSet<ContentChunkInfo> linksToAdd);
-	}
+        @Override
+        protected int extractLink(
+                int index, String content, SortedSet<ContentChunkInfo> linksToAdd) {
+            // A url() function without unquoted
+            return extractLink(index - 1, ")", content, linksToAdd);
+        }
+    }
 
+    private static class ContentChunkInfo implements Comparable<ContentChunkInfo> {
 
-	private static class ImportStatementLinkParser extends AbstractLinkParser {
+        private final int start;
 
-		@Override
-		protected String getKeyword() {
-			return "@import";
-		}
+        private final int end;
 
-		@Override
-		protected int extractLink(int index, String content, SortedSet<ContentChunkInfo> linksToAdd) {
-			if (content.substring(index, index + 4).equals("url(")) {
-				// Ignore, UrlLinkParser will take care
-			}
-			else if (logger.isTraceEnabled()) {
-				logger.trace("Unexpected syntax for @import link at index " + index);
-			}
-			return index;
-		}
-	}
+        ContentChunkInfo(int start, int end) {
+            this.start = start;
+            this.end = end;
+        }
 
+        public int getStart() {
+            return this.start;
+        }
 
-	private static class UrlFunctionLinkParser extends AbstractLinkParser {
+        public int getEnd() {
+            return this.end;
+        }
 
-		@Override
-		protected String getKeyword() {
-			return "url(";
-		}
+        @Override
+        public int compareTo(ContentChunkInfo other) {
+            return Integer.compare(this.start, other.start);
+        }
 
-		@Override
-		protected int extractLink(int index, String content, SortedSet<ContentChunkInfo> linksToAdd) {
-			// A url() function without unquoted
-			return extractLink(index - 1, ")", content, linksToAdd);
-		}
-	}
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) {
+                return true;
+            }
+            if (!(other instanceof ContentChunkInfo)) {
+                return false;
+            }
+            ContentChunkInfo otherCci = (ContentChunkInfo) other;
+            return (this.start == otherCci.start && this.end == otherCci.end);
+        }
 
-
-	private static class ContentChunkInfo implements Comparable<ContentChunkInfo> {
-
-		private final int start;
-
-		private final int end;
-
-		ContentChunkInfo(int start, int end) {
-			this.start = start;
-			this.end = end;
-		}
-
-		public int getStart() {
-			return this.start;
-		}
-
-		public int getEnd() {
-			return this.end;
-		}
-
-		@Override
-		public int compareTo(ContentChunkInfo other) {
-			return Integer.compare(this.start, other.start);
-		}
-
-		@Override
-		public boolean equals(Object other) {
-			if (this == other) {
-				return true;
-			}
-			if (!(other instanceof ContentChunkInfo)) {
-				return false;
-			}
-			ContentChunkInfo otherCci = (ContentChunkInfo) other;
-			return (this.start == otherCci.start && this.end == otherCci.end);
-		}
-
-		@Override
-		public int hashCode() {
-			return this.start * 31 + this.end;
-		}
-	}
-
+        @Override
+        public int hashCode() {
+            return this.start * 31 + this.end;
+        }
+    }
 }

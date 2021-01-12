@@ -42,21 +42,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @ContextConfiguration
 public class MockMvcBuilderMethodChainTests {
 
-	@Autowired
-	private WebApplicationContext wac;
+    @Autowired private WebApplicationContext wac;
 
-	@Test
-	public void chainMultiple() {
-		MockMvcBuilders
-				.webAppContextSetup(wac)
-				.addFilter(new CharacterEncodingFilter() )
-				.defaultRequest(get("/").contextPath("/mywebapp"))
-				.build();
-	}
+    @Test
+    public void chainMultiple() {
+        MockMvcBuilders.webAppContextSetup(wac)
+                .addFilter(new CharacterEncodingFilter())
+                .defaultRequest(get("/").contextPath("/mywebapp"))
+                .build();
+    }
 
-	@Configuration
-	@EnableWebMvc
-	static class WebConfig implements WebMvcConfigurer {
-	}
-
+    @Configuration
+    @EnableWebMvc
+    static class WebConfig implements WebMvcConfigurer {}
 }

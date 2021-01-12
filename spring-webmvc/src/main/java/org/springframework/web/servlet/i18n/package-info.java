@@ -1,7 +1,6 @@
 /**
- * Locale support classes for Spring's web MVC framework.
- * Provides standard LocaleResolver implementations,
- * and a HandlerInterceptor for locale changes.
+ * Locale support classes for Spring's web MVC framework. Provides standard LocaleResolver
+ * implementations, and a HandlerInterceptor for locale changes.
  */
 @NonNullApi
 @NonNullFields

@@ -37,76 +37,81 @@ import org.springframework.util.ExceptionTypeFilter;
  */
 class CachePutOperation extends AbstractJCacheKeyOperation<CachePut> {
 
-	private final ExceptionTypeFilter exceptionTypeFilter;
+    private final ExceptionTypeFilter exceptionTypeFilter;
 
-	private final CacheParameterDetail valueParameterDetail;
+    private final CacheParameterDetail valueParameterDetail;
 
+    public CachePutOperation(
+            CacheMethodDetails<CachePut> methodDetails,
+            CacheResolver cacheResolver,
+            KeyGenerator keyGenerator) {
 
-	public CachePutOperation(
-			CacheMethodDetails<CachePut> methodDetails, CacheResolver cacheResolver, KeyGenerator keyGenerator) {
+        super(methodDetails, cacheResolver, keyGenerator);
 
-		super(methodDetails, cacheResolver, keyGenerator);
+        CachePut ann = methodDetails.getCacheAnnotation();
+        this.exceptionTypeFilter = createExceptionTypeFilter(ann.cacheFor(), ann.noCacheFor());
 
-		CachePut ann = methodDetails.getCacheAnnotation();
-		this.exceptionTypeFilter = createExceptionTypeFilter(ann.cacheFor(), ann.noCacheFor());
+        CacheParameterDetail valueParameterDetail =
+                initializeValueParameterDetail(methodDetails.getMethod(), this.allParameterDetails);
+        if (valueParameterDetail == null) {
+            throw new IllegalArgumentException(
+                    "No parameter annotated with @CacheValue was found for "
+                            + methodDetails.getMethod());
+        }
+        this.valueParameterDetail = valueParameterDetail;
+    }
 
-		CacheParameterDetail valueParameterDetail =
-				initializeValueParameterDetail(methodDetails.getMethod(), this.allParameterDetails);
-		if (valueParameterDetail == null) {
-			throw new IllegalArgumentException("No parameter annotated with @CacheValue was found for " +
-					methodDetails.getMethod());
-		}
-		this.valueParameterDetail = valueParameterDetail;
-	}
+    @Override
+    public ExceptionTypeFilter getExceptionTypeFilter() {
+        return this.exceptionTypeFilter;
+    }
 
+    /**
+     * Specify if the cache should be updated before invoking the method. By default, the cache is
+     * updated after the method invocation.
+     *
+     * @see javax.cache.annotation.CachePut#afterInvocation()
+     */
+    public boolean isEarlyPut() {
+        return !getCacheAnnotation().afterInvocation();
+    }
 
-	@Override
-	public ExceptionTypeFilter getExceptionTypeFilter() {
-		return this.exceptionTypeFilter;
-	}
+    /**
+     * Return the {@link CacheInvocationParameter} for the parameter holding the value to cache.
+     *
+     * <p>The method arguments must match the signature of the related method invocation
+     *
+     * @param values the parameters value for a particular invocation
+     * @return the {@link CacheInvocationParameter} instance for the value parameter
+     */
+    public CacheInvocationParameter getValueParameter(Object... values) {
+        int parameterPosition = this.valueParameterDetail.getParameterPosition();
+        if (parameterPosition >= values.length) {
+            throw new IllegalStateException(
+                    "Values mismatch, value parameter at position "
+                            + parameterPosition
+                            + " cannot be matched against "
+                            + values.length
+                            + " value(s)");
+        }
+        return this.valueParameterDetail.toCacheInvocationParameter(values[parameterPosition]);
+    }
 
-	/**
-	 * Specify if the cache should be updated before invoking the method. By default,
-	 * the cache is updated after the method invocation.
-	 * @see javax.cache.annotation.CachePut#afterInvocation()
-	 */
-	public boolean isEarlyPut() {
-		return !getCacheAnnotation().afterInvocation();
-	}
+    @Nullable
+    private static CacheParameterDetail initializeValueParameterDetail(
+            Method method, List<CacheParameterDetail> allParameters) {
 
-	/**
-	 * Return the {@link CacheInvocationParameter} for the parameter holding the value
-	 * to cache.
-	 * <p>The method arguments must match the signature of the related method invocation
-	 * @param values the parameters value for a particular invocation
-	 * @return the {@link CacheInvocationParameter} instance for the value parameter
-	 */
-	public CacheInvocationParameter getValueParameter(Object... values) {
-		int parameterPosition = this.valueParameterDetail.getParameterPosition();
-		if (parameterPosition >= values.length) {
-			throw new IllegalStateException("Values mismatch, value parameter at position " +
-					parameterPosition + " cannot be matched against " + values.length + " value(s)");
-		}
-		return this.valueParameterDetail.toCacheInvocationParameter(values[parameterPosition]);
-	}
-
-
-	@Nullable
-	private static CacheParameterDetail initializeValueParameterDetail(
-			Method method, List<CacheParameterDetail> allParameters) {
-
-		CacheParameterDetail result = null;
-		for (CacheParameterDetail parameter : allParameters) {
-			if (parameter.isValue()) {
-				if (result == null) {
-					result = parameter;
-				}
-				else {
-					throw new IllegalArgumentException("More than one @CacheValue found on " + method + "");
-				}
-			}
-		}
-		return result;
-	}
-
+        CacheParameterDetail result = null;
+        for (CacheParameterDetail parameter : allParameters) {
+            if (parameter.isValue()) {
+                if (result == null) {
+                    result = parameter;
+                } else {
+                    throw new IllegalArgumentException(
+                            "More than one @CacheValue found on " + method + "");
+                }
+            }
+        }
+        return result;
+    }
 }

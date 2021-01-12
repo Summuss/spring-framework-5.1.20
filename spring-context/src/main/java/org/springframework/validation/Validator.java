@@ -19,19 +19,15 @@ package org.springframework.validation;
 /**
  * A validator for application-specific objects.
  *
- * <p>This interface is totally divorced from any infrastructure
- * or context; that is to say it is not coupled to validating
- * only objects in the web tier, the data-access tier, or the
- * whatever-tier. As such it is amenable to being used in any layer
- * of an application, and supports the encapsulation of validation
- * logic as a first-class citizen in its own right.
+ * <p>This interface is totally divorced from any infrastructure or context; that is to say it is
+ * not coupled to validating only objects in the web tier, the data-access tier, or the
+ * whatever-tier. As such it is amenable to being used in any layer of an application, and supports
+ * the encapsulation of validation logic as a first-class citizen in its own right.
  *
- * <p>Find below a simple but complete {@code Validator}
- * implementation, which validates that the various {@link String}
- * properties of a {@code UserLogin} instance are not empty
- * (that is they are not {@code null} and do not consist
- * wholly of whitespace), and that any password that is present is
- * at least {@code 'MINIMUM_PASSWORD_LENGTH'} characters in length.
+ * <p>Find below a simple but complete {@code Validator} implementation, which validates that the
+ * various {@link String} properties of a {@code UserLogin} instance are not empty (that is they are
+ * not {@code null} and do not consist wholly of whitespace), and that any password that is present
+ * is at least {@code 'MINIMUM_PASSWORD_LENGTH'} characters in length.
  *
  * <pre class="code"> public class UserLoginValidator implements Validator {
  *
@@ -54,9 +50,8 @@ package org.springframework.validation;
  *    }
  * }</pre>
  *
- * <p>See also the Spring reference manual for a fuller discussion of
- * the {@code Validator} interface and its role in an enterprise
- * application.
+ * <p>See also the Spring reference manual for a fuller discussion of the {@code Validator}
+ * interface and its role in an enterprise application.
  *
  * @author Rod Johnson
  * @see SmartValidator
@@ -65,31 +60,34 @@ package org.springframework.validation;
  */
 public interface Validator {
 
-	/**
-	 * Can this {@link Validator} {@link #validate(Object, Errors) validate}
-	 * instances of the supplied {@code clazz}?
-	 * <p>This method is <i>typically</i> implemented like so:
-	 * <pre class="code">return Foo.class.isAssignableFrom(clazz);</pre>
-	 * (Where {@code Foo} is the class (or superclass) of the actual
-	 * object instance that is to be {@link #validate(Object, Errors) validated}.)
-	 * @param clazz the {@link Class} that this {@link Validator} is
-	 * being asked if it can {@link #validate(Object, Errors) validate}
-	 * @return {@code true} if this {@link Validator} can indeed
-	 * {@link #validate(Object, Errors) validate} instances of the
-	 * supplied {@code clazz}
-	 */
-	boolean supports(Class<?> clazz);
+    /**
+     * Can this {@link Validator} {@link #validate(Object, Errors) validate} instances of the
+     * supplied {@code clazz}?
+     *
+     * <p>This method is <i>typically</i> implemented like so:
+     *
+     * <pre class="code">return Foo.class.isAssignableFrom(clazz);</pre>
+     *
+     * (Where {@code Foo} is the class (or superclass) of the actual object instance that is to be
+     * {@link #validate(Object, Errors) validated}.)
+     *
+     * @param clazz the {@link Class} that this {@link Validator} is being asked if it can {@link
+     *     #validate(Object, Errors) validate}
+     * @return {@code true} if this {@link Validator} can indeed {@link #validate(Object, Errors)
+     *     validate} instances of the supplied {@code clazz}
+     */
+    boolean supports(Class<?> clazz);
 
-	/**
-	 * Validate the supplied {@code target} object, which must be
-	 * of a {@link Class} for which the {@link #supports(Class)} method
-	 * typically has (or would) return {@code true}.
-	 * <p>The supplied {@link Errors errors} instance can be used to report
-	 * any resulting validation errors.
-	 * @param target the object that is to be validated
-	 * @param errors contextual state about the validation process
-	 * @see ValidationUtils
-	 */
-	void validate(Object target, Errors errors);
-
+    /**
+     * Validate the supplied {@code target} object, which must be of a {@link Class} for which the
+     * {@link #supports(Class)} method typically has (or would) return {@code true}.
+     *
+     * <p>The supplied {@link Errors errors} instance can be used to report any resulting validation
+     * errors.
+     *
+     * @param target the object that is to be validated
+     * @param errors contextual state about the validation process
+     * @see ValidationUtils
+     */
+    void validate(Object target, Errors errors);
 }

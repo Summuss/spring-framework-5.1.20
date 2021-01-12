@@ -39,184 +39,204 @@ import static org.mockito.BDDMockito.*;
 
 /**
  * Unit tests for {@link VersionResourceResolver}.
+ *
  * @author Rossen Stoyanchev
  * @author Brian Clozel
  */
 public class VersionResourceResolverTests {
 
-	private List<Resource> locations;
+    private List<Resource> locations;
 
-	private VersionResourceResolver resolver;
+    private VersionResourceResolver resolver;
 
-	private ResourceResolverChain chain;
+    private ResourceResolverChain chain;
 
-	private VersionStrategy versionStrategy;
+    private VersionStrategy versionStrategy;
 
+    @Before
+    public void setup() {
+        this.locations = new ArrayList<>();
+        this.locations.add(new ClassPathResource("test/", getClass()));
+        this.locations.add(new ClassPathResource("testalternatepath/", getClass()));
 
-	@Before
-	public void setup() {
-		this.locations = new ArrayList<>();
-		this.locations.add(new ClassPathResource("test/", getClass()));
-		this.locations.add(new ClassPathResource("testalternatepath/", getClass()));
+        this.resolver = new VersionResourceResolver();
+        this.chain = mock(ResourceResolverChain.class);
+        this.versionStrategy = mock(VersionStrategy.class);
+    }
 
-		this.resolver = new VersionResourceResolver();
-		this.chain = mock(ResourceResolverChain.class);
-		this.versionStrategy = mock(VersionStrategy.class);
-	}
+    @Test
+    public void resolveResourceExisting() {
+        String file = "bar.css";
+        Resource expected = new ClassPathResource("test/" + file, getClass());
+        given(this.chain.resolveResource(null, file, this.locations))
+                .willReturn(Mono.just(expected));
 
-	@Test
-	public void resolveResourceExisting() {
-		String file = "bar.css";
-		Resource expected = new ClassPathResource("test/" + file, getClass());
-		given(this.chain.resolveResource(null, file, this.locations)).willReturn(Mono.just(expected));
+        this.resolver.setStrategyMap(Collections.singletonMap("/**", this.versionStrategy));
+        Resource actual =
+                this.resolver
+                        .resolveResourceInternal(null, file, this.locations, this.chain)
+                        .block(Duration.ofMillis(5000));
 
-		this.resolver.setStrategyMap(Collections.singletonMap("/**", this.versionStrategy));
-		Resource actual = this.resolver
-				.resolveResourceInternal(null, file, this.locations, this.chain)
-				.block(Duration.ofMillis(5000));
+        assertEquals(expected, actual);
+        verify(this.chain, times(1)).resolveResource(null, file, this.locations);
+        verify(this.versionStrategy, never()).extractVersion(file);
+    }
 
-		assertEquals(expected, actual);
-		verify(this.chain, times(1)).resolveResource(null, file, this.locations);
-		verify(this.versionStrategy, never()).extractVersion(file);
-	}
+    @Test
+    public void resolveResourceNoVersionStrategy() {
+        String file = "missing.css";
+        given(this.chain.resolveResource(null, file, this.locations)).willReturn(Mono.empty());
 
-	@Test
-	public void resolveResourceNoVersionStrategy() {
-		String file = "missing.css";
-		given(this.chain.resolveResource(null, file, this.locations)).willReturn(Mono.empty());
+        this.resolver.setStrategyMap(Collections.emptyMap());
+        Resource actual =
+                this.resolver
+                        .resolveResourceInternal(null, file, this.locations, this.chain)
+                        .block(Duration.ofMillis(5000));
 
-		this.resolver.setStrategyMap(Collections.emptyMap());
-		Resource actual = this.resolver
-				.resolveResourceInternal(null, file, this.locations, this.chain)
-				.block(Duration.ofMillis(5000));
+        assertNull(actual);
+        verify(this.chain, times(1)).resolveResource(null, file, this.locations);
+    }
 
-		assertNull(actual);
-		verify(this.chain, times(1)).resolveResource(null, file, this.locations);
-	}
+    @Test
+    public void resolveResourceNoVersionInPath() {
+        String file = "bar.css";
+        given(this.chain.resolveResource(null, file, this.locations)).willReturn(Mono.empty());
+        given(this.versionStrategy.extractVersion(file)).willReturn("");
 
-	@Test
-	public void resolveResourceNoVersionInPath() {
-		String file = "bar.css";
-		given(this.chain.resolveResource(null, file, this.locations)).willReturn(Mono.empty());
-		given(this.versionStrategy.extractVersion(file)).willReturn("");
+        this.resolver.setStrategyMap(Collections.singletonMap("/**", this.versionStrategy));
+        Resource actual =
+                this.resolver
+                        .resolveResourceInternal(null, file, this.locations, this.chain)
+                        .block(Duration.ofMillis(5000));
 
-		this.resolver.setStrategyMap(Collections.singletonMap("/**", this.versionStrategy));
-		Resource actual = this.resolver
-				.resolveResourceInternal(null, file, this.locations, this.chain)
-				.block(Duration.ofMillis(5000));
+        assertNull(actual);
+        verify(this.chain, times(1)).resolveResource(null, file, this.locations);
+        verify(this.versionStrategy, times(1)).extractVersion(file);
+    }
 
-		assertNull(actual);
-		verify(this.chain, times(1)).resolveResource(null, file, this.locations);
-		verify(this.versionStrategy, times(1)).extractVersion(file);
-	}
+    @Test
+    public void resolveResourceNoResourceAfterVersionRemoved() {
+        String versionFile = "bar-version.css";
+        String version = "version";
+        String file = "bar.css";
+        given(this.chain.resolveResource(null, versionFile, this.locations))
+                .willReturn(Mono.empty());
+        given(this.chain.resolveResource(null, file, this.locations)).willReturn(Mono.empty());
+        given(this.versionStrategy.extractVersion(versionFile)).willReturn(version);
+        given(this.versionStrategy.removeVersion(versionFile, version)).willReturn(file);
 
-	@Test
-	public void resolveResourceNoResourceAfterVersionRemoved() {
-		String versionFile = "bar-version.css";
-		String version = "version";
-		String file = "bar.css";
-		given(this.chain.resolveResource(null, versionFile, this.locations)).willReturn(Mono.empty());
-		given(this.chain.resolveResource(null, file, this.locations)).willReturn(Mono.empty());
-		given(this.versionStrategy.extractVersion(versionFile)).willReturn(version);
-		given(this.versionStrategy.removeVersion(versionFile, version)).willReturn(file);
+        this.resolver.setStrategyMap(Collections.singletonMap("/**", this.versionStrategy));
+        Resource actual =
+                this.resolver
+                        .resolveResourceInternal(null, versionFile, this.locations, this.chain)
+                        .block(Duration.ofMillis(5000));
 
-		this.resolver.setStrategyMap(Collections.singletonMap("/**", this.versionStrategy));
-		Resource actual = this.resolver
-				.resolveResourceInternal(null, versionFile, this.locations, this.chain)
-				.block(Duration.ofMillis(5000));
+        assertNull(actual);
+        verify(this.versionStrategy, times(1)).removeVersion(versionFile, version);
+    }
 
-		assertNull(actual);
-		verify(this.versionStrategy, times(1)).removeVersion(versionFile, version);
-	}
+    @Test
+    public void resolveResourceVersionDoesNotMatch() {
+        String versionFile = "bar-version.css";
+        String version = "version";
+        String file = "bar.css";
+        Resource expected = new ClassPathResource("test/" + file, getClass());
+        given(this.chain.resolveResource(null, versionFile, this.locations))
+                .willReturn(Mono.empty());
+        given(this.chain.resolveResource(null, file, this.locations))
+                .willReturn(Mono.just(expected));
+        given(this.versionStrategy.extractVersion(versionFile)).willReturn(version);
+        given(this.versionStrategy.removeVersion(versionFile, version)).willReturn(file);
+        given(this.versionStrategy.getResourceVersion(expected))
+                .willReturn(Mono.just("newer-version"));
 
-	@Test
-	public void resolveResourceVersionDoesNotMatch() {
-		String versionFile = "bar-version.css";
-		String version = "version";
-		String file = "bar.css";
-		Resource expected = new ClassPathResource("test/" + file, getClass());
-		given(this.chain.resolveResource(null, versionFile, this.locations)).willReturn(Mono.empty());
-		given(this.chain.resolveResource(null, file, this.locations)).willReturn(Mono.just(expected));
-		given(this.versionStrategy.extractVersion(versionFile)).willReturn(version);
-		given(this.versionStrategy.removeVersion(versionFile, version)).willReturn(file);
-		given(this.versionStrategy.getResourceVersion(expected)).willReturn(Mono.just("newer-version"));
+        this.resolver.setStrategyMap(Collections.singletonMap("/**", this.versionStrategy));
+        Resource actual =
+                this.resolver
+                        .resolveResourceInternal(null, versionFile, this.locations, this.chain)
+                        .block(Duration.ofMillis(5000));
 
-		this.resolver.setStrategyMap(Collections.singletonMap("/**", this.versionStrategy));
-		Resource actual = this.resolver
-				.resolveResourceInternal(null, versionFile, this.locations, this.chain)
-				.block(Duration.ofMillis(5000));
+        assertNull(actual);
+        verify(this.versionStrategy, times(1)).getResourceVersion(expected);
+    }
 
-		assertNull(actual);
-		verify(this.versionStrategy, times(1)).getResourceVersion(expected);
-	}
+    @Test
+    public void resolveResourceSuccess() {
+        String versionFile = "bar-version.css";
+        String version = "version";
+        String file = "bar.css";
+        Resource expected = new ClassPathResource("test/" + file, getClass());
+        MockServerHttpRequest request =
+                MockServerHttpRequest.get("/resources/bar-version.css").build();
+        ServerWebExchange exchange = MockServerWebExchange.from(request);
+        given(this.chain.resolveResource(exchange, versionFile, this.locations))
+                .willReturn(Mono.empty());
+        given(this.chain.resolveResource(exchange, file, this.locations))
+                .willReturn(Mono.just(expected));
+        given(this.versionStrategy.extractVersion(versionFile)).willReturn(version);
+        given(this.versionStrategy.removeVersion(versionFile, version)).willReturn(file);
+        given(this.versionStrategy.getResourceVersion(expected)).willReturn(Mono.just(version));
 
-	@Test
-	public void resolveResourceSuccess() {
-		String versionFile = "bar-version.css";
-		String version = "version";
-		String file = "bar.css";
-		Resource expected = new ClassPathResource("test/" + file, getClass());
-		MockServerHttpRequest request = MockServerHttpRequest.get("/resources/bar-version.css").build();
-		ServerWebExchange exchange = MockServerWebExchange.from(request);
-		given(this.chain.resolveResource(exchange, versionFile, this.locations)).willReturn(Mono.empty());
-		given(this.chain.resolveResource(exchange, file, this.locations)).willReturn(Mono.just(expected));
-		given(this.versionStrategy.extractVersion(versionFile)).willReturn(version);
-		given(this.versionStrategy.removeVersion(versionFile, version)).willReturn(file);
-		given(this.versionStrategy.getResourceVersion(expected)).willReturn(Mono.just(version));
+        this.resolver.setStrategyMap(Collections.singletonMap("/**", this.versionStrategy));
+        Resource actual =
+                this.resolver
+                        .resolveResourceInternal(exchange, versionFile, this.locations, this.chain)
+                        .block(Duration.ofMillis(5000));
 
-		this.resolver.setStrategyMap(Collections.singletonMap("/**", this.versionStrategy));
-		Resource actual = this.resolver
-				.resolveResourceInternal(exchange, versionFile, this.locations, this.chain)
-				.block(Duration.ofMillis(5000));
+        assertEquals(expected.getFilename(), actual.getFilename());
+        verify(this.versionStrategy, times(1)).getResourceVersion(expected);
+        assertThat(actual, instanceOf(HttpResource.class));
+        assertEquals("\"" + version + "\"", ((HttpResource) actual).getResponseHeaders().getETag());
+    }
 
-		assertEquals(expected.getFilename(), actual.getFilename());
-		verify(this.versionStrategy, times(1)).getResourceVersion(expected);
-		assertThat(actual, instanceOf(HttpResource.class));
-		assertEquals("\"" + version + "\"", ((HttpResource)actual).getResponseHeaders().getETag());
-	}
+    @Test
+    public void getStrategyForPath() {
+        Map<String, VersionStrategy> strategies = new HashMap<>();
+        VersionStrategy jsStrategy = mock(VersionStrategy.class);
+        VersionStrategy catchAllStrategy = mock(VersionStrategy.class);
+        strategies.put("/**", catchAllStrategy);
+        strategies.put("/**/*.js", jsStrategy);
+        this.resolver.setStrategyMap(strategies);
 
-	@Test
-	public void getStrategyForPath() {
-		Map<String, VersionStrategy> strategies = new HashMap<>();
-		VersionStrategy jsStrategy = mock(VersionStrategy.class);
-		VersionStrategy catchAllStrategy = mock(VersionStrategy.class);
-		strategies.put("/**", catchAllStrategy);
-		strategies.put("/**/*.js", jsStrategy);
-		this.resolver.setStrategyMap(strategies);
+        assertEquals(catchAllStrategy, this.resolver.getStrategyForPath("foo.css"));
+        assertEquals(catchAllStrategy, this.resolver.getStrategyForPath("foo-js.css"));
+        assertEquals(jsStrategy, this.resolver.getStrategyForPath("foo.js"));
+        assertEquals(jsStrategy, this.resolver.getStrategyForPath("bar/foo.js"));
+    }
 
-		assertEquals(catchAllStrategy, this.resolver.getStrategyForPath("foo.css"));
-		assertEquals(catchAllStrategy, this.resolver.getStrategyForPath("foo-js.css"));
-		assertEquals(jsStrategy, this.resolver.getStrategyForPath("foo.js"));
-		assertEquals(jsStrategy, this.resolver.getStrategyForPath("bar/foo.js"));
-	}
+    @Test // SPR-13883
+    public void shouldConfigureFixedPrefixAutomatically() {
 
-	@Test // SPR-13883
-	public void shouldConfigureFixedPrefixAutomatically() {
+        this.resolver.addFixedVersionStrategy(
+                "fixedversion", "/js/**", "/css/**", "/fixedversion/css/**");
 
-		this.resolver.addFixedVersionStrategy("fixedversion", "/js/**", "/css/**", "/fixedversion/css/**");
+        assertThat(this.resolver.getStrategyMap().size(), is(4));
 
-		assertThat(this.resolver.getStrategyMap().size(), is(4));
+        assertThat(
+                this.resolver.getStrategyForPath("js/something.js"),
+                Matchers.instanceOf(FixedVersionStrategy.class));
 
-		assertThat(this.resolver.getStrategyForPath("js/something.js"),
-				Matchers.instanceOf(FixedVersionStrategy.class));
+        assertThat(
+                this.resolver.getStrategyForPath("fixedversion/js/something.js"),
+                Matchers.instanceOf(FixedVersionStrategy.class));
 
-		assertThat(this.resolver.getStrategyForPath("fixedversion/js/something.js"),
-				Matchers.instanceOf(FixedVersionStrategy.class));
+        assertThat(
+                this.resolver.getStrategyForPath("css/something.css"),
+                Matchers.instanceOf(FixedVersionStrategy.class));
 
-		assertThat(this.resolver.getStrategyForPath("css/something.css"),
-				Matchers.instanceOf(FixedVersionStrategy.class));
+        assertThat(
+                this.resolver.getStrategyForPath("fixedversion/css/something.css"),
+                Matchers.instanceOf(FixedVersionStrategy.class));
+    }
 
-		assertThat(this.resolver.getStrategyForPath("fixedversion/css/something.css"),
-				Matchers.instanceOf(FixedVersionStrategy.class));
-	}
-
-	@Test // SPR-15372
-	public void resolveUrlPathNoVersionStrategy() {
-		given(this.chain.resolveUrlPath("/foo.css", this.locations)).willReturn(Mono.just("/foo.css"));
-		String resolved = this.resolver.resolveUrlPathInternal("/foo.css", this.locations, this.chain)
-				.block(Duration.ofMillis(1000));
-		assertThat(resolved, is("/foo.css"));
-	}
-
-
+    @Test // SPR-15372
+    public void resolveUrlPathNoVersionStrategy() {
+        given(this.chain.resolveUrlPath("/foo.css", this.locations))
+                .willReturn(Mono.just("/foo.css"));
+        String resolved =
+                this.resolver
+                        .resolveUrlPathInternal("/foo.css", this.locations, this.chain)
+                        .block(Duration.ofMillis(1000));
+        assertThat(resolved, is("/foo.css"));
+    }
 }

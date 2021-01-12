@@ -36,8 +36,7 @@ import org.springframework.test.transaction.TransactionTestUtils;
 import static org.junit.Assert.*;
 
 /**
- * Integration tests that ensure that <em>primary</em> data sources are
- * supported.
+ * Integration tests that ensure that <em>primary</em> data sources are supported.
  *
  * @author Sam Brannen
  * @since 4.3
@@ -48,42 +47,40 @@ import static org.junit.Assert.*;
 @DirtiesContext
 public class PrimaryDataSourceTests {
 
-	@Configuration
-	static class Config {
+    @Configuration
+    static class Config {
 
-		@Primary
-		@Bean
-		public DataSource primaryDataSource() {
-			// @formatter:off
-			return new EmbeddedDatabaseBuilder()
-					.generateUniqueName(true)
-					.addScript("classpath:/org/springframework/test/context/jdbc/schema.sql")
-					.build();
-			// @formatter:on
-		}
+        @Primary
+        @Bean
+        public DataSource primaryDataSource() {
+            // @formatter:off
+            return new EmbeddedDatabaseBuilder()
+                    .generateUniqueName(true)
+                    .addScript("classpath:/org/springframework/test/context/jdbc/schema.sql")
+                    .build();
+            // @formatter:on
+        }
 
-		@Bean
-		public DataSource additionalDataSource() {
-			return new EmbeddedDatabaseBuilder().generateUniqueName(true).build();
-		}
+        @Bean
+        public DataSource additionalDataSource() {
+            return new EmbeddedDatabaseBuilder().generateUniqueName(true).build();
+        }
+    }
 
-	}
+    private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    public void setDataSource(DataSource dataSource) {
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
+    }
 
-	private JdbcTemplate jdbcTemplate;
-
-
-	@Autowired
-	public void setDataSource(DataSource dataSource) {
-		this.jdbcTemplate = new JdbcTemplate(dataSource);
-	}
-
-	@Test
-	@Sql("data.sql")
-	public void dataSourceTest() {
-		TransactionTestUtils.assertInTransaction(false);
-		assertEquals("Number of rows in the 'user' table.", 1,
-			JdbcTestUtils.countRowsInTable(this.jdbcTemplate, "user"));
-	}
-
+    @Test
+    @Sql("data.sql")
+    public void dataSourceTest() {
+        TransactionTestUtils.assertInTransaction(false);
+        assertEquals(
+                "Number of rows in the 'user' table.",
+                1,
+                JdbcTestUtils.countRowsInTable(this.jdbcTemplate, "user"));
+    }
 }

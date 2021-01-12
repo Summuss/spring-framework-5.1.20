@@ -1,6 +1,6 @@
 /**
- * Provides common WebHandler implementations and a
- * {@link org.springframework.web.server.handler.WebHandlerDecorator}.
+ * Provides common WebHandler implementations and a {@link
+ * org.springframework.web.server.handler.WebHandlerDecorator}.
  */
 @NonNullApi
 @NonNullFields

@@ -23,8 +23,7 @@ import org.springframework.stereotype.Component;
 @Component(ProfileAnnotatedComponent.BEAN_NAME)
 public class ProfileAnnotatedComponent {
 
-	public static final String BEAN_NAME = "profileAnnotatedComponent";
+    public static final String BEAN_NAME = "profileAnnotatedComponent";
 
-	public static final String PROFILE_NAME = "test";
-
+    public static final String PROFILE_NAME = "test";
 }

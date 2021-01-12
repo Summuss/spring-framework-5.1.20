@@ -26,38 +26,38 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import static org.junit.Assert.*;
 
-/**
- * @author Mark Fisher
- */
+/** @author Mark Fisher */
 public class SchedulerBeanDefinitionParserTests {
 
-	private ApplicationContext context;
+    private ApplicationContext context;
 
+    @Before
+    public void setup() {
+        this.context =
+                new ClassPathXmlApplicationContext(
+                        "schedulerContext.xml", SchedulerBeanDefinitionParserTests.class);
+    }
 
-	@Before
-	public void setup() {
-		this.context = new ClassPathXmlApplicationContext(
-				"schedulerContext.xml", SchedulerBeanDefinitionParserTests.class);
-	}
+    @Test
+    public void defaultScheduler() {
+        ThreadPoolTaskScheduler scheduler =
+                (ThreadPoolTaskScheduler) this.context.getBean("defaultScheduler");
+        Integer size = (Integer) new DirectFieldAccessor(scheduler).getPropertyValue("poolSize");
+        assertEquals(new Integer(1), size);
+    }
 
-	@Test
-	public void defaultScheduler() {
-		ThreadPoolTaskScheduler scheduler = (ThreadPoolTaskScheduler) this.context.getBean("defaultScheduler");
-		Integer size = (Integer) new DirectFieldAccessor(scheduler).getPropertyValue("poolSize");
-		assertEquals(new Integer(1), size);
-	}
+    @Test
+    public void customScheduler() {
+        ThreadPoolTaskScheduler scheduler =
+                (ThreadPoolTaskScheduler) this.context.getBean("customScheduler");
+        Integer size = (Integer) new DirectFieldAccessor(scheduler).getPropertyValue("poolSize");
+        assertEquals(new Integer(42), size);
+    }
 
-	@Test
-	public void customScheduler() {
-		ThreadPoolTaskScheduler scheduler = (ThreadPoolTaskScheduler) this.context.getBean("customScheduler");
-		Integer size = (Integer) new DirectFieldAccessor(scheduler).getPropertyValue("poolSize");
-		assertEquals(new Integer(42), size);
-	}
-
-	@Test
-	public void threadNamePrefix() {
-		ThreadPoolTaskScheduler scheduler = (ThreadPoolTaskScheduler) this.context.getBean("customScheduler");
-		assertEquals("customScheduler-", scheduler.getThreadNamePrefix());
-	}
-
+    @Test
+    public void threadNamePrefix() {
+        ThreadPoolTaskScheduler scheduler =
+                (ThreadPoolTaskScheduler) this.context.getBean("customScheduler");
+        assertEquals("customScheduler-", scheduler.getThreadNamePrefix());
+    }
 }

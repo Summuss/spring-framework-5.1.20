@@ -27,11 +27,11 @@ import com.gargoylesoftware.htmlunit.WebResponse;
 import org.springframework.util.Assert;
 
 /**
- * Implementation of {@link WebConnection} that allows delegating to various
- * {@code WebConnection} implementations.
+ * Implementation of {@link WebConnection} that allows delegating to various {@code WebConnection}
+ * implementations.
  *
- * <p>For example, if you host your JavaScript on the domain {@code code.jquery.com},
- * you might want to use the following.
+ * <p>For example, if you host your JavaScript on the domain {@code code.jquery.com}, you might want
+ * to use the following.
  *
  * <pre class="code">
  * WebClient webClient = new WebClient();
@@ -55,59 +55,54 @@ import org.springframework.util.Assert;
  */
 public final class DelegatingWebConnection implements WebConnection {
 
-	private final List<DelegateWebConnection> connections;
+    private final List<DelegateWebConnection> connections;
 
-	private final WebConnection defaultConnection;
+    private final WebConnection defaultConnection;
 
+    public DelegatingWebConnection(
+            WebConnection defaultConnection, List<DelegateWebConnection> connections) {
+        Assert.notNull(defaultConnection, "Default WebConnection must not be null");
+        Assert.notEmpty(connections, "Connections List must not be empty");
+        this.connections = connections;
+        this.defaultConnection = defaultConnection;
+    }
 
-	public DelegatingWebConnection(WebConnection defaultConnection, List<DelegateWebConnection> connections) {
-		Assert.notNull(defaultConnection, "Default WebConnection must not be null");
-		Assert.notEmpty(connections, "Connections List must not be empty");
-		this.connections = connections;
-		this.defaultConnection = defaultConnection;
-	}
+    public DelegatingWebConnection(
+            WebConnection defaultConnection, DelegateWebConnection... connections) {
+        this(defaultConnection, Arrays.asList(connections));
+    }
 
-	public DelegatingWebConnection(WebConnection defaultConnection, DelegateWebConnection... connections) {
-		this(defaultConnection, Arrays.asList(connections));
-	}
+    @Override
+    public WebResponse getResponse(WebRequest request) throws IOException {
+        for (DelegateWebConnection connection : this.connections) {
+            if (connection.getMatcher().matches(request)) {
+                return connection.getDelegate().getResponse(request);
+            }
+        }
+        return this.defaultConnection.getResponse(request);
+    }
 
+    @Override
+    public void close() {}
 
-	@Override
-	public WebResponse getResponse(WebRequest request) throws IOException {
-		for (DelegateWebConnection connection : this.connections) {
-			if (connection.getMatcher().matches(request)) {
-				return connection.getDelegate().getResponse(request);
-			}
-		}
-		return this.defaultConnection.getResponse(request);
-	}
+    /** The delegate web connection. */
+    public static final class DelegateWebConnection {
 
-	@Override
-	public void close() {
-	}
+        private final WebRequestMatcher matcher;
 
+        private final WebConnection delegate;
 
-	/**
-	 * The delegate web connection.
-	 */
-	public static final class DelegateWebConnection {
+        public DelegateWebConnection(WebRequestMatcher matcher, WebConnection delegate) {
+            this.matcher = matcher;
+            this.delegate = delegate;
+        }
 
-		private final WebRequestMatcher matcher;
+        private WebRequestMatcher getMatcher() {
+            return this.matcher;
+        }
 
-		private final WebConnection delegate;
-
-		public DelegateWebConnection(WebRequestMatcher matcher, WebConnection delegate) {
-			this.matcher = matcher;
-			this.delegate = delegate;
-		}
-
-		private WebRequestMatcher getMatcher() {
-			return this.matcher;
-		}
-
-		private WebConnection getDelegate() {
-			return this.delegate;
-		}
-	}
-
+        private WebConnection getDelegate() {
+            return this.delegate;
+        }
+    }
 }

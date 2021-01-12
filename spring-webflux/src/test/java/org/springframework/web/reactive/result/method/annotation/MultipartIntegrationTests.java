@@ -56,211 +56,223 @@ import static org.junit.Assert.*;
 
 public class MultipartIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 
-	private WebClient webClient;
+    private WebClient webClient;
 
+    @Override
+    @Before
+    public void setup() throws Exception {
+        super.setup();
+        this.webClient = WebClient.create("http://localhost:" + this.port);
+    }
 
-	@Override
-	@Before
-	public void setup() throws Exception {
-		super.setup();
-		this.webClient = WebClient.create("http://localhost:" + this.port);
-	}
+    @Override
+    protected HttpHandler createHttpHandler() {
+        AnnotationConfigApplicationContext wac = new AnnotationConfigApplicationContext();
+        wac.register(TestConfiguration.class);
+        wac.refresh();
+        return WebHttpHandlerBuilder.webHandler(new DispatcherHandler(wac)).build();
+    }
 
+    @Test
+    public void requestPart() {
+        Mono<ClientResponse> result =
+                webClient.post().uri("/requestPart").syncBody(generateBody()).exchange();
 
-	@Override
-	protected HttpHandler createHttpHandler() {
-		AnnotationConfigApplicationContext wac = new AnnotationConfigApplicationContext();
-		wac.register(TestConfiguration.class);
-		wac.refresh();
-		return WebHttpHandlerBuilder.webHandler(new DispatcherHandler(wac)).build();
-	}
+        StepVerifier.create(result)
+                .consumeNextWith(response -> assertEquals(HttpStatus.OK, response.statusCode()))
+                .verifyComplete();
+    }
 
-	@Test
-	public void requestPart() {
-		Mono<ClientResponse> result = webClient
-				.post()
-				.uri("/requestPart")
-				.syncBody(generateBody())
-				.exchange();
+    @Test
+    public void requestBodyMap() {
+        Mono<String> result =
+                webClient
+                        .post()
+                        .uri("/requestBodyMap")
+                        .syncBody(generateBody())
+                        .retrieve()
+                        .bodyToMono(String.class);
 
-		StepVerifier
-				.create(result)
-				.consumeNextWith(response -> assertEquals(HttpStatus.OK, response.statusCode()))
-				.verifyComplete();
-	}
+        StepVerifier.create(result)
+                .consumeNextWith(
+                        body ->
+                                assertEquals(
+                                        "Map[[fieldPart],[fileParts:foo.txt,fileParts:logo.png],[jsonPart]]",
+                                        body))
+                .verifyComplete();
+    }
 
-	@Test
-	public void requestBodyMap() {
-		Mono<String> result = webClient
-				.post()
-				.uri("/requestBodyMap")
-				.syncBody(generateBody())
-				.retrieve()
-				.bodyToMono(String.class);
+    @Test
+    public void requestBodyFlux() {
+        Mono<String> result =
+                webClient
+                        .post()
+                        .uri("/requestBodyFlux")
+                        .syncBody(generateBody())
+                        .retrieve()
+                        .bodyToMono(String.class);
 
-		StepVerifier.create(result)
-				.consumeNextWith(body -> assertEquals(
-						"Map[[fieldPart],[fileParts:foo.txt,fileParts:logo.png],[jsonPart]]", body))
-				.verifyComplete();
-	}
+        StepVerifier.create(result)
+                .consumeNextWith(
+                        body ->
+                                assertEquals(
+                                        "[fieldPart,fileParts:foo.txt,fileParts:logo.png,jsonPart]",
+                                        body))
+                .verifyComplete();
+    }
 
-	@Test
-	public void requestBodyFlux() {
-		Mono<String> result = webClient
-				.post()
-				.uri("/requestBodyFlux")
-				.syncBody(generateBody())
-				.retrieve()
-				.bodyToMono(String.class);
+    @Test
+    public void modelAttribute() {
+        Mono<String> result =
+                webClient
+                        .post()
+                        .uri("/modelAttribute")
+                        .syncBody(generateBody())
+                        .retrieve()
+                        .bodyToMono(String.class);
 
-		StepVerifier.create(result)
-				.consumeNextWith(body -> assertEquals(
-						"[fieldPart,fileParts:foo.txt,fileParts:logo.png,jsonPart]", body))
-				.verifyComplete();
-	}
+        StepVerifier.create(result)
+                .consumeNextWith(
+                        body ->
+                                assertEquals(
+                                        "FormBean[fieldValue,[fileParts:foo.txt,fileParts:logo.png]]",
+                                        body))
+                .verifyComplete();
+    }
 
-	@Test
-	public void modelAttribute() {
-		Mono<String> result = webClient
-				.post()
-				.uri("/modelAttribute")
-				.syncBody(generateBody())
-				.retrieve()
-				.bodyToMono(String.class);
+    private MultiValueMap<String, HttpEntity<?>> generateBody() {
+        MultipartBodyBuilder builder = new MultipartBodyBuilder();
+        builder.part("fieldPart", "fieldValue");
+        builder.part(
+                "fileParts", new ClassPathResource("foo.txt", MultipartHttpMessageReader.class));
+        builder.part("fileParts", new ClassPathResource("logo.png", getClass()));
+        builder.part("jsonPart", new Person("Jason"));
+        return builder.build();
+    }
 
-		StepVerifier.create(result)
-				.consumeNextWith(body -> assertEquals(
-						"FormBean[fieldValue,[fileParts:foo.txt,fileParts:logo.png]]", body))
-				.verifyComplete();
-	}
+    @Configuration
+    @EnableWebFlux
+    @SuppressWarnings("unused")
+    static class TestConfiguration {
 
-	private MultiValueMap<String, HttpEntity<?>> generateBody() {
-		MultipartBodyBuilder builder = new MultipartBodyBuilder();
-		builder.part("fieldPart", "fieldValue");
-		builder.part("fileParts", new ClassPathResource("foo.txt", MultipartHttpMessageReader.class));
-		builder.part("fileParts", new ClassPathResource("logo.png", getClass()));
-		builder.part("jsonPart", new Person("Jason"));
-		return builder.build();
-	}
+        @Bean
+        public MultipartController testController() {
+            return new MultipartController();
+        }
+    }
 
+    @RestController
+    @SuppressWarnings("unused")
+    static class MultipartController {
 
-	@Configuration
-	@EnableWebFlux
-	@SuppressWarnings("unused")
-	static class TestConfiguration {
+        @PostMapping("/requestPart")
+        void requestPart(
+                @RequestPart FormFieldPart fieldPart,
+                @RequestPart("fileParts") FilePart fileParts,
+                @RequestPart("fileParts") Mono<FilePart> filePartsMono,
+                @RequestPart("fileParts") Flux<FilePart> filePartsFlux,
+                @RequestPart("jsonPart") Person person,
+                @RequestPart("jsonPart") Mono<Person> personMono) {
 
-		@Bean
-		public MultipartController testController() {
-			return new MultipartController();
-		}
-	}
+            assertEquals("fieldValue", fieldPart.value());
+            assertEquals("fileParts:foo.txt", partDescription(fileParts));
+            assertEquals("Jason", person.getName());
 
-	@RestController
-	@SuppressWarnings("unused")
-	static class MultipartController {
+            StepVerifier.create(partFluxDescription(filePartsFlux))
+                    .consumeNextWith(
+                            content ->
+                                    assertEquals("[fileParts:foo.txt,fileParts:logo.png]", content))
+                    .verifyComplete();
 
-		@PostMapping("/requestPart")
-		void requestPart(
-				@RequestPart FormFieldPart fieldPart,
-				@RequestPart("fileParts") FilePart fileParts,
-				@RequestPart("fileParts") Mono<FilePart> filePartsMono,
-				@RequestPart("fileParts") Flux<FilePart> filePartsFlux,
-				@RequestPart("jsonPart") Person person,
-				@RequestPart("jsonPart") Mono<Person> personMono) {
+            StepVerifier.create(filePartsMono)
+                    .consumeNextWith(
+                            filePart ->
+                                    assertEquals("fileParts:foo.txt", partDescription(filePart)))
+                    .verifyComplete();
 
-			assertEquals("fieldValue", fieldPart.value());
-			assertEquals("fileParts:foo.txt", partDescription(fileParts));
-			assertEquals("Jason", person.getName());
+            StepVerifier.create(personMono)
+                    .consumeNextWith(p -> assertEquals("Jason", p.getName()))
+                    .verifyComplete();
+        }
 
-			StepVerifier.create(partFluxDescription(filePartsFlux))
-					.consumeNextWith(content -> assertEquals("[fileParts:foo.txt,fileParts:logo.png]", content))
-					.verifyComplete();
+        @PostMapping("/requestBodyMap")
+        Mono<String> requestBodyMap(@RequestBody Mono<MultiValueMap<String, Part>> partsMono) {
+            return partsMono.map(MultipartIntegrationTests::partMapDescription);
+        }
 
-			StepVerifier.create(filePartsMono)
-					.consumeNextWith(filePart -> assertEquals("fileParts:foo.txt", partDescription(filePart)))
-					.verifyComplete();
+        @PostMapping("/requestBodyFlux")
+        Mono<String> requestBodyFlux(@RequestBody Flux<Part> parts) {
+            return partFluxDescription(parts);
+        }
 
-			StepVerifier.create(personMono)
-					.consumeNextWith(p -> assertEquals("Jason", p.getName()))
-					.verifyComplete();
-		}
+        @PostMapping("/modelAttribute")
+        String modelAttribute(@ModelAttribute FormBean formBean) {
+            return formBean.toString();
+        }
+    }
 
-		@PostMapping("/requestBodyMap")
-		Mono<String> requestBodyMap(@RequestBody Mono<MultiValueMap<String, Part>> partsMono) {
-			return partsMono.map(MultipartIntegrationTests::partMapDescription);
-		}
+    private static String partMapDescription(MultiValueMap<String, Part> partsMap) {
+        return partsMap.keySet().stream()
+                .sorted()
+                .map(key -> partListDescription(partsMap.get(key)))
+                .collect(Collectors.joining(",", "Map[", "]"));
+    }
 
-		@PostMapping("/requestBodyFlux")
-		Mono<String> requestBodyFlux(@RequestBody Flux<Part> parts) {
-			return partFluxDescription(parts);
-		}
+    private static Mono<String> partFluxDescription(Flux<? extends Part> partsFlux) {
+        return partsFlux.collectList().map(MultipartIntegrationTests::partListDescription);
+    }
 
-		@PostMapping("/modelAttribute")
-		String modelAttribute(@ModelAttribute FormBean formBean) {
-			return formBean.toString();
-		}
-	}
+    private static String partListDescription(List<? extends Part> parts) {
+        return parts.stream()
+                .map(MultipartIntegrationTests::partDescription)
+                .collect(Collectors.joining(",", "[", "]"));
+    }
 
-	private static String partMapDescription(MultiValueMap<String, Part> partsMap) {
-		return partsMap.keySet().stream().sorted()
-				.map(key -> partListDescription(partsMap.get(key)))
-				.collect(Collectors.joining(",", "Map[", "]"));
-	}
+    private static String partDescription(Part part) {
+        return part instanceof FilePart
+                ? part.name() + ":" + ((FilePart) part).filename()
+                : part.name();
+    }
 
-	private static Mono<String> partFluxDescription(Flux<? extends Part> partsFlux) {
-		return partsFlux.collectList().map(MultipartIntegrationTests::partListDescription);
-	}
+    static class FormBean {
 
-	private static String partListDescription(List<? extends Part> parts) {
-		return parts.stream().map(MultipartIntegrationTests::partDescription)
-				.collect(Collectors.joining(",", "[", "]"));
-	}
+        private String fieldPart;
 
-	private static String partDescription(Part part) {
-		return part instanceof FilePart ? part.name() + ":" + ((FilePart) part).filename() : part.name();
-	}
+        private List<FilePart> fileParts;
 
-	static class FormBean {
+        public String getFieldPart() {
+            return this.fieldPart;
+        }
 
-		private String fieldPart;
+        public void setFieldPart(String fieldPart) {
+            this.fieldPart = fieldPart;
+        }
 
-		private List<FilePart> fileParts;
+        public List<FilePart> getFileParts() {
+            return this.fileParts;
+        }
 
+        public void setFileParts(List<FilePart> fileParts) {
+            this.fileParts = fileParts;
+        }
 
-		public String getFieldPart() {
-			return this.fieldPart;
-		}
+        @Override
+        public String toString() {
+            return "FormBean[" + getFieldPart() + "," + partListDescription(getFileParts()) + "]";
+        }
+    }
 
-		public void setFieldPart(String fieldPart) {
-			this.fieldPart = fieldPart;
-		}
+    private static class Person {
 
-		public List<FilePart> getFileParts() {
-			return this.fileParts;
-		}
+        private String name;
 
-		public void setFileParts(List<FilePart> fileParts) {
-			this.fileParts = fileParts;
-		}
+        @JsonCreator
+        public Person(@JsonProperty("name") String name) {
+            this.name = name;
+        }
 
-		@Override
-		public String toString() {
-			return "FormBean[" + getFieldPart() + "," + partListDescription(getFileParts()) + "]";
-		}
-	}
-
-	private static class Person {
-
-		private String name;
-
-		@JsonCreator
-		public Person(@JsonProperty("name") String name) {
-			this.name = name;
-		}
-
-		public String getName() {
-			return name;
-		}
-	}
-
+        public String getName() {
+            return name;
+        }
+    }
 }

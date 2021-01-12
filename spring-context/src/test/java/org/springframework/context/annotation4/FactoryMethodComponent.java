@@ -26,8 +26,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.tests.sample.beans.TestBean;
 
 /**
- * Class used to test the functionality of factory method bean definitions
- * declared inside a Spring component class.
+ * Class used to test the functionality of factory method bean definitions declared inside a Spring
+ * component class.
  *
  * @author Mark Pollack
  * @author Juergen Hoeller
@@ -35,43 +35,47 @@ import org.springframework.tests.sample.beans.TestBean;
 @Component
 public class FactoryMethodComponent {
 
-	private int i;
+    private int i;
 
-	public static TestBean nullInstance()  {
-		return null;
-	}
+    public static TestBean nullInstance() {
+        return null;
+    }
 
-	@Bean @Qualifier("public")
-	public TestBean publicInstance() {
-		return new TestBean("publicInstance");
-	}
+    @Bean
+    @Qualifier("public")
+    public TestBean publicInstance() {
+        return new TestBean("publicInstance");
+    }
 
-	// to be ignored
-	public TestBean publicInstance(boolean doIt) {
-		return new TestBean("publicInstance");
-	}
+    // to be ignored
+    public TestBean publicInstance(boolean doIt) {
+        return new TestBean("publicInstance");
+    }
 
-	@Bean @BeanAge(1)
-	protected TestBean protectedInstance(@Qualifier("public") TestBean spouse, @Value("#{privateInstance.age}") String country) {
-		TestBean tb = new TestBean("protectedInstance", 1);
-		tb.setSpouse(tb);
-		tb.setCountry(country);
-		return tb;
-	}
+    @Bean
+    @BeanAge(1)
+    protected TestBean protectedInstance(
+            @Qualifier("public") TestBean spouse, @Value("#{privateInstance.age}") String country) {
+        TestBean tb = new TestBean("protectedInstance", 1);
+        tb.setSpouse(tb);
+        tb.setCountry(country);
+        return tb;
+    }
 
-	@Bean @Scope("prototype")
-	private TestBean privateInstance() {
-		return new TestBean("privateInstance", i++);
-	}
+    @Bean
+    @Scope("prototype")
+    private TestBean privateInstance() {
+        return new TestBean("privateInstance", i++);
+    }
 
-	@Bean @Scope(value = "request", proxyMode = ScopedProxyMode.TARGET_CLASS)
-	public TestBean requestScopedInstance() {
-		return new TestBean("requestScopedInstance", 3);
-	}
+    @Bean
+    @Scope(value = "request", proxyMode = ScopedProxyMode.TARGET_CLASS)
+    public TestBean requestScopedInstance() {
+        return new TestBean("requestScopedInstance", 3);
+    }
 
-	@Bean
-	public DependencyBean secondInstance() {
-		return new DependencyBean();
-	}
-
+    @Bean
+    public DependencyBean secondInstance() {
+        return new DependencyBean();
+    }
 }

@@ -23,8 +23,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Adds a textual description to bean definitions derived from
- * {@link org.springframework.stereotype.Component} or {@link Bean}.
+ * Adds a textual description to bean definitions derived from {@link
+ * org.springframework.stereotype.Component} or {@link Bean}.
  *
  * @author Juergen Hoeller
  * @since 4.0
@@ -35,9 +35,6 @@ import java.lang.annotation.Target;
 @Documented
 public @interface Description {
 
-	/**
-	 * The textual description to associate with the bean definition.
-	 */
-	String value();
-
+    /** The textual description to associate with the bean definition. */
+    String value();
 }

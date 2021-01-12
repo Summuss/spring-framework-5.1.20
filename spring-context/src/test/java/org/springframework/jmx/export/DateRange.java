@@ -18,29 +18,26 @@ package org.springframework.jmx.export;
 
 import java.util.Date;
 
-/**
- * @author Rob Harrop
- */
+/** @author Rob Harrop */
 public class DateRange {
 
-	private Date startDate;
+    private Date startDate;
 
-	private Date endDate;
+    private Date endDate;
 
-	public Date getStartDate() {
-		return startDate;
-	}
+    public Date getStartDate() {
+        return startDate;
+    }
 
-	public void setStartDate(Date startDate) {
-		this.startDate = startDate;
-	}
+    public void setStartDate(Date startDate) {
+        this.startDate = startDate;
+    }
 
-	public Date getEndDate() {
-		return endDate;
-	}
+    public Date getEndDate() {
+        return endDate;
+    }
 
-	public void setEndDate(Date endDate) {
-		this.endDate = endDate;
-	}
-
+    public void setEndDate(Date endDate) {
+        this.endDate = endDate;
+    }
 }

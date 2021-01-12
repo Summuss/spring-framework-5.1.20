@@ -27,30 +27,29 @@ import org.springframework.util.MultiValueMap;
  */
 public interface SubscriptionRegistry {
 
-	/**
-	 * Register a subscription represented by the given message.
-	 * @param subscribeMessage the subscription request
-	 */
-	void registerSubscription(Message<?> subscribeMessage);
+    /**
+     * Register a subscription represented by the given message.
+     *
+     * @param subscribeMessage the subscription request
+     */
+    void registerSubscription(Message<?> subscribeMessage);
 
-	/**
-	 * Unregister a subscription.
-	 * @param unsubscribeMessage the request to unsubscribe
-	 */
-	void unregisterSubscription(Message<?> unsubscribeMessage);
+    /**
+     * Unregister a subscription.
+     *
+     * @param unsubscribeMessage the request to unsubscribe
+     */
+    void unregisterSubscription(Message<?> unsubscribeMessage);
 
-	/**
-	 * Remove all subscriptions associated with the given sessionId.
-	 */
-	void unregisterAllSubscriptions(String sessionId);
+    /** Remove all subscriptions associated with the given sessionId. */
+    void unregisterAllSubscriptions(String sessionId);
 
-	/**
-	 * Find all subscriptions that should receive the given message.
-	 * The map returned is safe to iterate and will never be modified.
-	 * @param message the message
-	 * @return a {@code MultiValueMap} with sessionId-subscriptionId pairs
-	 * (possibly empty)
-	 */
-	MultiValueMap<String, String> findSubscriptions(Message<?> message);
-
+    /**
+     * Find all subscriptions that should receive the given message. The map returned is safe to
+     * iterate and will never be modified.
+     *
+     * @param message the message
+     * @return a {@code MultiValueMap} with sessionId-subscriptionId pairs (possibly empty)
+     */
+    MultiValueMap<String, String> findSubscriptions(Message<?> message);
 }

@@ -1,6 +1,6 @@
 /**
- * Support classes for creating SockJS frames including the encoding and decoding
- * of SockJS message frames.
+ * Support classes for creating SockJS frames including the encoding and decoding of SockJS message
+ * frames.
  */
 @NonNullApi
 @NonNullFields

@@ -29,10 +29,10 @@ import org.springframework.web.reactive.accept.RequestedContentTypeResolverBuild
 import org.springframework.web.reactive.result.method.annotation.ArgumentResolverConfigurer;
 
 /**
- * A subclass of {@code WebFluxConfigurationSupport} that detects and delegates
- * to all beans of type {@link WebFluxConfigurer} allowing them to customize the
- * configuration provided by {@code WebFluxConfigurationSupport}. This is the
- * class actually imported by {@link EnableWebFlux @EnableWebFlux}.
+ * A subclass of {@code WebFluxConfigurationSupport} that detects and delegates to all beans of type
+ * {@link WebFluxConfigurer} allowing them to customize the configuration provided by {@code
+ * WebFluxConfigurationSupport}. This is the class actually imported by {@link
+ * EnableWebFlux @EnableWebFlux}.
  *
  * @author Brian Clozel
  * @since 5.0
@@ -40,67 +40,66 @@ import org.springframework.web.reactive.result.method.annotation.ArgumentResolve
 @Configuration
 public class DelegatingWebFluxConfiguration extends WebFluxConfigurationSupport {
 
-	private final WebFluxConfigurerComposite configurers = new WebFluxConfigurerComposite();
+    private final WebFluxConfigurerComposite configurers = new WebFluxConfigurerComposite();
 
+    @Autowired(required = false)
+    public void setConfigurers(List<WebFluxConfigurer> configurers) {
+        if (!CollectionUtils.isEmpty(configurers)) {
+            this.configurers.addWebFluxConfigurers(configurers);
+        }
+    }
 
-	@Autowired(required = false)
-	public void setConfigurers(List<WebFluxConfigurer> configurers) {
-		if (!CollectionUtils.isEmpty(configurers)) {
-			this.configurers.addWebFluxConfigurers(configurers);
-		}
-	}
+    @Override
+    protected void configureContentTypeResolver(RequestedContentTypeResolverBuilder builder) {
+        this.configurers.configureContentTypeResolver(builder);
+    }
 
+    @Override
+    protected void addCorsMappings(CorsRegistry registry) {
+        this.configurers.addCorsMappings(registry);
+    }
 
-	@Override
-	protected void configureContentTypeResolver(RequestedContentTypeResolverBuilder builder) {
-		this.configurers.configureContentTypeResolver(builder);
-	}
+    @Override
+    public void configurePathMatching(PathMatchConfigurer configurer) {
+        this.configurers.configurePathMatching(configurer);
+    }
 
-	@Override
-	protected void addCorsMappings(CorsRegistry registry) {
-		this.configurers.addCorsMappings(registry);
-	}
+    @Override
+    protected void addResourceHandlers(ResourceHandlerRegistry registry) {
+        this.configurers.addResourceHandlers(registry);
+    }
 
-	@Override
-	public void configurePathMatching(PathMatchConfigurer configurer) {
-		this.configurers.configurePathMatching(configurer);
-	}
+    @Override
+    protected void configureArgumentResolvers(ArgumentResolverConfigurer configurer) {
+        this.configurers.configureArgumentResolvers(configurer);
+    }
 
-	@Override
-	protected void addResourceHandlers(ResourceHandlerRegistry registry) {
-		this.configurers.addResourceHandlers(registry);
-	}
+    @Override
+    protected void configureHttpMessageCodecs(ServerCodecConfigurer configurer) {
+        this.configurers.configureHttpMessageCodecs(configurer);
+    }
 
-	@Override
-	protected void configureArgumentResolvers(ArgumentResolverConfigurer configurer) {
-		this.configurers.configureArgumentResolvers(configurer);
-	}
+    @Override
+    protected void addFormatters(FormatterRegistry registry) {
+        this.configurers.addFormatters(registry);
+    }
 
-	@Override
-	protected void configureHttpMessageCodecs(ServerCodecConfigurer configurer) {
-		this.configurers.configureHttpMessageCodecs(configurer);
-	}
+    @Override
+    protected Validator getValidator() {
+        Validator validator = this.configurers.getValidator();
+        return (validator != null ? validator : super.getValidator());
+    }
 
-	@Override
-	protected void addFormatters(FormatterRegistry registry) {
-		this.configurers.addFormatters(registry);
-	}
+    @Override
+    protected MessageCodesResolver getMessageCodesResolver() {
+        MessageCodesResolver messageCodesResolver = this.configurers.getMessageCodesResolver();
+        return (messageCodesResolver != null
+                ? messageCodesResolver
+                : super.getMessageCodesResolver());
+    }
 
-	@Override
-	protected Validator getValidator() {
-		Validator validator = this.configurers.getValidator();
-		return (validator != null ? validator : super.getValidator());
-	}
-
-	@Override
-	protected MessageCodesResolver getMessageCodesResolver() {
-		MessageCodesResolver messageCodesResolver = this.configurers.getMessageCodesResolver();
-		return (messageCodesResolver != null ? messageCodesResolver : super.getMessageCodesResolver());
-	}
-
-	@Override
-	protected void configureViewResolvers(ViewResolverRegistry registry) {
-		this.configurers.configureViewResolvers(registry);
-	}
-
+    @Override
+    protected void configureViewResolvers(ViewResolverRegistry registry) {
+        this.configurers.configureViewResolvers(registry);
+    }
 }

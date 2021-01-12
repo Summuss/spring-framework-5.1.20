@@ -18,32 +18,30 @@
 package org.apache.commons.logging;
 
 /**
- * A simple logging interface abstracting logging APIs.  In order to be
- * instantiated successfully by {@link LogFactory}, classes that implement
- * this interface must have a constructor that takes a single String
- * parameter representing the "name" of this Log.
+ * A simple logging interface abstracting logging APIs. In order to be instantiated successfully by
+ * {@link LogFactory}, classes that implement this interface must have a constructor that takes a
+ * single String parameter representing the "name" of this Log.
  *
  * <p>The six logging levels used by <code>Log</code> are (in order):
+ *
  * <ol>
- * <li>trace (the least serious)</li>
- * <li>debug</li>
- * <li>info</li>
- * <li>warn</li>
- * <li>error</li>
- * <li>fatal (the most serious)</li>
+ *   <li>trace (the least serious)
+ *   <li>debug
+ *   <li>info
+ *   <li>warn
+ *   <li>error
+ *   <li>fatal (the most serious)
  * </ol>
  *
- * The mapping of these log levels to the concepts used by the underlying
- * logging system is implementation dependent.
- * The implementation should ensure, though, that this ordering behaves
- * as expected.
+ * The mapping of these log levels to the concepts used by the underlying logging system is
+ * implementation dependent. The implementation should ensure, though, that this ordering behaves as
+ * expected.
  *
- * <p>Performance is often a logging concern.
- * By examining the appropriate property,
- * a component can avoid expensive operations (producing information
- * to be logged).
+ * <p>Performance is often a logging concern. By examining the appropriate property, a component can
+ * avoid expensive operations (producing information to be logged).
  *
  * <p>For example,
+ *
  * <pre>
  *    if (log.isDebugEnabled()) {
  *        ... do something expensive ...
@@ -51,146 +49,161 @@ package org.apache.commons.logging;
  *    }
  * </pre>
  *
- * <p>Configuration of the underlying logging system will generally be done
- * external to the Logging APIs, through whatever mechanism is supported by
- * that system.
+ * <p>Configuration of the underlying logging system will generally be done external to the Logging
+ * APIs, through whatever mechanism is supported by that system.
  *
  * @author Juergen Hoeller (for the {@code spring-jcl} variant)
  * @since 5.0
  */
 public interface Log {
 
-	/**
-	 * Is fatal logging currently enabled?
-	 * <p>Call this method to prevent having to perform expensive operations
-	 * (for example, <code>String</code> concatenation)
-	 * when the log level is more than fatal.
-	 * @return true if fatal is enabled in the underlying logger.
-	 */
-	boolean isFatalEnabled();
+    /**
+     * Is fatal logging currently enabled?
+     *
+     * <p>Call this method to prevent having to perform expensive operations (for example, <code>
+     * String</code> concatenation) when the log level is more than fatal.
+     *
+     * @return true if fatal is enabled in the underlying logger.
+     */
+    boolean isFatalEnabled();
 
-	/**
-	 * Is error logging currently enabled?
-	 * <p>Call this method to prevent having to perform expensive operations
-	 * (for example, <code>String</code> concatenation)
-	 * when the log level is more than error.
-	 * @return true if error is enabled in the underlying logger.
-	 */
-	boolean isErrorEnabled();
+    /**
+     * Is error logging currently enabled?
+     *
+     * <p>Call this method to prevent having to perform expensive operations (for example, <code>
+     * String</code> concatenation) when the log level is more than error.
+     *
+     * @return true if error is enabled in the underlying logger.
+     */
+    boolean isErrorEnabled();
 
-	/**
-	 * Is warn logging currently enabled?
-	 * <p>Call this method to prevent having to perform expensive operations
-	 * (for example, <code>String</code> concatenation)
-	 * when the log level is more than warn.
-	 * @return true if warn is enabled in the underlying logger.
-	 */
-	boolean isWarnEnabled();
+    /**
+     * Is warn logging currently enabled?
+     *
+     * <p>Call this method to prevent having to perform expensive operations (for example, <code>
+     * String</code> concatenation) when the log level is more than warn.
+     *
+     * @return true if warn is enabled in the underlying logger.
+     */
+    boolean isWarnEnabled();
 
-	/**
-	 * Is info logging currently enabled?
-	 * <p>Call this method to prevent having to perform expensive operations
-	 * (for example, <code>String</code> concatenation)
-	 * when the log level is more than info.
-	 * @return true if info is enabled in the underlying logger.
-	 */
-	boolean isInfoEnabled();
+    /**
+     * Is info logging currently enabled?
+     *
+     * <p>Call this method to prevent having to perform expensive operations (for example, <code>
+     * String</code> concatenation) when the log level is more than info.
+     *
+     * @return true if info is enabled in the underlying logger.
+     */
+    boolean isInfoEnabled();
 
-	/**
-	 * Is debug logging currently enabled?
-	 * <p>Call this method to prevent having to perform expensive operations
-	 * (for example, <code>String</code> concatenation)
-	 * when the log level is more than debug.
-	 * @return true if debug is enabled in the underlying logger.
-	 */
-	boolean isDebugEnabled();
+    /**
+     * Is debug logging currently enabled?
+     *
+     * <p>Call this method to prevent having to perform expensive operations (for example, <code>
+     * String</code> concatenation) when the log level is more than debug.
+     *
+     * @return true if debug is enabled in the underlying logger.
+     */
+    boolean isDebugEnabled();
 
-	/**
-	 * Is trace logging currently enabled?
-	 * <p>Call this method to prevent having to perform expensive operations
-	 * (for example, <code>String</code> concatenation)
-	 * when the log level is more than trace.
-	 * @return true if trace is enabled in the underlying logger.
-	 */
-	boolean isTraceEnabled();
+    /**
+     * Is trace logging currently enabled?
+     *
+     * <p>Call this method to prevent having to perform expensive operations (for example, <code>
+     * String</code> concatenation) when the log level is more than trace.
+     *
+     * @return true if trace is enabled in the underlying logger.
+     */
+    boolean isTraceEnabled();
 
+    /**
+     * Logs a message with fatal log level.
+     *
+     * @param message log this message
+     */
+    void fatal(Object message);
 
-	/**
-	 * Logs a message with fatal log level.
-	 * @param message log this message
-	 */
-	void fatal(Object message);
+    /**
+     * Logs an error with fatal log level.
+     *
+     * @param message log this message
+     * @param t log this cause
+     */
+    void fatal(Object message, Throwable t);
 
-	/**
-	 * Logs an error with fatal log level.
-	 * @param message log this message
-	 * @param t log this cause
-	 */
-	void fatal(Object message, Throwable t);
+    /**
+     * Logs a message with error log level.
+     *
+     * @param message log this message
+     */
+    void error(Object message);
 
-	/**
-	 * Logs a message with error log level.
-	 * @param message log this message
-	 */
-	void error(Object message);
+    /**
+     * Logs an error with error log level.
+     *
+     * @param message log this message
+     * @param t log this cause
+     */
+    void error(Object message, Throwable t);
 
-	/**
-	 * Logs an error with error log level.
-	 * @param message log this message
-	 * @param t log this cause
-	 */
-	void error(Object message, Throwable t);
+    /**
+     * Logs a message with warn log level.
+     *
+     * @param message log this message
+     */
+    void warn(Object message);
 
-	/**
-	 * Logs a message with warn log level.
-	 * @param message log this message
-	 */
-	void warn(Object message);
+    /**
+     * Logs an error with warn log level.
+     *
+     * @param message log this message
+     * @param t log this cause
+     */
+    void warn(Object message, Throwable t);
 
-	/**
-	 * Logs an error with warn log level.
-	 * @param message log this message
-	 * @param t log this cause
-	 */
-	void warn(Object message, Throwable t);
+    /**
+     * Logs a message with info log level.
+     *
+     * @param message log this message
+     */
+    void info(Object message);
 
-	/**
-	 * Logs a message with info log level.
-	 * @param message log this message
-	 */
-	void info(Object message);
+    /**
+     * Logs an error with info log level.
+     *
+     * @param message log this message
+     * @param t log this cause
+     */
+    void info(Object message, Throwable t);
 
-	/**
-	 * Logs an error with info log level.
-	 * @param message log this message
-	 * @param t log this cause
-	 */
-	void info(Object message, Throwable t);
+    /**
+     * Logs a message with debug log level.
+     *
+     * @param message log this message
+     */
+    void debug(Object message);
 
-	/**
-	 * Logs a message with debug log level.
-	 * @param message log this message
-	 */
-	void debug(Object message);
+    /**
+     * Logs an error with debug log level.
+     *
+     * @param message log this message
+     * @param t log this cause
+     */
+    void debug(Object message, Throwable t);
 
-	/**
-	 * Logs an error with debug log level.
-	 * @param message log this message
-	 * @param t log this cause
-	 */
-	void debug(Object message, Throwable t);
+    /**
+     * Logs a message with trace log level.
+     *
+     * @param message log this message
+     */
+    void trace(Object message);
 
-	/**
-	 * Logs a message with trace log level.
-	 * @param message log this message
-	 */
-	void trace(Object message);
-
-	/**
-	 * Logs an error with trace log level.
-	 * @param message log this message
-	 * @param t log this cause
-	 */
-	void trace(Object message, Throwable t);
-
+    /**
+     * Logs an error with trace log level.
+     *
+     * @param message log this message
+     * @param t log this cause
+     */
+    void trace(Object message, Throwable t);
 }

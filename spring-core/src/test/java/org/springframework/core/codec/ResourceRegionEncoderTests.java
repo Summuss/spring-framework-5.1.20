@@ -43,167 +43,184 @@ import static org.junit.Assert.*;
 
 /**
  * Test cases for {@link ResourceRegionEncoder} class.
+ *
  * @author Brian Clozel
  */
-public class ResourceRegionEncoderTests  {
+public class ResourceRegionEncoderTests {
 
-	private ResourceRegionEncoder encoder = new ResourceRegionEncoder();
+    private ResourceRegionEncoder encoder = new ResourceRegionEncoder();
 
-	private LeakAwareDataBufferFactory bufferFactory = new LeakAwareDataBufferFactory();
+    private LeakAwareDataBufferFactory bufferFactory = new LeakAwareDataBufferFactory();
 
+    @After
+    public void tearDown() throws Exception {
+        this.bufferFactory.checkForLeaks();
+    }
 
-	@After
-	public void tearDown() throws Exception {
-		this.bufferFactory.checkForLeaks();
-	}
+    @Test
+    public void canEncode() {
+        ResolvableType resourceRegion = ResolvableType.forClass(ResourceRegion.class);
+        MimeType allMimeType = MimeType.valueOf("*/*");
 
-	@Test
-	public void canEncode() {
-		ResolvableType resourceRegion = ResolvableType.forClass(ResourceRegion.class);
-		MimeType allMimeType = MimeType.valueOf("*/*");
+        assertFalse(
+                this.encoder.canEncode(
+                        ResolvableType.forClass(Resource.class),
+                        MimeTypeUtils.APPLICATION_OCTET_STREAM));
+        assertFalse(this.encoder.canEncode(ResolvableType.forClass(Resource.class), allMimeType));
+        assertTrue(this.encoder.canEncode(resourceRegion, MimeTypeUtils.APPLICATION_OCTET_STREAM));
+        assertTrue(this.encoder.canEncode(resourceRegion, allMimeType));
 
-		assertFalse(this.encoder.canEncode(ResolvableType.forClass(Resource.class),
-				MimeTypeUtils.APPLICATION_OCTET_STREAM));
-		assertFalse(this.encoder.canEncode(ResolvableType.forClass(Resource.class), allMimeType));
-		assertTrue(this.encoder.canEncode(resourceRegion, MimeTypeUtils.APPLICATION_OCTET_STREAM));
-		assertTrue(this.encoder.canEncode(resourceRegion, allMimeType));
+        // SPR-15464
+        assertFalse(this.encoder.canEncode(ResolvableType.NONE, null));
+    }
 
-		// SPR-15464
-		assertFalse(this.encoder.canEncode(ResolvableType.NONE, null));
-	}
+    @Test
+    public void shouldEncodeResourceRegionFileResource() throws Exception {
+        ResourceRegion region =
+                new ResourceRegion(
+                        new ClassPathResource("ResourceRegionEncoderTests.txt", getClass()), 0, 6);
+        Flux<DataBuffer> result =
+                this.encoder.encode(
+                        Mono.just(region),
+                        this.bufferFactory,
+                        ResolvableType.forClass(ResourceRegion.class),
+                        MimeTypeUtils.APPLICATION_OCTET_STREAM,
+                        Collections.emptyMap());
 
-	@Test
-	public void shouldEncodeResourceRegionFileResource() throws Exception {
-		ResourceRegion region = new ResourceRegion(
-				new ClassPathResource("ResourceRegionEncoderTests.txt", getClass()), 0, 6);
-		Flux<DataBuffer> result = this.encoder.encode(Mono.just(region), this.bufferFactory,
-				ResolvableType.forClass(ResourceRegion.class),
-				MimeTypeUtils.APPLICATION_OCTET_STREAM,
-				Collections.emptyMap());
+        StepVerifier.create(result)
+                .consumeNextWith(stringConsumer("Spring"))
+                .expectComplete()
+                .verify();
+    }
 
-		StepVerifier.create(result)
-				.consumeNextWith(stringConsumer("Spring"))
-				.expectComplete()
-				.verify();
-	}
+    @Test
+    public void shouldEncodeMultipleResourceRegionsFileResource() {
+        Resource resource = new ClassPathResource("ResourceRegionEncoderTests.txt", getClass());
+        Flux<ResourceRegion> regions =
+                Flux.just(
+                        new ResourceRegion(resource, 0, 6),
+                        new ResourceRegion(resource, 7, 9),
+                        new ResourceRegion(resource, 17, 4),
+                        new ResourceRegion(resource, 22, 17));
+        String boundary = MimeTypeUtils.generateMultipartBoundaryString();
 
-	@Test
-	public void shouldEncodeMultipleResourceRegionsFileResource() {
-		Resource resource = new ClassPathResource("ResourceRegionEncoderTests.txt", getClass());
-		Flux<ResourceRegion> regions = Flux.just(
-				new ResourceRegion(resource, 0, 6),
-				new ResourceRegion(resource, 7, 9),
-				new ResourceRegion(resource, 17, 4),
-				new ResourceRegion(resource, 22, 17)
-		);
-		String boundary = MimeTypeUtils.generateMultipartBoundaryString();
+        Flux<DataBuffer> result =
+                this.encoder.encode(
+                        regions,
+                        this.bufferFactory,
+                        ResolvableType.forClass(ResourceRegion.class),
+                        MimeType.valueOf("text/plain"),
+                        Collections.singletonMap(
+                                ResourceRegionEncoder.BOUNDARY_STRING_HINT, boundary));
 
-		Flux<DataBuffer> result = this.encoder.encode(regions, this.bufferFactory,
-				ResolvableType.forClass(ResourceRegion.class),
-				MimeType.valueOf("text/plain"),
-				Collections.singletonMap(ResourceRegionEncoder.BOUNDARY_STRING_HINT, boundary)
-		);
+        StepVerifier.create(result)
+                .consumeNextWith(stringConsumer("\r\n--" + boundary + "\r\n"))
+                .consumeNextWith(stringConsumer("Content-Type: text/plain\r\n"))
+                .consumeNextWith(stringConsumer("Content-Range: bytes 0-5/39\r\n\r\n"))
+                .consumeNextWith(stringConsumer("Spring"))
+                .consumeNextWith(stringConsumer("\r\n--" + boundary + "\r\n"))
+                .consumeNextWith(stringConsumer("Content-Type: text/plain\r\n"))
+                .consumeNextWith(stringConsumer("Content-Range: bytes 7-15/39\r\n\r\n"))
+                .consumeNextWith(stringConsumer("Framework"))
+                .consumeNextWith(stringConsumer("\r\n--" + boundary + "\r\n"))
+                .consumeNextWith(stringConsumer("Content-Type: text/plain\r\n"))
+                .consumeNextWith(stringConsumer("Content-Range: bytes 17-20/39\r\n\r\n"))
+                .consumeNextWith(stringConsumer("test"))
+                .consumeNextWith(stringConsumer("\r\n--" + boundary + "\r\n"))
+                .consumeNextWith(stringConsumer("Content-Type: text/plain\r\n"))
+                .consumeNextWith(stringConsumer("Content-Range: bytes 22-38/39\r\n\r\n"))
+                .consumeNextWith(stringConsumer("resource content."))
+                .consumeNextWith(stringConsumer("\r\n--" + boundary + "--"))
+                .expectComplete()
+                .verify();
+    }
 
-		StepVerifier.create(result)
-				.consumeNextWith(stringConsumer("\r\n--" + boundary + "\r\n"))
-				.consumeNextWith(stringConsumer("Content-Type: text/plain\r\n"))
-				.consumeNextWith(stringConsumer("Content-Range: bytes 0-5/39\r\n\r\n"))
-				.consumeNextWith(stringConsumer("Spring"))
-				.consumeNextWith(stringConsumer("\r\n--" + boundary + "\r\n"))
-				.consumeNextWith(stringConsumer("Content-Type: text/plain\r\n"))
-				.consumeNextWith(stringConsumer("Content-Range: bytes 7-15/39\r\n\r\n"))
-				.consumeNextWith(stringConsumer("Framework"))
-				.consumeNextWith(stringConsumer("\r\n--" + boundary + "\r\n"))
-				.consumeNextWith(stringConsumer("Content-Type: text/plain\r\n"))
-				.consumeNextWith(stringConsumer("Content-Range: bytes 17-20/39\r\n\r\n"))
-				.consumeNextWith(stringConsumer("test"))
-				.consumeNextWith(stringConsumer("\r\n--" + boundary + "\r\n"))
-				.consumeNextWith(stringConsumer("Content-Type: text/plain\r\n"))
-				.consumeNextWith(stringConsumer("Content-Range: bytes 22-38/39\r\n\r\n"))
-				.consumeNextWith(stringConsumer("resource content."))
-				.consumeNextWith(stringConsumer("\r\n--" + boundary + "--"))
-				.expectComplete()
-				.verify();
-	}
+    @Test // gh-22107
+    public void cancelWithoutDemandForMultipleResourceRegions() {
+        Resource resource = new ClassPathResource("ResourceRegionEncoderTests.txt", getClass());
+        Flux<ResourceRegion> regions =
+                Flux.just(
+                        new ResourceRegion(resource, 0, 6),
+                        new ResourceRegion(resource, 7, 9),
+                        new ResourceRegion(resource, 17, 4),
+                        new ResourceRegion(resource, 22, 17));
+        String boundary = MimeTypeUtils.generateMultipartBoundaryString();
 
-	@Test // gh-22107
-	public void cancelWithoutDemandForMultipleResourceRegions() {
-		Resource resource = new ClassPathResource("ResourceRegionEncoderTests.txt", getClass());
-		Flux<ResourceRegion> regions = Flux.just(
-				new ResourceRegion(resource, 0, 6),
-				new ResourceRegion(resource, 7, 9),
-				new ResourceRegion(resource, 17, 4),
-				new ResourceRegion(resource, 22, 17)
-		);
-		String boundary = MimeTypeUtils.generateMultipartBoundaryString();
+        Flux<DataBuffer> flux =
+                this.encoder.encode(
+                        regions,
+                        this.bufferFactory,
+                        ResolvableType.forClass(ResourceRegion.class),
+                        MimeType.valueOf("text/plain"),
+                        Collections.singletonMap(
+                                ResourceRegionEncoder.BOUNDARY_STRING_HINT, boundary));
 
-		Flux<DataBuffer> flux = this.encoder.encode(regions, this.bufferFactory,
-				ResolvableType.forClass(ResourceRegion.class),
-				MimeType.valueOf("text/plain"),
-				Collections.singletonMap(ResourceRegionEncoder.BOUNDARY_STRING_HINT, boundary)
-		);
+        ZeroDemandSubscriber subscriber = new ZeroDemandSubscriber();
+        flux.subscribe(subscriber);
+        subscriber.cancel();
+    }
 
-		ZeroDemandSubscriber subscriber = new ZeroDemandSubscriber();
-		flux.subscribe(subscriber);
-		subscriber.cancel();
-	}
+    @Test // gh-22107
+    public void cancelWithoutDemandForSingleResourceRegion() {
+        Resource resource = new ClassPathResource("ResourceRegionEncoderTests.txt", getClass());
+        Mono<ResourceRegion> regions = Mono.just(new ResourceRegion(resource, 0, 6));
+        String boundary = MimeTypeUtils.generateMultipartBoundaryString();
 
-	@Test // gh-22107
-	public void cancelWithoutDemandForSingleResourceRegion() {
-		Resource resource = new ClassPathResource("ResourceRegionEncoderTests.txt", getClass());
-		Mono<ResourceRegion> regions = Mono.just(new ResourceRegion(resource, 0, 6));
-		String boundary = MimeTypeUtils.generateMultipartBoundaryString();
+        Flux<DataBuffer> flux =
+                this.encoder.encode(
+                        regions,
+                        this.bufferFactory,
+                        ResolvableType.forClass(ResourceRegion.class),
+                        MimeType.valueOf("text/plain"),
+                        Collections.singletonMap(
+                                ResourceRegionEncoder.BOUNDARY_STRING_HINT, boundary));
 
-		Flux<DataBuffer> flux = this.encoder.encode(regions, this.bufferFactory,
-				ResolvableType.forClass(ResourceRegion.class),
-				MimeType.valueOf("text/plain"),
-				Collections.singletonMap(ResourceRegionEncoder.BOUNDARY_STRING_HINT, boundary)
-		);
+        ZeroDemandSubscriber subscriber = new ZeroDemandSubscriber();
+        flux.subscribe(subscriber);
+        subscriber.cancel();
+    }
 
-		ZeroDemandSubscriber subscriber = new ZeroDemandSubscriber();
-		flux.subscribe(subscriber);
-		subscriber.cancel();
-	}
+    @Test
+    public void nonExisting() {
+        Resource resource = new ClassPathResource("ResourceRegionEncoderTests.txt", getClass());
+        Resource nonExisting = new ClassPathResource("does not exist", getClass());
+        Flux<ResourceRegion> regions =
+                Flux.just(
+                        new ResourceRegion(resource, 0, 6), new ResourceRegion(nonExisting, 0, 6));
 
-	@Test
-	public void nonExisting() {
-		Resource resource = new ClassPathResource("ResourceRegionEncoderTests.txt", getClass());
-		Resource nonExisting = new ClassPathResource("does not exist", getClass());
-		Flux<ResourceRegion> regions = Flux.just(
-				new ResourceRegion(resource, 0, 6),
-				new ResourceRegion(nonExisting, 0, 6));
+        String boundary = MimeTypeUtils.generateMultipartBoundaryString();
 
-		String boundary = MimeTypeUtils.generateMultipartBoundaryString();
+        Flux<DataBuffer> result =
+                this.encoder.encode(
+                        regions,
+                        this.bufferFactory,
+                        ResolvableType.forClass(ResourceRegion.class),
+                        MimeType.valueOf("text/plain"),
+                        Collections.singletonMap(
+                                ResourceRegionEncoder.BOUNDARY_STRING_HINT, boundary));
 
-		Flux<DataBuffer> result = this.encoder.encode(regions, this.bufferFactory,
-				ResolvableType.forClass(ResourceRegion.class),
-				MimeType.valueOf("text/plain"),
-				Collections.singletonMap(ResourceRegionEncoder.BOUNDARY_STRING_HINT, boundary));
+        StepVerifier.create(result)
+                .consumeNextWith(stringConsumer("\r\n--" + boundary + "\r\n"))
+                .consumeNextWith(stringConsumer("Content-Type: text/plain\r\n"))
+                .consumeNextWith(stringConsumer("Content-Range: bytes 0-5/39\r\n\r\n"))
+                .consumeNextWith(stringConsumer("Spring"))
+                .expectError(EncodingException.class)
+                .verify();
+    }
 
-		StepVerifier.create(result)
-				.consumeNextWith(stringConsumer("\r\n--" + boundary + "\r\n"))
-				.consumeNextWith(stringConsumer("Content-Type: text/plain\r\n"))
-				.consumeNextWith(stringConsumer("Content-Range: bytes 0-5/39\r\n\r\n"))
-				.consumeNextWith(stringConsumer("Spring"))
-				.expectError(EncodingException.class)
-				.verify();
-	}
+    protected Consumer<DataBuffer> stringConsumer(String expected) {
+        return dataBuffer -> {
+            String value = DataBufferTestUtils.dumpString(dataBuffer, UTF_8);
+            DataBufferUtils.release(dataBuffer);
+            assertEquals(expected, value);
+        };
+    }
 
-	protected Consumer<DataBuffer> stringConsumer(String expected) {
-		return dataBuffer -> {
-			String value = DataBufferTestUtils.dumpString(dataBuffer, UTF_8);
-			DataBufferUtils.release(dataBuffer);
-			assertEquals(expected, value);
-		};
-	}
+    private static class ZeroDemandSubscriber extends BaseSubscriber<DataBuffer> {
 
-
-	private static class ZeroDemandSubscriber extends BaseSubscriber<DataBuffer> {
-
-		@Override
-		protected void hookOnSubscribe(Subscription subscription) {
-			// Just subscribe without requesting
-		}
-	}
-
+        @Override
+        protected void hookOnSubscribe(Subscription subscription) {
+            // Just subscribe without requesting
+        }
+    }
 }

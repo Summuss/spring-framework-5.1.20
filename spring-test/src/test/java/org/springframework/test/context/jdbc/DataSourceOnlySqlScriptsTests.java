@@ -37,8 +37,8 @@ import static org.junit.Assert.*;
 import static org.springframework.test.transaction.TransactionTestUtils.*;
 
 /**
- * Integration tests for {@link Sql @Sql} support with only a {@link DataSource}
- * present in the context (i.e., no transaction manager).
+ * Integration tests for {@link Sql @Sql} support with only a {@link DataSource} present in the
+ * context (i.e., no transaction manager).
  *
  * @author Sam Brannen
  * @since 4.1
@@ -46,48 +46,47 @@ import static org.springframework.test.transaction.TransactionTestUtils.*;
 @RunWith(SpringJUnit4ClassRunner.class)
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 @ContextConfiguration
-@Sql({ "schema.sql", "data.sql" })
+@Sql({"schema.sql", "data.sql"})
 @DirtiesContext
 public class DataSourceOnlySqlScriptsTests {
 
-	private JdbcTemplate jdbcTemplate;
+    private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    public void setDataSource(DataSource dataSource) {
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
+    }
 
-	@Autowired
-	public void setDataSource(DataSource dataSource) {
-		this.jdbcTemplate = new JdbcTemplate(dataSource);
-	}
+    @Test
+    // test##_ prefix is required for @FixMethodOrder.
+    public void test01_classLevelScripts() {
+        assertInTransaction(false);
+        assertNumUsers(1);
+    }
 
-	@Test
-	// test##_ prefix is required for @FixMethodOrder.
-	public void test01_classLevelScripts() {
-		assertInTransaction(false);
-		assertNumUsers(1);
-	}
+    @Test
+    @Sql({"drop-schema.sql", "schema.sql", "data.sql", "data-add-dogbert.sql"})
+    // test##_ prefix is required for @FixMethodOrder.
+    public void test02_methodLevelScripts() {
+        assertInTransaction(false);
+        assertNumUsers(2);
+    }
 
-	@Test
-	@Sql({ "drop-schema.sql", "schema.sql", "data.sql", "data-add-dogbert.sql" })
-	// test##_ prefix is required for @FixMethodOrder.
-	public void test02_methodLevelScripts() {
-		assertInTransaction(false);
-		assertNumUsers(2);
-	}
+    protected void assertNumUsers(int expected) {
+        assertEquals(
+                "Number of rows in the 'user' table.",
+                expected,
+                JdbcTestUtils.countRowsInTable(jdbcTemplate, "user"));
+    }
 
-	protected void assertNumUsers(int expected) {
-		assertEquals("Number of rows in the 'user' table.", expected,
-			JdbcTestUtils.countRowsInTable(jdbcTemplate, "user"));
-	}
+    @Configuration
+    static class Config {
 
-
-	@Configuration
-	static class Config {
-
-		@Bean
-		public DataSource dataSource() {
-			return new EmbeddedDatabaseBuilder()//
-			.setName("empty-sql-scripts-without-tx-mgr-test-db")//
-			.build();
-		}
-	}
-
+        @Bean
+        public DataSource dataSource() {
+            return new EmbeddedDatabaseBuilder() //
+                    .setName("empty-sql-scripts-without-tx-mgr-test-db") //
+                    .build();
+        }
+    }
 }

@@ -26,9 +26,6 @@ import org.springframework.web.socket.WebSocketHandler;
  */
 public interface WebSocketHandlerRegistry {
 
-	/**
-	 * Configure a WebSocketHandler at the specified URL paths.
-	 */
-	WebSocketHandlerRegistration addHandler(WebSocketHandler webSocketHandler, String... paths);
-
+    /** Configure a WebSocketHandler at the specified URL paths. */
+    WebSocketHandlerRegistration addHandler(WebSocketHandler webSocketHandler, String... paths);
 }

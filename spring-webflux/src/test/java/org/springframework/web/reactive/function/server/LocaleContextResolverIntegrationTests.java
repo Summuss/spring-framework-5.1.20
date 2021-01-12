@@ -37,77 +37,72 @@ import org.springframework.web.server.i18n.FixedLocaleContextResolver;
 
 import static org.junit.Assert.*;
 
-/**
- * @author Sebastien Deleuze
- */
+/** @author Sebastien Deleuze */
 public class LocaleContextResolverIntegrationTests extends AbstractRouterFunctionIntegrationTests {
 
-	private final WebClient webClient = WebClient.create();
+    private final WebClient webClient = WebClient.create();
 
+    @Override
+    protected RouterFunction<?> routerFunction() {
+        return RouterFunctions.route(RequestPredicates.path("/"), this::render);
+    }
 
-	@Override
-	protected RouterFunction<?> routerFunction() {
-		return RouterFunctions.route(RequestPredicates.path("/"), this::render);
-	}
+    public Mono<RenderingResponse> render(ServerRequest request) {
+        return RenderingResponse.create("foo").build();
+    }
 
-	public Mono<RenderingResponse> render(ServerRequest request) {
-		return RenderingResponse.create("foo").build();
-	}
+    @Override
+    protected HandlerStrategies handlerStrategies() {
+        return HandlerStrategies.builder()
+                .viewResolver(new DummyViewResolver())
+                .localeContextResolver(new FixedLocaleContextResolver(Locale.GERMANY))
+                .build();
+    }
 
-	@Override
-	protected HandlerStrategies handlerStrategies() {
-		return HandlerStrategies.builder()
-				.viewResolver(new DummyViewResolver())
-				.localeContextResolver(new FixedLocaleContextResolver(Locale.GERMANY))
-				.build();
-	}
+    @Test
+    public void fixedLocale() {
+        Mono<ClientResponse> result =
+                webClient.get().uri("http://localhost:" + this.port + "/").exchange();
 
+        StepVerifier.create(result)
+                .consumeNextWith(
+                        response -> {
+                            assertEquals(HttpStatus.OK, response.statusCode());
+                            assertEquals(
+                                    Locale.GERMANY,
+                                    response.headers().asHttpHeaders().getContentLanguage());
+                        })
+                .verifyComplete();
+    }
 
-	@Test
-	public void fixedLocale() {
-		Mono<ClientResponse> result = webClient
-				.get()
-				.uri("http://localhost:" + this.port + "/")
-				.exchange();
+    private static class DummyViewResolver implements ViewResolver {
 
-		StepVerifier
-				.create(result)
-				.consumeNextWith(response -> {
-					assertEquals(HttpStatus.OK, response.statusCode());
-					assertEquals(Locale.GERMANY, response.headers().asHttpHeaders().getContentLanguage());
-				})
-				.verifyComplete();
-	}
+        @Override
+        public Mono<View> resolveViewName(String viewName, Locale locale) {
+            return Mono.just(new DummyView(locale));
+        }
+    }
 
+    private static class DummyView implements View {
 
-	private static class DummyViewResolver implements ViewResolver {
+        private final Locale locale;
 
-		@Override
-		public Mono<View> resolveViewName(String viewName, Locale locale) {
-			return Mono.just(new DummyView(locale));
-		}
-	}
+        public DummyView(Locale locale) {
+            this.locale = locale;
+        }
 
+        @Override
+        public List<MediaType> getSupportedMediaTypes() {
+            return Collections.singletonList(MediaType.TEXT_HTML);
+        }
 
-	private static class DummyView implements View {
-
-		private final Locale locale;
-
-		public DummyView(Locale locale) {
-			this.locale = locale;
-		}
-
-		@Override
-		public List<MediaType> getSupportedMediaTypes() {
-			return Collections.singletonList(MediaType.TEXT_HTML);
-		}
-
-		@Override
-		public Mono<Void> render(@Nullable Map<String, ?> model, @Nullable MediaType contentType,
-				ServerWebExchange exchange) {
-			exchange.getResponse().getHeaders().setContentLanguage(locale);
-			return Mono.empty();
-		}
-	}
-
+        @Override
+        public Mono<Void> render(
+                @Nullable Map<String, ?> model,
+                @Nullable MediaType contentType,
+                ServerWebExchange exchange) {
+            exchange.getResponse().getHeaders().setContentLanguage(locale);
+            return Mono.empty();
+        }
+    }
 }

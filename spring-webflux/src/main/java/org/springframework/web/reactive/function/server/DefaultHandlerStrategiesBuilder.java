@@ -40,133 +40,134 @@ import org.springframework.web.server.i18n.LocaleContextResolver;
  */
 class DefaultHandlerStrategiesBuilder implements HandlerStrategies.Builder {
 
-	private final ServerCodecConfigurer codecConfigurer = ServerCodecConfigurer.create();
+    private final ServerCodecConfigurer codecConfigurer = ServerCodecConfigurer.create();
 
-	private final List<ViewResolver> viewResolvers = new ArrayList<>();
+    private final List<ViewResolver> viewResolvers = new ArrayList<>();
 
-	private final List<WebFilter> webFilters = new ArrayList<>();
+    private final List<WebFilter> webFilters = new ArrayList<>();
 
-	private final List<WebExceptionHandler> exceptionHandlers = new ArrayList<>();
+    private final List<WebExceptionHandler> exceptionHandlers = new ArrayList<>();
 
-	private LocaleContextResolver localeContextResolver = new AcceptHeaderLocaleContextResolver();
+    private LocaleContextResolver localeContextResolver = new AcceptHeaderLocaleContextResolver();
 
+    public DefaultHandlerStrategiesBuilder() {
+        this.codecConfigurer.registerDefaults(false);
+    }
 
-	public DefaultHandlerStrategiesBuilder() {
-		this.codecConfigurer.registerDefaults(false);
-	}
+    public void defaultConfiguration() {
+        this.codecConfigurer.registerDefaults(true);
+        this.exceptionHandlers.add(new WebFluxResponseStatusExceptionHandler());
+        this.localeContextResolver = new AcceptHeaderLocaleContextResolver();
+    }
 
+    @Override
+    public HandlerStrategies.Builder codecs(Consumer<ServerCodecConfigurer> consumer) {
+        consumer.accept(this.codecConfigurer);
+        return this;
+    }
 
-	public void defaultConfiguration() {
-		this.codecConfigurer.registerDefaults(true);
-		this.exceptionHandlers.add(new WebFluxResponseStatusExceptionHandler());
-		this.localeContextResolver = new AcceptHeaderLocaleContextResolver();
-	}
+    @Override
+    public HandlerStrategies.Builder viewResolver(ViewResolver viewResolver) {
+        Assert.notNull(viewResolver, "ViewResolver must not be null");
+        this.viewResolvers.add(viewResolver);
+        return this;
+    }
 
-	@Override
-	public HandlerStrategies.Builder codecs(Consumer<ServerCodecConfigurer> consumer) {
-		consumer.accept(this.codecConfigurer);
-		return this;
-	}
+    @Override
+    public HandlerStrategies.Builder webFilter(WebFilter filter) {
+        Assert.notNull(filter, "WebFilter must not be null");
+        this.webFilters.add(filter);
+        return this;
+    }
 
-	@Override
-	public HandlerStrategies.Builder viewResolver(ViewResolver viewResolver) {
-		Assert.notNull(viewResolver, "ViewResolver must not be null");
-		this.viewResolvers.add(viewResolver);
-		return this;
-	}
+    @Override
+    public HandlerStrategies.Builder exceptionHandler(WebExceptionHandler exceptionHandler) {
+        Assert.notNull(exceptionHandler, "WebExceptionHandler must not be null");
+        this.exceptionHandlers.add(exceptionHandler);
+        return this;
+    }
 
-	@Override
-	public HandlerStrategies.Builder webFilter(WebFilter filter) {
-		Assert.notNull(filter, "WebFilter must not be null");
-		this.webFilters.add(filter);
-		return this;
-	}
+    @Override
+    public HandlerStrategies.Builder localeContextResolver(
+            LocaleContextResolver localeContextResolver) {
+        Assert.notNull(localeContextResolver, "LocaleContextResolver must not be null");
+        this.localeContextResolver = localeContextResolver;
+        return this;
+    }
 
-	@Override
-	public HandlerStrategies.Builder exceptionHandler(WebExceptionHandler exceptionHandler) {
-		Assert.notNull(exceptionHandler, "WebExceptionHandler must not be null");
-		this.exceptionHandlers.add(exceptionHandler);
-		return this;
-	}
+    @Override
+    public HandlerStrategies build() {
+        return new DefaultHandlerStrategies(
+                this.codecConfigurer.getReaders(),
+                this.codecConfigurer.getWriters(),
+                this.viewResolvers,
+                this.webFilters,
+                this.exceptionHandlers,
+                this.localeContextResolver);
+    }
 
-	@Override
-	public HandlerStrategies.Builder localeContextResolver(LocaleContextResolver localeContextResolver) {
-		Assert.notNull(localeContextResolver, "LocaleContextResolver must not be null");
-		this.localeContextResolver = localeContextResolver;
-		return this;
-	}
+    private static class DefaultHandlerStrategies implements HandlerStrategies {
 
-	@Override
-	public HandlerStrategies build() {
-		return new DefaultHandlerStrategies(this.codecConfigurer.getReaders(),
-				this.codecConfigurer.getWriters(), this.viewResolvers, this.webFilters,
-				this.exceptionHandlers, this.localeContextResolver);
-	}
+        private final List<HttpMessageReader<?>> messageReaders;
 
+        private final List<HttpMessageWriter<?>> messageWriters;
 
-	private static class DefaultHandlerStrategies implements HandlerStrategies {
+        private final List<ViewResolver> viewResolvers;
 
-		private final List<HttpMessageReader<?>> messageReaders;
+        private final List<WebFilter> webFilters;
 
-		private final List<HttpMessageWriter<?>> messageWriters;
+        private final List<WebExceptionHandler> exceptionHandlers;
 
-		private final List<ViewResolver> viewResolvers;
+        private final LocaleContextResolver localeContextResolver;
 
-		private final List<WebFilter> webFilters;
+        public DefaultHandlerStrategies(
+                List<HttpMessageReader<?>> messageReaders,
+                List<HttpMessageWriter<?>> messageWriters,
+                List<ViewResolver> viewResolvers,
+                List<WebFilter> webFilters,
+                List<WebExceptionHandler> exceptionHandlers,
+                LocaleContextResolver localeContextResolver) {
 
-		private final List<WebExceptionHandler> exceptionHandlers;
+            this.messageReaders = unmodifiableCopy(messageReaders);
+            this.messageWriters = unmodifiableCopy(messageWriters);
+            this.viewResolvers = unmodifiableCopy(viewResolvers);
+            this.webFilters = unmodifiableCopy(webFilters);
+            this.exceptionHandlers = unmodifiableCopy(exceptionHandlers);
+            this.localeContextResolver = localeContextResolver;
+        }
 
-		private final LocaleContextResolver localeContextResolver;
+        private static <T> List<T> unmodifiableCopy(List<? extends T> list) {
+            return Collections.unmodifiableList(new ArrayList<>(list));
+        }
 
-		public DefaultHandlerStrategies(
-				List<HttpMessageReader<?>> messageReaders,
-				List<HttpMessageWriter<?>> messageWriters,
-				List<ViewResolver> viewResolvers,
-				List<WebFilter> webFilters,
-				List<WebExceptionHandler> exceptionHandlers,
-				LocaleContextResolver localeContextResolver) {
+        @Override
+        public List<HttpMessageReader<?>> messageReaders() {
+            return this.messageReaders;
+        }
 
-			this.messageReaders = unmodifiableCopy(messageReaders);
-			this.messageWriters = unmodifiableCopy(messageWriters);
-			this.viewResolvers = unmodifiableCopy(viewResolvers);
-			this.webFilters = unmodifiableCopy(webFilters);
-			this.exceptionHandlers = unmodifiableCopy(exceptionHandlers);
-			this.localeContextResolver = localeContextResolver;
-		}
+        @Override
+        public List<HttpMessageWriter<?>> messageWriters() {
+            return this.messageWriters;
+        }
 
-		private static <T> List<T> unmodifiableCopy(List<? extends T> list) {
-			return Collections.unmodifiableList(new ArrayList<>(list));
-		}
+        @Override
+        public List<ViewResolver> viewResolvers() {
+            return this.viewResolvers;
+        }
 
-		@Override
-		public List<HttpMessageReader<?>> messageReaders() {
-			return this.messageReaders;
-		}
+        @Override
+        public List<WebFilter> webFilters() {
+            return this.webFilters;
+        }
 
-		@Override
-		public List<HttpMessageWriter<?>> messageWriters() {
-			return this.messageWriters;
-		}
+        @Override
+        public List<WebExceptionHandler> exceptionHandlers() {
+            return this.exceptionHandlers;
+        }
 
-		@Override
-		public List<ViewResolver> viewResolvers() {
-			return this.viewResolvers;
-		}
-
-		@Override
-		public List<WebFilter> webFilters() {
-			return this.webFilters;
-		}
-
-		@Override
-		public List<WebExceptionHandler> exceptionHandlers() {
-			return this.exceptionHandlers;
-		}
-
-		@Override
-		public LocaleContextResolver localeContextResolver() {
-			return this.localeContextResolver;
-		}
-	}
-
+        @Override
+        public LocaleContextResolver localeContextResolver() {
+            return this.localeContextResolver;
+        }
+    }
 }

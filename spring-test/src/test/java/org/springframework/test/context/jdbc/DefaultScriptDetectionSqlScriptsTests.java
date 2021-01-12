@@ -33,21 +33,21 @@ import static org.junit.Assert.*;
 @ContextConfiguration(classes = EmptyDatabaseConfig.class)
 @Sql
 @DirtiesContext
-public class DefaultScriptDetectionSqlScriptsTests extends AbstractTransactionalJUnit4SpringContextTests {
+public class DefaultScriptDetectionSqlScriptsTests
+        extends AbstractTransactionalJUnit4SpringContextTests {
 
-	@Test
-	public void classLevel() {
-		assertNumUsers(2);
-	}
+    @Test
+    public void classLevel() {
+        assertNumUsers(2);
+    }
 
-	@Test
-	@Sql
-	public void methodLevel() {
-		assertNumUsers(3);
-	}
+    @Test
+    @Sql
+    public void methodLevel() {
+        assertNumUsers(3);
+    }
 
-	protected void assertNumUsers(int expected) {
-		assertEquals("Number of rows in the 'user' table.", expected, countRowsInTable("user"));
-	}
-
+    protected void assertNumUsers(int expected) {
+        assertEquals("Number of rows in the 'user' table.", expected, countRowsInTable("user"));
+    }
 }

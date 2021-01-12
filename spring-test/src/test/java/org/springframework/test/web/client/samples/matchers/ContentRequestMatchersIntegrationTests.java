@@ -46,63 +46,65 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
  */
 public class ContentRequestMatchersIntegrationTests {
 
-	private MockRestServiceServer mockServer;
+    private MockRestServiceServer mockServer;
 
-	private RestTemplate restTemplate;
+    private RestTemplate restTemplate;
 
+    @Before
+    public void setup() {
+        List<HttpMessageConverter<?>> converters = new ArrayList<>();
+        converters.add(new StringHttpMessageConverter());
+        converters.add(new MappingJackson2HttpMessageConverter());
 
-	@Before
-	public void setup() {
-		List<HttpMessageConverter<?>> converters = new ArrayList<>();
-		converters.add(new StringHttpMessageConverter());
-		converters.add(new MappingJackson2HttpMessageConverter());
+        this.restTemplate = new RestTemplate();
+        this.restTemplate.setMessageConverters(converters);
 
-		this.restTemplate = new RestTemplate();
-		this.restTemplate.setMessageConverters(converters);
+        this.mockServer = MockRestServiceServer.createServer(this.restTemplate);
+    }
 
-		this.mockServer = MockRestServiceServer.createServer(this.restTemplate);
-	}
+    @Test
+    public void contentType() throws Exception {
+        this.mockServer
+                .expect(content().contentType("application/json;charset=UTF-8"))
+                .andRespond(withSuccess());
+        executeAndVerify(new Person());
+    }
 
+    @Test
+    public void contentTypeNoMatch() throws Exception {
+        this.mockServer
+                .expect(content().contentType("application/json;charset=UTF-8"))
+                .andRespond(withSuccess());
+        try {
+            executeAndVerify("foo");
+        } catch (AssertionError error) {
+            String message = error.getMessage();
+            assertTrue(
+                    message,
+                    message.startsWith("Content type expected:<application/json;charset=UTF-8>"));
+        }
+    }
 
-	@Test
-	public void contentType() throws Exception {
-		this.mockServer.expect(content().contentType("application/json;charset=UTF-8")).andRespond(withSuccess());
-		executeAndVerify(new Person());
-	}
+    @Test
+    public void contentAsString() throws Exception {
+        this.mockServer.expect(content().string("foo")).andRespond(withSuccess());
+        executeAndVerify("foo");
+    }
 
-	@Test
-	public void contentTypeNoMatch() throws Exception {
-		this.mockServer.expect(content().contentType("application/json;charset=UTF-8")).andRespond(withSuccess());
-		try {
-			executeAndVerify("foo");
-		}
-		catch (AssertionError error) {
-			String message = error.getMessage();
-			assertTrue(message, message.startsWith("Content type expected:<application/json;charset=UTF-8>"));
-		}
-	}
+    @Test
+    public void contentStringStartsWith() throws Exception {
+        this.mockServer.expect(content().string(startsWith("foo"))).andRespond(withSuccess());
+        executeAndVerify("foo123");
+    }
 
-	@Test
-	public void contentAsString() throws Exception {
-		this.mockServer.expect(content().string("foo")).andRespond(withSuccess());
-		executeAndVerify("foo");
-	}
+    @Test
+    public void contentAsBytes() throws Exception {
+        this.mockServer.expect(content().bytes("foo".getBytes())).andRespond(withSuccess());
+        executeAndVerify("foo");
+    }
 
-	@Test
-	public void contentStringStartsWith() throws Exception {
-		this.mockServer.expect(content().string(startsWith("foo"))).andRespond(withSuccess());
-		executeAndVerify("foo123");
-	}
-
-	@Test
-	public void contentAsBytes() throws Exception {
-		this.mockServer.expect(content().bytes("foo".getBytes())).andRespond(withSuccess());
-		executeAndVerify("foo");
-	}
-
-	private void executeAndVerify(Object body) throws URISyntaxException {
-		this.restTemplate.put(new URI("/foo"), body);
-		this.mockServer.verify();
-	}
-
+    private void executeAndVerify(Object body) throws URISyntaxException {
+        this.restTemplate.put(new URI("/foo"), body);
+        this.mockServer.verify();
+    }
 }

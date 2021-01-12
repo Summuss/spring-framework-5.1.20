@@ -23,20 +23,21 @@ import org.springframework.beans.factory.xml.NamespaceHandlerSupport;
 /**
  * {@code NamespaceHandler} for the {@code aop} namespace.
  *
- * <p>Provides a {@link org.springframework.beans.factory.xml.BeanDefinitionParser} for the
- * {@code <aop:config>} tag. A {@code config} tag can include nested
- * {@code pointcut}, {@code advisor} and {@code aspect} tags.
+ * <p>Provides a {@link org.springframework.beans.factory.xml.BeanDefinitionParser} for the {@code
+ * <aop:config>} tag. A {@code config} tag can include nested {@code pointcut}, {@code advisor} and
+ * {@code aspect} tags.
  *
- * <p>The {@code pointcut} tag allows for creation of named
- * {@link AspectJExpressionPointcut} beans using a simple syntax:
+ * <p>The {@code pointcut} tag allows for creation of named {@link AspectJExpressionPointcut} beans
+ * using a simple syntax:
+ *
  * <pre class="code">
  * &lt;aop:pointcut id=&quot;getNameCalls&quot; expression=&quot;execution(* *..ITestBean.getName(..))&quot;/&gt;
  * </pre>
  *
- * <p>Using the {@code advisor} tag you can configure an {@link org.springframework.aop.Advisor}
- * and have it applied to all relevant beans in you {@link org.springframework.beans.factory.BeanFactory}
- * automatically. The {@code advisor} tag supports both in-line and referenced
- * {@link org.springframework.aop.Pointcut Pointcuts}:
+ * <p>Using the {@code advisor} tag you can configure an {@link org.springframework.aop.Advisor} and
+ * have it applied to all relevant beans in you {@link
+ * org.springframework.beans.factory.BeanFactory} automatically. The {@code advisor} tag supports
+ * both in-line and referenced {@link org.springframework.aop.Pointcut Pointcuts}:
  *
  * <pre class="code">
  * &lt;aop:advisor id=&quot;getAgeAdvisor&quot;
@@ -54,20 +55,20 @@ import org.springframework.beans.factory.xml.NamespaceHandlerSupport;
  */
 public class AopNamespaceHandler extends NamespaceHandlerSupport {
 
-	/**
-	 * Register the {@link BeanDefinitionParser BeanDefinitionParsers} for the
-	 * '{@code config}', '{@code spring-configured}', '{@code aspectj-autoproxy}'
-	 * and '{@code scoped-proxy}' tags.
-	 */
-	@Override
-	public void init() {
-		// In 2.0 XSD as well as in 2.5+ XSDs
-		registerBeanDefinitionParser("config", new ConfigBeanDefinitionParser());
-		registerBeanDefinitionParser("aspectj-autoproxy", new AspectJAutoProxyBeanDefinitionParser());
-		registerBeanDefinitionDecorator("scoped-proxy", new ScopedProxyBeanDefinitionDecorator());
+    /**
+     * Register the {@link BeanDefinitionParser BeanDefinitionParsers} for the '{@code config}',
+     * '{@code spring-configured}', '{@code aspectj-autoproxy}' and '{@code scoped-proxy}' tags.
+     */
+    @Override
+    public void init() {
+        // In 2.0 XSD as well as in 2.5+ XSDs
+        registerBeanDefinitionParser("config", new ConfigBeanDefinitionParser());
+        registerBeanDefinitionParser(
+                "aspectj-autoproxy", new AspectJAutoProxyBeanDefinitionParser());
+        registerBeanDefinitionDecorator("scoped-proxy", new ScopedProxyBeanDefinitionDecorator());
 
-		// Only in 2.0 XSD: moved to context namespace in 2.5+
-		registerBeanDefinitionParser("spring-configured", new SpringConfiguredBeanDefinitionParser());
-	}
-
+        // Only in 2.0 XSD: moved to context namespace in 2.5+
+        registerBeanDefinitionParser(
+                "spring-configured", new SpringConfiguredBeanDefinitionParser());
+    }
 }

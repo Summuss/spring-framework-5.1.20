@@ -45,119 +45,127 @@ import org.springframework.web.reactive.config.EnableWebFlux;
 import static org.junit.Assert.*;
 
 /**
- * Data binding and type conversion related integration tests for
- * {@code @Controller}-annotated classes.
+ * Data binding and type conversion related integration tests for {@code @Controller}-annotated
+ * classes.
  *
  * @author Rossen Stoyanchev
  */
-public class RequestMappingDataBindingIntegrationTests extends AbstractRequestMappingIntegrationTests {
+public class RequestMappingDataBindingIntegrationTests
+        extends AbstractRequestMappingIntegrationTests {
 
-	@Override
-	protected ApplicationContext initApplicationContext() {
-		AnnotationConfigApplicationContext wac = new AnnotationConfigApplicationContext();
-		wac.register(WebConfig.class);
-		wac.refresh();
-		return wac;
-	}
+    @Override
+    protected ApplicationContext initApplicationContext() {
+        AnnotationConfigApplicationContext wac = new AnnotationConfigApplicationContext();
+        wac.register(WebConfig.class);
+        wac.refresh();
+        return wac;
+    }
 
+    @Test
+    public void handleDateParam() throws Exception {
+        assertEquals(
+                "Processed date!",
+                performPost(
+                                "/date-param?date=2016-10-31&date-pattern=YYYY-mm-dd",
+                                new HttpHeaders(),
+                                null,
+                                String.class)
+                        .getBody());
+    }
 
-	@Test
-	public void handleDateParam() throws Exception {
-		assertEquals("Processed date!",
-				performPost("/date-param?date=2016-10-31&date-pattern=YYYY-mm-dd",
-						new HttpHeaders(), null, String.class).getBody());
-	}
+    @Test
+    public void handleForm() throws Exception {
 
-	@Test
-	public void handleForm() throws Exception {
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("name", "George");
+        formData.add("age", "5");
 
-		MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-		formData.add("name", "George");
-		formData.add("age", "5");
+        assertEquals(
+                "Processed form: Foo[id=1, name='George', age=5]",
+                performPost(
+                                "/foos/1",
+                                MediaType.APPLICATION_FORM_URLENCODED,
+                                formData,
+                                MediaType.TEXT_PLAIN,
+                                String.class)
+                        .getBody());
+    }
 
-		assertEquals("Processed form: Foo[id=1, name='George', age=5]",
-				performPost("/foos/1", MediaType.APPLICATION_FORM_URLENCODED, formData,
-						MediaType.TEXT_PLAIN, String.class).getBody());
-	}
+    @Configuration
+    @EnableWebFlux
+    @ComponentScan(resourcePattern = "**/RequestMappingDataBindingIntegrationTests*.class")
+    @SuppressWarnings({"unused", "WeakerAccess"})
+    static class WebConfig {}
 
+    @RestController
+    @SuppressWarnings({"unused", "OptionalUsedAsFieldOrParameterType"})
+    private static class TestController {
 
-	@Configuration
-	@EnableWebFlux
-	@ComponentScan(resourcePattern = "**/RequestMappingDataBindingIntegrationTests*.class")
-	@SuppressWarnings({"unused", "WeakerAccess"})
-	static class WebConfig {
-	}
+        @InitBinder
+        public void initBinder(
+                WebDataBinder binder,
+                @RequestParam("date-pattern") Optional<String> optionalPattern) {
 
+            optionalPattern.ifPresent(
+                    pattern -> {
+                        CustomDateEditor dateEditor =
+                                new CustomDateEditor(new SimpleDateFormat(pattern), false);
+                        binder.registerCustomEditor(Date.class, dateEditor);
+                    });
+        }
 
-	@RestController
-	@SuppressWarnings({"unused", "OptionalUsedAsFieldOrParameterType"})
-	private static class TestController {
+        @PostMapping("/date-param")
+        public String handleDateParam(@RequestParam Date date) {
+            return "Processed date!";
+        }
 
-		@InitBinder
-		public void initBinder(WebDataBinder binder,
-				@RequestParam("date-pattern") Optional<String> optionalPattern) {
+        @ModelAttribute
+        public Mono<Foo> addFooAttribute(@PathVariable("id") Optional<Long> optiponalId) {
+            return optiponalId.map(id -> Mono.just(new Foo(id))).orElse(Mono.empty());
+        }
 
-			optionalPattern.ifPresent(pattern -> {
-				CustomDateEditor dateEditor = new CustomDateEditor(new SimpleDateFormat(pattern), false);
-				binder.registerCustomEditor(Date.class, dateEditor);
-			});
-		}
+        @PostMapping("/foos/{id}")
+        public String handleForm(@ModelAttribute Foo foo, Errors errors) {
+            return (errors.hasErrors() ? "Form not processed" : "Processed form: " + foo);
+        }
+    }
 
-		@PostMapping("/date-param")
-		public String handleDateParam(@RequestParam Date date) {
-			return "Processed date!";
-		}
+    @SuppressWarnings("unused")
+    private static class Foo {
 
-		@ModelAttribute
-		public Mono<Foo> addFooAttribute(@PathVariable("id") Optional<Long> optiponalId) {
-			return optiponalId.map(id -> Mono.just(new Foo(id))).orElse(Mono.empty());
-		}
+        private final Long id;
 
-		@PostMapping("/foos/{id}")
-		public String handleForm(@ModelAttribute Foo foo, Errors errors) {
-			return (errors.hasErrors() ?
-					"Form not processed" : "Processed form: " + foo);
-		}
-	}
+        private String name;
 
+        private int age;
 
-	@SuppressWarnings("unused")
-	private static class Foo {
+        public Foo(Long id) {
+            this.id = id;
+        }
 
-		private final Long id;
+        public Long getId() {
+            return id;
+        }
 
-		private String name;
+        public String getName() {
+            return name;
+        }
 
-		private int age;
+        public void setName(String name) {
+            this.name = name;
+        }
 
-		public Foo(Long id) {
-			this.id = id;
-		}
+        public int getAge() {
+            return this.age;
+        }
 
-		public Long getId() {
-			return id;
-		}
+        public void setAge(int age) {
+            this.age = age;
+        }
 
-		public String getName() {
-			return name;
-		}
-
-		public void setName(String name) {
-			this.name = name;
-		}
-
-		public int getAge() {
-			return this.age;
-		}
-
-		public void setAge(int age) {
-			this.age = age;
-		}
-
-		@Override
-		public String toString() {
-			return "Foo[id=" + this.id + ", name='" + this.name + "', age=" + this.age + "]";
-		}
-	}
-
+        @Override
+        public String toString() {
+            return "Foo[id=" + this.id + ", name='" + this.name + "', age=" + this.age + "]";
+        }
+    }
 }

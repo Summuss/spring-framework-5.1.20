@@ -31,57 +31,53 @@ import org.springframework.lang.Nullable;
  *
  * @author Rossen Stoyanchev
  */
-class ServerDefaultCodecsImpl extends BaseDefaultCodecs implements ServerCodecConfigurer.ServerDefaultCodecs {
+class ServerDefaultCodecsImpl extends BaseDefaultCodecs
+        implements ServerCodecConfigurer.ServerDefaultCodecs {
 
-	@Nullable
-	private HttpMessageReader<?> multipartReader;
+    @Nullable private HttpMessageReader<?> multipartReader;
 
-	@Nullable
-	private Encoder<?> sseEncoder;
+    @Nullable private Encoder<?> sseEncoder;
 
+    ServerDefaultCodecsImpl() {}
 
-	ServerDefaultCodecsImpl() {
-	}
+    ServerDefaultCodecsImpl(ServerDefaultCodecsImpl other) {
+        super(other);
+        this.multipartReader = other.multipartReader;
+        this.sseEncoder = other.sseEncoder;
+    }
 
-	ServerDefaultCodecsImpl(ServerDefaultCodecsImpl other) {
-		super(other);
-		this.multipartReader = other.multipartReader;
-		this.sseEncoder = other.sseEncoder;
-	}
+    @Override
+    public void multipartReader(HttpMessageReader<?> reader) {
+        this.multipartReader = reader;
+    }
 
+    @Override
+    public void serverSentEventEncoder(Encoder<?> encoder) {
+        this.sseEncoder = encoder;
+    }
 
-	@Override
-	public void multipartReader(HttpMessageReader<?> reader) {
-		this.multipartReader = reader;
-	}
+    @Override
+    protected void extendTypedReaders(List<HttpMessageReader<?>> typedReaders) {
+        if (this.multipartReader != null) {
+            addCodec(typedReaders, this.multipartReader);
+            return;
+        }
+        if (synchronossMultipartPresent) {
+            SynchronossPartHttpMessageReader partReader = new SynchronossPartHttpMessageReader();
+            addCodec(typedReaders, partReader);
+            addCodec(typedReaders, new MultipartHttpMessageReader(partReader));
+        }
+    }
 
-	@Override
-	public void serverSentEventEncoder(Encoder<?> encoder) {
-		this.sseEncoder = encoder;
-	}
+    @Override
+    protected void extendObjectWriters(List<HttpMessageWriter<?>> objectWriters) {
+        objectWriters.add(new ServerSentEventHttpMessageWriter(getSseEncoder()));
+    }
 
-
-	@Override
-	protected void extendTypedReaders(List<HttpMessageReader<?>> typedReaders) {
-		if (this.multipartReader != null) {
-			addCodec(typedReaders, this.multipartReader);
-			return;
-		}
-		if (synchronossMultipartPresent) {
-			SynchronossPartHttpMessageReader partReader = new SynchronossPartHttpMessageReader();
-			addCodec(typedReaders, partReader);
-			addCodec(typedReaders, new MultipartHttpMessageReader(partReader));
-		}
-	}
-
-	@Override
-	protected void extendObjectWriters(List<HttpMessageWriter<?>> objectWriters) {
-		objectWriters.add(new ServerSentEventHttpMessageWriter(getSseEncoder()));
-	}
-
-	@Nullable
-	private Encoder<?> getSseEncoder() {
-		return this.sseEncoder != null ? this.sseEncoder : jackson2Present ? getJackson2JsonEncoder() : null;
-	}
-
+    @Nullable
+    private Encoder<?> getSseEncoder() {
+        return this.sseEncoder != null
+                ? this.sseEncoder
+                : jackson2Present ? getJackson2JsonEncoder() : null;
+    }
 }

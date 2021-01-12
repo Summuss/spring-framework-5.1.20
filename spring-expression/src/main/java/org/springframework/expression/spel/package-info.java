@@ -1,6 +1,4 @@
-/**
- * SpEL's central implementation package.
- */
+/** SpEL's central implementation package. */
 @NonNullApi
 @NonNullFields
 package org.springframework.expression.spel;

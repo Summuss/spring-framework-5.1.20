@@ -32,45 +32,49 @@ import org.springframework.util.Assert;
  */
 public class StompSubProtocolErrorHandler implements SubProtocolErrorHandler<byte[]> {
 
-	private static final byte[] EMPTY_PAYLOAD = new byte[0];
+    private static final byte[] EMPTY_PAYLOAD = new byte[0];
 
+    @Override
+    @Nullable
+    public Message<byte[]> handleClientMessageProcessingError(
+            @Nullable Message<byte[]> clientMessage, Throwable ex) {
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.ERROR);
+        accessor.setMessage(ex.getMessage());
+        accessor.setLeaveMutable(true);
 
-	@Override
-	@Nullable
-	public Message<byte[]> handleClientMessageProcessingError(@Nullable Message<byte[]> clientMessage, Throwable ex) {
-		StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.ERROR);
-		accessor.setMessage(ex.getMessage());
-		accessor.setLeaveMutable(true);
+        StompHeaderAccessor clientHeaderAccessor = null;
+        if (clientMessage != null) {
+            clientHeaderAccessor =
+                    MessageHeaderAccessor.getAccessor(clientMessage, StompHeaderAccessor.class);
+            if (clientHeaderAccessor != null) {
+                String receiptId = clientHeaderAccessor.getReceipt();
+                if (receiptId != null) {
+                    accessor.setReceiptId(receiptId);
+                }
+            }
+        }
 
-		StompHeaderAccessor clientHeaderAccessor = null;
-		if (clientMessage != null) {
-			clientHeaderAccessor = MessageHeaderAccessor.getAccessor(clientMessage, StompHeaderAccessor.class);
-			if (clientHeaderAccessor != null) {
-				String receiptId = clientHeaderAccessor.getReceipt();
-				if (receiptId != null) {
-					accessor.setReceiptId(receiptId);
-				}
-			}
-		}
+        return handleInternal(accessor, EMPTY_PAYLOAD, ex, clientHeaderAccessor);
+    }
 
-		return handleInternal(accessor, EMPTY_PAYLOAD, ex, clientHeaderAccessor);
-	}
+    @Override
+    @Nullable
+    public Message<byte[]> handleErrorMessageToClient(Message<byte[]> errorMessage) {
+        StompHeaderAccessor accessor =
+                MessageHeaderAccessor.getAccessor(errorMessage, StompHeaderAccessor.class);
+        Assert.notNull(accessor, "No StompHeaderAccessor");
+        if (!accessor.isMutable()) {
+            accessor = StompHeaderAccessor.wrap(errorMessage);
+        }
+        return handleInternal(accessor, errorMessage.getPayload(), null, null);
+    }
 
-	@Override
-	@Nullable
-	public Message<byte[]> handleErrorMessageToClient(Message<byte[]> errorMessage) {
-		StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(errorMessage, StompHeaderAccessor.class);
-		Assert.notNull(accessor, "No StompHeaderAccessor");
-		if (!accessor.isMutable()) {
-			accessor = StompHeaderAccessor.wrap(errorMessage);
-		}
-		return handleInternal(accessor, errorMessage.getPayload(), null, null);
-	}
+    protected Message<byte[]> handleInternal(
+            StompHeaderAccessor errorHeaderAccessor,
+            byte[] errorPayload,
+            @Nullable Throwable cause,
+            @Nullable StompHeaderAccessor clientHeaderAccessor) {
 
-	protected Message<byte[]> handleInternal(StompHeaderAccessor errorHeaderAccessor, byte[] errorPayload,
-			@Nullable Throwable cause, @Nullable StompHeaderAccessor clientHeaderAccessor) {
-
-		return MessageBuilder.createMessage(errorPayload, errorHeaderAccessor.getMessageHeaders());
-	}
-
+        return MessageBuilder.createMessage(errorPayload, errorHeaderAccessor.getMessageHeaders());
+    }
 }

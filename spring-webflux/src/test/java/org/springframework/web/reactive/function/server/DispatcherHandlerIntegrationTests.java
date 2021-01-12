@@ -47,214 +47,219 @@ import static org.springframework.web.reactive.function.BodyInserters.*;
 import static org.springframework.web.reactive.function.server.RouterFunctions.*;
 
 /**
- * Tests the use of {@link HandlerFunction} and {@link RouterFunction} in a
- * {@link DispatcherHandler}, combined with {@link Controller}s.
+ * Tests the use of {@link HandlerFunction} and {@link RouterFunction} in a {@link
+ * DispatcherHandler}, combined with {@link Controller}s.
  *
  * @author Arjen Poutsma
  */
 public class DispatcherHandlerIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 
-	private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate = new RestTemplate();
 
-	private AnnotationConfigApplicationContext wac;
+    private AnnotationConfigApplicationContext wac;
 
+    @Override
+    protected HttpHandler createHttpHandler() {
+        this.wac = new AnnotationConfigApplicationContext();
+        this.wac.register(TestConfiguration.class);
+        this.wac.refresh();
 
-	@Override
-	protected HttpHandler createHttpHandler() {
-		this.wac = new AnnotationConfigApplicationContext();
-		this.wac.register(TestConfiguration.class);
-		this.wac.refresh();
+        DispatcherHandler webHandler = new DispatcherHandler();
+        webHandler.setApplicationContext(this.wac);
 
-		DispatcherHandler webHandler = new DispatcherHandler();
-		webHandler.setApplicationContext(this.wac);
+        return WebHttpHandlerBuilder.webHandler(webHandler).build();
+    }
 
-		return WebHttpHandlerBuilder.webHandler(webHandler).build();
-	}
+    @Test
+    public void mono() {
+        ResponseEntity<Person> result =
+                this.restTemplate.getForEntity(
+                        "http://localhost:" + this.port + "/mono", Person.class);
 
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        assertEquals("John", result.getBody().getName());
+    }
 
-	@Test
-	public void mono() {
-		ResponseEntity<Person> result =
-				this.restTemplate.getForEntity("http://localhost:" + this.port + "/mono", Person.class);
+    @Test
+    public void flux() {
+        ParameterizedTypeReference<List<Person>> reference =
+                new ParameterizedTypeReference<List<Person>>() {};
+        ResponseEntity<List<Person>> result =
+                this.restTemplate.exchange(
+                        "http://localhost:" + this.port + "/flux", HttpMethod.GET, null, reference);
 
-		assertEquals(HttpStatus.OK, result.getStatusCode());
-		assertEquals("John", result.getBody().getName());
-	}
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        List<Person> body = result.getBody();
+        assertEquals(2, body.size());
+        assertEquals("John", body.get(0).getName());
+        assertEquals("Jane", body.get(1).getName());
+    }
 
-	@Test
-	public void flux() {
-		ParameterizedTypeReference<List<Person>> reference = new ParameterizedTypeReference<List<Person>>() {};
-		ResponseEntity<List<Person>> result =
-				this.restTemplate
-						.exchange("http://localhost:" + this.port + "/flux", HttpMethod.GET, null, reference);
+    @Test
+    public void controller() {
+        ResponseEntity<Person> result =
+                this.restTemplate.getForEntity(
+                        "http://localhost:" + this.port + "/controller", Person.class);
 
-		assertEquals(HttpStatus.OK, result.getStatusCode());
-		List<Person> body = result.getBody();
-		assertEquals(2, body.size());
-		assertEquals("John", body.get(0).getName());
-		assertEquals("Jane", body.get(1).getName());
-	}
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        assertEquals("John", result.getBody().getName());
+    }
 
-	@Test
-	public void controller() {
-		ResponseEntity<Person> result =
-				this.restTemplate.getForEntity("http://localhost:" + this.port + "/controller", Person.class);
+    @Test
+    public void attributes() {
+        ResponseEntity<String> result =
+                this.restTemplate.getForEntity(
+                        "http://localhost:" + this.port + "/attributes/bar", String.class);
 
-		assertEquals(HttpStatus.OK, result.getStatusCode());
-		assertEquals("John", result.getBody().getName());
-	}
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+    }
 
-	@Test
-	public void attributes() {
-		ResponseEntity<String> result =
-				this.restTemplate
-						.getForEntity("http://localhost:" + this.port + "/attributes/bar", String.class);
+    @EnableWebFlux
+    @Configuration
+    static class TestConfiguration {
 
-		assertEquals(HttpStatus.OK, result.getStatusCode());
-	}
+        @Bean
+        public PersonHandler personHandler() {
+            return new PersonHandler();
+        }
 
+        @Bean
+        public PersonController personController() {
+            return new PersonController();
+        }
 
-	@EnableWebFlux
-	@Configuration
-	static class TestConfiguration {
+        @Bean
+        public AttributesHandler attributesHandler() {
+            return new AttributesHandler();
+        }
 
-		@Bean
-		public PersonHandler personHandler() {
-			return new PersonHandler();
-		}
+        @Bean
+        public RouterFunction<EntityResponse<Person>> monoRouterFunction(
+                PersonHandler personHandler) {
+            return route(RequestPredicates.GET("/mono"), personHandler::mono);
+        }
 
-		@Bean
-		public PersonController personController() {
-			return new PersonController();
-		}
+        @Bean
+        public RouterFunction<ServerResponse> fluxRouterFunction(PersonHandler personHandler) {
+            return route(RequestPredicates.GET("/flux"), personHandler::flux);
+        }
 
-		@Bean
-		public AttributesHandler attributesHandler() {
-			return new AttributesHandler();
-		}
+        @Bean
+        public RouterFunction<ServerResponse> attributesRouterFunction(
+                AttributesHandler attributesHandler) {
+            return nest(
+                    RequestPredicates.GET("/attributes"),
+                    route(RequestPredicates.GET("/{foo}"), attributesHandler::attributes));
+        }
+    }
 
-		@Bean
-		public RouterFunction<EntityResponse<Person>> monoRouterFunction(PersonHandler personHandler) {
-			return route(RequestPredicates.GET("/mono"), personHandler::mono);
-		}
+    private static class PersonHandler {
 
-		@Bean
-		public RouterFunction<ServerResponse> fluxRouterFunction(PersonHandler personHandler) {
-			return route(RequestPredicates.GET("/flux"), personHandler::flux);
-		}
+        public Mono<EntityResponse<Person>> mono(ServerRequest request) {
+            Person person = new Person("John");
+            return EntityResponse.fromObject(person).build();
+        }
 
-		@Bean
-		public RouterFunction<ServerResponse> attributesRouterFunction(AttributesHandler attributesHandler) {
-			return nest(RequestPredicates.GET("/attributes"),
-					route(RequestPredicates.GET("/{foo}"), attributesHandler::attributes));
-		}
-	}
+        public Mono<ServerResponse> flux(ServerRequest request) {
+            Person person1 = new Person("John");
+            Person person2 = new Person("Jane");
+            return ServerResponse.ok()
+                    .body(fromPublisher(Flux.just(person1, person2), Person.class));
+        }
+    }
 
+    private static class AttributesHandler {
 
-	private static class PersonHandler {
+        @SuppressWarnings("unchecked")
+        public Mono<ServerResponse> attributes(ServerRequest request) {
+            assertTrue(request.attributes().containsKey(RouterFunctions.REQUEST_ATTRIBUTE));
+            assertTrue(
+                    request.attributes()
+                            .containsKey(HandlerMapping.BEST_MATCHING_HANDLER_ATTRIBUTE));
 
-		public Mono<EntityResponse<Person>> mono(ServerRequest request) {
-			Person person = new Person("John");
-			return EntityResponse.fromObject(person).build();
-		}
+            Map<String, String> pathVariables =
+                    (Map<String, String>)
+                            request.attributes()
+                                    .get(RouterFunctions.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
+            assertNotNull(pathVariables);
+            assertEquals(1, pathVariables.size());
+            assertEquals("bar", pathVariables.get("foo"));
 
-		public Mono<ServerResponse> flux(ServerRequest request) {
-			Person person1 = new Person("John");
-			Person person2 = new Person("Jane");
-			return ServerResponse.ok().body(
-					fromPublisher(Flux.just(person1, person2), Person.class));
-		}
-	}
+            pathVariables =
+                    (Map<String, String>)
+                            request.attributes()
+                                    .get(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
+            assertNotNull(pathVariables);
+            assertEquals(1, pathVariables.size());
+            assertEquals("bar", pathVariables.get("foo"));
 
+            PathPattern pattern =
+                    (PathPattern)
+                            request.attributes().get(RouterFunctions.MATCHING_PATTERN_ATTRIBUTE);
+            assertNotNull(pattern);
+            assertEquals("/attributes/{foo}", pattern.getPatternString());
 
-	private static class AttributesHandler {
+            pattern =
+                    (PathPattern)
+                            request.attributes()
+                                    .get(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+            assertNotNull(pattern);
+            assertEquals("/attributes/{foo}", pattern.getPatternString());
 
-		@SuppressWarnings("unchecked")
-		public Mono<ServerResponse> attributes(ServerRequest request) {
-			assertTrue(request.attributes().containsKey(RouterFunctions.REQUEST_ATTRIBUTE));
-			assertTrue(request.attributes().containsKey(HandlerMapping.BEST_MATCHING_HANDLER_ATTRIBUTE));
+            return ServerResponse.ok().build();
+        }
+    }
 
-			Map<String, String> pathVariables =
-					(Map<String, String>) request.attributes().get(RouterFunctions.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
-			assertNotNull(pathVariables);
-			assertEquals(1, pathVariables.size());
-			assertEquals("bar", pathVariables.get("foo"));
+    @Controller
+    public static class PersonController {
 
-			pathVariables =
-					(Map<String, String>) request.attributes().get(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
-			assertNotNull(pathVariables);
-			assertEquals(1, pathVariables.size());
-			assertEquals("bar", pathVariables.get("foo"));
+        @RequestMapping("/controller")
+        @ResponseBody
+        public Mono<Person> controller() {
+            return Mono.just(new Person("John"));
+        }
+    }
 
+    private static class Person {
 
-			PathPattern pattern =
-					(PathPattern) request.attributes().get(RouterFunctions.MATCHING_PATTERN_ATTRIBUTE);
-			assertNotNull(pattern);
-			assertEquals("/attributes/{foo}", pattern.getPatternString());
+        private String name;
 
-			pattern = (PathPattern) request.attributes()
-					.get(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
-			assertNotNull(pattern);
-			assertEquals("/attributes/{foo}", pattern.getPatternString());
+        @SuppressWarnings("unused")
+        public Person() {}
 
-			return ServerResponse.ok().build();
-		}
-	}
+        public Person(String name) {
+            this.name = name;
+        }
 
+        public String getName() {
+            return this.name;
+        }
 
-	@Controller
-	public static class PersonController {
+        @SuppressWarnings("unused")
+        public void setName(String name) {
+            this.name = name;
+        }
 
-		@RequestMapping("/controller")
-		@ResponseBody
-		public Mono<Person> controller() {
-			return Mono.just(new Person("John"));
-		}
-	}
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            Person person = (Person) o;
+            return !(this.name != null ? !this.name.equals(person.name) : person.name != null);
+        }
 
+        @Override
+        public int hashCode() {
+            return this.name != null ? this.name.hashCode() : 0;
+        }
 
-	private static class Person {
-
-		private String name;
-
-		@SuppressWarnings("unused")
-		public Person() {
-		}
-
-		public Person(String name) {
-			this.name = name;
-		}
-
-		public String getName() {
-			return this.name;
-		}
-
-		@SuppressWarnings("unused")
-		public void setName(String name) {
-			this.name = name;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) {
-				return true;
-			}
-			if (o == null || getClass() != o.getClass()) {
-				return false;
-			}
-			Person person = (Person) o;
-			return !(this.name != null ? !this.name.equals(person.name) : person.name != null);
-		}
-
-		@Override
-		public int hashCode() {
-			return this.name != null ? this.name.hashCode() : 0;
-		}
-
-		@Override
-		public String toString() {
-			return "Person{" + "name='" + this.name + '\'' + '}';
-		}
-	}
-
+        @Override
+        public String toString() {
+            return "Person{" + "name='" + this.name + '\'' + '}';
+        }
+    }
 }

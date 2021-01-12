@@ -37,47 +37,42 @@ import static org.junit.Assert.*;
  */
 public class AutowiredRuleTests {
 
-	@ClassRule
-	public static final SpringClassRule springClassRule = new SpringClassRule();
+    @ClassRule public static final SpringClassRule springClassRule = new SpringClassRule();
 
-	@Rule
-	public final SpringMethodRule springMethodRule = new SpringMethodRule();
+    @Rule public final SpringMethodRule springMethodRule = new SpringMethodRule();
 
-	@Autowired
-	@Rule
-	public AutowiredTestRule autowiredTestRule;
+    @Autowired @Rule public AutowiredTestRule autowiredTestRule;
 
-	@Test
-	public void test() {
-		assertNotNull("TestRule should have been @Autowired", autowiredTestRule);
+    @Test
+    public void test() {
+        assertNotNull("TestRule should have been @Autowired", autowiredTestRule);
 
-		// Rationale for the following assertion:
-		//
-		// The field value for the custom rule is null when JUnit sees it. JUnit then
-		// ignores the null value, and at a later point in time Spring injects the rule
-		// from the ApplicationContext and overrides the null field value. But that's too
-		// late: JUnit never sees the rule supplied by Spring via dependency injection.
-		assertFalse("@Autowired TestRule should NOT have been applied", autowiredTestRule.applied);
-	}
+        // Rationale for the following assertion:
+        //
+        // The field value for the custom rule is null when JUnit sees it. JUnit then
+        // ignores the null value, and at a later point in time Spring injects the rule
+        // from the ApplicationContext and overrides the null field value. But that's too
+        // late: JUnit never sees the rule supplied by Spring via dependency injection.
+        assertFalse("@Autowired TestRule should NOT have been applied", autowiredTestRule.applied);
+    }
 
-	@Configuration
-	static class Config {
+    @Configuration
+    static class Config {
 
-		@Bean
-		AutowiredTestRule autowiredTestRule() {
-			return new AutowiredTestRule();
-		}
-	}
+        @Bean
+        AutowiredTestRule autowiredTestRule() {
+            return new AutowiredTestRule();
+        }
+    }
 
-	static class AutowiredTestRule implements TestRule {
+    static class AutowiredTestRule implements TestRule {
 
-		private boolean applied = false;
+        private boolean applied = false;
 
-		@Override
-		public Statement apply(Statement base, Description description) {
-			this.applied = true;
-			return base;
-		}
-	}
-
+        @Override
+        public Statement apply(Statement base, Description description) {
+            this.applied = true;
+            return base;
+        }
+    }
 }

@@ -31,9 +31,8 @@ import org.springframework.web.server.WebExceptionHandler;
 /**
  * Handle {@link ResponseStatusException} by setting the response status.
  *
- * <p>By default exception stack traces are not shown for successfully resolved
- * exceptions. Use {@link #setWarnLogCategory(String)} to enable logging with
- * stack traces.
+ * <p>By default exception stack traces are not shown for successfully resolved exceptions. Use
+ * {@link #setWarnLogCategory(String)} to enable logging with stack traces.
  *
  * @author Rossen Stoyanchev
  * @author Sebastien Deleuze
@@ -41,85 +40,85 @@ import org.springframework.web.server.WebExceptionHandler;
  */
 public class ResponseStatusExceptionHandler implements WebExceptionHandler {
 
-	private static final Log logger = LogFactory.getLog(ResponseStatusExceptionHandler.class);
+    private static final Log logger = LogFactory.getLog(ResponseStatusExceptionHandler.class);
 
+    @Nullable private Log warnLogger;
 
-	@Nullable
-	private Log warnLogger;
+    /**
+     * Set the log category for warn logging.
+     *
+     * <p>Default is no warn logging. Specify this setting to activate warn logging into a specific
+     * category.
+     *
+     * @since 5.1
+     * @see org.apache.commons.logging.LogFactory#getLog(String)
+     * @see java.util.logging.Logger#getLogger(String)
+     */
+    public void setWarnLogCategory(String loggerName) {
+        this.warnLogger = LogFactory.getLog(loggerName);
+    }
 
+    @Override
+    public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
+        if (!updateResponse(exchange.getResponse(), ex)) {
+            return Mono.error(ex);
+        }
 
-	/**
-	 * Set the log category for warn logging.
-	 * <p>Default is no warn logging. Specify this setting to activate warn
-	 * logging into a specific category.
-	 * @since 5.1
-	 * @see org.apache.commons.logging.LogFactory#getLog(String)
-	 * @see java.util.logging.Logger#getLogger(String)
-	 */
-	public void setWarnLogCategory(String loggerName) {
-		this.warnLogger = LogFactory.getLog(loggerName);
-	}
+        // Mirrors AbstractHandlerExceptionResolver in spring-webmvc...
+        String logPrefix = exchange.getLogPrefix();
+        if (this.warnLogger != null && this.warnLogger.isWarnEnabled()) {
+            this.warnLogger.warn(logPrefix + formatError(ex, exchange.getRequest()), ex);
+        } else if (logger.isDebugEnabled()) {
+            logger.debug(logPrefix + formatError(ex, exchange.getRequest()));
+        }
 
+        return exchange.getResponse().setComplete();
+    }
 
-	@Override
-	public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
-		if (!updateResponse(exchange.getResponse(), ex)) {
-			return Mono.error(ex);
-		}
+    private String formatError(Throwable ex, ServerHttpRequest request) {
+        String reason = ex.getClass().getSimpleName() + ": " + ex.getMessage();
+        String path = request.getURI().getRawPath();
+        return "Resolved [" + reason + "] for HTTP " + request.getMethod() + " " + path;
+    }
 
-		// Mirrors AbstractHandlerExceptionResolver in spring-webmvc...
-		String logPrefix = exchange.getLogPrefix();
-		if (this.warnLogger != null && this.warnLogger.isWarnEnabled()) {
-			this.warnLogger.warn(logPrefix + formatError(ex, exchange.getRequest()), ex);
-		}
-		else if (logger.isDebugEnabled()) {
-			logger.debug(logPrefix + formatError(ex, exchange.getRequest()));
-		}
+    private boolean updateResponse(ServerHttpResponse response, Throwable ex) {
+        boolean result = false;
+        HttpStatus status = determineStatus(ex);
+        if (status != null) {
+            if (response.setStatusCode(status)) {
+                if (ex instanceof ResponseStatusException) {
+                    ((ResponseStatusException) ex)
+                            .getResponseHeaders()
+                            .forEach(
+                                    (name, values) ->
+                                            values.forEach(
+                                                    value ->
+                                                            response.getHeaders()
+                                                                    .add(name, value)));
+                }
+                result = true;
+            }
+        } else {
+            Throwable cause = ex.getCause();
+            if (cause != null) {
+                result = updateResponse(response, cause);
+            }
+        }
+        return result;
+    }
 
-		return exchange.getResponse().setComplete();
-	}
-
-
-	private String formatError(Throwable ex, ServerHttpRequest request) {
-		String reason = ex.getClass().getSimpleName() + ": " + ex.getMessage();
-		String path = request.getURI().getRawPath();
-		return "Resolved [" + reason + "] for HTTP " + request.getMethod() + " " + path;
-	}
-
-	private boolean updateResponse(ServerHttpResponse response, Throwable ex) {
-		boolean result = false;
-		HttpStatus status = determineStatus(ex);
-		if (status != null) {
-			if (response.setStatusCode(status)) {
-				if (ex instanceof ResponseStatusException) {
-					((ResponseStatusException) ex).getResponseHeaders()
-							.forEach((name, values) ->
-									values.forEach(value -> response.getHeaders().add(name, value)));
-				}
-				result = true;
-			}
-		}
-		else {
-			Throwable cause = ex.getCause();
-			if (cause != null) {
-				result = updateResponse(response, cause);
-			}
-		}
-		return result;
-	}
-
-	/**
-	 * Determine the HTTP status implied by the given exception.
-	 * @param ex the exception to introspect
-	 * @return the associated HTTP status, if any
-	 * @since 5.0.5
-	 */
-	@Nullable
-	protected HttpStatus determineStatus(Throwable ex) {
-		if (ex instanceof ResponseStatusException) {
-			return ((ResponseStatusException) ex).getStatus();
-		}
-		return null;
-	}
-
+    /**
+     * Determine the HTTP status implied by the given exception.
+     *
+     * @param ex the exception to introspect
+     * @return the associated HTTP status, if any
+     * @since 5.0.5
+     */
+    @Nullable
+    protected HttpStatus determineStatus(Throwable ex) {
+        if (ex instanceof ResponseStatusException) {
+            return ((ResponseStatusException) ex).getStatus();
+        }
+        return null;
+    }
 }

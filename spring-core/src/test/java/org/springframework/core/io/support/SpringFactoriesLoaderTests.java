@@ -31,25 +31,25 @@ import static org.junit.Assert.*;
  */
 public class SpringFactoriesLoaderTests {
 
-	@Test
-	public void loadFactoriesInCorrectOrder() {
-		List<DummyFactory> factories = SpringFactoriesLoader.loadFactories(DummyFactory.class, null);
-		assertEquals(2, factories.size());
-		assertTrue(factories.get(0) instanceof MyDummyFactory1);
-		assertTrue(factories.get(1) instanceof MyDummyFactory2);
-	}
+    @Test
+    public void loadFactoriesInCorrectOrder() {
+        List<DummyFactory> factories =
+                SpringFactoriesLoader.loadFactories(DummyFactory.class, null);
+        assertEquals(2, factories.size());
+        assertTrue(factories.get(0) instanceof MyDummyFactory1);
+        assertTrue(factories.get(1) instanceof MyDummyFactory2);
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void loadInvalid() {
-		SpringFactoriesLoader.loadFactories(String.class, null);
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void loadInvalid() {
+        SpringFactoriesLoader.loadFactories(String.class, null);
+    }
 
-	@Test
-	public void loadPackagePrivateFactory() {
-		List<DummyPackagePrivateFactory> factories =
-				SpringFactoriesLoader.loadFactories(DummyPackagePrivateFactory.class, null);
-		assertEquals(1, factories.size());
-		assertTrue((factories.get(0).getClass().getModifiers() & Modifier.PUBLIC) == 0);
-	}
-
+    @Test
+    public void loadPackagePrivateFactory() {
+        List<DummyPackagePrivateFactory> factories =
+                SpringFactoriesLoader.loadFactories(DummyPackagePrivateFactory.class, null);
+        assertEquals(1, factories.size());
+        assertTrue((factories.get(0).getClass().getModifiers() & Modifier.PUBLIC) == 0);
+    }
 }

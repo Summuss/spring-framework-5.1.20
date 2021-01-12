@@ -33,8 +33,8 @@ import static org.junit.Assert.*;
 import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.*;
 
 /**
- * Transactional integration tests for {@link Sql @Sql} that verify proper
- * support for {@link ExecutionPhase#AFTER_TEST_METHOD}.
+ * Transactional integration tests for {@link Sql @Sql} that verify proper support for {@link
+ * ExecutionPhase#AFTER_TEST_METHOD}.
  *
  * @author Sam Brannen
  * @since 4.1
@@ -42,44 +42,42 @@ import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.*;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 @ContextConfiguration(classes = EmptyDatabaseConfig.class)
 @DirtiesContext
-public class TransactionalAfterTestMethodSqlScriptsTests extends AbstractTransactionalJUnit4SpringContextTests {
+public class TransactionalAfterTestMethodSqlScriptsTests
+        extends AbstractTransactionalJUnit4SpringContextTests {
 
-	@Rule
-	public TestName testName = new TestName();
+    @Rule public TestName testName = new TestName();
 
+    @AfterTransaction
+    public void afterTransaction() {
+        if ("test01".equals(testName.getMethodName())) {
+            try {
+                assertNumUsers(99);
+                fail(
+                        "Should throw a BadSqlGrammarException after test01, assuming 'drop-schema.sql' was executed");
+            } catch (BadSqlGrammarException e) {
+                /* expected */
+            }
+        }
+    }
 
-	@AfterTransaction
-	public void afterTransaction() {
-		if ("test01".equals(testName.getMethodName())) {
-			try {
-				assertNumUsers(99);
-				fail("Should throw a BadSqlGrammarException after test01, assuming 'drop-schema.sql' was executed");
-			}
-			catch (BadSqlGrammarException e) {
-				/* expected */
-			}
-		}
-	}
+    @Test
+    @SqlGroup({ //
+        @Sql({"schema.sql", "data.sql"}), //
+        @Sql(scripts = "drop-schema.sql", executionPhase = AFTER_TEST_METHOD) //
+    })
+    // test## is required for @FixMethodOrder.
+    public void test01() {
+        assertNumUsers(1);
+    }
 
-	@Test
-	@SqlGroup({//
-	@Sql({ "schema.sql", "data.sql" }),//
-		@Sql(scripts = "drop-schema.sql", executionPhase = AFTER_TEST_METHOD) //
-	})
-	// test## is required for @FixMethodOrder.
-	public void test01() {
-		assertNumUsers(1);
-	}
+    @Test
+    @Sql({"schema.sql", "data.sql", "data-add-dogbert.sql"})
+    // test## is required for @FixMethodOrder.
+    public void test02() {
+        assertNumUsers(2);
+    }
 
-	@Test
-	@Sql({ "schema.sql", "data.sql", "data-add-dogbert.sql" })
-	// test## is required for @FixMethodOrder.
-	public void test02() {
-		assertNumUsers(2);
-	}
-
-	protected void assertNumUsers(int expected) {
-		assertEquals("Number of rows in the 'user' table.", expected, countRowsInTable("user"));
-	}
-
+    protected void assertNumUsers(int expected) {
+        assertEquals("Number of rows in the 'user' table.", expected, countRowsInTable("user"));
+    }
 }

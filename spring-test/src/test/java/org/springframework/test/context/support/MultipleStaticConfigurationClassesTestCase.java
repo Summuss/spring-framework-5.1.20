@@ -27,12 +27,9 @@ import org.springframework.context.annotation.Configuration;
  */
 public class MultipleStaticConfigurationClassesTestCase {
 
-	@Configuration
-	static class ConfigA {
-	}
+    @Configuration
+    static class ConfigA {}
 
-	@Configuration
-	static class ConfigB {
-	}
-
+    @Configuration
+    static class ConfigB {}
 }

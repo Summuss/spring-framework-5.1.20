@@ -25,12 +25,11 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Return type of any JMS listener method used to indicate the actual response
- * destination alongside the response itself. Typically used when said destination
- * needs to be computed at runtime.
+ * Return type of any JMS listener method used to indicate the actual response destination alongside
+ * the response itself. Typically used when said destination needs to be computed at runtime.
  *
- * <p>The example below sends a response with the content of the {@code result}
- * argument to the {@code queueOut Queue}:
+ * <p>The example below sends a response with the content of the {@code result} argument to the
+ * {@code queueOut Queue}:
  *
  * <pre class="code">
  * package com.acme.foo;
@@ -43,9 +42,9 @@ import org.springframework.util.Assert;
  *     }
  * }</pre>
  *
- * If the destination does not need to be computed at runtime,
- * {@link org.springframework.messaging.handler.annotation.SendTo @SendTo}
- * is the recommended declarative approach.
+ * If the destination does not need to be computed at runtime, {@link
+ * org.springframework.messaging.handler.annotation.SendTo @SendTo} is the recommended declarative
+ * approach.
  *
  * @author Stephane Nicoll
  * @since 4.2
@@ -55,103 +54,96 @@ import org.springframework.util.Assert;
  */
 public class JmsResponse<T> {
 
-	private final T response;
+    private final T response;
 
-	private final Object destination;
+    private final Object destination;
 
+    /**
+     * Create a new {@link JmsResponse} instance.
+     *
+     * @param response the content of the result
+     * @param destination the destination
+     */
+    protected JmsResponse(T response, Object destination) {
+        Assert.notNull(response, "Result must not be null");
+        this.response = response;
+        this.destination = destination;
+    }
 
-	/**
-	 * Create a new {@link JmsResponse} instance.
-	 * @param response the content of the result
-	 * @param destination the destination
-	 */
-	protected JmsResponse(T response, Object destination) {
-		Assert.notNull(response, "Result must not be null");
-		this.response = response;
-		this.destination = destination;
-	}
+    /** Return the content of the response. */
+    public T getResponse() {
+        return this.response;
+    }
 
+    /**
+     * Resolve the {@link Destination} to use for this instance. The {@link DestinationResolver} and
+     * {@link Session} can be used to resolve a destination at runtime.
+     *
+     * @param destinationResolver the destination resolver to use if necessary
+     * @param session the session to use, if necessary
+     * @return the {@link Destination} to use
+     * @throws JMSException if the DestinationResolver failed to resolve the destination
+     */
+    @Nullable
+    public Destination resolveDestination(DestinationResolver destinationResolver, Session session)
+            throws JMSException {
 
-	/**
-	 * Return the content of the response.
-	 */
-	public T getResponse() {
-		return this.response;
-	}
+        if (this.destination instanceof Destination) {
+            return (Destination) this.destination;
+        }
+        if (this.destination instanceof DestinationNameHolder) {
+            DestinationNameHolder nameHolder = (DestinationNameHolder) this.destination;
+            return destinationResolver.resolveDestinationName(
+                    session, nameHolder.destinationName, nameHolder.pubSubDomain);
+        }
+        return null;
+    }
 
-	/**
-	 * Resolve the {@link Destination} to use for this instance. The {@link DestinationResolver}
-	 * and {@link Session} can be used to resolve a destination at runtime.
-	 * @param destinationResolver the destination resolver to use if necessary
-	 * @param session the session to use, if necessary
-	 * @return the {@link Destination} to use
-	 * @throws JMSException if the DestinationResolver failed to resolve the destination
-	 */
-	@Nullable
-	public Destination resolveDestination(DestinationResolver destinationResolver, Session session)
-			throws JMSException {
+    @Override
+    public String toString() {
+        return "JmsResponse ["
+                + "response="
+                + this.response
+                + ", destination="
+                + this.destination
+                + ']';
+    }
 
-		if (this.destination instanceof Destination) {
-			return (Destination) this.destination;
-		}
-		if (this.destination instanceof DestinationNameHolder) {
-			DestinationNameHolder nameHolder = (DestinationNameHolder) this.destination;
-			return destinationResolver.resolveDestinationName(session,
-					nameHolder.destinationName, nameHolder.pubSubDomain);
-		}
-		return null;
-	}
+    /** Create a {@link JmsResponse} targeting the queue with the specified name. */
+    public static <T> JmsResponse<T> forQueue(T result, String queueName) {
+        Assert.notNull(queueName, "Queue name must not be null");
+        return new JmsResponse<>(result, new DestinationNameHolder(queueName, false));
+    }
 
-	@Override
-	public String toString() {
-		return "JmsResponse [" + "response=" + this.response + ", destination=" + this.destination + ']';
-	}
+    /** Create a {@link JmsResponse} targeting the topic with the specified name. */
+    public static <T> JmsResponse<T> forTopic(T result, String topicName) {
+        Assert.notNull(topicName, "Topic name must not be null");
+        return new JmsResponse<>(result, new DestinationNameHolder(topicName, true));
+    }
 
+    /** Create a {@link JmsResponse} targeting the specified {@link Destination}. */
+    public static <T> JmsResponse<T> forDestination(T result, Destination destination) {
+        Assert.notNull(destination, "Destination must not be null");
+        return new JmsResponse<>(result, destination);
+    }
 
-	/**
-	 * Create a {@link JmsResponse} targeting the queue with the specified name.
-	 */
-	public static <T> JmsResponse<T> forQueue(T result, String queueName) {
-		Assert.notNull(queueName, "Queue name must not be null");
-		return new JmsResponse<>(result, new DestinationNameHolder(queueName, false));
-	}
+    /**
+     * Internal class combining a destination name and its target destination type (queue or topic).
+     */
+    private static class DestinationNameHolder {
 
-	/**
-	 * Create a {@link JmsResponse} targeting the topic with the specified name.
-	 */
-	public static <T> JmsResponse<T> forTopic(T result, String topicName) {
-		Assert.notNull(topicName, "Topic name must not be null");
-		return new JmsResponse<>(result, new DestinationNameHolder(topicName, true));
-	}
+        private final String destinationName;
 
-	/**
-	 * Create a {@link JmsResponse} targeting the specified {@link Destination}.
-	 */
-	public static <T> JmsResponse<T> forDestination(T result, Destination destination) {
-		Assert.notNull(destination, "Destination must not be null");
-		return new JmsResponse<>(result, destination);
-	}
+        private final boolean pubSubDomain;
 
+        public DestinationNameHolder(String destinationName, boolean pubSubDomain) {
+            this.destinationName = destinationName;
+            this.pubSubDomain = pubSubDomain;
+        }
 
-	/**
-	 * Internal class combining a destination name
-	 * and its target destination type (queue or topic).
-	 */
-	private static class DestinationNameHolder {
-
-		private final String destinationName;
-
-		private final boolean pubSubDomain;
-
-		public DestinationNameHolder(String destinationName, boolean pubSubDomain) {
-			this.destinationName = destinationName;
-			this.pubSubDomain = pubSubDomain;
-		}
-
-		@Override
-		public String toString() {
-			return this.destinationName + "{" + "pubSubDomain=" + this.pubSubDomain + '}';
-		}
-	}
-
+        @Override
+        public String toString() {
+            return this.destinationName + "{" + "pubSubDomain=" + this.pubSubDomain + '}';
+        }
+    }
 }

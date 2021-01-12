@@ -37,9 +37,8 @@ import org.springframework.context.annotation.Configuration;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * This class demonstrates how to have a JUnit Jupiter extension managed as a
- * Spring bean in order to have dependencies injected into an extension from
- * a Spring {@code ApplicationContext}.
+ * This class demonstrates how to have a JUnit Jupiter extension managed as a Spring bean in order
+ * to have dependencies injected into an extension from a Spring {@code ApplicationContext}.
  *
  * @author Sam Brannen
  * @since 5.1
@@ -48,82 +47,82 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(Lifecycle.PER_CLASS)
 class SpringManagedJupiterExtensionTests {
 
-	@Autowired
-	@RegisterExtension
-	TestTemplateInvocationContextProvider provider;
+    @Autowired @RegisterExtension TestTemplateInvocationContextProvider provider;
 
+    @TestTemplate
+    void testTemplate(String parameter) {
+        assertTrue("foo".equals(parameter) || "bar".equals(parameter));
+    }
 
-	@TestTemplate
-	void testTemplate(String parameter) {
-		assertTrue("foo".equals(parameter) || "bar".equals(parameter));
-	}
+    @Configuration
+    static class Config {
 
+        @Bean
+        String foo() {
+            return "foo";
+        }
 
-	@Configuration
-	static class Config {
+        @Bean
+        String bar() {
+            return "bar";
+        }
 
-		@Bean
-		String foo() {
-			return "foo";
-		}
+        @Bean
+        TestTemplateInvocationContextProvider provider(List<String> parameters) {
+            return new StringInvocationContextProvider(parameters);
+        }
+    }
 
-		@Bean
-		String bar() {
-			return "bar";
-		}
+    private static class StringInvocationContextProvider
+            implements TestTemplateInvocationContextProvider {
 
-		@Bean
-		TestTemplateInvocationContextProvider provider(List<String> parameters) {
-			return new StringInvocationContextProvider(parameters);
-		}
-	}
+        private final List<String> parameters;
 
-	private static class StringInvocationContextProvider implements TestTemplateInvocationContextProvider {
+        StringInvocationContextProvider(List<String> parameters) {
+            this.parameters = parameters;
+        }
 
-		private final List<String> parameters;
+        @Override
+        public boolean supportsTestTemplate(ExtensionContext context) {
+            return true;
+        }
 
+        @Override
+        public Stream<TestTemplateInvocationContext> provideTestTemplateInvocationContexts(
+                ExtensionContext context) {
+            return this.parameters.stream().map(this::invocationContext);
+        }
 
-		StringInvocationContextProvider(List<String> parameters) {
-			this.parameters = parameters;
-		}
+        private TestTemplateInvocationContext invocationContext(String parameter) {
+            return new TestTemplateInvocationContext() {
 
-		@Override
-		public boolean supportsTestTemplate(ExtensionContext context) {
-			return true;
-		}
+                @Override
+                public String getDisplayName(int invocationIndex) {
+                    return parameter;
+                }
 
-		@Override
-		public Stream<TestTemplateInvocationContext> provideTestTemplateInvocationContexts(ExtensionContext context) {
-			return this.parameters.stream().map(this::invocationContext);
-		}
+                @Override
+                public List<Extension> getAdditionalExtensions() {
+                    return Collections.singletonList(
+                            new ParameterResolver() {
 
-		private TestTemplateInvocationContext invocationContext(String parameter) {
-			return new TestTemplateInvocationContext() {
+                                @Override
+                                public boolean supportsParameter(
+                                        ParameterContext parameterContext,
+                                        ExtensionContext extensionContext) {
+                                    return parameterContext.getParameter().getType()
+                                            == String.class;
+                                }
 
-				@Override
-				public String getDisplayName(int invocationIndex) {
-					return parameter;
-				}
-
-				@Override
-				public List<Extension> getAdditionalExtensions() {
-					return Collections.singletonList(new ParameterResolver() {
-
-						@Override
-						public boolean supportsParameter(ParameterContext parameterContext,
-								ExtensionContext extensionContext) {
-							return parameterContext.getParameter().getType() == String.class;
-						}
-
-						@Override
-						public Object resolveParameter(ParameterContext parameterContext,
-								ExtensionContext extensionContext) {
-							return parameter;
-						}
-					});
-				}
-			};
-		}
-	}
-
+                                @Override
+                                public Object resolveParameter(
+                                        ParameterContext parameterContext,
+                                        ExtensionContext extensionContext) {
+                                    return parameter;
+                                }
+                            });
+                }
+            };
+        }
+    }
 }

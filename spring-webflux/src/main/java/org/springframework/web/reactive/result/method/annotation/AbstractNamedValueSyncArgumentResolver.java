@@ -27,60 +27,58 @@ import org.springframework.web.reactive.result.method.SyncHandlerMethodArgumentR
 import org.springframework.web.server.ServerWebExchange;
 
 /**
- * An extension of {@link AbstractNamedValueArgumentResolver} for named value
- * resolvers that are synchronous and yet non-blocking. Sub-classes implement
- * the synchronous {@link #resolveNamedValue} to which the asynchronous
- * {@link #resolveName} delegates to by default.
+ * An extension of {@link AbstractNamedValueArgumentResolver} for named value resolvers that are
+ * synchronous and yet non-blocking. Sub-classes implement the synchronous {@link
+ * #resolveNamedValue} to which the asynchronous {@link #resolveName} delegates to by default.
  *
  * @author Rossen Stoyanchev
  * @since 5.0
  */
-public abstract class AbstractNamedValueSyncArgumentResolver extends AbstractNamedValueArgumentResolver
-		implements SyncHandlerMethodArgumentResolver {
+public abstract class AbstractNamedValueSyncArgumentResolver
+        extends AbstractNamedValueArgumentResolver implements SyncHandlerMethodArgumentResolver {
 
-	/**
-	 * Create a new {@link AbstractNamedValueSyncArgumentResolver}.
-	 * @param factory a bean factory to use for resolving {@code ${...}}
-	 * placeholder and {@code #{...}} SpEL expressions in default values;
-	 * or {@code null} if default values are not expected to have expressions
-	 * @param registry for checking reactive type wrappers
-	 */
-	protected AbstractNamedValueSyncArgumentResolver(
-			@Nullable ConfigurableBeanFactory factory, ReactiveAdapterRegistry registry) {
+    /**
+     * Create a new {@link AbstractNamedValueSyncArgumentResolver}.
+     *
+     * @param factory a bean factory to use for resolving {@code ${...}} placeholder and {@code
+     *     #{...}} SpEL expressions in default values; or {@code null} if default values are not
+     *     expected to have expressions
+     * @param registry for checking reactive type wrappers
+     */
+    protected AbstractNamedValueSyncArgumentResolver(
+            @Nullable ConfigurableBeanFactory factory, ReactiveAdapterRegistry registry) {
 
-		super(factory, registry);
-	}
+        super(factory, registry);
+    }
 
+    @Override
+    public Mono<Object> resolveArgument(
+            MethodParameter parameter, BindingContext bindingContext, ServerWebExchange exchange) {
 
-	@Override
-	public Mono<Object> resolveArgument(
-			MethodParameter parameter, BindingContext bindingContext, ServerWebExchange exchange) {
+        // Flip the default implementation from SyncHandlerMethodArgumentResolver:
+        // instead of delegating to (sync) resolveArgumentValue,
+        // call (async) super.resolveArgument shared with non-blocking resolvers;
+        // actual resolution below still sync...
 
-		// Flip the default implementation from SyncHandlerMethodArgumentResolver:
-		// instead of delegating to (sync) resolveArgumentValue,
-		// call (async) super.resolveArgument shared with non-blocking resolvers;
-		// actual resolution below still sync...
+        return super.resolveArgument(parameter, bindingContext, exchange);
+    }
 
-		return super.resolveArgument(parameter, bindingContext, exchange);
-	}
+    @Override
+    public Object resolveArgumentValue(
+            MethodParameter parameter, BindingContext context, ServerWebExchange exchange) {
 
-	@Override
-	public Object resolveArgumentValue(
-			MethodParameter parameter, BindingContext context, ServerWebExchange exchange) {
+        // This won't block since resolveName below doesn't
+        return resolveArgument(parameter, context, exchange).block();
+    }
 
-		// This won't block since resolveName below doesn't
-		return resolveArgument(parameter, context, exchange).block();
-	}
+    @Override
+    protected final Mono<Object> resolveName(
+            String name, MethodParameter param, ServerWebExchange exchange) {
+        return Mono.justOrEmpty(resolveNamedValue(name, param, exchange));
+    }
 
-	@Override
-	protected final Mono<Object> resolveName(String name, MethodParameter param, ServerWebExchange exchange) {
-		return Mono.justOrEmpty(resolveNamedValue(name, param, exchange));
-	}
-
-	/**
-	 * Actually resolve the value synchronously.
-	 */
-	@Nullable
-	protected abstract Object resolveNamedValue(String name, MethodParameter param, ServerWebExchange exchange);
-
+    /** Actually resolve the value synchronously. */
+    @Nullable
+    protected abstract Object resolveNamedValue(
+            String name, MethodParameter param, ServerWebExchange exchange);
 }

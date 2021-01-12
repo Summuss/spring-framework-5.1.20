@@ -30,18 +30,15 @@ import org.springframework.util.Assert;
  */
 public class RegexPatternTypeFilter extends AbstractClassTestingTypeFilter {
 
-	private final Pattern pattern;
+    private final Pattern pattern;
 
+    public RegexPatternTypeFilter(Pattern pattern) {
+        Assert.notNull(pattern, "Pattern must not be null");
+        this.pattern = pattern;
+    }
 
-	public RegexPatternTypeFilter(Pattern pattern) {
-		Assert.notNull(pattern, "Pattern must not be null");
-		this.pattern = pattern;
-	}
-
-
-	@Override
-	protected boolean match(ClassMetadata metadata) {
-		return this.pattern.matcher(metadata.getClassName()).matches();
-	}
-
+    @Override
+    protected boolean match(ClassMetadata metadata) {
+        return this.pattern.matcher(metadata.getClassName()).matches();
+    }
 }

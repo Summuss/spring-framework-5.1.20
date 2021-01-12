@@ -1,1 +1,1 @@
-drop table T_TEST;
+DROP TABLE T_TEST;

@@ -43,142 +43,146 @@ import org.springframework.scheduling.TaskScheduler;
 
 /**
  * User tests for {@link UserRegistryMessageHandler}.
+ *
  * @author Rossen Stoyanchev
  */
 public class UserRegistryMessageHandlerTests {
 
-	private UserRegistryMessageHandler handler;
+    private UserRegistryMessageHandler handler;
 
-	private SimpUserRegistry localRegistry;
+    private SimpUserRegistry localRegistry;
 
-	private MultiServerUserRegistry multiServerRegistry;
+    private MultiServerUserRegistry multiServerRegistry;
 
-	private MessageConverter converter;
+    private MessageConverter converter;
 
-	@Mock
-	private MessageChannel brokerChannel;
+    @Mock private MessageChannel brokerChannel;
 
-	@Mock
-	private TaskScheduler taskScheduler;
+    @Mock private TaskScheduler taskScheduler;
 
+    @Before
+    public void setUp() throws Exception {
 
-	@Before
-	public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
 
-		MockitoAnnotations.initMocks(this);
+        when(this.brokerChannel.send(any())).thenReturn(true);
+        this.converter = new MappingJackson2MessageConverter();
 
-		when(this.brokerChannel.send(any())).thenReturn(true);
-		this.converter = new MappingJackson2MessageConverter();
+        SimpMessagingTemplate brokerTemplate = new SimpMessagingTemplate(this.brokerChannel);
+        brokerTemplate.setMessageConverter(this.converter);
 
-		SimpMessagingTemplate brokerTemplate = new SimpMessagingTemplate(this.brokerChannel);
-		brokerTemplate.setMessageConverter(this.converter);
+        this.localRegistry = mock(SimpUserRegistry.class);
+        this.multiServerRegistry = new MultiServerUserRegistry(this.localRegistry);
 
-		this.localRegistry = mock(SimpUserRegistry.class);
-		this.multiServerRegistry = new MultiServerUserRegistry(this.localRegistry);
+        this.handler =
+                new UserRegistryMessageHandler(
+                        this.multiServerRegistry,
+                        brokerTemplate,
+                        "/topic/simp-user-registry",
+                        this.taskScheduler);
+    }
 
-		this.handler = new UserRegistryMessageHandler(this.multiServerRegistry, brokerTemplate,
-				"/topic/simp-user-registry", this.taskScheduler);
-	}
+    @Test
+    public void brokerAvailableEvent() throws Exception {
+        Runnable runnable = getUserRegistryTask();
+        assertNotNull(runnable);
+    }
 
-	@Test
-	public void brokerAvailableEvent() throws Exception {
-		Runnable runnable = getUserRegistryTask();
-		assertNotNull(runnable);
-	}
+    @SuppressWarnings("unchecked")
+    @Test
+    public void brokerUnavailableEvent() throws Exception {
 
-	@SuppressWarnings("unchecked")
-	@Test
-	public void brokerUnavailableEvent() throws Exception {
+        ScheduledFuture future = Mockito.mock(ScheduledFuture.class);
+        when(this.taskScheduler.scheduleWithFixedDelay(any(Runnable.class), any(Long.class)))
+                .thenReturn(future);
 
-		ScheduledFuture future = Mockito.mock(ScheduledFuture.class);
-		when(this.taskScheduler.scheduleWithFixedDelay(any(Runnable.class), any(Long.class))).thenReturn(future);
+        BrokerAvailabilityEvent event = new BrokerAvailabilityEvent(true, this);
+        this.handler.onApplicationEvent(event);
+        verifyNoMoreInteractions(future);
 
-		BrokerAvailabilityEvent event = new BrokerAvailabilityEvent(true, this);
-		this.handler.onApplicationEvent(event);
-		verifyNoMoreInteractions(future);
+        event = new BrokerAvailabilityEvent(false, this);
+        this.handler.onApplicationEvent(event);
+        verify(future).cancel(true);
+    }
 
-		event = new BrokerAvailabilityEvent(false, this);
-		this.handler.onApplicationEvent(event);
-		verify(future).cancel(true);
-	}
+    @Test
+    public void broadcastRegistry() throws Exception {
 
-	@Test
-	public void broadcastRegistry() throws Exception {
+        TestSimpUser simpUser1 = new TestSimpUser("joe");
+        TestSimpUser simpUser2 = new TestSimpUser("jane");
 
-		TestSimpUser simpUser1 = new TestSimpUser("joe");
-		TestSimpUser simpUser2 = new TestSimpUser("jane");
+        simpUser1.addSessions(new TestSimpSession("123"));
+        simpUser1.addSessions(new TestSimpSession("456"));
 
-		simpUser1.addSessions(new TestSimpSession("123"));
-		simpUser1.addSessions(new TestSimpSession("456"));
+        HashSet<SimpUser> simpUsers = new HashSet<>(Arrays.asList(simpUser1, simpUser2));
+        when(this.localRegistry.getUsers()).thenReturn(simpUsers);
 
-		HashSet<SimpUser> simpUsers = new HashSet<>(Arrays.asList(simpUser1, simpUser2));
-		when(this.localRegistry.getUsers()).thenReturn(simpUsers);
+        getUserRegistryTask().run();
 
-		getUserRegistryTask().run();
+        ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
+        verify(this.brokerChannel).send(captor.capture());
 
-		ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
-		verify(this.brokerChannel).send(captor.capture());
+        Message<?> message = captor.getValue();
+        assertNotNull(message);
+        MessageHeaders headers = message.getHeaders();
+        assertEquals(
+                "/topic/simp-user-registry", SimpMessageHeaderAccessor.getDestination(headers));
 
-		Message<?> message = captor.getValue();
-		assertNotNull(message);
-		MessageHeaders headers = message.getHeaders();
-		assertEquals("/topic/simp-user-registry", SimpMessageHeaderAccessor.getDestination(headers));
+        MultiServerUserRegistry remoteRegistry =
+                new MultiServerUserRegistry(mock(SimpUserRegistry.class));
+        remoteRegistry.addRemoteRegistryDto(message, this.converter, 20000);
+        assertEquals(2, remoteRegistry.getUserCount());
+        assertNotNull(remoteRegistry.getUser("joe"));
+        assertNotNull(remoteRegistry.getUser("jane"));
+    }
 
-		MultiServerUserRegistry remoteRegistry = new MultiServerUserRegistry(mock(SimpUserRegistry.class));
-		remoteRegistry.addRemoteRegistryDto(message, this.converter, 20000);
-		assertEquals(2, remoteRegistry.getUserCount());
-		assertNotNull(remoteRegistry.getUser("joe"));
-		assertNotNull(remoteRegistry.getUser("jane"));
-	}
+    @Test
+    public void handleMessage() throws Exception {
 
-	@Test
-	public void handleMessage() throws Exception {
+        TestSimpUser simpUser1 = new TestSimpUser("joe");
+        TestSimpUser simpUser2 = new TestSimpUser("jane");
 
-		TestSimpUser simpUser1 = new TestSimpUser("joe");
-		TestSimpUser simpUser2 = new TestSimpUser("jane");
+        simpUser1.addSessions(new TestSimpSession("123"));
+        simpUser2.addSessions(new TestSimpSession("456"));
 
-		simpUser1.addSessions(new TestSimpSession("123"));
-		simpUser2.addSessions(new TestSimpSession("456"));
+        HashSet<SimpUser> simpUsers = new HashSet<>(Arrays.asList(simpUser1, simpUser2));
+        SimpUserRegistry remoteUserRegistry = mock(SimpUserRegistry.class);
+        when(remoteUserRegistry.getUserCount()).thenReturn(2);
+        when(remoteUserRegistry.getUsers()).thenReturn(simpUsers);
 
-		HashSet<SimpUser> simpUsers = new HashSet<>(Arrays.asList(simpUser1, simpUser2));
-		SimpUserRegistry remoteUserRegistry = mock(SimpUserRegistry.class);
-		when(remoteUserRegistry.getUserCount()).thenReturn(2);
-		when(remoteUserRegistry.getUsers()).thenReturn(simpUsers);
+        MultiServerUserRegistry remoteRegistry = new MultiServerUserRegistry(remoteUserRegistry);
+        Message<?> message = this.converter.toMessage(remoteRegistry.getLocalRegistryDto(), null);
 
-		MultiServerUserRegistry remoteRegistry = new MultiServerUserRegistry(remoteUserRegistry);
-		Message<?> message = this.converter.toMessage(remoteRegistry.getLocalRegistryDto(), null);
+        this.handler.handleMessage(message);
 
-		this.handler.handleMessage(message);
+        assertEquals(2, remoteRegistry.getUserCount());
+        assertNotNull(this.multiServerRegistry.getUser("joe"));
+        assertNotNull(this.multiServerRegistry.getUser("jane"));
+    }
 
-		assertEquals(2, remoteRegistry.getUserCount());
-		assertNotNull(this.multiServerRegistry.getUser("joe"));
-		assertNotNull(this.multiServerRegistry.getUser("jane"));
-	}
+    @Test
+    public void handleMessageFromOwnBroadcast() throws Exception {
 
-	@Test
-	public void handleMessageFromOwnBroadcast() throws Exception {
+        TestSimpUser simpUser = new TestSimpUser("joe");
+        simpUser.addSessions(new TestSimpSession("123"));
+        when(this.localRegistry.getUserCount()).thenReturn(1);
+        when(this.localRegistry.getUsers()).thenReturn(Collections.singleton(simpUser));
 
-		TestSimpUser simpUser = new TestSimpUser("joe");
-		simpUser.addSessions(new TestSimpSession("123"));
-		when(this.localRegistry.getUserCount()).thenReturn(1);
-		when(this.localRegistry.getUsers()).thenReturn(Collections.singleton(simpUser));
+        assertEquals(1, this.multiServerRegistry.getUserCount());
 
-		assertEquals(1, this.multiServerRegistry.getUserCount());
+        Message<?> message =
+                this.converter.toMessage(this.multiServerRegistry.getLocalRegistryDto(), null);
+        this.multiServerRegistry.addRemoteRegistryDto(message, this.converter, 20000);
+        assertEquals(1, this.multiServerRegistry.getUserCount());
+    }
 
-		Message<?> message = this.converter.toMessage(this.multiServerRegistry.getLocalRegistryDto(), null);
-		this.multiServerRegistry.addRemoteRegistryDto(message, this.converter, 20000);
-		assertEquals(1, this.multiServerRegistry.getUserCount());
-	}
+    private Runnable getUserRegistryTask() {
+        BrokerAvailabilityEvent event = new BrokerAvailabilityEvent(true, this);
+        this.handler.onApplicationEvent(event);
 
+        ArgumentCaptor<? extends Runnable> captor = ArgumentCaptor.forClass(Runnable.class);
+        verify(this.taskScheduler).scheduleWithFixedDelay(captor.capture(), eq(10000L));
 
-	private Runnable getUserRegistryTask() {
-		BrokerAvailabilityEvent event = new BrokerAvailabilityEvent(true, this);
-		this.handler.onApplicationEvent(event);
-
-		ArgumentCaptor<? extends Runnable> captor = ArgumentCaptor.forClass(Runnable.class);
-		verify(this.taskScheduler).scheduleWithFixedDelay(captor.capture(), eq(10000L));
-
-		return captor.getValue();
-	}
-
+        return captor.getValue();
+    }
 }

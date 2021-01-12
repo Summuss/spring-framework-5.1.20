@@ -34,37 +34,38 @@ import static org.junit.Assert.*;
  */
 public class BeanMethodMetadataTests {
 
-	@Test
-	public void providesBeanMethodBeanDefinition() throws Exception {
-		AnnotationConfigApplicationContext context= new AnnotationConfigApplicationContext(Conf.class);
-		BeanDefinition beanDefinition = context.getBeanDefinition("myBean");
-		assertThat("should provide AnnotatedBeanDefinition", beanDefinition, instanceOf(AnnotatedBeanDefinition.class));
-		Map<String, Object> annotationAttributes =
-				((AnnotatedBeanDefinition) beanDefinition).getFactoryMethodMetadata().getAnnotationAttributes(MyAnnotation.class.getName());
-		assertThat(annotationAttributes.get("value"), equalTo("test"));
-		context.close();
-	}
+    @Test
+    public void providesBeanMethodBeanDefinition() throws Exception {
+        AnnotationConfigApplicationContext context =
+                new AnnotationConfigApplicationContext(Conf.class);
+        BeanDefinition beanDefinition = context.getBeanDefinition("myBean");
+        assertThat(
+                "should provide AnnotatedBeanDefinition",
+                beanDefinition,
+                instanceOf(AnnotatedBeanDefinition.class));
+        Map<String, Object> annotationAttributes =
+                ((AnnotatedBeanDefinition) beanDefinition)
+                        .getFactoryMethodMetadata()
+                        .getAnnotationAttributes(MyAnnotation.class.getName());
+        assertThat(annotationAttributes.get("value"), equalTo("test"));
+        context.close();
+    }
 
+    @Configuration
+    static class Conf {
 
-	@Configuration
-	static class Conf {
+        @Bean
+        @MyAnnotation("test")
+        public MyBean myBean() {
+            return new MyBean();
+        }
+    }
 
-		@Bean
-		@MyAnnotation("test")
-		public MyBean myBean() {
-			return new MyBean();
-		}
-	}
+    static class MyBean {}
 
+    @Retention(RetentionPolicy.RUNTIME)
+    public static @interface MyAnnotation {
 
-	static class MyBean {
-	}
-
-
-	@Retention(RetentionPolicy.RUNTIME)
-	public static @interface MyAnnotation {
-
-		String value();
-	}
-
+        String value();
+    }
 }

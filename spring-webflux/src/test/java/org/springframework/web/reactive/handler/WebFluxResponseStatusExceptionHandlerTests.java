@@ -34,32 +34,29 @@ import static org.junit.Assert.*;
  * @author Juergen Hoeller
  * @author Rossen Stoyanchev
  */
-public class WebFluxResponseStatusExceptionHandlerTests extends ResponseStatusExceptionHandlerTests {
+public class WebFluxResponseStatusExceptionHandlerTests
+        extends ResponseStatusExceptionHandlerTests {
 
-	@Override
-	protected ResponseStatusExceptionHandler createResponseStatusExceptionHandler() {
-		return new WebFluxResponseStatusExceptionHandler();
-	}
+    @Override
+    protected ResponseStatusExceptionHandler createResponseStatusExceptionHandler() {
+        return new WebFluxResponseStatusExceptionHandler();
+    }
 
+    @Test
+    public void handleAnnotatedException() {
+        Throwable ex = new CustomException();
+        this.handler.handle(this.exchange, ex).block(Duration.ofSeconds(5));
+        assertEquals(HttpStatus.I_AM_A_TEAPOT, this.exchange.getResponse().getStatusCode());
+    }
 
-	@Test
-	public void handleAnnotatedException() {
-		Throwable ex = new CustomException();
-		this.handler.handle(this.exchange, ex).block(Duration.ofSeconds(5));
-		assertEquals(HttpStatus.I_AM_A_TEAPOT, this.exchange.getResponse().getStatusCode());
-	}
+    @Test
+    public void handleNestedAnnotatedException() {
+        Throwable ex = new Exception(new CustomException());
+        this.handler.handle(this.exchange, ex).block(Duration.ofSeconds(5));
+        assertEquals(HttpStatus.I_AM_A_TEAPOT, this.exchange.getResponse().getStatusCode());
+    }
 
-	@Test
-	public void handleNestedAnnotatedException() {
-		Throwable ex = new Exception(new CustomException());
-		this.handler.handle(this.exchange, ex).block(Duration.ofSeconds(5));
-		assertEquals(HttpStatus.I_AM_A_TEAPOT, this.exchange.getResponse().getStatusCode());
-	}
-
-
-	@SuppressWarnings("serial")
-	@ResponseStatus(HttpStatus.I_AM_A_TEAPOT)
-	private static class CustomException extends Exception {
-	}
-
+    @SuppressWarnings("serial")
+    @ResponseStatus(HttpStatus.I_AM_A_TEAPOT)
+    private static class CustomException extends Exception {}
 }

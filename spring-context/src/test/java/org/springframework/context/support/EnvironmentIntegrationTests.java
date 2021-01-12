@@ -28,31 +28,31 @@ import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.*;
 
 /**
- * Tests covering the integration of the {@link Environment} into
- * {@link ApplicationContext} hierarchies.
+ * Tests covering the integration of the {@link Environment} into {@link ApplicationContext}
+ * hierarchies.
  *
  * @author Chris Beams
  * @see org.springframework.core.env.EnvironmentSystemIntegrationTests
  */
 public class EnvironmentIntegrationTests {
 
-	@Test
-	public void repro() {
-		ConfigurableApplicationContext parent = new GenericApplicationContext();
-		parent.refresh();
+    @Test
+    public void repro() {
+        ConfigurableApplicationContext parent = new GenericApplicationContext();
+        parent.refresh();
 
-		AnnotationConfigApplicationContext child = new AnnotationConfigApplicationContext();
-		child.setParent(parent);
-		child.refresh();
+        AnnotationConfigApplicationContext child = new AnnotationConfigApplicationContext();
+        child.setParent(parent);
+        child.refresh();
 
-		ConfigurableEnvironment env = child.getBean(ConfigurableEnvironment.class);
-		assertThat("unknown env", env, anyOf(
-				sameInstance(parent.getEnvironment()),
-				sameInstance(child.getEnvironment())));
-		assertThat("expected child ctx env", env, sameInstance(child.getEnvironment()));
+        ConfigurableEnvironment env = child.getBean(ConfigurableEnvironment.class);
+        assertThat(
+                "unknown env",
+                env,
+                anyOf(sameInstance(parent.getEnvironment()), sameInstance(child.getEnvironment())));
+        assertThat("expected child ctx env", env, sameInstance(child.getEnvironment()));
 
-		child.close();
-		parent.close();
-	}
-
+        child.close();
+        parent.close();
+    }
 }

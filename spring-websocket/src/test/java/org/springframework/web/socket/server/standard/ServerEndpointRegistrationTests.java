@@ -37,57 +37,57 @@ import static org.junit.Assert.*;
  */
 public class ServerEndpointRegistrationTests {
 
+    @Test
+    public void endpointPerConnection() throws Exception {
 
-	@Test
-	public void endpointPerConnection() throws Exception {
+        @SuppressWarnings("resource")
+        ConfigurableApplicationContext context =
+                new AnnotationConfigApplicationContext(Config.class);
 
-		@SuppressWarnings("resource")
-		ConfigurableApplicationContext context = new AnnotationConfigApplicationContext(Config.class);
+        ServerEndpointRegistration registration =
+                new ServerEndpointRegistration("/path", EchoEndpoint.class);
+        registration.setBeanFactory(context.getBeanFactory());
 
-		ServerEndpointRegistration registration = new ServerEndpointRegistration("/path", EchoEndpoint.class);
-		registration.setBeanFactory(context.getBeanFactory());
+        EchoEndpoint endpoint =
+                registration.getConfigurator().getEndpointInstance(EchoEndpoint.class);
 
-		EchoEndpoint endpoint = registration.getConfigurator().getEndpointInstance(EchoEndpoint.class);
+        assertNotNull(endpoint);
+    }
 
-		assertNotNull(endpoint);
-	}
+    @Test
+    public void endpointSingleton() throws Exception {
 
-	@Test
-	public void endpointSingleton() throws Exception {
+        EchoEndpoint endpoint = new EchoEndpoint(new EchoService());
+        ServerEndpointRegistration registration = new ServerEndpointRegistration("/path", endpoint);
 
-		EchoEndpoint endpoint = new EchoEndpoint(new EchoService());
-		ServerEndpointRegistration registration = new ServerEndpointRegistration("/path", endpoint);
+        EchoEndpoint actual =
+                registration.getConfigurator().getEndpointInstance(EchoEndpoint.class);
 
-		EchoEndpoint actual = registration.getConfigurator().getEndpointInstance(EchoEndpoint.class);
+        assertSame(endpoint, actual);
+    }
 
-		assertSame(endpoint, actual);
-	}
+    @Configuration
+    static class Config {
 
+        @Bean
+        public EchoService echoService() {
+            return new EchoService();
+        }
+    }
 
-	@Configuration
-	static class Config {
+    private static class EchoEndpoint extends Endpoint {
 
-		@Bean
-		public EchoService echoService() {
-			return new EchoService();
-		}
-	}
+        @SuppressWarnings("unused")
+        private final EchoService service;
 
-	private static class EchoEndpoint extends Endpoint {
+        @Autowired
+        public EchoEndpoint(EchoService service) {
+            this.service = service;
+        }
 
-		@SuppressWarnings("unused")
-		private final EchoService service;
+        @Override
+        public void onOpen(Session session, EndpointConfig config) {}
+    }
 
-		@Autowired
-		public EchoEndpoint(EchoService service) {
-			this.service = service;
-		}
-
-		@Override
-		public void onOpen(Session session, EndpointConfig config) {
-		}
-	}
-
-	private static class EchoService {	}
-
+    private static class EchoService {}
 }

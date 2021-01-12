@@ -1,1 +1,3 @@
-update T_TEST set NAME='Dave' where name='Keith';
+UPDATE T_TEST
+SET NAME='Dave'
+WHERE name = 'Keith';

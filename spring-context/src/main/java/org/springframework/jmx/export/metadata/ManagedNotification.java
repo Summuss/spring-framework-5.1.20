@@ -27,67 +27,49 @@ import org.springframework.util.StringUtils;
  */
 public class ManagedNotification {
 
-	@Nullable
-	private String[] notificationTypes;
+    @Nullable private String[] notificationTypes;
 
-	@Nullable
-	private String name;
+    @Nullable private String name;
 
-	@Nullable
-	private String description;
+    @Nullable private String description;
 
+    /**
+     * Set a single notification type, or a list of notification types as comma-delimited String.
+     */
+    public void setNotificationType(String notificationType) {
+        this.notificationTypes = StringUtils.commaDelimitedListToStringArray(notificationType);
+    }
 
-	/**
-	 * Set a single notification type, or a list of notification types
-	 * as comma-delimited String.
-	 */
-	public void setNotificationType(String notificationType) {
-		this.notificationTypes = StringUtils.commaDelimitedListToStringArray(notificationType);
-	}
+    /** Set a list of notification types. */
+    public void setNotificationTypes(@Nullable String... notificationTypes) {
+        this.notificationTypes = notificationTypes;
+    }
 
-	/**
-	 * Set a list of notification types.
-	 */
-	public void setNotificationTypes(@Nullable String... notificationTypes) {
-		this.notificationTypes = notificationTypes;
-	}
+    /** Return the list of notification types. */
+    @Nullable
+    public String[] getNotificationTypes() {
+        return this.notificationTypes;
+    }
 
-	/**
-	 * Return the list of notification types.
-	 */
-	@Nullable
-	public String[] getNotificationTypes() {
-		return this.notificationTypes;
-	}
+    /** Set the name of this notification. */
+    public void setName(@Nullable String name) {
+        this.name = name;
+    }
 
-	/**
-	 * Set the name of this notification.
-	 */
-	public void setName(@Nullable String name) {
-		this.name = name;
-	}
+    /** Return the name of this notification. */
+    @Nullable
+    public String getName() {
+        return this.name;
+    }
 
-	/**
-	 * Return the name of this notification.
-	 */
-	@Nullable
-	public String getName() {
-		return this.name;
-	}
+    /** Set a description for this notification. */
+    public void setDescription(@Nullable String description) {
+        this.description = description;
+    }
 
-	/**
-	 * Set a description for this notification.
-	 */
-	public void setDescription(@Nullable String description) {
-		this.description = description;
-	}
-
-	/**
-	 * Return a description for this notification.
-	 */
-	@Nullable
-	public String getDescription() {
-		return this.description;
-	}
-
+    /** Return a description for this notification. */
+    @Nullable
+    public String getDescription() {
+        return this.description;
+    }
 }

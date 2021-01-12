@@ -28,12 +28,11 @@ import org.testng.annotations.Test;
 import static org.testng.Assert.*;
 
 /**
- * Integration tests that verify support for
- * {@link org.springframework.context.annotation.Configuration @Configuration} classes
- * with TestNG-based tests.
+ * Integration tests that verify support for {@link
+ * org.springframework.context.annotation.Configuration @Configuration} classes with TestNG-based
+ * tests.
  *
- * <p>Configuration will be loaded from
- * {@link AnnotationConfigTestNGSpringContextTests.Config}.
+ * <p>Configuration will be loaded from {@link AnnotationConfigTestNGSpringContextTests.Config}.
  *
  * @author Sam Brannen
  * @since 5.1
@@ -41,35 +40,30 @@ import static org.testng.Assert.*;
 @ContextConfiguration
 public class AnnotationConfigTestNGSpringContextTests extends AbstractTestNGSpringContextTests {
 
-	@Autowired
-	Employee employee;
+    @Autowired Employee employee;
 
-	@Autowired
-	Pet pet;
+    @Autowired Pet pet;
 
-	@Test
-	void autowiringFromConfigClass() {
-		assertNotNull(employee, "The employee should have been autowired.");
-		assertEquals(employee.getName(), "John Smith");
+    @Test
+    void autowiringFromConfigClass() {
+        assertNotNull(employee, "The employee should have been autowired.");
+        assertEquals(employee.getName(), "John Smith");
 
-		assertNotNull(pet, "The pet should have been autowired.");
-		assertEquals(pet.getName(), "Fido");
-	}
+        assertNotNull(pet, "The pet should have been autowired.");
+        assertEquals(pet.getName(), "Fido");
+    }
 
+    @Configuration
+    static class Config {
 
-	@Configuration
-	static class Config {
+        @Bean
+        Employee employee() {
+            return new Employee("John Smith");
+        }
 
-		@Bean
-		Employee employee() {
-			return new Employee("John Smith");
-		}
-
-		@Bean
-		Pet pet() {
-			return new Pet("Fido");
-		}
-
-	}
-
+        @Bean
+        Pet pet() {
+            return new Pet("Fido");
+        }
+    }
 }

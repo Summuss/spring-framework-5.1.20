@@ -28,103 +28,101 @@ import org.springframework.web.socket.sockjs.SockJsTransportFailureException;
 import org.springframework.web.socket.sockjs.frame.SockJsFrame;
 import org.springframework.web.socket.sockjs.transport.SockJsServiceConfig;
 
-/**
- * @author Rossen Stoyanchev
- */
+/** @author Rossen Stoyanchev */
 public class TestHttpSockJsSession extends StreamingSockJsSession {
 
-	private boolean active;
+    private boolean active;
 
-	private final List<SockJsFrame> sockJsFrames = new ArrayList<>();
+    private final List<SockJsFrame> sockJsFrames = new ArrayList<>();
 
-	private CloseStatus closeStatus;
+    private CloseStatus closeStatus;
 
-	private IOException exceptionOnWrite;
+    private IOException exceptionOnWrite;
 
-	private int numberOfLastActiveTimeUpdates;
+    private int numberOfLastActiveTimeUpdates;
 
-	private boolean cancelledHeartbeat;
+    private boolean cancelledHeartbeat;
 
-	private String subProtocol;
+    private String subProtocol;
 
+    public TestHttpSockJsSession(
+            String sessionId,
+            SockJsServiceConfig config,
+            WebSocketHandler wsHandler,
+            Map<String, Object> attributes) {
 
-	public TestHttpSockJsSession(String sessionId, SockJsServiceConfig config,
-			WebSocketHandler wsHandler, Map<String, Object> attributes) {
+        super(sessionId, config, wsHandler, attributes);
+    }
 
-		super(sessionId, config, wsHandler, attributes);
-	}
+    @Override
+    protected byte[] getPrelude(ServerHttpRequest request) {
+        return new byte[0];
+    }
 
-	@Override
-	protected byte[] getPrelude(ServerHttpRequest request) {
-		return new byte[0];
-	}
+    @Override
+    public String getAcceptedProtocol() {
+        return this.subProtocol;
+    }
 
-	@Override
-	public String getAcceptedProtocol() {
-		return this.subProtocol;
-	}
+    @Override
+    public void setAcceptedProtocol(String protocol) {
+        this.subProtocol = protocol;
+    }
 
-	@Override
-	public void setAcceptedProtocol(String protocol) {
-		this.subProtocol = protocol;
-	}
+    public CloseStatus getCloseStatus() {
+        return this.closeStatus;
+    }
 
-	public CloseStatus getCloseStatus() {
-		return this.closeStatus;
-	}
+    @Override
+    public boolean isActive() {
+        return this.active;
+    }
 
-	@Override
-	public boolean isActive() {
-		return this.active;
-	}
+    public void setActive(boolean active) {
+        this.active = active;
+    }
 
-	public void setActive(boolean active) {
-		this.active = active;
-	}
+    public List<SockJsFrame> getSockJsFramesWritten() {
+        return this.sockJsFrames;
+    }
 
-	public List<SockJsFrame> getSockJsFramesWritten() {
-		return this.sockJsFrames;
-	}
+    public void setExceptionOnWrite(IOException exceptionOnWrite) {
+        this.exceptionOnWrite = exceptionOnWrite;
+    }
 
-	public void setExceptionOnWrite(IOException exceptionOnWrite) {
-		this.exceptionOnWrite = exceptionOnWrite;
-	}
+    public int getNumberOfLastActiveTimeUpdates() {
+        return this.numberOfLastActiveTimeUpdates;
+    }
 
-	public int getNumberOfLastActiveTimeUpdates() {
-		return this.numberOfLastActiveTimeUpdates;
-	}
+    public boolean didCancelHeartbeat() {
+        return this.cancelledHeartbeat;
+    }
 
-	public boolean didCancelHeartbeat() {
-		return this.cancelledHeartbeat;
-	}
+    @Override
+    protected void updateLastActiveTime() {
+        this.numberOfLastActiveTimeUpdates++;
+        super.updateLastActiveTime();
+    }
 
-	@Override
-	protected void updateLastActiveTime() {
-		this.numberOfLastActiveTimeUpdates++;
-		super.updateLastActiveTime();
-	}
+    @Override
+    protected void cancelHeartbeat() {
+        this.cancelledHeartbeat = true;
+        super.cancelHeartbeat();
+    }
 
-	@Override
-	protected void cancelHeartbeat() {
-		this.cancelledHeartbeat = true;
-		super.cancelHeartbeat();
-	}
+    @Override
+    protected void writeFrameInternal(SockJsFrame frame) throws IOException {
+        this.sockJsFrames.add(frame);
+        if (this.exceptionOnWrite != null) {
+            throw this.exceptionOnWrite;
+        }
+    }
 
-	@Override
-	protected void writeFrameInternal(SockJsFrame frame) throws IOException {
-		this.sockJsFrames.add(frame);
-		if (this.exceptionOnWrite != null) {
-			throw this.exceptionOnWrite;
-		}
-	}
+    @Override
+    protected void disconnect(CloseStatus status) {
+        this.closeStatus = status;
+    }
 
-	@Override
-	protected void disconnect(CloseStatus status) {
-		this.closeStatus = status;
-	}
-
-	@Override
-	protected void flushCache() throws SockJsTransportFailureException {
-	}
-
+    @Override
+    protected void flushCache() throws SockJsTransportFailureException {}
 }

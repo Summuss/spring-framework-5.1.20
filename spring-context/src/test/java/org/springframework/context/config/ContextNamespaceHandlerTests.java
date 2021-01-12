@@ -42,120 +42,124 @@ import static org.junit.Assert.fail;
  */
 public class ContextNamespaceHandlerTests {
 
-	@After
-	public void tearDown() {
-		System.getProperties().remove("foo");
-	}
+    @After
+    public void tearDown() {
+        System.getProperties().remove("foo");
+    }
 
+    @Test
+    public void propertyPlaceholder() {
+        ApplicationContext applicationContext =
+                new ClassPathXmlApplicationContext(
+                        "contextNamespaceHandlerTests-replace.xml", getClass());
+        assertEquals("bar", applicationContext.getBean("string"));
+        assertEquals("null", applicationContext.getBean("nullString"));
+    }
 
-	@Test
-	public void propertyPlaceholder() {
-		ApplicationContext applicationContext = new ClassPathXmlApplicationContext(
-				"contextNamespaceHandlerTests-replace.xml", getClass());
-		assertEquals("bar", applicationContext.getBean("string"));
-		assertEquals("null", applicationContext.getBean("nullString"));
-	}
+    @Test
+    public void propertyPlaceholderSystemProperties() {
+        String value = System.setProperty("foo", "spam");
+        try {
+            ApplicationContext applicationContext =
+                    new ClassPathXmlApplicationContext(
+                            "contextNamespaceHandlerTests-system.xml", getClass());
+            assertEquals("spam", applicationContext.getBean("string"));
+            assertEquals("none", applicationContext.getBean("fallback"));
+        } finally {
+            if (value != null) {
+                System.setProperty("foo", value);
+            }
+        }
+    }
 
-	@Test
-	public void propertyPlaceholderSystemProperties() {
-		String value = System.setProperty("foo", "spam");
-		try {
-			ApplicationContext applicationContext = new ClassPathXmlApplicationContext(
-					"contextNamespaceHandlerTests-system.xml", getClass());
-			assertEquals("spam", applicationContext.getBean("string"));
-			assertEquals("none", applicationContext.getBean("fallback"));
-		}
-		finally {
-			if (value != null) {
-				System.setProperty("foo", value);
-			}
-		}
-	}
+    @Test
+    public void propertyPlaceholderEnvironmentProperties() {
+        MockEnvironment env = new MockEnvironment().withProperty("foo", "spam");
+        GenericXmlApplicationContext applicationContext = new GenericXmlApplicationContext();
+        applicationContext.setEnvironment(env);
+        applicationContext.load(
+                new ClassPathResource("contextNamespaceHandlerTests-simple.xml", getClass()));
+        applicationContext.refresh();
+        assertEquals("spam", applicationContext.getBean("string"));
+        assertEquals("none", applicationContext.getBean("fallback"));
+    }
 
-	@Test
-	public void propertyPlaceholderEnvironmentProperties() {
-		MockEnvironment env = new MockEnvironment().withProperty("foo", "spam");
-		GenericXmlApplicationContext applicationContext = new GenericXmlApplicationContext();
-		applicationContext.setEnvironment(env);
-		applicationContext.load(new ClassPathResource("contextNamespaceHandlerTests-simple.xml", getClass()));
-		applicationContext.refresh();
-		assertEquals("spam", applicationContext.getBean("string"));
-		assertEquals("none", applicationContext.getBean("fallback"));
-	}
+    @Test
+    public void propertyPlaceholderLocation() {
+        ApplicationContext applicationContext =
+                new ClassPathXmlApplicationContext(
+                        "contextNamespaceHandlerTests-location.xml", getClass());
+        assertEquals("bar", applicationContext.getBean("foo"));
+        assertEquals("foo", applicationContext.getBean("bar"));
+        assertEquals("maps", applicationContext.getBean("spam"));
+    }
 
-	@Test
-	public void propertyPlaceholderLocation() {
-		ApplicationContext applicationContext = new ClassPathXmlApplicationContext(
-				"contextNamespaceHandlerTests-location.xml", getClass());
-		assertEquals("bar", applicationContext.getBean("foo"));
-		assertEquals("foo", applicationContext.getBean("bar"));
-		assertEquals("maps", applicationContext.getBean("spam"));
-	}
+    @Test
+    public void propertyPlaceholderLocationWithSystemPropertyForOneLocation() {
+        System.setProperty(
+                "properties", "classpath*:/org/springframework/context/config/test-*.properties");
+        try {
+            ApplicationContext applicationContext =
+                    new ClassPathXmlApplicationContext(
+                            "contextNamespaceHandlerTests-location-placeholder.xml", getClass());
+            assertEquals("bar", applicationContext.getBean("foo"));
+            assertEquals("foo", applicationContext.getBean("bar"));
+            assertEquals("maps", applicationContext.getBean("spam"));
+        } finally {
+            System.clearProperty("properties");
+        }
+    }
 
-	@Test
-	public void propertyPlaceholderLocationWithSystemPropertyForOneLocation() {
-		System.setProperty("properties",
-				"classpath*:/org/springframework/context/config/test-*.properties");
-		try {
-			ApplicationContext applicationContext = new ClassPathXmlApplicationContext(
-					"contextNamespaceHandlerTests-location-placeholder.xml", getClass());
-			assertEquals("bar", applicationContext.getBean("foo"));
-			assertEquals("foo", applicationContext.getBean("bar"));
-			assertEquals("maps", applicationContext.getBean("spam"));
-		}
-		finally {
-			System.clearProperty("properties");
-		}
-	}
+    @Test
+    public void propertyPlaceholderLocationWithSystemPropertyForMultipleLocations() {
+        System.setProperty(
+                "properties",
+                "classpath*:/org/springframework/context/config/test-*.properties,"
+                        + "classpath*:/org/springframework/context/config/empty-*.properties,"
+                        + "classpath*:/org/springframework/context/config/missing-*.properties");
+        try {
+            ApplicationContext applicationContext =
+                    new ClassPathXmlApplicationContext(
+                            "contextNamespaceHandlerTests-location-placeholder.xml", getClass());
+            assertEquals("bar", applicationContext.getBean("foo"));
+            assertEquals("foo", applicationContext.getBean("bar"));
+            assertEquals("maps", applicationContext.getBean("spam"));
+        } finally {
+            System.clearProperty("properties");
+        }
+    }
 
-	@Test
-	public void propertyPlaceholderLocationWithSystemPropertyForMultipleLocations() {
-		System.setProperty("properties",
-				"classpath*:/org/springframework/context/config/test-*.properties," +
-				"classpath*:/org/springframework/context/config/empty-*.properties," +
-				"classpath*:/org/springframework/context/config/missing-*.properties");
-		try {
-			ApplicationContext applicationContext = new ClassPathXmlApplicationContext(
-					"contextNamespaceHandlerTests-location-placeholder.xml", getClass());
-			assertEquals("bar", applicationContext.getBean("foo"));
-			assertEquals("foo", applicationContext.getBean("bar"));
-			assertEquals("maps", applicationContext.getBean("spam"));
-		}
-		finally {
-			System.clearProperty("properties");
-		}
-	}
+    @Test
+    public void propertyPlaceholderLocationWithSystemPropertyMissing() {
+        try {
+            new ClassPathXmlApplicationContext(
+                    "contextNamespaceHandlerTests-location-placeholder.xml", getClass());
+            fail("Should have thrown FatalBeanException");
+        } catch (FatalBeanException ex) {
+            Throwable cause = ex.getRootCause();
+            assertTrue(cause instanceof IllegalArgumentException);
+            assertEquals(
+                    "Could not resolve placeholder 'foo' in value \"${foo}\"", cause.getMessage());
+        }
+    }
 
-	@Test
-	public void propertyPlaceholderLocationWithSystemPropertyMissing() {
-		try {
-			new ClassPathXmlApplicationContext(
-					"contextNamespaceHandlerTests-location-placeholder.xml", getClass());
-			fail("Should have thrown FatalBeanException");
-		}
-		catch (FatalBeanException ex) {
-			Throwable cause = ex.getRootCause();
-			assertTrue(cause instanceof IllegalArgumentException);
-			assertEquals("Could not resolve placeholder 'foo' in value \"${foo}\"", cause.getMessage());
-		}
-	}
+    @Test
+    public void propertyPlaceholderIgnored() {
+        ApplicationContext applicationContext =
+                new ClassPathXmlApplicationContext(
+                        "contextNamespaceHandlerTests-replace-ignore.xml", getClass());
+        assertEquals("${bar}", applicationContext.getBean("string"));
+        assertEquals("null", applicationContext.getBean("nullString"));
+    }
 
-	@Test
-	public void propertyPlaceholderIgnored() {
-		ApplicationContext applicationContext = new ClassPathXmlApplicationContext(
-				"contextNamespaceHandlerTests-replace-ignore.xml", getClass());
-		assertEquals("${bar}", applicationContext.getBean("string"));
-		assertEquals("null", applicationContext.getBean("nullString"));
-	}
-
-	@Test
-	public void propertyOverride() {
-		ApplicationContext applicationContext = new ClassPathXmlApplicationContext(
-				"contextNamespaceHandlerTests-override.xml", getClass());
-		Date date = (Date) applicationContext.getBean("date");
-		Calendar calendar = Calendar.getInstance();
-		calendar.setTime(date);
-		assertEquals(42, calendar.get(Calendar.MINUTE));
-	}
-
+    @Test
+    public void propertyOverride() {
+        ApplicationContext applicationContext =
+                new ClassPathXmlApplicationContext(
+                        "contextNamespaceHandlerTests-override.xml", getClass());
+        Date date = (Date) applicationContext.getBean("date");
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(date);
+        assertEquals(42, calendar.get(Calendar.MINUTE));
+    }
 }

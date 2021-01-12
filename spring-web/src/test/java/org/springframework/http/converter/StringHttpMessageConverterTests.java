@@ -35,78 +35,79 @@ import static org.junit.Assert.*;
  */
 public class StringHttpMessageConverterTests {
 
-	public static final MediaType TEXT_PLAIN_UTF_8 = new MediaType("text", "plain", StandardCharsets.UTF_8);
+    public static final MediaType TEXT_PLAIN_UTF_8 =
+            new MediaType("text", "plain", StandardCharsets.UTF_8);
 
-	private StringHttpMessageConverter converter;
+    private StringHttpMessageConverter converter;
 
-	private MockHttpOutputMessage outputMessage;
+    private MockHttpOutputMessage outputMessage;
 
+    @Before
+    public void setUp() {
+        this.converter = new StringHttpMessageConverter();
+        this.outputMessage = new MockHttpOutputMessage();
+    }
 
-	@Before
-	public void setUp() {
-		this.converter = new StringHttpMessageConverter();
-		this.outputMessage = new MockHttpOutputMessage();
-	}
+    @Test
+    public void canRead() {
+        assertTrue(this.converter.canRead(String.class, MediaType.TEXT_PLAIN));
+    }
 
+    @Test
+    public void canWrite() {
+        assertTrue(this.converter.canWrite(String.class, MediaType.TEXT_PLAIN));
+        assertTrue(this.converter.canWrite(String.class, MediaType.ALL));
+    }
 
-	@Test
-	public void canRead() {
-		assertTrue(this.converter.canRead(String.class, MediaType.TEXT_PLAIN));
-	}
+    @Test
+    public void read() throws IOException {
+        String body = "Hello World";
+        MockHttpInputMessage inputMessage =
+                new MockHttpInputMessage(body.getBytes(StandardCharsets.UTF_8));
+        inputMessage.getHeaders().setContentType(TEXT_PLAIN_UTF_8);
+        String result = this.converter.read(String.class, inputMessage);
 
-	@Test
-	public void canWrite() {
-		assertTrue(this.converter.canWrite(String.class, MediaType.TEXT_PLAIN));
-		assertTrue(this.converter.canWrite(String.class, MediaType.ALL));
-	}
+        assertEquals("Invalid result", body, result);
+    }
 
-	@Test
-	public void read() throws IOException {
-		String body = "Hello World";
-		MockHttpInputMessage inputMessage = new MockHttpInputMessage(body.getBytes(StandardCharsets.UTF_8));
-		inputMessage.getHeaders().setContentType(TEXT_PLAIN_UTF_8);
-		String result = this.converter.read(String.class, inputMessage);
+    @Test
+    public void writeDefaultCharset() throws IOException {
+        String body = "H\u00e9llo W\u00f6rld";
+        this.converter.write(body, null, this.outputMessage);
 
-		assertEquals("Invalid result", body, result);
-	}
+        HttpHeaders headers = this.outputMessage.getHeaders();
+        assertEquals(body, this.outputMessage.getBodyAsString(StandardCharsets.ISO_8859_1));
+        assertEquals(
+                new MediaType("text", "plain", StandardCharsets.ISO_8859_1),
+                headers.getContentType());
+        assertEquals(body.getBytes(StandardCharsets.ISO_8859_1).length, headers.getContentLength());
+        assertFalse(headers.getAcceptCharset().isEmpty());
+    }
 
-	@Test
-	public void writeDefaultCharset() throws IOException {
-		String body = "H\u00e9llo W\u00f6rld";
-		this.converter.write(body, null, this.outputMessage);
+    @Test
+    public void writeUTF8() throws IOException {
+        String body = "H\u00e9llo W\u00f6rld";
+        this.converter.write(body, TEXT_PLAIN_UTF_8, this.outputMessage);
 
-		HttpHeaders headers = this.outputMessage.getHeaders();
-		assertEquals(body, this.outputMessage.getBodyAsString(StandardCharsets.ISO_8859_1));
-		assertEquals(new MediaType("text", "plain", StandardCharsets.ISO_8859_1), headers.getContentType());
-		assertEquals(body.getBytes(StandardCharsets.ISO_8859_1).length, headers.getContentLength());
-		assertFalse(headers.getAcceptCharset().isEmpty());
-	}
+        HttpHeaders headers = this.outputMessage.getHeaders();
+        assertEquals(body, this.outputMessage.getBodyAsString(StandardCharsets.UTF_8));
+        assertEquals(TEXT_PLAIN_UTF_8, headers.getContentType());
+        assertEquals(body.getBytes(StandardCharsets.UTF_8).length, headers.getContentLength());
+        assertFalse(headers.getAcceptCharset().isEmpty());
+    }
 
-	@Test
-	public void writeUTF8() throws IOException {
-		String body = "H\u00e9llo W\u00f6rld";
-		this.converter.write(body, TEXT_PLAIN_UTF_8, this.outputMessage);
+    @Test // SPR-8867
+    public void writeOverrideRequestedContentType() throws IOException {
+        String body = "H\u00e9llo W\u00f6rld";
+        MediaType requestedContentType = new MediaType("text", "html");
 
-		HttpHeaders headers = this.outputMessage.getHeaders();
-		assertEquals(body, this.outputMessage.getBodyAsString(StandardCharsets.UTF_8));
-		assertEquals(TEXT_PLAIN_UTF_8, headers.getContentType());
-		assertEquals(body.getBytes(StandardCharsets.UTF_8).length, headers.getContentLength());
-		assertFalse(headers.getAcceptCharset().isEmpty());
-	}
+        HttpHeaders headers = this.outputMessage.getHeaders();
+        headers.setContentType(TEXT_PLAIN_UTF_8);
+        this.converter.write(body, requestedContentType, this.outputMessage);
 
-	@Test  // SPR-8867
-	public void writeOverrideRequestedContentType() throws IOException {
-		String body = "H\u00e9llo W\u00f6rld";
-		MediaType requestedContentType = new MediaType("text", "html");
-
-		HttpHeaders headers = this.outputMessage.getHeaders();
-		headers.setContentType(TEXT_PLAIN_UTF_8);
-		this.converter.write(body, requestedContentType, this.outputMessage);
-
-		assertEquals(body, this.outputMessage.getBodyAsString(StandardCharsets.UTF_8));
-		assertEquals(TEXT_PLAIN_UTF_8, headers.getContentType());
-		assertEquals(body.getBytes(StandardCharsets.UTF_8).length, headers.getContentLength());
-		assertFalse(headers.getAcceptCharset().isEmpty());
-	}
-
+        assertEquals(body, this.outputMessage.getBodyAsString(StandardCharsets.UTF_8));
+        assertEquals(TEXT_PLAIN_UTF_8, headers.getContentType());
+        assertEquals(body.getBytes(StandardCharsets.UTF_8).length, headers.getContentLength());
+        assertFalse(headers.getAcceptCharset().isEmpty());
+    }
 }

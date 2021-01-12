@@ -1,6 +1,4 @@
-/**
- * Core support package for type introspection.
- */
+/** Core support package for type introspection. */
 @NonNullApi
 @NonNullFields
 package org.springframework.core.type;

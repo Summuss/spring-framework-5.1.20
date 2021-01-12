@@ -21,13 +21,14 @@ import javax.servlet.jsp.JspException;
 /**
  * The {@code <radiobutton>} tag renders an HTML 'input' tag with type 'radio'.
  *
- * <p>Rendered elements are marked as 'checked' if the configured
- * {@link #setValue(Object) value} matches the {@link #getValue bound value}.
+ * <p>Rendered elements are marked as 'checked' if the configured {@link #setValue(Object) value}
+ * matches the {@link #getValue bound value}.
  *
- * <p>A typical usage pattern will involved multiple tag instances bound
- * to the same property but with different values.
+ * <p>A typical usage pattern will involved multiple tag instances bound to the same property but
+ * with different values.
  *
  * <p>
+ *
  * <table>
  * <caption>Attribute Summary</caption>
  * <thead>
@@ -212,16 +213,15 @@ import javax.servlet.jsp.JspException;
 @SuppressWarnings("serial")
 public class RadioButtonTag extends AbstractSingleCheckedElementTag {
 
-	@Override
-	protected void writeTagDetails(TagWriter tagWriter) throws JspException {
-		tagWriter.writeAttribute("type", getInputType());
-		Object resolvedValue = evaluate("value", getValue());
-		renderFromValue(resolvedValue, tagWriter);
-	}
+    @Override
+    protected void writeTagDetails(TagWriter tagWriter) throws JspException {
+        tagWriter.writeAttribute("type", getInputType());
+        Object resolvedValue = evaluate("value", getValue());
+        renderFromValue(resolvedValue, tagWriter);
+    }
 
-	@Override
-	protected String getInputType() {
-		return "radio";
-	}
-
+    @Override
+    protected String getInputType() {
+        return "radio";
+    }
 }

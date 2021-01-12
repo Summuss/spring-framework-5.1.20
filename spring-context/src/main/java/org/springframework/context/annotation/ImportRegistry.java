@@ -27,9 +27,8 @@ import org.springframework.lang.Nullable;
  */
 interface ImportRegistry {
 
-	@Nullable
-	AnnotationMetadata getImportingClassFor(String importedClass);
+    @Nullable
+    AnnotationMetadata getImportingClassFor(String importedClass);
 
-	void removeImportingClass(String importingClass);
-
+    void removeImportingClass(String importingClass);
 }

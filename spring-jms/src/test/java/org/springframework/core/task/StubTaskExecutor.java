@@ -16,13 +16,9 @@
 
 package org.springframework.core.task;
 
-/**
- * @author Juergen Hoeller
- */
+/** @author Juergen Hoeller */
 public class StubTaskExecutor implements TaskExecutor {
 
-	@Override
-	public void execute(Runnable task) {
-	}
-
+    @Override
+    public void execute(Runnable task) {}
 }

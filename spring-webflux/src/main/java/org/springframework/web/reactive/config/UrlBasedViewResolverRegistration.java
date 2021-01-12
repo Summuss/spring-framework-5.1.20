@@ -27,55 +27,56 @@ import org.springframework.web.reactive.result.view.UrlBasedViewResolver;
  */
 public class UrlBasedViewResolverRegistration {
 
-	private final UrlBasedViewResolver viewResolver;
+    private final UrlBasedViewResolver viewResolver;
 
+    public UrlBasedViewResolverRegistration(UrlBasedViewResolver viewResolver) {
+        Assert.notNull(viewResolver, "ViewResolver must not be null");
+        this.viewResolver = viewResolver;
+    }
 
-	public UrlBasedViewResolverRegistration(UrlBasedViewResolver viewResolver) {
-		Assert.notNull(viewResolver, "ViewResolver must not be null");
-		this.viewResolver = viewResolver;
-	}
+    /**
+     * Set the prefix that gets prepended to view names when building a URL.
+     *
+     * @see UrlBasedViewResolver#setPrefix
+     */
+    public UrlBasedViewResolverRegistration prefix(String prefix) {
+        this.viewResolver.setPrefix(prefix);
+        return this;
+    }
 
+    /**
+     * Set the suffix that gets appended to view names when building a URL.
+     *
+     * @see UrlBasedViewResolver#setSuffix
+     */
+    public UrlBasedViewResolverRegistration suffix(String suffix) {
+        this.viewResolver.setSuffix(suffix);
+        return this;
+    }
 
-	/**
-	 * Set the prefix that gets prepended to view names when building a URL.
-	 * @see UrlBasedViewResolver#setPrefix
-	 */
-	public UrlBasedViewResolverRegistration prefix(String prefix) {
-		this.viewResolver.setPrefix(prefix);
-		return this;
-	}
+    /**
+     * Set the view class that should be used to create views.
+     *
+     * @see UrlBasedViewResolver#setViewClass
+     */
+    public UrlBasedViewResolverRegistration viewClass(Class<?> viewClass) {
+        this.viewResolver.setViewClass(viewClass);
+        return this;
+    }
 
-	/**
-	 * Set the suffix that gets appended to view names when building a URL.
-	 * @see UrlBasedViewResolver#setSuffix
-	 */
-	public UrlBasedViewResolverRegistration suffix(String suffix) {
-		this.viewResolver.setSuffix(suffix);
-		return this;
-	}
+    /**
+     * Set the view names (or name patterns) that can be handled by this view resolver. View names
+     * can contain simple wildcards such that 'my*', '*Report' and '*Repo*' will all match the view
+     * name 'myReport'.
+     *
+     * @see UrlBasedViewResolver#setViewNames
+     */
+    public UrlBasedViewResolverRegistration viewNames(String... viewNames) {
+        this.viewResolver.setViewNames(viewNames);
+        return this;
+    }
 
-	/**
-	 * Set the view class that should be used to create views.
-	 * @see UrlBasedViewResolver#setViewClass
-	 */
-	public UrlBasedViewResolverRegistration viewClass(Class<?> viewClass) {
-		this.viewResolver.setViewClass(viewClass);
-		return this;
-	}
-
-	/**
-	 * Set the view names (or name patterns) that can be handled by this view
-	 * resolver. View names can contain simple wildcards such that 'my*', '*Report'
-	 * and '*Repo*' will all match the view name 'myReport'.
-	 * @see UrlBasedViewResolver#setViewNames
-	 */
-	public UrlBasedViewResolverRegistration viewNames(String... viewNames) {
-		this.viewResolver.setViewNames(viewNames);
-		return this;
-	}
-
-	protected UrlBasedViewResolver getViewResolver() {
-		return this.viewResolver;
-	}
-
+    protected UrlBasedViewResolver getViewResolver() {
+        return this.viewResolver;
+    }
 }

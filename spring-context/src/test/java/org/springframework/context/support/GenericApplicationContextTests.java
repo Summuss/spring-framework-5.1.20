@@ -32,214 +32,224 @@ import static org.junit.Assert.*;
  */
 public class GenericApplicationContextTests {
 
-	@Test
-	public void getBeanForClass() {
-		GenericApplicationContext ac = new GenericApplicationContext();
-		ac.registerBeanDefinition("testBean", new RootBeanDefinition(String.class));
-		ac.refresh();
+    @Test
+    public void getBeanForClass() {
+        GenericApplicationContext ac = new GenericApplicationContext();
+        ac.registerBeanDefinition("testBean", new RootBeanDefinition(String.class));
+        ac.refresh();
 
-		assertEquals("", ac.getBean("testBean"));
-		assertSame(ac.getBean("testBean"), ac.getBean(String.class));
-		assertSame(ac.getBean("testBean"), ac.getBean(CharSequence.class));
+        assertEquals("", ac.getBean("testBean"));
+        assertSame(ac.getBean("testBean"), ac.getBean(String.class));
+        assertSame(ac.getBean("testBean"), ac.getBean(CharSequence.class));
 
-		try {
-			assertSame(ac.getBean("testBean"), ac.getBean(Object.class));
-			fail("Should have thrown NoUniqueBeanDefinitionException");
-		}
-		catch (NoUniqueBeanDefinitionException ex) {
-			// expected
-		}
-	}
+        try {
+            assertSame(ac.getBean("testBean"), ac.getBean(Object.class));
+            fail("Should have thrown NoUniqueBeanDefinitionException");
+        } catch (NoUniqueBeanDefinitionException ex) {
+            // expected
+        }
+    }
 
-	@Test
-	public void withSingletonSupplier() {
-		GenericApplicationContext ac = new GenericApplicationContext();
-		ac.registerBeanDefinition("testBean", new RootBeanDefinition(String.class, ac::toString));
-		ac.refresh();
+    @Test
+    public void withSingletonSupplier() {
+        GenericApplicationContext ac = new GenericApplicationContext();
+        ac.registerBeanDefinition("testBean", new RootBeanDefinition(String.class, ac::toString));
+        ac.refresh();
 
-		assertSame(ac.getBean("testBean"), ac.getBean("testBean"));
-		assertSame(ac.getBean("testBean"), ac.getBean(String.class));
-		assertSame(ac.getBean("testBean"), ac.getBean(CharSequence.class));
-		assertEquals(ac.toString(), ac.getBean("testBean"));
-	}
+        assertSame(ac.getBean("testBean"), ac.getBean("testBean"));
+        assertSame(ac.getBean("testBean"), ac.getBean(String.class));
+        assertSame(ac.getBean("testBean"), ac.getBean(CharSequence.class));
+        assertEquals(ac.toString(), ac.getBean("testBean"));
+    }
 
-	@Test
-	public void withScopedSupplier() {
-		GenericApplicationContext ac = new GenericApplicationContext();
-		ac.registerBeanDefinition("testBean",
-				new RootBeanDefinition(String.class, RootBeanDefinition.SCOPE_PROTOTYPE, ac::toString));
-		ac.refresh();
+    @Test
+    public void withScopedSupplier() {
+        GenericApplicationContext ac = new GenericApplicationContext();
+        ac.registerBeanDefinition(
+                "testBean",
+                new RootBeanDefinition(
+                        String.class, RootBeanDefinition.SCOPE_PROTOTYPE, ac::toString));
+        ac.refresh();
 
-		assertNotSame(ac.getBean("testBean"), ac.getBean("testBean"));
-		assertEquals(ac.getBean("testBean"), ac.getBean(String.class));
-		assertEquals(ac.getBean("testBean"), ac.getBean(CharSequence.class));
-		assertEquals(ac.toString(), ac.getBean("testBean"));
-	}
+        assertNotSame(ac.getBean("testBean"), ac.getBean("testBean"));
+        assertEquals(ac.getBean("testBean"), ac.getBean(String.class));
+        assertEquals(ac.getBean("testBean"), ac.getBean(CharSequence.class));
+        assertEquals(ac.toString(), ac.getBean("testBean"));
+    }
 
-	@Test
-	public void accessAfterClosing() {
-		GenericApplicationContext ac = new GenericApplicationContext();
-		ac.registerBeanDefinition("testBean", new RootBeanDefinition(String.class));
-		ac.refresh();
+    @Test
+    public void accessAfterClosing() {
+        GenericApplicationContext ac = new GenericApplicationContext();
+        ac.registerBeanDefinition("testBean", new RootBeanDefinition(String.class));
+        ac.refresh();
 
-		assertSame(ac.getBean("testBean"), ac.getBean(String.class));
-		assertSame(ac.getAutowireCapableBeanFactory().getBean("testBean"),
-				ac.getAutowireCapableBeanFactory().getBean(String.class));
+        assertSame(ac.getBean("testBean"), ac.getBean(String.class));
+        assertSame(
+                ac.getAutowireCapableBeanFactory().getBean("testBean"),
+                ac.getAutowireCapableBeanFactory().getBean(String.class));
 
-		ac.close();
+        ac.close();
 
-		try {
-			assertSame(ac.getBean("testBean"), ac.getBean(String.class));
-			fail("Should have thrown IllegalStateException");
-		}
-		catch (IllegalStateException ex) {
-			// expected
-		}
+        try {
+            assertSame(ac.getBean("testBean"), ac.getBean(String.class));
+            fail("Should have thrown IllegalStateException");
+        } catch (IllegalStateException ex) {
+            // expected
+        }
 
-		try {
-			assertSame(ac.getAutowireCapableBeanFactory().getBean("testBean"),
-					ac.getAutowireCapableBeanFactory().getBean(String.class));
-			fail("Should have thrown IllegalStateException");
-		}
-		catch (IllegalStateException ex) {
-			// expected
-		}
-	}
+        try {
+            assertSame(
+                    ac.getAutowireCapableBeanFactory().getBean("testBean"),
+                    ac.getAutowireCapableBeanFactory().getBean(String.class));
+            fail("Should have thrown IllegalStateException");
+        } catch (IllegalStateException ex) {
+            // expected
+        }
+    }
 
-	@Test
-	public void individualBeans() {
-		GenericApplicationContext context = new GenericApplicationContext();
-		context.registerBean(BeanA.class);
-		context.registerBean(BeanB.class);
-		context.registerBean(BeanC.class);
-		context.refresh();
+    @Test
+    public void individualBeans() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        context.registerBean(BeanA.class);
+        context.registerBean(BeanB.class);
+        context.registerBean(BeanC.class);
+        context.refresh();
 
-		assertSame(context.getBean(BeanB.class), context.getBean(BeanA.class).b);
-		assertSame(context.getBean(BeanC.class), context.getBean(BeanA.class).c);
-		assertSame(context, context.getBean(BeanB.class).applicationContext);
-	}
+        assertSame(context.getBean(BeanB.class), context.getBean(BeanA.class).b);
+        assertSame(context.getBean(BeanC.class), context.getBean(BeanA.class).c);
+        assertSame(context, context.getBean(BeanB.class).applicationContext);
+    }
 
-	@Test
-	public void individualNamedBeans() {
-		GenericApplicationContext context = new GenericApplicationContext();
-		context.registerBean("a", BeanA.class);
-		context.registerBean("b", BeanB.class);
-		context.registerBean("c", BeanC.class);
-		context.refresh();
+    @Test
+    public void individualNamedBeans() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        context.registerBean("a", BeanA.class);
+        context.registerBean("b", BeanB.class);
+        context.registerBean("c", BeanC.class);
+        context.refresh();
 
-		assertSame(context.getBean("b"), context.getBean("a", BeanA.class).b);
-		assertSame(context.getBean("c"), context.getBean("a", BeanA.class).c);
-		assertSame(context, context.getBean("b", BeanB.class).applicationContext);
-	}
+        assertSame(context.getBean("b"), context.getBean("a", BeanA.class).b);
+        assertSame(context.getBean("c"), context.getBean("a", BeanA.class).c);
+        assertSame(context, context.getBean("b", BeanB.class).applicationContext);
+    }
 
-	@Test
-	public void individualBeanWithSupplier() {
-		GenericApplicationContext context = new GenericApplicationContext();
-		context.registerBean(BeanA.class,
-				() -> new BeanA(context.getBean(BeanB.class), context.getBean(BeanC.class)));
-		context.registerBean(BeanB.class, BeanB::new);
-		context.registerBean(BeanC.class, BeanC::new);
-		context.refresh();
+    @Test
+    public void individualBeanWithSupplier() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        context.registerBean(
+                BeanA.class,
+                () -> new BeanA(context.getBean(BeanB.class), context.getBean(BeanC.class)));
+        context.registerBean(BeanB.class, BeanB::new);
+        context.registerBean(BeanC.class, BeanC::new);
+        context.refresh();
 
-		assertTrue(context.getBeanFactory().containsSingleton(BeanA.class.getName()));
-		assertSame(context.getBean(BeanB.class), context.getBean(BeanA.class).b);
-		assertSame(context.getBean(BeanC.class), context.getBean(BeanA.class).c);
-		assertSame(context, context.getBean(BeanB.class).applicationContext);
+        assertTrue(context.getBeanFactory().containsSingleton(BeanA.class.getName()));
+        assertSame(context.getBean(BeanB.class), context.getBean(BeanA.class).b);
+        assertSame(context.getBean(BeanC.class), context.getBean(BeanA.class).c);
+        assertSame(context, context.getBean(BeanB.class).applicationContext);
 
-		assertArrayEquals(new String[] {BeanA.class.getName()},
-				context.getDefaultListableBeanFactory().getDependentBeans(BeanB.class.getName()));
-		assertArrayEquals(new String[] {BeanA.class.getName()},
-				context.getDefaultListableBeanFactory().getDependentBeans(BeanC.class.getName()));
-	}
+        assertArrayEquals(
+                new String[] {BeanA.class.getName()},
+                context.getDefaultListableBeanFactory().getDependentBeans(BeanB.class.getName()));
+        assertArrayEquals(
+                new String[] {BeanA.class.getName()},
+                context.getDefaultListableBeanFactory().getDependentBeans(BeanC.class.getName()));
+    }
 
-	@Test
-	public void individualBeanWithSupplierAndCustomizer() {
-		GenericApplicationContext context = new GenericApplicationContext();
-		context.registerBean(BeanA.class,
-				() -> new BeanA(context.getBean(BeanB.class), context.getBean(BeanC.class)),
-				bd -> bd.setLazyInit(true));
-		context.registerBean(BeanB.class, BeanB::new);
-		context.registerBean(BeanC.class, BeanC::new);
-		context.refresh();
+    @Test
+    public void individualBeanWithSupplierAndCustomizer() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        context.registerBean(
+                BeanA.class,
+                () -> new BeanA(context.getBean(BeanB.class), context.getBean(BeanC.class)),
+                bd -> bd.setLazyInit(true));
+        context.registerBean(BeanB.class, BeanB::new);
+        context.registerBean(BeanC.class, BeanC::new);
+        context.refresh();
 
-		assertFalse(context.getBeanFactory().containsSingleton(BeanA.class.getName()));
-		assertSame(context.getBean(BeanB.class), context.getBean(BeanA.class).b);
-		assertSame(context.getBean(BeanC.class), context.getBean(BeanA.class).c);
-		assertSame(context, context.getBean(BeanB.class).applicationContext);
-	}
+        assertFalse(context.getBeanFactory().containsSingleton(BeanA.class.getName()));
+        assertSame(context.getBean(BeanB.class), context.getBean(BeanA.class).b);
+        assertSame(context.getBean(BeanC.class), context.getBean(BeanA.class).c);
+        assertSame(context, context.getBean(BeanB.class).applicationContext);
+    }
 
-	@Test
-	public void individualNamedBeanWithSupplier() {
-		GenericApplicationContext context = new GenericApplicationContext();
-		context.registerBean("a", BeanA.class,
-				() -> new BeanA(context.getBean(BeanB.class), context.getBean(BeanC.class)));
-		context.registerBean("b", BeanB.class, BeanB::new);
-		context.registerBean("c", BeanC.class, BeanC::new);
-		context.refresh();
+    @Test
+    public void individualNamedBeanWithSupplier() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        context.registerBean(
+                "a",
+                BeanA.class,
+                () -> new BeanA(context.getBean(BeanB.class), context.getBean(BeanC.class)));
+        context.registerBean("b", BeanB.class, BeanB::new);
+        context.registerBean("c", BeanC.class, BeanC::new);
+        context.refresh();
 
-		assertTrue(context.getBeanFactory().containsSingleton("a"));
-		assertSame(context.getBean("b", BeanB.class), context.getBean(BeanA.class).b);
-		assertSame(context.getBean("c"), context.getBean("a", BeanA.class).c);
-		assertSame(context, context.getBean("b", BeanB.class).applicationContext);
-	}
+        assertTrue(context.getBeanFactory().containsSingleton("a"));
+        assertSame(context.getBean("b", BeanB.class), context.getBean(BeanA.class).b);
+        assertSame(context.getBean("c"), context.getBean("a", BeanA.class).c);
+        assertSame(context, context.getBean("b", BeanB.class).applicationContext);
+    }
 
-	@Test
-	public void individualNamedBeanWithSupplierAndCustomizer() {
-		GenericApplicationContext context = new GenericApplicationContext();
-		context.registerBean("a", BeanA.class,
-				() -> new BeanA(context.getBean(BeanB.class), context.getBean(BeanC.class)),
-				bd -> bd.setLazyInit(true));
-		context.registerBean("b", BeanB.class, BeanB::new);
-		context.registerBean("c", BeanC.class, BeanC::new);
-		context.refresh();
+    @Test
+    public void individualNamedBeanWithSupplierAndCustomizer() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        context.registerBean(
+                "a",
+                BeanA.class,
+                () -> new BeanA(context.getBean(BeanB.class), context.getBean(BeanC.class)),
+                bd -> bd.setLazyInit(true));
+        context.registerBean("b", BeanB.class, BeanB::new);
+        context.registerBean("c", BeanC.class, BeanC::new);
+        context.refresh();
 
-		assertFalse(context.getBeanFactory().containsSingleton("a"));
-		assertSame(context.getBean("b", BeanB.class), context.getBean(BeanA.class).b);
-		assertSame(context.getBean("c"), context.getBean("a", BeanA.class).c);
-		assertSame(context, context.getBean("b", BeanB.class).applicationContext);
-	}
+        assertFalse(context.getBeanFactory().containsSingleton("a"));
+        assertSame(context.getBean("b", BeanB.class), context.getBean(BeanA.class).b);
+        assertSame(context.getBean("c"), context.getBean("a", BeanA.class).c);
+        assertSame(context, context.getBean("b", BeanB.class).applicationContext);
+    }
 
-	@Test
-	public void individualBeanWithNullReturningSupplier() {
-		GenericApplicationContext context = new GenericApplicationContext();
-		context.registerBean("a", BeanA.class, () -> null);
-		context.registerBean("b", BeanB.class, BeanB::new);
-		context.registerBean("c", BeanC.class, BeanC::new);
-		context.refresh();
+    @Test
+    public void individualBeanWithNullReturningSupplier() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        context.registerBean("a", BeanA.class, () -> null);
+        context.registerBean("b", BeanB.class, BeanB::new);
+        context.registerBean("c", BeanC.class, BeanC::new);
+        context.refresh();
 
-		assertTrue(ObjectUtils.containsElement(context.getBeanNamesForType(BeanA.class), "a"));
-		assertTrue(ObjectUtils.containsElement(context.getBeanNamesForType(BeanB.class), "b"));
-		assertTrue(ObjectUtils.containsElement(context.getBeanNamesForType(BeanC.class), "c"));
-		assertTrue(context.getBeansOfType(BeanA.class).isEmpty());
-		assertSame(context.getBean(BeanB.class), context.getBeansOfType(BeanB.class).values().iterator().next());
-		assertSame(context.getBean(BeanC.class), context.getBeansOfType(BeanC.class).values().iterator().next());
-	}
+        assertTrue(ObjectUtils.containsElement(context.getBeanNamesForType(BeanA.class), "a"));
+        assertTrue(ObjectUtils.containsElement(context.getBeanNamesForType(BeanB.class), "b"));
+        assertTrue(ObjectUtils.containsElement(context.getBeanNamesForType(BeanC.class), "c"));
+        assertTrue(context.getBeansOfType(BeanA.class).isEmpty());
+        assertSame(
+                context.getBean(BeanB.class),
+                context.getBeansOfType(BeanB.class).values().iterator().next());
+        assertSame(
+                context.getBean(BeanC.class),
+                context.getBeansOfType(BeanC.class).values().iterator().next());
+    }
 
+    static class BeanA {
 
-	static class BeanA {
+        BeanB b;
+        BeanC c;
 
-		BeanB b;
-		BeanC c;
+        public BeanA(BeanB b, BeanC c) {
+            this.b = b;
+            this.c = c;
+        }
+    }
 
-		public BeanA(BeanB b, BeanC c) {
-			this.b = b;
-			this.c = c;
-		}
-	}
+    static class BeanB implements ApplicationContextAware {
 
-	static class BeanB implements ApplicationContextAware  {
+        ApplicationContext applicationContext;
 
-		ApplicationContext applicationContext;
+        public BeanB() {}
 
-		public BeanB() {
-		}
+        @Override
+        public void setApplicationContext(ApplicationContext applicationContext) {
+            this.applicationContext = applicationContext;
+        }
+    }
 
-		@Override
-		public void setApplicationContext(ApplicationContext applicationContext) {
-			this.applicationContext = applicationContext;
-		}
-	}
-
-	static class BeanC {}
-
+    static class BeanC {}
 }

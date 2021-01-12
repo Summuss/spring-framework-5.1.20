@@ -21,9 +21,9 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Metadata that indicates to expose a given bean property as a JMX attribute,
- * with additional descriptor properties that indicate that the attribute is a
- * metric. Only valid when used on a JavaBean getter.
+ * Metadata that indicates to expose a given bean property as a JMX attribute, with additional
+ * descriptor properties that indicate that the attribute is a metric. Only valid when used on a
+ * JavaBean getter.
  *
  * @author Jennifer Hickey
  * @since 3.0
@@ -31,110 +31,80 @@ import org.springframework.util.Assert;
  */
 public class ManagedMetric extends AbstractJmxAttribute {
 
-	@Nullable
-	private String category;
+    @Nullable private String category;
 
-	@Nullable
-	private String displayName;
+    @Nullable private String displayName;
 
-	private MetricType metricType = MetricType.GAUGE;
+    private MetricType metricType = MetricType.GAUGE;
 
-	private int persistPeriod = -1;
+    private int persistPeriod = -1;
 
-	@Nullable
-	private String persistPolicy;
+    @Nullable private String persistPolicy;
 
-	@Nullable
-	private String unit;
+    @Nullable private String unit;
 
+    /** The category of this metric (ex. throughput, performance, utilization). */
+    public void setCategory(@Nullable String category) {
+        this.category = category;
+    }
 
-	/**
-	 * The category of this metric (ex. throughput, performance, utilization).
-	 */
-	public void setCategory(@Nullable String category) {
-		this.category = category;
-	}
+    /** The category of this metric (ex. throughput, performance, utilization). */
+    @Nullable
+    public String getCategory() {
+        return this.category;
+    }
 
-	/**
-	 * The category of this metric (ex. throughput, performance, utilization).
-	 */
-	@Nullable
-	public String getCategory() {
-		return this.category;
-	}
+    /** A display name for this metric. */
+    public void setDisplayName(@Nullable String displayName) {
+        this.displayName = displayName;
+    }
 
-	/**
-	 * A display name for this metric.
-	 */
-	public void setDisplayName(@Nullable String displayName) {
-		this.displayName = displayName;
-	}
+    /** A display name for this metric. */
+    @Nullable
+    public String getDisplayName() {
+        return this.displayName;
+    }
 
-	/**
-	 * A display name for this metric.
-	 */
-	@Nullable
-	public String getDisplayName() {
-		return this.displayName;
-	}
+    /** A description of how this metric's values change over time. */
+    public void setMetricType(MetricType metricType) {
+        Assert.notNull(metricType, "MetricType must not be null");
+        this.metricType = metricType;
+    }
 
-	/**
-	 * A description of how this metric's values change over time.
-	 */
-	public void setMetricType(MetricType metricType) {
-		Assert.notNull(metricType, "MetricType must not be null");
-		this.metricType = metricType;
-	}
+    /** A description of how this metric's values change over time. */
+    public MetricType getMetricType() {
+        return this.metricType;
+    }
 
-	/**
-	 * A description of how this metric's values change over time.
-	 */
-	public MetricType getMetricType() {
-		return this.metricType;
-	}
+    /** The persist period for this metric. */
+    public void setPersistPeriod(int persistPeriod) {
+        this.persistPeriod = persistPeriod;
+    }
 
-	/**
-	 * The persist period for this metric.
-	 */
-	public void setPersistPeriod(int persistPeriod) {
-		this.persistPeriod = persistPeriod;
-	}
+    /** The persist period for this metric. */
+    public int getPersistPeriod() {
+        return this.persistPeriod;
+    }
 
-	/**
-	 * The persist period for this metric.
-	 */
-	public int getPersistPeriod() {
-		return this.persistPeriod;
-	}
+    /** The persist policy for this metric. */
+    public void setPersistPolicy(@Nullable String persistPolicy) {
+        this.persistPolicy = persistPolicy;
+    }
 
-	/**
-	 * The persist policy for this metric.
-	 */
-	public void setPersistPolicy(@Nullable String persistPolicy) {
-		this.persistPolicy = persistPolicy;
-	}
+    /** The persist policy for this metric. */
+    @Nullable
+    public String getPersistPolicy() {
+        return this.persistPolicy;
+    }
 
-	/**
-	 * The persist policy for this metric.
-	 */
-	@Nullable
-	public String getPersistPolicy() {
-		return this.persistPolicy;
-	}
+    /** The expected unit of measurement values. */
+    public void setUnit(@Nullable String unit) {
+        this.unit = unit;
+    }
 
-	/**
-	 * The expected unit of measurement values.
-	 */
-	public void setUnit(@Nullable String unit) {
-		this.unit = unit;
-	}
-
-	/**
-	 * The expected unit of measurement values.
-	 */
-	@Nullable
-	public String getUnit() {
-		return this.unit;
-	}
-
+    /** The expected unit of measurement values. */
+    @Nullable
+    public String getUnit() {
+        return this.unit;
+    }
 }

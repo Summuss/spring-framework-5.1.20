@@ -45,85 +45,91 @@ import static org.junit.Assert.fail;
 
 /**
  * Unit tests for {@link ServerWebExchangeArgumentResolver}.
+ *
  * @author Rossen Stoyanchev
  */
 public class ServerWebExchangeArgumentResolverTests {
 
-	private final ServerWebExchangeArgumentResolver resolver =
-			new ServerWebExchangeArgumentResolver(ReactiveAdapterRegistry.getSharedInstance());
+    private final ServerWebExchangeArgumentResolver resolver =
+            new ServerWebExchangeArgumentResolver(ReactiveAdapterRegistry.getSharedInstance());
 
-	private final MockServerWebExchange exchange = MockServerWebExchange.from(
-			MockServerHttpRequest.get("https://example.org:9999/path?q=foo"));
+    private final MockServerWebExchange exchange =
+            MockServerWebExchange.from(
+                    MockServerHttpRequest.get("https://example.org:9999/path?q=foo"));
 
-	private ResolvableMethod testMethod = ResolvableMethod.on(getClass()).named("handle").build();
+    private ResolvableMethod testMethod = ResolvableMethod.on(getClass()).named("handle").build();
 
+    @Test
+    public void supportsParameter() {
+        assertTrue(this.resolver.supportsParameter(this.testMethod.arg(ServerWebExchange.class)));
+        assertTrue(this.resolver.supportsParameter(this.testMethod.arg(ServerHttpRequest.class)));
+        assertTrue(this.resolver.supportsParameter(this.testMethod.arg(ServerHttpResponse.class)));
+        assertTrue(this.resolver.supportsParameter(this.testMethod.arg(HttpMethod.class)));
+        assertTrue(this.resolver.supportsParameter(this.testMethod.arg(Locale.class)));
+        assertTrue(this.resolver.supportsParameter(this.testMethod.arg(TimeZone.class)));
+        assertTrue(this.resolver.supportsParameter(this.testMethod.arg(ZoneId.class)));
+        assertTrue(
+                this.resolver.supportsParameter(this.testMethod.arg(UriComponentsBuilder.class)));
+        assertTrue(this.resolver.supportsParameter(this.testMethod.arg(UriBuilder.class)));
 
-	@Test
-	public void supportsParameter() {
-		assertTrue(this.resolver.supportsParameter(this.testMethod.arg(ServerWebExchange.class)));
-		assertTrue(this.resolver.supportsParameter(this.testMethod.arg(ServerHttpRequest.class)));
-		assertTrue(this.resolver.supportsParameter(this.testMethod.arg(ServerHttpResponse.class)));
-		assertTrue(this.resolver.supportsParameter(this.testMethod.arg(HttpMethod.class)));
-		assertTrue(this.resolver.supportsParameter(this.testMethod.arg(Locale.class)));
-		assertTrue(this.resolver.supportsParameter(this.testMethod.arg(TimeZone.class)));
-		assertTrue(this.resolver.supportsParameter(this.testMethod.arg(ZoneId.class)));
-		assertTrue(this.resolver.supportsParameter(this.testMethod.arg(UriComponentsBuilder.class)));
-		assertTrue(this.resolver.supportsParameter(this.testMethod.arg(UriBuilder.class)));
+        assertFalse(this.resolver.supportsParameter(this.testMethod.arg(WebSession.class)));
+        assertFalse(this.resolver.supportsParameter(this.testMethod.arg(String.class)));
+        try {
+            this.resolver.supportsParameter(
+                    this.testMethod.arg(Mono.class, ServerWebExchange.class));
+            fail();
+        } catch (IllegalStateException ex) {
+            assertTrue(
+                    "Unexpected error message:\n" + ex.getMessage(),
+                    ex.getMessage()
+                            .startsWith(
+                                    "ServerWebExchangeArgumentResolver doesn't support reactive type wrapper"));
+        }
+    }
 
-		assertFalse(this.resolver.supportsParameter(this.testMethod.arg(WebSession.class)));
-		assertFalse(this.resolver.supportsParameter(this.testMethod.arg(String.class)));
-		try {
-			this.resolver.supportsParameter(this.testMethod.arg(Mono.class, ServerWebExchange.class));
-			fail();
-		}
-		catch (IllegalStateException ex) {
-			assertTrue("Unexpected error message:\n" + ex.getMessage(),
-					ex.getMessage().startsWith(
-							"ServerWebExchangeArgumentResolver doesn't support reactive type wrapper"));
-		}
-	}
+    @Test
+    public void resolveArgument() {
+        testResolveArgument(this.testMethod.arg(ServerWebExchange.class), this.exchange);
+        testResolveArgument(
+                this.testMethod.arg(ServerHttpRequest.class), this.exchange.getRequest());
+        testResolveArgument(
+                this.testMethod.arg(ServerHttpResponse.class), this.exchange.getResponse());
+        testResolveArgument(this.testMethod.arg(HttpMethod.class), HttpMethod.GET);
+        testResolveArgument(this.testMethod.arg(TimeZone.class), TimeZone.getDefault());
+        testResolveArgument(this.testMethod.arg(ZoneId.class), ZoneId.systemDefault());
+    }
 
-	@Test
-	public void resolveArgument() {
-		testResolveArgument(this.testMethod.arg(ServerWebExchange.class), this.exchange);
-		testResolveArgument(this.testMethod.arg(ServerHttpRequest.class), this.exchange.getRequest());
-		testResolveArgument(this.testMethod.arg(ServerHttpResponse.class), this.exchange.getResponse());
-		testResolveArgument(this.testMethod.arg(HttpMethod.class), HttpMethod.GET);
-		testResolveArgument(this.testMethod.arg(TimeZone.class), TimeZone.getDefault());
-		testResolveArgument(this.testMethod.arg(ZoneId.class), ZoneId.systemDefault());
-	}
+    private void testResolveArgument(MethodParameter parameter, Object expected) {
+        Mono<Object> mono =
+                this.resolver.resolveArgument(parameter, new BindingContext(), this.exchange);
+        assertEquals(expected, mono.block());
+    }
 
-	private void testResolveArgument(MethodParameter parameter, Object expected) {
-		Mono<Object> mono = this.resolver.resolveArgument(parameter, new BindingContext(), this.exchange);
-		assertEquals(expected, mono.block());
-	}
+    @Test
+    public void resolveUriComponentsBuilder() {
+        MethodParameter param = this.testMethod.arg(UriComponentsBuilder.class);
+        Object value =
+                this.resolver.resolveArgument(param, new BindingContext(), this.exchange).block();
 
-	@Test
-	public void resolveUriComponentsBuilder() {
-		MethodParameter param = this.testMethod.arg(UriComponentsBuilder.class);
-		Object value = this.resolver.resolveArgument(param, new BindingContext(), this.exchange).block();
+        assertNotNull(value);
+        assertEquals(UriComponentsBuilder.class, value.getClass());
+        assertEquals(
+                "https://example.org:9999/next",
+                ((UriComponentsBuilder) value).path("/next").toUriString());
+    }
 
-		assertNotNull(value);
-		assertEquals(UriComponentsBuilder.class, value.getClass());
-		assertEquals("https://example.org:9999/next", ((UriComponentsBuilder) value).path("/next").toUriString());
-	}
-
-
-
-	@SuppressWarnings("unused")
-	public void handle(
-			ServerWebExchange exchange,
-			ServerHttpRequest request,
-			ServerHttpResponse response,
-			WebSession session,
-			HttpMethod httpMethod,
-			Locale locale,
-			TimeZone timeZone,
-			ZoneId zoneId,
-			UriComponentsBuilder uriComponentsBuilder,
-			UriBuilder uriBuilder,
-			String s,
-			Mono<ServerWebExchange> monoExchange) {
-	}
-
+    @SuppressWarnings("unused")
+    public void handle(
+            ServerWebExchange exchange,
+            ServerHttpRequest request,
+            ServerHttpResponse response,
+            WebSession session,
+            HttpMethod httpMethod,
+            Locale locale,
+            TimeZone timeZone,
+            ZoneId zoneId,
+            UriComponentsBuilder uriComponentsBuilder,
+            UriBuilder uriBuilder,
+            String s,
+            Mono<ServerWebExchange> monoExchange) {}
 }

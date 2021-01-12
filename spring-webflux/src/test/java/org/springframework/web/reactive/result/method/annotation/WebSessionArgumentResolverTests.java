@@ -33,55 +33,52 @@ import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for {@link WebSessionArgumentResolver}.
+ *
  * @author Rossen Stoyanchev
  */
 public class WebSessionArgumentResolverTests {
 
-	private final WebSessionArgumentResolver resolver =
-			new WebSessionArgumentResolver(ReactiveAdapterRegistry.getSharedInstance());
+    private final WebSessionArgumentResolver resolver =
+            new WebSessionArgumentResolver(ReactiveAdapterRegistry.getSharedInstance());
 
-	private ResolvableMethod testMethod = ResolvableMethod.on(getClass()).named("handle").build();
+    private ResolvableMethod testMethod = ResolvableMethod.on(getClass()).named("handle").build();
 
+    @Test
+    public void supportsParameter() {
+        assertTrue(this.resolver.supportsParameter(this.testMethod.arg(WebSession.class)));
+        assertTrue(
+                this.resolver.supportsParameter(this.testMethod.arg(Mono.class, WebSession.class)));
+        assertTrue(
+                this.resolver.supportsParameter(
+                        this.testMethod.arg(Single.class, WebSession.class)));
+    }
 
-	@Test
-	public void supportsParameter() {
-		assertTrue(this.resolver.supportsParameter(this.testMethod.arg(WebSession.class)));
-		assertTrue(this.resolver.supportsParameter(this.testMethod.arg(Mono.class, WebSession.class)));
-		assertTrue(this.resolver.supportsParameter(this.testMethod.arg(Single.class, WebSession.class)));
-	}
+    @Test
+    public void resolverArgument() {
 
+        BindingContext context = new BindingContext();
+        WebSession session = mock(WebSession.class);
+        MockServerHttpRequest request = MockServerHttpRequest.get("/").build();
+        ServerWebExchange exchange =
+                MockServerWebExchange.builder(request).session(session).build();
 
-	@Test
-	public void resolverArgument() {
+        MethodParameter param = this.testMethod.arg(WebSession.class);
+        Object actual = this.resolver.resolveArgument(param, context, exchange).block();
+        assertSame(session, actual);
 
-		BindingContext context = new BindingContext();
-		WebSession session = mock(WebSession.class);
-		MockServerHttpRequest request = MockServerHttpRequest.get("/").build();
-		ServerWebExchange exchange = MockServerWebExchange.builder(request).session(session).build();
+        param = this.testMethod.arg(Mono.class, WebSession.class);
+        actual = this.resolver.resolveArgument(param, context, exchange).block();
+        assertNotNull(actual);
+        assertTrue(Mono.class.isAssignableFrom(actual.getClass()));
+        assertSame(session, ((Mono<?>) actual).block());
 
-		MethodParameter param = this.testMethod.arg(WebSession.class);
-		Object actual = this.resolver.resolveArgument(param, context, exchange).block();
-		assertSame(session, actual);
+        param = this.testMethod.arg(Single.class, WebSession.class);
+        actual = this.resolver.resolveArgument(param, context, exchange).block();
+        assertNotNull(actual);
+        assertTrue(Single.class.isAssignableFrom(actual.getClass()));
+        assertSame(session, ((Single<?>) actual).blockingGet());
+    }
 
-		param = this.testMethod.arg(Mono.class, WebSession.class);
-		actual = this.resolver.resolveArgument(param, context, exchange).block();
-		assertNotNull(actual);
-		assertTrue(Mono.class.isAssignableFrom(actual.getClass()));
-		assertSame(session, ((Mono<?>) actual).block());
-
-		param = this.testMethod.arg(Single.class, WebSession.class);
-		actual = this.resolver.resolveArgument(param, context, exchange).block();
-		assertNotNull(actual);
-		assertTrue(Single.class.isAssignableFrom(actual.getClass()));
-		assertSame(session, ((Single<?>) actual).blockingGet());
-	}
-
-
-	@SuppressWarnings("unused")
-	void handle(
-			WebSession user,
-			Mono<WebSession> userMono,
-			Single<WebSession> singleUser) {
-	}
-
+    @SuppressWarnings("unused")
+    void handle(WebSession user, Mono<WebSession> userMono, Single<WebSession> singleUser) {}
 }

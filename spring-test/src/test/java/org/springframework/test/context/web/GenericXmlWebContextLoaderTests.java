@@ -30,22 +30,29 @@ import static org.hamcrest.CoreMatchers.*;
  */
 public class GenericXmlWebContextLoaderTests {
 
-	private static final String[] EMPTY_STRING_ARRAY = new String[0];
+    private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
-	@Rule
-	public ExpectedException expectedException = ExpectedException.none();
+    @Rule public ExpectedException expectedException = ExpectedException.none();
 
+    @Test
+    public void configMustNotContainAnnotatedClasses() throws Exception {
+        expectedException.expect(IllegalStateException.class);
+        expectedException.expectMessage(containsString("does not support annotated classes"));
 
-	@Test
-	public void configMustNotContainAnnotatedClasses() throws Exception {
-		expectedException.expect(IllegalStateException.class);
-		expectedException.expectMessage(containsString("does not support annotated classes"));
-
-		GenericXmlWebContextLoader loader = new GenericXmlWebContextLoader();
-		WebMergedContextConfiguration mergedConfig = new WebMergedContextConfiguration(getClass(), EMPTY_STRING_ARRAY,
-				new Class<?>[] { getClass() }, null, EMPTY_STRING_ARRAY, EMPTY_STRING_ARRAY, EMPTY_STRING_ARRAY,
-				"resource/path", loader, null, null);
-		loader.loadContext(mergedConfig);
-	}
-
+        GenericXmlWebContextLoader loader = new GenericXmlWebContextLoader();
+        WebMergedContextConfiguration mergedConfig =
+                new WebMergedContextConfiguration(
+                        getClass(),
+                        EMPTY_STRING_ARRAY,
+                        new Class<?>[] {getClass()},
+                        null,
+                        EMPTY_STRING_ARRAY,
+                        EMPTY_STRING_ARRAY,
+                        EMPTY_STRING_ARRAY,
+                        "resource/path",
+                        loader,
+                        null,
+                        null);
+        loader.loadContext(mergedConfig);
+    }
 }

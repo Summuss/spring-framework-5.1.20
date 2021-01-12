@@ -16,15 +16,12 @@
 
 package org.springframework.scripting.config;
 
-/**
- * @author Mark Fisher
- */
+/** @author Mark Fisher */
 public interface ITestBean {
 
-	boolean isInitialized();
+    boolean isInitialized();
 
-	boolean isDestroyed();
+    boolean isDestroyed();
 
-	ITestBean getOtherBean();
-
+    ITestBean getOtherBean();
 }

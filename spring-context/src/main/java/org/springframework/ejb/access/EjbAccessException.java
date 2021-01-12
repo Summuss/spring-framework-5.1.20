@@ -27,21 +27,22 @@ import org.springframework.core.NestedRuntimeException;
 @SuppressWarnings("serial")
 public class EjbAccessException extends NestedRuntimeException {
 
-	/**
-	 * Constructor for EjbAccessException.
-	 * @param msg the detail message
-	 */
-	public EjbAccessException(String msg) {
-		super(msg);
-	}
+    /**
+     * Constructor for EjbAccessException.
+     *
+     * @param msg the detail message
+     */
+    public EjbAccessException(String msg) {
+        super(msg);
+    }
 
-	/**
-	 * Constructor for EjbAccessException.
-	 * @param msg the detail message
-	 * @param cause the root cause
-	 */
-	public EjbAccessException(String msg, Throwable cause) {
-		super(msg, cause);
-	}
-
+    /**
+     * Constructor for EjbAccessException.
+     *
+     * @param msg the detail message
+     * @param cause the root cause
+     */
+    public EjbAccessException(String msg, Throwable cause) {
+        super(msg, cause);
+    }
 }

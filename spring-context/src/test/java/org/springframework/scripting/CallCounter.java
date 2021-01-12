@@ -16,13 +16,10 @@
 
 package org.springframework.scripting;
 
-/**
- * @author Juergen Hoeller
- */
+/** @author Juergen Hoeller */
 public interface CallCounter {
 
-	void before();
+    void before();
 
-	int getCalls();
-
+    int getCalls();
 }

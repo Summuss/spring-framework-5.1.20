@@ -32,109 +32,116 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import static org.junit.Assert.*;
 
-/**
- * @author Dave Syer
- */
+/** @author Dave Syer */
 public class InitializeDatabaseIntegrationTests {
 
-	private String enabled;
+    private String enabled;
 
-	private ClassPathXmlApplicationContext context;
+    private ClassPathXmlApplicationContext context;
 
+    @Before
+    public void init() {
+        enabled = System.setProperty("ENABLED", "true");
+    }
 
-	@Before
-	public void init() {
-		enabled = System.setProperty("ENABLED", "true");
-	}
+    @After
+    public void after() {
+        if (enabled != null) {
+            System.setProperty("ENABLED", enabled);
+        } else {
+            System.clearProperty("ENABLED");
+        }
+        if (context != null) {
+            context.close();
+        }
+    }
 
-	@After
-	public void after() {
-		if (enabled != null) {
-			System.setProperty("ENABLED", enabled);
-		}
-		else {
-			System.clearProperty("ENABLED");
-		}
-		if (context != null) {
-			context.close();
-		}
-	}
+    @Test
+    public void testCreateEmbeddedDatabase() throws Exception {
+        context =
+                new ClassPathXmlApplicationContext(
+                        "org/springframework/jdbc/config/jdbc-initialize-config.xml");
+        assertCorrectSetup(context.getBean("dataSource", DataSource.class));
+    }
 
+    @Test(expected = BadSqlGrammarException.class)
+    public void testDisableCreateEmbeddedDatabase() throws Exception {
+        System.setProperty("ENABLED", "false");
+        context =
+                new ClassPathXmlApplicationContext(
+                        "org/springframework/jdbc/config/jdbc-initialize-config.xml");
+        assertCorrectSetup(context.getBean("dataSource", DataSource.class));
+    }
 
-	@Test
-	public void testCreateEmbeddedDatabase() throws Exception {
-		context = new ClassPathXmlApplicationContext("org/springframework/jdbc/config/jdbc-initialize-config.xml");
-		assertCorrectSetup(context.getBean("dataSource", DataSource.class));
-	}
+    @Test
+    public void testIgnoreFailedDrops() throws Exception {
+        context =
+                new ClassPathXmlApplicationContext(
+                        "org/springframework/jdbc/config/jdbc-initialize-fail-config.xml");
+        assertCorrectSetup(context.getBean("dataSource", DataSource.class));
+    }
 
-	@Test(expected = BadSqlGrammarException.class)
-	public void testDisableCreateEmbeddedDatabase() throws Exception {
-		System.setProperty("ENABLED", "false");
-		context = new ClassPathXmlApplicationContext("org/springframework/jdbc/config/jdbc-initialize-config.xml");
-		assertCorrectSetup(context.getBean("dataSource", DataSource.class));
-	}
+    @Test
+    public void testScriptNameWithPattern() throws Exception {
+        context =
+                new ClassPathXmlApplicationContext(
+                        "org/springframework/jdbc/config/jdbc-initialize-pattern-config.xml");
+        DataSource dataSource = context.getBean("dataSource", DataSource.class);
+        assertCorrectSetup(dataSource);
+        JdbcTemplate t = new JdbcTemplate(dataSource);
+        assertEquals("Dave", t.queryForObject("select name from T_TEST", String.class));
+    }
 
-	@Test
-	public void testIgnoreFailedDrops() throws Exception {
-		context = new ClassPathXmlApplicationContext("org/springframework/jdbc/config/jdbc-initialize-fail-config.xml");
-		assertCorrectSetup(context.getBean("dataSource", DataSource.class));
-	}
+    @Test
+    public void testScriptNameWithPlaceholder() throws Exception {
+        context =
+                new ClassPathXmlApplicationContext(
+                        "org/springframework/jdbc/config/jdbc-initialize-placeholder-config.xml");
+        DataSource dataSource = context.getBean("dataSource", DataSource.class);
+        assertCorrectSetup(dataSource);
+    }
 
-	@Test
-	public void testScriptNameWithPattern() throws Exception {
-		context = new ClassPathXmlApplicationContext("org/springframework/jdbc/config/jdbc-initialize-pattern-config.xml");
-		DataSource dataSource = context.getBean("dataSource", DataSource.class);
-		assertCorrectSetup(dataSource);
-		JdbcTemplate t = new JdbcTemplate(dataSource);
-		assertEquals("Dave", t.queryForObject("select name from T_TEST", String.class));
-	}
+    @Test
+    public void testScriptNameWithExpressions() throws Exception {
+        context =
+                new ClassPathXmlApplicationContext(
+                        "org/springframework/jdbc/config/jdbc-initialize-expression-config.xml");
+        DataSource dataSource = context.getBean("dataSource", DataSource.class);
+        assertCorrectSetup(dataSource);
+    }
 
-	@Test
-	public void testScriptNameWithPlaceholder() throws Exception {
-		context = new ClassPathXmlApplicationContext("org/springframework/jdbc/config/jdbc-initialize-placeholder-config.xml");
-		DataSource dataSource = context.getBean("dataSource", DataSource.class);
-		assertCorrectSetup(dataSource);
-	}
+    @Test
+    public void testCacheInitialization() throws Exception {
+        context =
+                new ClassPathXmlApplicationContext(
+                        "org/springframework/jdbc/config/jdbc-initialize-cache-config.xml");
+        assertCorrectSetup(context.getBean("dataSource", DataSource.class));
+        CacheData cache = context.getBean(CacheData.class);
+        assertEquals(1, cache.getCachedData().size());
+    }
 
-	@Test
-	public void testScriptNameWithExpressions() throws Exception {
-		context = new ClassPathXmlApplicationContext("org/springframework/jdbc/config/jdbc-initialize-expression-config.xml");
-		DataSource dataSource = context.getBean("dataSource", DataSource.class);
-		assertCorrectSetup(dataSource);
-	}
+    private void assertCorrectSetup(DataSource dataSource) {
+        JdbcTemplate jt = new JdbcTemplate(dataSource);
+        assertEquals(1, jt.queryForObject("select count(*) from T_TEST", Integer.class).intValue());
+    }
 
-	@Test
-	public void testCacheInitialization() throws Exception {
-		context = new ClassPathXmlApplicationContext("org/springframework/jdbc/config/jdbc-initialize-cache-config.xml");
-		assertCorrectSetup(context.getBean("dataSource", DataSource.class));
-		CacheData cache = context.getBean(CacheData.class);
-		assertEquals(1, cache.getCachedData().size());
-	}
+    public static class CacheData implements InitializingBean {
 
-	private void assertCorrectSetup(DataSource dataSource) {
-		JdbcTemplate jt = new JdbcTemplate(dataSource);
-		assertEquals(1, jt.queryForObject("select count(*) from T_TEST", Integer.class).intValue());
-	}
+        private JdbcTemplate jdbcTemplate;
 
+        private List<Map<String, Object>> cache;
 
-	public static class CacheData implements InitializingBean {
+        public void setDataSource(DataSource dataSource) {
+            this.jdbcTemplate = new JdbcTemplate(dataSource);
+        }
 
-		private JdbcTemplate jdbcTemplate;
+        public List<Map<String, Object>> getCachedData() {
+            return cache;
+        }
 
-		private List<Map<String,Object>> cache;
-
-		public void setDataSource(DataSource dataSource) {
-			this.jdbcTemplate = new JdbcTemplate(dataSource);
-		}
-
-		public List<Map<String,Object>> getCachedData() {
-			return cache;
-		}
-
-		@Override
-		public void afterPropertiesSet() throws Exception {
-			cache = jdbcTemplate.queryForList("SELECT * FROM T_TEST");
-		}
-	}
-
+        @Override
+        public void afterPropertiesSet() throws Exception {
+            cache = jdbcTemplate.queryForList("SELECT * FROM T_TEST");
+        }
+    }
 }

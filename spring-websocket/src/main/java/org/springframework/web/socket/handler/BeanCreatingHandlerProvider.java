@@ -24,9 +24,9 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Instantiates a target handler through a Spring {@link BeanFactory} and also provides
- * an equivalent destroy method. Mainly for internal use to assist with initializing and
- * destroying handlers with per-connection lifecycle.
+ * Instantiates a target handler through a Spring {@link BeanFactory} and also provides an
+ * equivalent destroy method. Mainly for internal use to assist with initializing and destroying
+ * handlers with per-connection lifecycle.
  *
  * @author Rossen Stoyanchev
  * @since 4.0
@@ -34,48 +34,42 @@ import org.springframework.util.Assert;
  */
 public class BeanCreatingHandlerProvider<T> implements BeanFactoryAware {
 
-	private final Class<? extends T> handlerType;
+    private final Class<? extends T> handlerType;
 
-	@Nullable
-	private AutowireCapableBeanFactory beanFactory;
+    @Nullable private AutowireCapableBeanFactory beanFactory;
 
+    public BeanCreatingHandlerProvider(Class<? extends T> handlerType) {
+        Assert.notNull(handlerType, "handlerType must not be null");
+        this.handlerType = handlerType;
+    }
 
-	public BeanCreatingHandlerProvider(Class<? extends T> handlerType) {
-		Assert.notNull(handlerType, "handlerType must not be null");
-		this.handlerType = handlerType;
-	}
+    @Override
+    public void setBeanFactory(BeanFactory beanFactory) {
+        if (beanFactory instanceof AutowireCapableBeanFactory) {
+            this.beanFactory = (AutowireCapableBeanFactory) beanFactory;
+        }
+    }
 
+    public void destroy(T handler) {
+        if (this.beanFactory != null) {
+            this.beanFactory.destroyBean(handler);
+        }
+    }
 
-	@Override
-	public void setBeanFactory(BeanFactory beanFactory) {
-		if (beanFactory instanceof AutowireCapableBeanFactory) {
-			this.beanFactory = (AutowireCapableBeanFactory) beanFactory;
-		}
-	}
+    public Class<? extends T> getHandlerType() {
+        return this.handlerType;
+    }
 
-	public void destroy(T handler) {
-		if (this.beanFactory != null) {
-			this.beanFactory.destroyBean(handler);
-		}
-	}
+    public T getHandler() {
+        if (this.beanFactory != null) {
+            return this.beanFactory.createBean(this.handlerType);
+        } else {
+            return BeanUtils.instantiateClass(this.handlerType);
+        }
+    }
 
-
-	public Class<? extends T> getHandlerType() {
-		return this.handlerType;
-	}
-
-	public T getHandler() {
-		if (this.beanFactory != null) {
-			return this.beanFactory.createBean(this.handlerType);
-		}
-		else {
-			return BeanUtils.instantiateClass(this.handlerType);
-		}
-	}
-
-	@Override
-	public String toString() {
-		return "BeanCreatingHandlerProvider[handlerType=" + this.handlerType + "]";
-	}
-
+    @Override
+    public String toString() {
+        return "BeanCreatingHandlerProvider[handlerType=" + this.handlerType + "]";
+    }
 }

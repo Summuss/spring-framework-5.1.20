@@ -28,45 +28,46 @@ import org.springframework.web.servlet.handler.HandlerMethodMappingNamingStrateg
 import static org.junit.Assert.*;
 
 /**
- * Unit tests for
- * {@link org.springframework.web.servlet.mvc.method.RequestMappingInfoHandlerMethodMappingNamingStrategy}.
+ * Unit tests for {@link
+ * org.springframework.web.servlet.mvc.method.RequestMappingInfoHandlerMethodMappingNamingStrategy}.
  *
  * @author Rossen Stoyanchev
  */
 public class RequestMappingInfoHandlerMethodMappingNamingStrategyTests {
 
-	@Test
-	public void getNameExplicit() {
+    @Test
+    public void getNameExplicit() {
 
-		Method method = ClassUtils.getMethod(TestController.class, "handle");
-		HandlerMethod handlerMethod = new HandlerMethod(new TestController(), method);
+        Method method = ClassUtils.getMethod(TestController.class, "handle");
+        HandlerMethod handlerMethod = new HandlerMethod(new TestController(), method);
 
-		RequestMappingInfo rmi = new RequestMappingInfo("foo", null, null, null, null, null, null, null);
+        RequestMappingInfo rmi =
+                new RequestMappingInfo("foo", null, null, null, null, null, null, null);
 
-		HandlerMethodMappingNamingStrategy<RequestMappingInfo> strategy = new RequestMappingInfoHandlerMethodMappingNamingStrategy();
+        HandlerMethodMappingNamingStrategy<RequestMappingInfo> strategy =
+                new RequestMappingInfoHandlerMethodMappingNamingStrategy();
 
-		assertEquals("foo", strategy.getName(handlerMethod, rmi));
-	}
+        assertEquals("foo", strategy.getName(handlerMethod, rmi));
+    }
 
-	@Test
-	public void getNameConvention() {
+    @Test
+    public void getNameConvention() {
 
-		Method method = ClassUtils.getMethod(TestController.class, "handle");
-		HandlerMethod handlerMethod = new HandlerMethod(new TestController(), method);
+        Method method = ClassUtils.getMethod(TestController.class, "handle");
+        HandlerMethod handlerMethod = new HandlerMethod(new TestController(), method);
 
-		RequestMappingInfo rmi = new RequestMappingInfo(null, null, null, null, null, null, null, null);
+        RequestMappingInfo rmi =
+                new RequestMappingInfo(null, null, null, null, null, null, null, null);
 
-		HandlerMethodMappingNamingStrategy<RequestMappingInfo> strategy = new RequestMappingInfoHandlerMethodMappingNamingStrategy();
+        HandlerMethodMappingNamingStrategy<RequestMappingInfo> strategy =
+                new RequestMappingInfoHandlerMethodMappingNamingStrategy();
 
-		assertEquals("TC#handle", strategy.getName(handlerMethod, rmi));
-	}
+        assertEquals("TC#handle", strategy.getName(handlerMethod, rmi));
+    }
 
+    private static class TestController {
 
-	private static class TestController {
-
-		@RequestMapping
-		public void handle() {
-		}
-	}
-
+        @RequestMapping
+        public void handle() {}
+    }
 }

@@ -52,48 +52,43 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppC
 @ContextConfiguration
 public class HttpOptionsTests {
 
-	@Autowired
-	private WebApplicationContext wac;
+    @Autowired private WebApplicationContext wac;
 
-	private MockMvc mockMvc;
+    private MockMvc mockMvc;
 
+    @Before
+    public void setup() {
+        this.mockMvc = webAppContextSetup(this.wac).dispatchOptions(true).build();
+    }
 
-	@Before
-	public void setup() {
-		this.mockMvc = webAppContextSetup(this.wac).dispatchOptions(true).build();
-	}
+    @Test
+    public void test() throws Exception {
+        MyController controller = this.wac.getBean(MyController.class);
+        int initialCount = controller.counter.get();
+        this.mockMvc.perform(options("/myUrl")).andExpect(status().isOk());
 
-	@Test
-	public void test() throws Exception {
-		MyController controller = this.wac.getBean(MyController.class);
-		int initialCount = controller.counter.get();
-		this.mockMvc.perform(options("/myUrl")).andExpect(status().isOk());
+        assertEquals(initialCount + 1, controller.counter.get());
+    }
 
-		assertEquals(initialCount + 1, controller.counter.get());
-	}
+    @Configuration
+    @EnableWebMvc
+    static class WebConfig implements WebMvcConfigurer {
 
+        @Bean
+        public MyController myController() {
+            return new MyController();
+        }
+    }
 
-	@Configuration
-	@EnableWebMvc
-	static class WebConfig implements WebMvcConfigurer {
+    @Controller
+    private static class MyController {
 
-		@Bean
-		public MyController myController() {
-			return new MyController();
-		}
-	}
+        private AtomicInteger counter = new AtomicInteger(0);
 
-	@Controller
-	private static class MyController {
-
-		private AtomicInteger counter = new AtomicInteger(0);
-
-
-		@RequestMapping(value = "/myUrl", method = RequestMethod.OPTIONS)
-		@ResponseBody
-		public void handle() {
-			counter.incrementAndGet();
-		}
-	}
-
+        @RequestMapping(value = "/myUrl", method = RequestMethod.OPTIONS)
+        @ResponseBody
+        public void handle() {
+            counter.incrementAndGet();
+        }
+    }
 }

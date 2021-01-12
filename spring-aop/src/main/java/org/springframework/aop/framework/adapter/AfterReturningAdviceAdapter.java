@@ -25,8 +25,8 @@ import org.springframework.aop.Advisor;
 import org.springframework.aop.AfterReturningAdvice;
 
 /**
- * Adapter to enable {@link org.springframework.aop.AfterReturningAdvice}
- * to be used in the Spring AOP framework.
+ * Adapter to enable {@link org.springframework.aop.AfterReturningAdvice} to be used in the Spring
+ * AOP framework.
  *
  * @author Rod Johnson
  * @author Juergen Hoeller
@@ -34,15 +34,14 @@ import org.springframework.aop.AfterReturningAdvice;
 @SuppressWarnings("serial")
 class AfterReturningAdviceAdapter implements AdvisorAdapter, Serializable {
 
-	@Override
-	public boolean supportsAdvice(Advice advice) {
-		return (advice instanceof AfterReturningAdvice);
-	}
+    @Override
+    public boolean supportsAdvice(Advice advice) {
+        return (advice instanceof AfterReturningAdvice);
+    }
 
-	@Override
-	public MethodInterceptor getInterceptor(Advisor advisor) {
-		AfterReturningAdvice advice = (AfterReturningAdvice) advisor.getAdvice();
-		return new AfterReturningAdviceInterceptor(advice);
-	}
-
+    @Override
+    public MethodInterceptor getInterceptor(Advisor advisor) {
+        AfterReturningAdvice advice = (AfterReturningAdvice) advisor.getAdvice();
+        return new AfterReturningAdviceInterceptor(advice);
+    }
 }

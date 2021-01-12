@@ -40,65 +40,66 @@ import static org.junit.Assert.*;
  */
 public class ExpressionValueMethodArgumentResolverTests {
 
-	private ExpressionValueMethodArgumentResolver resolver;
+    private ExpressionValueMethodArgumentResolver resolver;
 
-	private MethodParameter paramSystemProperty;
+    private MethodParameter paramSystemProperty;
 
-	private MethodParameter paramContextPath;
+    private MethodParameter paramContextPath;
 
-	private MethodParameter paramNotSupported;
+    private MethodParameter paramNotSupported;
 
-	private NativeWebRequest webRequest;
+    private NativeWebRequest webRequest;
 
-	@Before
-	@SuppressWarnings("resource")
-	public void setUp() throws Exception {
-		GenericWebApplicationContext context = new GenericWebApplicationContext();
-		context.refresh();
-		resolver = new ExpressionValueMethodArgumentResolver(context.getBeanFactory());
+    @Before
+    @SuppressWarnings("resource")
+    public void setUp() throws Exception {
+        GenericWebApplicationContext context = new GenericWebApplicationContext();
+        context.refresh();
+        resolver = new ExpressionValueMethodArgumentResolver(context.getBeanFactory());
 
-		Method method = getClass().getMethod("params", int.class, String.class, String.class);
-		paramSystemProperty = new MethodParameter(method, 0);
-		paramContextPath = new MethodParameter(method, 1);
-		paramNotSupported = new MethodParameter(method, 2);
+        Method method = getClass().getMethod("params", int.class, String.class, String.class);
+        paramSystemProperty = new MethodParameter(method, 0);
+        paramContextPath = new MethodParameter(method, 1);
+        paramNotSupported = new MethodParameter(method, 2);
 
-		webRequest = new ServletWebRequest(new MockHttpServletRequest(), new MockHttpServletResponse());
+        webRequest =
+                new ServletWebRequest(new MockHttpServletRequest(), new MockHttpServletResponse());
 
-		// Expose request to the current thread (for SpEL expressions)
-		RequestContextHolder.setRequestAttributes(webRequest);
-	}
+        // Expose request to the current thread (for SpEL expressions)
+        RequestContextHolder.setRequestAttributes(webRequest);
+    }
 
-	@After
-	public void teardown() {
-		RequestContextHolder.resetRequestAttributes();
-	}
+    @After
+    public void teardown() {
+        RequestContextHolder.resetRequestAttributes();
+    }
 
-	@Test
-	public void supportsParameter() throws Exception {
-		assertTrue(resolver.supportsParameter(paramSystemProperty));
-		assertTrue(resolver.supportsParameter(paramContextPath));
-		assertFalse(resolver.supportsParameter(paramNotSupported));
-	}
+    @Test
+    public void supportsParameter() throws Exception {
+        assertTrue(resolver.supportsParameter(paramSystemProperty));
+        assertTrue(resolver.supportsParameter(paramContextPath));
+        assertFalse(resolver.supportsParameter(paramNotSupported));
+    }
 
-	@Test
-	public void resolveSystemProperty() throws Exception {
-		System.setProperty("systemProperty", "22");
-		Object value = resolver.resolveArgument(paramSystemProperty, null, webRequest, null);
-		System.clearProperty("systemProperty");
+    @Test
+    public void resolveSystemProperty() throws Exception {
+        System.setProperty("systemProperty", "22");
+        Object value = resolver.resolveArgument(paramSystemProperty, null, webRequest, null);
+        System.clearProperty("systemProperty");
 
-		assertEquals("22", value);
-	}
+        assertEquals("22", value);
+    }
 
-	@Test
-	public void resolveContextPath() throws Exception {
-		webRequest.getNativeRequest(MockHttpServletRequest.class).setContextPath("/contextPath");
-		Object value = resolver.resolveArgument(paramContextPath, null, webRequest, null);
+    @Test
+    public void resolveContextPath() throws Exception {
+        webRequest.getNativeRequest(MockHttpServletRequest.class).setContextPath("/contextPath");
+        Object value = resolver.resolveArgument(paramContextPath, null, webRequest, null);
 
-		assertEquals("/contextPath", value);
-	}
+        assertEquals("/contextPath", value);
+    }
 
-	public void params(@Value("#{systemProperties.systemProperty}") int param1,
-			@Value("#{request.contextPath}") String param2, String notSupported) {
-	}
-
+    public void params(
+            @Value("#{systemProperties.systemProperty}") int param1,
+            @Value("#{request.contextPath}") String param2,
+            String notSupported) {}
 }

@@ -28,11 +28,10 @@ import org.springframework.stereotype.Indexed;
 @Indexed
 public interface FooService {
 
-	String foo(int id);
+    String foo(int id);
 
-	@Async
-	Future<String> asyncFoo(int id);
+    @Async
+    Future<String> asyncFoo(int id);
 
-	boolean isInitCalled();
-
+    boolean isInitCalled();
 }

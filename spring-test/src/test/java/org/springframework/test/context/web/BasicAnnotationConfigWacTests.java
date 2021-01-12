@@ -32,32 +32,30 @@ import static org.junit.Assert.*;
 @ContextConfiguration
 public class BasicAnnotationConfigWacTests extends AbstractBasicWacTests {
 
-	@Configuration
-	static class Config {
+    @Configuration
+    static class Config {
 
-		@Bean
-		public String foo() {
-			return "enigma";
-		}
+        @Bean
+        public String foo() {
+            return "enigma";
+        }
 
-		@Bean
-		public ServletContextAwareBean servletContextAwareBean() {
-			return new ServletContextAwareBean();
-		}
-	}
+        @Bean
+        public ServletContextAwareBean servletContextAwareBean() {
+            return new ServletContextAwareBean();
+        }
+    }
 
-	@Autowired
-	protected ServletContextAwareBean servletContextAwareBean;
+    @Autowired protected ServletContextAwareBean servletContextAwareBean;
 
-	@Test
-	public void fooEnigmaAutowired() {
-		assertEquals("enigma", foo);
-	}
+    @Test
+    public void fooEnigmaAutowired() {
+        assertEquals("enigma", foo);
+    }
 
-	@Test
-	public void servletContextAwareBeanProcessed() {
-		assertNotNull(servletContextAwareBean);
-		assertNotNull(servletContextAwareBean.servletContext);
-	}
-
+    @Test
+    public void servletContextAwareBeanProcessed() {
+        assertNotNull(servletContextAwareBean);
+        assertNotNull(servletContextAwareBean.servletContext);
+    }
 }

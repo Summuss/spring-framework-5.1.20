@@ -6,6 +6,6 @@
   - Only applied by WebLogic Server, ignored on other platforms.
   -->
 <rmi name="org.springframework.remoting.rmi.RmiInvocationWrapper">
-	<cluster clusterable="true"/>
-	<method name="getTargetInterfaceName" idempotent="true"/>
+    <cluster clusterable="true"/>
+    <method name="getTargetInterfaceName" idempotent="true"/>
 </rmi>

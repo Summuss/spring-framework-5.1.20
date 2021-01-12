@@ -30,50 +30,51 @@ import org.springframework.cache.Cache;
  */
 class CacheExpressionRootObject {
 
-	private final Collection<? extends Cache> caches;
+    private final Collection<? extends Cache> caches;
 
-	private final Method method;
+    private final Method method;
 
-	private final Object[] args;
+    private final Object[] args;
 
-	private final Object target;
+    private final Object target;
 
-	private final Class<?> targetClass;
+    private final Class<?> targetClass;
 
+    public CacheExpressionRootObject(
+            Collection<? extends Cache> caches,
+            Method method,
+            Object[] args,
+            Object target,
+            Class<?> targetClass) {
 
-	public CacheExpressionRootObject(
-			Collection<? extends Cache> caches, Method method, Object[] args, Object target, Class<?> targetClass) {
+        this.method = method;
+        this.target = target;
+        this.targetClass = targetClass;
+        this.args = args;
+        this.caches = caches;
+    }
 
-		this.method = method;
-		this.target = target;
-		this.targetClass = targetClass;
-		this.args = args;
-		this.caches = caches;
-	}
+    public Collection<? extends Cache> getCaches() {
+        return this.caches;
+    }
 
+    public Method getMethod() {
+        return this.method;
+    }
 
-	public Collection<? extends Cache> getCaches() {
-		return this.caches;
-	}
+    public String getMethodName() {
+        return this.method.getName();
+    }
 
-	public Method getMethod() {
-		return this.method;
-	}
+    public Object[] getArgs() {
+        return this.args;
+    }
 
-	public String getMethodName() {
-		return this.method.getName();
-	}
+    public Object getTarget() {
+        return this.target;
+    }
 
-	public Object[] getArgs() {
-		return this.args;
-	}
-
-	public Object getTarget() {
-		return this.target;
-	}
-
-	public Class<?> getTargetClass() {
-		return this.targetClass;
-	}
-
+    public Class<?> getTargetClass() {
+        return this.targetClass;
+    }
 }

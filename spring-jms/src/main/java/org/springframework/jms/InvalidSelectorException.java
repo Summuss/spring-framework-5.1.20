@@ -26,8 +26,7 @@ package org.springframework.jms;
 @SuppressWarnings("serial")
 public class InvalidSelectorException extends JmsException {
 
-	public InvalidSelectorException(javax.jms.InvalidSelectorException cause) {
-		super(cause);
-	}
-
+    public InvalidSelectorException(javax.jms.InvalidSelectorException cause) {
+        super(cause);
+    }
 }

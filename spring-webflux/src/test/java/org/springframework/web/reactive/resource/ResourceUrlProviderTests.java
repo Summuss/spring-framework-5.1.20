@@ -49,143 +49,139 @@ import static org.springframework.mock.http.server.reactive.test.MockServerHttpR
  */
 public class ResourceUrlProviderTests {
 
-	private static final Duration TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration TIMEOUT = Duration.ofSeconds(5);
 
+    private final List<Resource> locations = new ArrayList<>();
 
-	private final List<Resource> locations = new ArrayList<>();
+    private final ResourceWebHandler handler = new ResourceWebHandler();
 
-	private final ResourceWebHandler handler = new ResourceWebHandler();
+    private final Map<String, ResourceWebHandler> handlerMap = new HashMap<>();
 
-	private final Map<String, ResourceWebHandler> handlerMap = new HashMap<>();
+    private final ResourceUrlProvider urlProvider = new ResourceUrlProvider();
 
-	private final ResourceUrlProvider urlProvider = new ResourceUrlProvider();
+    private final MockServerWebExchange exchange = MockServerWebExchange.from(get("/"));
 
-	private final MockServerWebExchange exchange = MockServerWebExchange.from(get("/"));
+    @Before
+    public void setup() throws Exception {
+        this.locations.add(new ClassPathResource("test/", getClass()));
+        this.locations.add(new ClassPathResource("testalternatepath/", getClass()));
+        this.handler.setLocations(this.locations);
+        this.handler.afterPropertiesSet();
+        this.handlerMap.put("/resources/**", this.handler);
+        this.urlProvider.registerHandlers(this.handlerMap);
+    }
 
+    @Test
+    public void getStaticResourceUrl() {
+        String expected = "/resources/foo.css";
+        String actual = this.urlProvider.getForUriString(expected, this.exchange).block(TIMEOUT);
 
-	@Before
-	public void setup() throws Exception {
-		this.locations.add(new ClassPathResource("test/", getClass()));
-		this.locations.add(new ClassPathResource("testalternatepath/", getClass()));
-		this.handler.setLocations(this.locations);
-		this.handler.afterPropertiesSet();
-		this.handlerMap.put("/resources/**", this.handler);
-		this.urlProvider.registerHandlers(this.handlerMap);
-	}
+        assertEquals(expected, actual);
+    }
 
+    @Test // SPR-13374
+    public void getStaticResourceUrlRequestWithQueryOrHash() {
 
-	@Test
-	public void getStaticResourceUrl() {
-		String expected = "/resources/foo.css";
-		String actual = this.urlProvider.getForUriString(expected, this.exchange).block(TIMEOUT);
+        String url = "/resources/foo.css?foo=bar&url=https://example.org";
+        String resolvedUrl = this.urlProvider.getForUriString(url, this.exchange).block(TIMEOUT);
+        assertEquals(url, resolvedUrl);
 
-		assertEquals(expected, actual);
-	}
+        url = "/resources/foo.css#hash";
+        resolvedUrl = this.urlProvider.getForUriString(url, this.exchange).block(TIMEOUT);
+        assertEquals(url, resolvedUrl);
+    }
 
-	@Test  // SPR-13374
-	public void getStaticResourceUrlRequestWithQueryOrHash() {
+    @Test
+    public void getVersionedResourceUrl() {
+        VersionResourceResolver versionResolver = new VersionResourceResolver();
+        versionResolver.setStrategyMap(
+                Collections.singletonMap("/**", new ContentVersionStrategy()));
+        List<ResourceResolver> resolvers = new ArrayList<>();
+        resolvers.add(versionResolver);
+        resolvers.add(new PathResourceResolver());
+        this.handler.setResourceResolvers(resolvers);
 
-		String url = "/resources/foo.css?foo=bar&url=https://example.org";
-		String resolvedUrl = this.urlProvider.getForUriString(url, this.exchange).block(TIMEOUT);
-		assertEquals(url, resolvedUrl);
+        String path = "/resources/foo.css";
+        String url = this.urlProvider.getForUriString(path, this.exchange).block(TIMEOUT);
 
-		url = "/resources/foo.css#hash";
-		resolvedUrl = this.urlProvider.getForUriString(url, this.exchange).block(TIMEOUT);
-		assertEquals(url, resolvedUrl);
-	}
+        assertEquals("/resources/foo-e36d2e05253c6c7085a91522ce43a0b4.css", url);
+    }
 
-	@Test
-	public void getVersionedResourceUrl() {
-		VersionResourceResolver versionResolver = new VersionResourceResolver();
-		versionResolver.setStrategyMap(Collections.singletonMap("/**", new ContentVersionStrategy()));
-		List<ResourceResolver> resolvers = new ArrayList<>();
-		resolvers.add(versionResolver);
-		resolvers.add(new PathResourceResolver());
-		this.handler.setResourceResolvers(resolvers);
+    @Test // SPR-12647
+    public void bestPatternMatch() {
+        ResourceWebHandler otherHandler = new ResourceWebHandler();
+        otherHandler.setLocations(this.locations);
 
-		String path = "/resources/foo.css";
-		String url = this.urlProvider.getForUriString(path, this.exchange).block(TIMEOUT);
+        VersionResourceResolver versionResolver = new VersionResourceResolver();
+        versionResolver.setStrategyMap(
+                Collections.singletonMap("/**", new ContentVersionStrategy()));
+        List<ResourceResolver> resolvers = new ArrayList<>();
+        resolvers.add(versionResolver);
+        resolvers.add(new PathResourceResolver());
+        otherHandler.setResourceResolvers(resolvers);
 
-		assertEquals("/resources/foo-e36d2e05253c6c7085a91522ce43a0b4.css", url);
-	}
+        this.handlerMap.put("/resources/*.css", otherHandler);
+        this.urlProvider.registerHandlers(this.handlerMap);
 
-	@Test  // SPR-12647
-	public void bestPatternMatch() {
-		ResourceWebHandler otherHandler = new ResourceWebHandler();
-		otherHandler.setLocations(this.locations);
+        String path = "/resources/foo.css";
+        String url = this.urlProvider.getForUriString(path, this.exchange).block(TIMEOUT);
+        assertEquals("/resources/foo-e36d2e05253c6c7085a91522ce43a0b4.css", url);
+    }
 
-		VersionResourceResolver versionResolver = new VersionResourceResolver();
-		versionResolver.setStrategyMap(Collections.singletonMap("/**", new ContentVersionStrategy()));
-		List<ResourceResolver> resolvers = new ArrayList<>();
-		resolvers.add(versionResolver);
-		resolvers.add(new PathResourceResolver());
-		otherHandler.setResourceResolvers(resolvers);
+    @Test // SPR-12592
+    @SuppressWarnings("resource")
+    public void initializeOnce() {
+        AnnotationConfigWebApplicationContext context = new AnnotationConfigWebApplicationContext();
+        context.setServletContext(new MockServletContext());
+        context.register(HandlerMappingConfiguration.class);
+        context.refresh();
 
-		this.handlerMap.put("/resources/*.css", otherHandler);
-		this.urlProvider.registerHandlers(this.handlerMap);
+        assertThat(
+                context.getBean(ResourceUrlProvider.class).getHandlerMap(),
+                Matchers.hasKey(pattern("/resources/**")));
+    }
 
-		String path = "/resources/foo.css";
-		String url = this.urlProvider.getForUriString(path, this.exchange).block(TIMEOUT);
-		assertEquals("/resources/foo-e36d2e05253c6c7085a91522ce43a0b4.css", url);
-	}
+    @Configuration
+    @SuppressWarnings({"unused", "WeakerAccess"})
+    static class HandlerMappingConfiguration {
 
-	@Test  // SPR-12592
-	@SuppressWarnings("resource")
-	public void initializeOnce() {
-		AnnotationConfigWebApplicationContext context = new AnnotationConfigWebApplicationContext();
-		context.setServletContext(new MockServletContext());
-		context.register(HandlerMappingConfiguration.class);
-		context.refresh();
+        @Bean
+        public SimpleUrlHandlerMapping simpleUrlHandlerMapping() {
+            ResourceWebHandler handler = new ResourceWebHandler();
+            HashMap<String, ResourceWebHandler> handlerMap = new HashMap<>();
+            handlerMap.put("/resources/**", handler);
+            SimpleUrlHandlerMapping hm = new SimpleUrlHandlerMapping();
+            hm.setUrlMap(handlerMap);
+            return hm;
+        }
 
-		assertThat(context.getBean(ResourceUrlProvider.class).getHandlerMap(),
-				Matchers.hasKey(pattern("/resources/**")));
-	}
+        @Bean
+        public ResourceUrlProvider resourceUrlProvider() {
+            return new ResourceUrlProvider();
+        }
+    }
 
+    private static PathPatternMatcher pattern(String pattern) {
+        return new PathPatternMatcher(pattern);
+    }
 
-	@Configuration
-	@SuppressWarnings({"unused", "WeakerAccess"})
-	static class HandlerMappingConfiguration {
+    private static class PathPatternMatcher extends BaseMatcher<PathPattern> {
 
-		@Bean
-		public SimpleUrlHandlerMapping simpleUrlHandlerMapping() {
-			ResourceWebHandler handler = new ResourceWebHandler();
-			HashMap<String, ResourceWebHandler> handlerMap = new HashMap<>();
-			handlerMap.put("/resources/**", handler);
-			SimpleUrlHandlerMapping hm = new SimpleUrlHandlerMapping();
-			hm.setUrlMap(handlerMap);
-			return hm;
-		}
+        private final String pattern;
 
-		@Bean
-		public ResourceUrlProvider resourceUrlProvider() {
-			return new ResourceUrlProvider();
-		}
-	}
+        public PathPatternMatcher(String pattern) {
+            this.pattern = pattern;
+        }
 
-	private static PathPatternMatcher pattern(String pattern) {
-		return new PathPatternMatcher(pattern);
-	}
+        @Override
+        public boolean matches(Object item) {
+            if (item != null && item instanceof PathPattern) {
+                return ((PathPattern) item).getPatternString().equals(pattern);
+            }
+            return false;
+        }
 
-	private static class PathPatternMatcher extends BaseMatcher<PathPattern> {
-
-		private final String pattern;
-
-		public PathPatternMatcher(String pattern) {
-			this.pattern = pattern;
-		}
-
-		@Override
-		public boolean matches(Object item) {
-			if (item != null && item instanceof PathPattern) {
-				return ((PathPattern) item).getPatternString().equals(pattern);
-			}
-			return false;
-		}
-
-		@Override
-		public void describeTo(Description description) {
-
-		}
-	}
-
+        @Override
+        public void describeTo(Description description) {}
+    }
 }

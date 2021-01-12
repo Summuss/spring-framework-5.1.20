@@ -28,8 +28,8 @@ import org.springframework.tests.sample.beans.Employee;
 import static org.junit.Assert.*;
 
 /**
- * Integration tests that verify support for configuration classes in
- * the Spring TestContext Framework.
+ * Integration tests that verify support for configuration classes in the Spring TestContext
+ * Framework.
  *
  * <p>Configuration will be loaded from {@link DefaultConfigClassesBaseTests.ContextConfiguration}.
  *
@@ -37,17 +37,16 @@ import static org.junit.Assert.*;
  * @since 3.1
  */
 @RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration(loader = AnnotationConfigContextLoader.class, classes = DefaultConfigClassesBaseTests.ContextConfiguration.class)
+@ContextConfiguration(
+        loader = AnnotationConfigContextLoader.class,
+        classes = DefaultConfigClassesBaseTests.ContextConfiguration.class)
 public class ExplicitConfigClassesBaseTests {
 
-	@Autowired
-	protected Employee employee;
+    @Autowired protected Employee employee;
 
-
-	@Test
-	public void verifyEmployeeSetFromBaseContextConfig() {
-		assertNotNull("The employee should have been autowired.", this.employee);
-		assertEquals("John Smith", this.employee.getName());
-	}
-
+    @Test
+    public void verifyEmployeeSetFromBaseContextConfig() {
+        assertNotNull("The employee should have been autowired.", this.employee);
+        assertEquals("John Smith", this.employee.getName());
+    }
 }

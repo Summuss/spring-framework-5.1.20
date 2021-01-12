@@ -48,8 +48,8 @@ import org.springframework.web.server.session.WebSessionManager;
 /**
  * Default adapter of {@link WebHandler} to the {@link HttpHandler} contract.
  *
- * <p>By default creates and configures a {@link DefaultServerWebExchange} and
- * then invokes the target {@code WebHandler}.
+ * <p>By default creates and configures a {@link DefaultServerWebExchange} and then invokes the
+ * target {@code WebHandler}.
  *
  * @author Rossen Stoyanchev
  * @author Sebastien Deleuze
@@ -57,250 +57,285 @@ import org.springframework.web.server.session.WebSessionManager;
  */
 public class HttpWebHandlerAdapter extends WebHandlerDecorator implements HttpHandler {
 
-	/**
-	 * Dedicated log category for disconnected client exceptions.
-	 * <p>Servlet containers dn't expose a a client disconnected callback, see
-	 * <a href="https://github.com/eclipse-ee4j/servlet-api/issues/44">eclipse-ee4j/servlet-api#44</a>.
-	 * <p>To avoid filling logs with unnecessary stack traces, we make an
-	 * effort to identify such network failures on a per-server basis, and then
-	 * log under a separate log category a simple one-line message at DEBUG level
-	 * or a full stack trace only at TRACE level.
-	 */
-	private static final String DISCONNECTED_CLIENT_LOG_CATEGORY =
-			"org.springframework.web.server.DisconnectedClient";
+    /**
+     * Dedicated log category for disconnected client exceptions.
+     *
+     * <p>Servlet containers dn't expose a a client disconnected callback, see <a
+     * href="https://github.com/eclipse-ee4j/servlet-api/issues/44">eclipse-ee4j/servlet-api#44</a>.
+     *
+     * <p>To avoid filling logs with unnecessary stack traces, we make an effort to identify such
+     * network failures on a per-server basis, and then log under a separate log category a simple
+     * one-line message at DEBUG level or a full stack trace only at TRACE level.
+     */
+    private static final String DISCONNECTED_CLIENT_LOG_CATEGORY =
+            "org.springframework.web.server.DisconnectedClient";
 
-	 // Similar declaration exists in AbstractSockJsSession..
-	private static final Set<String> DISCONNECTED_CLIENT_EXCEPTIONS = new HashSet<>(
-			Arrays.asList("AbortedException", "ClientAbortException", "EOFException", "EofException"));
+    // Similar declaration exists in AbstractSockJsSession..
+    private static final Set<String> DISCONNECTED_CLIENT_EXCEPTIONS =
+            new HashSet<>(
+                    Arrays.asList(
+                            "AbortedException",
+                            "ClientAbortException",
+                            "EOFException",
+                            "EofException"));
 
+    private static final Log logger = LogFactory.getLog(HttpWebHandlerAdapter.class);
 
-	private static final Log logger = LogFactory.getLog(HttpWebHandlerAdapter.class);
+    private static final Log lostClientLogger = LogFactory.getLog(DISCONNECTED_CLIENT_LOG_CATEGORY);
 
-	private static final Log lostClientLogger = LogFactory.getLog(DISCONNECTED_CLIENT_LOG_CATEGORY);
+    private WebSessionManager sessionManager = new DefaultWebSessionManager();
 
+    private ServerCodecConfigurer codecConfigurer = ServerCodecConfigurer.create();
 
-	private WebSessionManager sessionManager = new DefaultWebSessionManager();
+    private LocaleContextResolver localeContextResolver = new AcceptHeaderLocaleContextResolver();
 
-	private ServerCodecConfigurer codecConfigurer = ServerCodecConfigurer.create();
+    @Nullable private ForwardedHeaderTransformer forwardedHeaderTransformer;
 
-	private LocaleContextResolver localeContextResolver = new AcceptHeaderLocaleContextResolver();
+    @Nullable private ApplicationContext applicationContext;
 
-	@Nullable
-	private ForwardedHeaderTransformer forwardedHeaderTransformer;
+    /** Whether to log potentially sensitive info (form data at DEBUG, headers at TRACE). */
+    private boolean enableLoggingRequestDetails = false;
 
-	@Nullable
-	private ApplicationContext applicationContext;
+    public HttpWebHandlerAdapter(WebHandler delegate) {
+        super(delegate);
+    }
 
-	/** Whether to log potentially sensitive info (form data at DEBUG, headers at TRACE). */
-	private boolean enableLoggingRequestDetails = false;
+    /**
+     * Configure a custom {@link WebSessionManager} to use for managing web sessions. The provided
+     * instance is set on each created {@link DefaultServerWebExchange}.
+     *
+     * <p>By default this is set to {@link DefaultWebSessionManager}.
+     *
+     * @param sessionManager the session manager to use
+     */
+    public void setSessionManager(WebSessionManager sessionManager) {
+        Assert.notNull(sessionManager, "WebSessionManager must not be null");
+        this.sessionManager = sessionManager;
+    }
 
+    /** Return the configured {@link WebSessionManager}. */
+    public WebSessionManager getSessionManager() {
+        return this.sessionManager;
+    }
 
-	public HttpWebHandlerAdapter(WebHandler delegate) {
-		super(delegate);
-	}
+    /**
+     * Configure a custom {@link ServerCodecConfigurer}. The provided instance is set on each
+     * created {@link DefaultServerWebExchange}.
+     *
+     * <p>By default this is set to {@link ServerCodecConfigurer#create()}.
+     *
+     * @param codecConfigurer the codec configurer to use
+     */
+    public void setCodecConfigurer(ServerCodecConfigurer codecConfigurer) {
+        Assert.notNull(codecConfigurer, "ServerCodecConfigurer is required");
+        this.codecConfigurer = codecConfigurer;
 
+        this.enableLoggingRequestDetails = false;
+        this.codecConfigurer.getReaders().stream()
+                .filter(LoggingCodecSupport.class::isInstance)
+                .forEach(
+                        reader -> {
+                            if (((LoggingCodecSupport) reader).isEnableLoggingRequestDetails()) {
+                                this.enableLoggingRequestDetails = true;
+                            }
+                        });
+    }
 
-	/**
-	 * Configure a custom {@link WebSessionManager} to use for managing web
-	 * sessions. The provided instance is set on each created
-	 * {@link DefaultServerWebExchange}.
-	 * <p>By default this is set to {@link DefaultWebSessionManager}.
-	 * @param sessionManager the session manager to use
-	 */
-	public void setSessionManager(WebSessionManager sessionManager) {
-		Assert.notNull(sessionManager, "WebSessionManager must not be null");
-		this.sessionManager = sessionManager;
-	}
+    /** Return the configured {@link ServerCodecConfigurer}. */
+    public ServerCodecConfigurer getCodecConfigurer() {
+        return this.codecConfigurer;
+    }
 
-	/**
-	 * Return the configured {@link WebSessionManager}.
-	 */
-	public WebSessionManager getSessionManager() {
-		return this.sessionManager;
-	}
+    /**
+     * Configure a custom {@link LocaleContextResolver}. The provided instance is set on each
+     * created {@link DefaultServerWebExchange}.
+     *
+     * <p>By default this is set to {@link
+     * org.springframework.web.server.i18n.AcceptHeaderLocaleContextResolver}.
+     *
+     * @param resolver the locale context resolver to use
+     */
+    public void setLocaleContextResolver(LocaleContextResolver resolver) {
+        Assert.notNull(resolver, "LocaleContextResolver is required");
+        this.localeContextResolver = resolver;
+    }
 
-	/**
-	 * Configure a custom {@link ServerCodecConfigurer}. The provided instance is set on
-	 * each created {@link DefaultServerWebExchange}.
-	 * <p>By default this is set to {@link ServerCodecConfigurer#create()}.
-	 * @param codecConfigurer the codec configurer to use
-	 */
-	public void setCodecConfigurer(ServerCodecConfigurer codecConfigurer) {
-		Assert.notNull(codecConfigurer, "ServerCodecConfigurer is required");
-		this.codecConfigurer = codecConfigurer;
+    /** Return the configured {@link LocaleContextResolver}. */
+    public LocaleContextResolver getLocaleContextResolver() {
+        return this.localeContextResolver;
+    }
 
-		this.enableLoggingRequestDetails = false;
-		this.codecConfigurer.getReaders().stream()
-				.filter(LoggingCodecSupport.class::isInstance)
-				.forEach(reader -> {
-					if (((LoggingCodecSupport) reader).isEnableLoggingRequestDetails()) {
-						this.enableLoggingRequestDetails = true;
-					}
-				});
-	}
+    /**
+     * Enable processing of forwarded headers, either extracting and removing, or remove only.
+     *
+     * <p>By default this is not set.
+     *
+     * @param transformer the transformer to use
+     * @since 5.1
+     */
+    public void setForwardedHeaderTransformer(ForwardedHeaderTransformer transformer) {
+        Assert.notNull(transformer, "ForwardedHeaderTransformer is required");
+        this.forwardedHeaderTransformer = transformer;
+    }
 
-	/**
-	 * Return the configured {@link ServerCodecConfigurer}.
-	 */
-	public ServerCodecConfigurer getCodecConfigurer() {
-		return this.codecConfigurer;
-	}
+    /**
+     * Return the configured {@link ForwardedHeaderTransformer}.
+     *
+     * @since 5.1
+     */
+    @Nullable
+    public ForwardedHeaderTransformer getForwardedHeaderTransformer() {
+        return this.forwardedHeaderTransformer;
+    }
 
-	/**
-	 * Configure a custom {@link LocaleContextResolver}. The provided instance is set on
-	 * each created {@link DefaultServerWebExchange}.
-	 * <p>By default this is set to
-	 * {@link org.springframework.web.server.i18n.AcceptHeaderLocaleContextResolver}.
-	 * @param resolver the locale context resolver to use
-	 */
-	public void setLocaleContextResolver(LocaleContextResolver resolver) {
-		Assert.notNull(resolver, "LocaleContextResolver is required");
-		this.localeContextResolver = resolver;
-	}
+    /**
+     * Configure the {@code ApplicationContext} associated with the web application, if it was
+     * initialized with one via {@link
+     * org.springframework.web.server.adapter.WebHttpHandlerBuilder#applicationContext(ApplicationContext)}.
+     *
+     * @param applicationContext the context
+     * @since 5.0.3
+     */
+    public void setApplicationContext(ApplicationContext applicationContext) {
+        this.applicationContext = applicationContext;
+    }
 
-	/**
-	 * Return the configured {@link LocaleContextResolver}.
-	 */
-	public LocaleContextResolver getLocaleContextResolver() {
-		return this.localeContextResolver;
-	}
+    /**
+     * Return the configured {@code ApplicationContext}, if any.
+     *
+     * @since 5.0.3
+     */
+    @Nullable
+    public ApplicationContext getApplicationContext() {
+        return this.applicationContext;
+    }
 
-	/**
-	 * Enable processing of forwarded headers, either extracting and removing,
-	 * or remove only.
-	 * <p>By default this is not set.
-	 * @param transformer the transformer to use
-	 * @since 5.1
-	 */
-	public void setForwardedHeaderTransformer(ForwardedHeaderTransformer transformer) {
-		Assert.notNull(transformer, "ForwardedHeaderTransformer is required");
-		this.forwardedHeaderTransformer = transformer;
-	}
+    /**
+     * This method must be invoked after all properties have been set to complete initialization.
+     */
+    public void afterPropertiesSet() {
+        if (logger.isDebugEnabled()) {
+            String value =
+                    this.enableLoggingRequestDetails
+                            ? "shown which may lead to unsafe logging of potentially sensitive data"
+                            : "masked to prevent unsafe logging of potentially sensitive data";
+            logger.debug(
+                    "enableLoggingRequestDetails='"
+                            + this.enableLoggingRequestDetails
+                            + "': form data and headers will be "
+                            + value);
+        }
+    }
 
-	/**
-	 * Return the configured {@link ForwardedHeaderTransformer}.
-	 * @since 5.1
-	 */
-	@Nullable
-	public ForwardedHeaderTransformer getForwardedHeaderTransformer() {
-		return this.forwardedHeaderTransformer;
-	}
+    @Override
+    public Mono<Void> handle(ServerHttpRequest request, ServerHttpResponse response) {
+        if (this.forwardedHeaderTransformer != null) {
+            request = this.forwardedHeaderTransformer.apply(request);
+        }
+        ServerWebExchange exchange = createExchange(request, response);
 
-	/**
-	 * Configure the {@code ApplicationContext} associated with the web application,
-	 * if it was initialized with one via
-	 * {@link org.springframework.web.server.adapter.WebHttpHandlerBuilder#applicationContext(ApplicationContext)}.
-	 * @param applicationContext the context
-	 * @since 5.0.3
-	 */
-	public void setApplicationContext(ApplicationContext applicationContext) {
-		this.applicationContext = applicationContext;
-	}
+        LogFormatUtils.traceDebug(
+                logger,
+                traceOn ->
+                        exchange.getLogPrefix()
+                                + formatRequest(exchange.getRequest())
+                                + (traceOn
+                                        ? ", headers="
+                                                + formatHeaders(exchange.getRequest().getHeaders())
+                                        : ""));
 
-	/**
-	 * Return the configured {@code ApplicationContext}, if any.
-	 * @since 5.0.3
-	 */
-	@Nullable
-	public ApplicationContext getApplicationContext() {
-		return this.applicationContext;
-	}
+        return getDelegate()
+                .handle(exchange)
+                .doOnSuccess(aVoid -> logResponse(exchange))
+                .onErrorResume(ex -> handleUnresolvedError(exchange, ex))
+                .then(Mono.defer(response::setComplete));
+    }
 
-	/**
-	 * This method must be invoked after all properties have been set to
-	 * complete initialization.
-	 */
-	public void afterPropertiesSet() {
-		if (logger.isDebugEnabled()) {
-			String value = this.enableLoggingRequestDetails ?
-					"shown which may lead to unsafe logging of potentially sensitive data" :
-					"masked to prevent unsafe logging of potentially sensitive data";
-			logger.debug("enableLoggingRequestDetails='" + this.enableLoggingRequestDetails +
-					"': form data and headers will be " + value);
-		}
-	}
+    protected ServerWebExchange createExchange(
+            ServerHttpRequest request, ServerHttpResponse response) {
+        return new DefaultServerWebExchange(
+                request,
+                response,
+                this.sessionManager,
+                getCodecConfigurer(),
+                getLocaleContextResolver(),
+                this.applicationContext);
+    }
 
+    private String formatRequest(ServerHttpRequest request) {
+        String rawQuery = request.getURI().getRawQuery();
+        String query = StringUtils.hasText(rawQuery) ? "?" + rawQuery : "";
+        return "HTTP " + request.getMethod() + " \"" + request.getPath() + query + "\"";
+    }
 
-	@Override
-	public Mono<Void> handle(ServerHttpRequest request, ServerHttpResponse response) {
-		if (this.forwardedHeaderTransformer != null) {
-			request = this.forwardedHeaderTransformer.apply(request);
-		}
-		ServerWebExchange exchange = createExchange(request, response);
+    private void logResponse(ServerWebExchange exchange) {
+        LogFormatUtils.traceDebug(
+                logger,
+                traceOn -> {
+                    HttpStatus status = exchange.getResponse().getStatusCode();
+                    return exchange.getLogPrefix()
+                            + "Completed "
+                            + (status != null ? status : "200 OK")
+                            + (traceOn
+                                    ? ", headers="
+                                            + formatHeaders(exchange.getResponse().getHeaders())
+                                    : "");
+                });
+    }
 
-		LogFormatUtils.traceDebug(logger, traceOn ->
-				exchange.getLogPrefix() + formatRequest(exchange.getRequest()) +
-						(traceOn ? ", headers=" + formatHeaders(exchange.getRequest().getHeaders()) : ""));
+    private String formatHeaders(HttpHeaders responseHeaders) {
+        return this.enableLoggingRequestDetails
+                ? responseHeaders.toString()
+                : responseHeaders.isEmpty() ? "{}" : "{masked}";
+    }
 
-		return getDelegate().handle(exchange)
-				.doOnSuccess(aVoid -> logResponse(exchange))
-				.onErrorResume(ex -> handleUnresolvedError(exchange, ex))
-				.then(Mono.defer(response::setComplete));
-	}
+    private Mono<Void> handleUnresolvedError(ServerWebExchange exchange, Throwable ex) {
+        ServerHttpRequest request = exchange.getRequest();
+        ServerHttpResponse response = exchange.getResponse();
+        String logPrefix = exchange.getLogPrefix();
 
-	protected ServerWebExchange createExchange(ServerHttpRequest request, ServerHttpResponse response) {
-		return new DefaultServerWebExchange(request, response, this.sessionManager,
-				getCodecConfigurer(), getLocaleContextResolver(), this.applicationContext);
-	}
+        // Sometimes a remote call error can look like a disconnected client.
+        // Try to set the response first before the "isDisconnectedClient" check.
 
-	private String formatRequest(ServerHttpRequest request) {
-		String rawQuery = request.getURI().getRawQuery();
-		String query = StringUtils.hasText(rawQuery) ? "?" + rawQuery : "";
-		return "HTTP " + request.getMethod() + " \"" + request.getPath() + query + "\"";
-	}
+        if (response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR)) {
+            logger.error(logPrefix + "500 Server Error for " + formatRequest(request), ex);
+            return Mono.empty();
+        } else if (isDisconnectedClientError(ex)) {
+            if (lostClientLogger.isTraceEnabled()) {
+                lostClientLogger.trace(logPrefix + "Client went away", ex);
+            } else if (lostClientLogger.isDebugEnabled()) {
+                lostClientLogger.debug(
+                        logPrefix
+                                + "Client went away: "
+                                + ex
+                                + " (stacktrace at TRACE level for '"
+                                + DISCONNECTED_CLIENT_LOG_CATEGORY
+                                + "')");
+            }
+            return Mono.empty();
+        } else {
+            // After the response is committed, propagate errors to the server...
+            logger.error(
+                    logPrefix
+                            + "Error ["
+                            + ex
+                            + "] for "
+                            + formatRequest(request)
+                            + ", but ServerHttpResponse already committed ("
+                            + response.getStatusCode()
+                            + ")");
+            return Mono.error(ex);
+        }
+    }
 
-	private void logResponse(ServerWebExchange exchange) {
-		LogFormatUtils.traceDebug(logger, traceOn -> {
-			HttpStatus status = exchange.getResponse().getStatusCode();
-			return exchange.getLogPrefix() + "Completed " + (status != null ? status : "200 OK") +
-					(traceOn ? ", headers=" + formatHeaders(exchange.getResponse().getHeaders()) : "");
-		});
-	}
-
-	private String formatHeaders(HttpHeaders responseHeaders) {
-		return this.enableLoggingRequestDetails ?
-				responseHeaders.toString() : responseHeaders.isEmpty() ? "{}" : "{masked}";
-	}
-
-	private Mono<Void> handleUnresolvedError(ServerWebExchange exchange, Throwable ex) {
-		ServerHttpRequest request = exchange.getRequest();
-		ServerHttpResponse response = exchange.getResponse();
-		String logPrefix = exchange.getLogPrefix();
-
-		// Sometimes a remote call error can look like a disconnected client.
-		// Try to set the response first before the "isDisconnectedClient" check.
-
-		if (response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR)) {
-			logger.error(logPrefix + "500 Server Error for " + formatRequest(request), ex);
-			return Mono.empty();
-		}
-		else if (isDisconnectedClientError(ex)) {
-			if (lostClientLogger.isTraceEnabled()) {
-				lostClientLogger.trace(logPrefix + "Client went away", ex);
-			}
-			else if (lostClientLogger.isDebugEnabled()) {
-				lostClientLogger.debug(logPrefix + "Client went away: " + ex +
-						" (stacktrace at TRACE level for '" + DISCONNECTED_CLIENT_LOG_CATEGORY + "')");
-			}
-			return Mono.empty();
-		}
-		else {
-			// After the response is committed, propagate errors to the server...
-			logger.error(logPrefix + "Error [" + ex + "] for " + formatRequest(request) +
-					", but ServerHttpResponse already committed (" + response.getStatusCode() + ")");
-			return Mono.error(ex);
-		}
-	}
-
-	private boolean isDisconnectedClientError(Throwable ex) {
-		String message = NestedExceptionUtils.getMostSpecificCause(ex).getMessage();
-		if (message != null) {
-			String text = message.toLowerCase();
-			if (text.contains("broken pipe") || text.contains("connection reset by peer")) {
-				return true;
-			}
-		}
-		return DISCONNECTED_CLIENT_EXCEPTIONS.contains(ex.getClass().getSimpleName());
-	}
-
+    private boolean isDisconnectedClientError(Throwable ex) {
+        String message = NestedExceptionUtils.getMostSpecificCause(ex).getMessage();
+        if (message != null) {
+            String text = message.toLowerCase();
+            if (text.contains("broken pipe") || text.contains("connection reset by peer")) {
+                return true;
+            }
+        }
+        return DISCONNECTED_CLIENT_EXCEPTIONS.contains(ex.getClass().getSimpleName());
+    }
 }

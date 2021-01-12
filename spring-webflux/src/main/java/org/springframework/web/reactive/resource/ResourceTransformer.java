@@ -30,14 +30,16 @@ import org.springframework.web.server.ServerWebExchange;
 @FunctionalInterface
 public interface ResourceTransformer {
 
-	/**
-	 * Transform the given resource.
-	 * @param exchange the current exchange
-	 * @param resource the resource to transform
-	 * @param transformerChain the chain of remaining transformers to delegate to
-	 * @return the transformed resource (never empty)
-	 */
-	Mono<Resource> transform(ServerWebExchange exchange, Resource resource,
-			ResourceTransformerChain transformerChain);
-
+    /**
+     * Transform the given resource.
+     *
+     * @param exchange the current exchange
+     * @param resource the resource to transform
+     * @param transformerChain the chain of remaining transformers to delegate to
+     * @return the transformed resource (never empty)
+     */
+    Mono<Resource> transform(
+            ServerWebExchange exchange,
+            Resource resource,
+            ResourceTransformerChain transformerChain);
 }

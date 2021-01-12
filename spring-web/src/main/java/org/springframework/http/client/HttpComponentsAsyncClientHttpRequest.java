@@ -37,10 +37,8 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
 import org.springframework.util.concurrent.ListenableFutureCallbackRegistry;
 import org.springframework.util.concurrent.SuccessCallback;
 
-
 /**
- * {@link ClientHttpRequest} implementation based on
- * Apache HttpComponents HttpAsyncClient.
+ * {@link ClientHttpRequest} implementation based on Apache HttpComponents HttpAsyncClient.
  *
  * <p>Created via the {@link HttpComponentsClientHttpRequestFactory}.
  *
@@ -53,119 +51,120 @@ import org.springframework.util.concurrent.SuccessCallback;
 @Deprecated
 final class HttpComponentsAsyncClientHttpRequest extends AbstractBufferingAsyncClientHttpRequest {
 
-	private final HttpAsyncClient httpClient;
+    private final HttpAsyncClient httpClient;
 
-	private final HttpUriRequest httpRequest;
+    private final HttpUriRequest httpRequest;
 
-	private final HttpContext httpContext;
+    private final HttpContext httpContext;
 
+    HttpComponentsAsyncClientHttpRequest(
+            HttpAsyncClient client, HttpUriRequest request, HttpContext context) {
+        this.httpClient = client;
+        this.httpRequest = request;
+        this.httpContext = context;
+    }
 
-	HttpComponentsAsyncClientHttpRequest(HttpAsyncClient client, HttpUriRequest request, HttpContext context) {
-		this.httpClient = client;
-		this.httpRequest = request;
-		this.httpContext = context;
-	}
+    @Override
+    public String getMethodValue() {
+        return this.httpRequest.getMethod();
+    }
 
+    @Override
+    public URI getURI() {
+        return this.httpRequest.getURI();
+    }
 
-	@Override
-	public String getMethodValue() {
-		return this.httpRequest.getMethod();
-	}
+    HttpContext getHttpContext() {
+        return this.httpContext;
+    }
 
-	@Override
-	public URI getURI() {
-		return this.httpRequest.getURI();
-	}
+    @Override
+    protected ListenableFuture<ClientHttpResponse> executeInternal(
+            HttpHeaders headers, byte[] bufferedOutput) throws IOException {
 
-	HttpContext getHttpContext() {
-		return this.httpContext;
-	}
+        HttpComponentsClientHttpRequest.addHeaders(this.httpRequest, headers);
 
-	@Override
-	protected ListenableFuture<ClientHttpResponse> executeInternal(HttpHeaders headers, byte[] bufferedOutput)
-			throws IOException {
+        if (this.httpRequest instanceof HttpEntityEnclosingRequest) {
+            HttpEntityEnclosingRequest entityEnclosingRequest =
+                    (HttpEntityEnclosingRequest) this.httpRequest;
+            HttpEntity requestEntity = new NByteArrayEntity(bufferedOutput);
+            entityEnclosingRequest.setEntity(requestEntity);
+        }
 
-		HttpComponentsClientHttpRequest.addHeaders(this.httpRequest, headers);
+        HttpResponseFutureCallback callback = new HttpResponseFutureCallback(this.httpRequest);
+        Future<HttpResponse> futureResponse =
+                this.httpClient.execute(this.httpRequest, this.httpContext, callback);
+        return new ClientHttpResponseFuture(futureResponse, callback);
+    }
 
-		if (this.httpRequest instanceof HttpEntityEnclosingRequest) {
-			HttpEntityEnclosingRequest entityEnclosingRequest = (HttpEntityEnclosingRequest) this.httpRequest;
-			HttpEntity requestEntity = new NByteArrayEntity(bufferedOutput);
-			entityEnclosingRequest.setEntity(requestEntity);
-		}
+    private static class HttpResponseFutureCallback implements FutureCallback<HttpResponse> {
 
-		HttpResponseFutureCallback callback = new HttpResponseFutureCallback(this.httpRequest);
-		Future<HttpResponse> futureResponse = this.httpClient.execute(this.httpRequest, this.httpContext, callback);
-		return new ClientHttpResponseFuture(futureResponse, callback);
-	}
+        private final HttpUriRequest request;
 
+        private final ListenableFutureCallbackRegistry<ClientHttpResponse> callbacks =
+                new ListenableFutureCallbackRegistry<>();
 
-	private static class HttpResponseFutureCallback implements FutureCallback<HttpResponse> {
+        public HttpResponseFutureCallback(HttpUriRequest request) {
+            this.request = request;
+        }
 
-		private final HttpUriRequest request;
+        public void addCallback(ListenableFutureCallback<? super ClientHttpResponse> callback) {
+            this.callbacks.addCallback(callback);
+        }
 
-		private final ListenableFutureCallbackRegistry<ClientHttpResponse> callbacks =
-				new ListenableFutureCallbackRegistry<>();
+        public void addSuccessCallback(SuccessCallback<? super ClientHttpResponse> callback) {
+            this.callbacks.addSuccessCallback(callback);
+        }
 
-		public HttpResponseFutureCallback(HttpUriRequest request) {
-			this.request = request;
-		}
+        public void addFailureCallback(FailureCallback callback) {
+            this.callbacks.addFailureCallback(callback);
+        }
 
-		public void addCallback(ListenableFutureCallback<? super ClientHttpResponse> callback) {
-			this.callbacks.addCallback(callback);
-		}
+        @Override
+        public void completed(HttpResponse result) {
+            this.callbacks.success(new HttpComponentsAsyncClientHttpResponse(result));
+        }
 
-		public void addSuccessCallback(SuccessCallback<? super ClientHttpResponse> callback) {
-			this.callbacks.addSuccessCallback(callback);
-		}
+        @Override
+        public void failed(Exception ex) {
+            this.callbacks.failure(ex);
+        }
 
-		public void addFailureCallback(FailureCallback callback) {
-			this.callbacks.addFailureCallback(callback);
-		}
+        @Override
+        public void cancelled() {
+            this.request.abort();
+        }
+    }
 
-		@Override
-		public void completed(HttpResponse result) {
-			this.callbacks.success(new HttpComponentsAsyncClientHttpResponse(result));
-		}
+    private static class ClientHttpResponseFuture
+            extends FutureAdapter<ClientHttpResponse, HttpResponse>
+            implements ListenableFuture<ClientHttpResponse> {
 
-		@Override
-		public void failed(Exception ex) {
-			this.callbacks.failure(ex);
-		}
+        private final HttpResponseFutureCallback callback;
 
-		@Override
-		public void cancelled() {
-			this.request.abort();
-		}
-	}
+        public ClientHttpResponseFuture(
+                Future<HttpResponse> response, HttpResponseFutureCallback callback) {
+            super(response);
+            this.callback = callback;
+        }
 
+        @Override
+        protected ClientHttpResponse adapt(HttpResponse response) {
+            return new HttpComponentsAsyncClientHttpResponse(response);
+        }
 
-	private static class ClientHttpResponseFuture extends FutureAdapter<ClientHttpResponse, HttpResponse>
-			implements ListenableFuture<ClientHttpResponse> {
+        @Override
+        public void addCallback(ListenableFutureCallback<? super ClientHttpResponse> callback) {
+            this.callback.addCallback(callback);
+        }
 
-		private final HttpResponseFutureCallback callback;
+        @Override
+        public void addCallback(
+                SuccessCallback<? super ClientHttpResponse> successCallback,
+                FailureCallback failureCallback) {
 
-		public ClientHttpResponseFuture(Future<HttpResponse> response, HttpResponseFutureCallback callback) {
-			super(response);
-			this.callback = callback;
-		}
-
-		@Override
-		protected ClientHttpResponse adapt(HttpResponse response) {
-			return new HttpComponentsAsyncClientHttpResponse(response);
-		}
-
-		@Override
-		public void addCallback(ListenableFutureCallback<? super ClientHttpResponse> callback) {
-			this.callback.addCallback(callback);
-		}
-
-		@Override
-		public void addCallback(SuccessCallback<? super ClientHttpResponse> successCallback,
-				FailureCallback failureCallback) {
-
-			this.callback.addSuccessCallback(successCallback);
-			this.callback.addFailureCallback(failureCallback);
-		}
-	}
-
+            this.callback.addSuccessCallback(successCallback);
+            this.callback.addFailureCallback(failureCallback);
+        }
+    }
 }

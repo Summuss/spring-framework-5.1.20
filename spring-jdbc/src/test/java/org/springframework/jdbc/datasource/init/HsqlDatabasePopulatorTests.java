@@ -24,8 +24,7 @@ import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
  */
 public class HsqlDatabasePopulatorTests extends AbstractDatabasePopulatorTests {
 
-	protected EmbeddedDatabaseType getEmbeddedDatabaseType() {
-		return EmbeddedDatabaseType.HSQL;
-	}
-
+    protected EmbeddedDatabaseType getEmbeddedDatabaseType() {
+        return EmbeddedDatabaseType.HSQL;
+    }
 }

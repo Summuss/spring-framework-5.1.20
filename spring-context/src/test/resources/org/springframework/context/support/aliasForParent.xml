@@ -3,6 +3,6 @@
 
 <beans>
 
-	<alias name="someMessageSource" alias="myMessageSource"/>
+    <alias name="someMessageSource" alias="myMessageSource"/>
 
 </beans>

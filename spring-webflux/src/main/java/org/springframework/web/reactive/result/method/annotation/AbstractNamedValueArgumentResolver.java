@@ -39,268 +39,294 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.ServerWebInputException;
 
 /**
- * Abstract base class for resolving method arguments from a named value.
- * Request parameters, request headers, and path variables are examples of named
- * values. Each may have a name, a required flag, and a default value.
+ * Abstract base class for resolving method arguments from a named value. Request parameters,
+ * request headers, and path variables are examples of named values. Each may have a name, a
+ * required flag, and a default value.
  *
  * <p>Subclasses define how to do the following:
+ *
  * <ul>
- * <li>Obtain named value information for a method parameter
- * <li>Resolve names into argument values
- * <li>Handle missing argument values when argument values are required
- * <li>Optionally handle a resolved value
+ *   <li>Obtain named value information for a method parameter
+ *   <li>Resolve names into argument values
+ *   <li>Handle missing argument values when argument values are required
+ *   <li>Optionally handle a resolved value
  * </ul>
  *
- * <p>A default value string can contain ${...} placeholders and Spring Expression
- * Language #{...} expressions. For this to work a
- * {@link ConfigurableBeanFactory} must be supplied to the class constructor.
+ * <p>A default value string can contain ${...} placeholders and Spring Expression Language #{...}
+ * expressions. For this to work a {@link ConfigurableBeanFactory} must be supplied to the class
+ * constructor.
  *
  * @author Rossen Stoyanchev
  * @since 5.0
  */
-public abstract class AbstractNamedValueArgumentResolver extends HandlerMethodArgumentResolverSupport {
+public abstract class AbstractNamedValueArgumentResolver
+        extends HandlerMethodArgumentResolverSupport {
 
-	@Nullable
-	private final ConfigurableBeanFactory configurableBeanFactory;
+    @Nullable private final ConfigurableBeanFactory configurableBeanFactory;
 
-	@Nullable
-	private final BeanExpressionContext expressionContext;
+    @Nullable private final BeanExpressionContext expressionContext;
 
-	private final Map<MethodParameter, NamedValueInfo> namedValueInfoCache = new ConcurrentHashMap<>(256);
+    private final Map<MethodParameter, NamedValueInfo> namedValueInfoCache =
+            new ConcurrentHashMap<>(256);
 
+    /**
+     * Create a new {@link AbstractNamedValueArgumentResolver} instance.
+     *
+     * @param factory a bean factory to use for resolving {@code ${...}} placeholder and {@code
+     *     #{...}} SpEL expressions in default values, or {@code null} if default values are not
+     *     expected to contain expressions
+     * @param registry for checking reactive type wrappers
+     */
+    public AbstractNamedValueArgumentResolver(
+            @Nullable ConfigurableBeanFactory factory, ReactiveAdapterRegistry registry) {
 
-	/**
-	 * Create a new {@link AbstractNamedValueArgumentResolver} instance.
-	 * @param factory a bean factory to use for resolving {@code ${...}} placeholder
-	 * and {@code #{...}} SpEL expressions in default values, or {@code null} if default
-	 * values are not expected to contain expressions
-	 * @param registry for checking reactive type wrappers
-	 */
-	public AbstractNamedValueArgumentResolver(@Nullable ConfigurableBeanFactory factory,
-			ReactiveAdapterRegistry registry) {
+        super(registry);
+        this.configurableBeanFactory = factory;
+        this.expressionContext =
+                (factory != null ? new BeanExpressionContext(factory, null) : null);
+    }
 
-		super(registry);
-		this.configurableBeanFactory = factory;
-		this.expressionContext = (factory != null ? new BeanExpressionContext(factory, null) : null);
-	}
+    @Override
+    public Mono<Object> resolveArgument(
+            MethodParameter parameter, BindingContext bindingContext, ServerWebExchange exchange) {
 
+        NamedValueInfo namedValueInfo = getNamedValueInfo(parameter);
+        MethodParameter nestedParameter = parameter.nestedIfOptional();
 
-	@Override
-	public Mono<Object> resolveArgument(
-			MethodParameter parameter, BindingContext bindingContext, ServerWebExchange exchange) {
+        Object resolvedName = resolveStringValue(namedValueInfo.name);
+        if (resolvedName == null) {
+            return Mono.error(
+                    new IllegalArgumentException(
+                            "Specified name must not resolve to null: ["
+                                    + namedValueInfo.name
+                                    + "]"));
+        }
 
-		NamedValueInfo namedValueInfo = getNamedValueInfo(parameter);
-		MethodParameter nestedParameter = parameter.nestedIfOptional();
+        Model model = bindingContext.getModel();
 
-		Object resolvedName = resolveStringValue(namedValueInfo.name);
-		if (resolvedName == null) {
-			return Mono.error(new IllegalArgumentException(
-					"Specified name must not resolve to null: [" + namedValueInfo.name + "]"));
-		}
+        return resolveName(resolvedName.toString(), nestedParameter, exchange)
+                .flatMap(
+                        arg -> {
+                            if ("".equals(arg) && namedValueInfo.defaultValue != null) {
+                                arg = resolveStringValue(namedValueInfo.defaultValue);
+                            }
+                            arg =
+                                    applyConversion(
+                                            arg,
+                                            namedValueInfo,
+                                            parameter,
+                                            bindingContext,
+                                            exchange);
+                            handleResolvedValue(
+                                    arg, namedValueInfo.name, parameter, model, exchange);
+                            return Mono.justOrEmpty(arg);
+                        })
+                .switchIfEmpty(
+                        getDefaultValue(
+                                namedValueInfo, parameter, bindingContext, model, exchange));
+    }
 
-		Model model = bindingContext.getModel();
+    /** Obtain the named value for the given method parameter. */
+    private NamedValueInfo getNamedValueInfo(MethodParameter parameter) {
+        NamedValueInfo namedValueInfo = this.namedValueInfoCache.get(parameter);
+        if (namedValueInfo == null) {
+            namedValueInfo = createNamedValueInfo(parameter);
+            namedValueInfo = updateNamedValueInfo(parameter, namedValueInfo);
+            this.namedValueInfoCache.put(parameter, namedValueInfo);
+        }
+        return namedValueInfo;
+    }
 
-		return resolveName(resolvedName.toString(), nestedParameter, exchange)
-				.flatMap(arg -> {
-					if ("".equals(arg) && namedValueInfo.defaultValue != null) {
-						arg = resolveStringValue(namedValueInfo.defaultValue);
-					}
-					arg = applyConversion(arg, namedValueInfo, parameter, bindingContext, exchange);
-					handleResolvedValue(arg, namedValueInfo.name, parameter, model, exchange);
-					return Mono.justOrEmpty(arg);
-				})
-				.switchIfEmpty(getDefaultValue(
-						namedValueInfo, parameter, bindingContext, model, exchange));
-	}
+    /**
+     * Create the {@link NamedValueInfo} object for the given method parameter. Implementations
+     * typically retrieve the method annotation by means of {@link
+     * MethodParameter#getParameterAnnotation(Class)}.
+     *
+     * @param parameter the method parameter
+     * @return the named value information
+     */
+    protected abstract NamedValueInfo createNamedValueInfo(MethodParameter parameter);
 
-	/**
-	 * Obtain the named value for the given method parameter.
-	 */
-	private NamedValueInfo getNamedValueInfo(MethodParameter parameter) {
-		NamedValueInfo namedValueInfo = this.namedValueInfoCache.get(parameter);
-		if (namedValueInfo == null) {
-			namedValueInfo = createNamedValueInfo(parameter);
-			namedValueInfo = updateNamedValueInfo(parameter, namedValueInfo);
-			this.namedValueInfoCache.put(parameter, namedValueInfo);
-		}
-		return namedValueInfo;
-	}
+    /** Create a new NamedValueInfo based on the given NamedValueInfo with sanitized values. */
+    private NamedValueInfo updateNamedValueInfo(MethodParameter parameter, NamedValueInfo info) {
+        String name = info.name;
+        if (info.name.isEmpty()) {
+            name = parameter.getParameterName();
+            if (name == null) {
+                throw new IllegalArgumentException(
+                        "Name for argument of type ["
+                                + parameter.getNestedParameterType().getName()
+                                + "] not specified, and parameter name information not found in class file either.");
+            }
+        }
+        String defaultValue =
+                (ValueConstants.DEFAULT_NONE.equals(info.defaultValue) ? null : info.defaultValue);
+        return new NamedValueInfo(name, info.required, defaultValue);
+    }
 
-	/**
-	 * Create the {@link NamedValueInfo} object for the given method parameter.
-	 * Implementations typically retrieve the method annotation by means of
-	 * {@link MethodParameter#getParameterAnnotation(Class)}.
-	 * @param parameter the method parameter
-	 * @return the named value information
-	 */
-	protected abstract NamedValueInfo createNamedValueInfo(MethodParameter parameter);
+    /**
+     * Resolve the given annotation-specified value, potentially containing placeholders and
+     * expressions.
+     */
+    @Nullable
+    private Object resolveStringValue(String value) {
+        if (this.configurableBeanFactory == null || this.expressionContext == null) {
+            return value;
+        }
+        String placeholdersResolved = this.configurableBeanFactory.resolveEmbeddedValue(value);
+        BeanExpressionResolver exprResolver =
+                this.configurableBeanFactory.getBeanExpressionResolver();
+        if (exprResolver == null) {
+            return value;
+        }
+        return exprResolver.evaluate(placeholdersResolved, this.expressionContext);
+    }
 
-	/**
-	 * Create a new NamedValueInfo based on the given NamedValueInfo with
-	 * sanitized values.
-	 */
-	private NamedValueInfo updateNamedValueInfo(MethodParameter parameter, NamedValueInfo info) {
-		String name = info.name;
-		if (info.name.isEmpty()) {
-			name = parameter.getParameterName();
-			if (name == null) {
-				throw new IllegalArgumentException(
-						"Name for argument of type [" + parameter.getNestedParameterType().getName() +
-						"] not specified, and parameter name information not found in class file either.");
-			}
-		}
-		String defaultValue = (ValueConstants.DEFAULT_NONE.equals(info.defaultValue) ? null : info.defaultValue);
-		return new NamedValueInfo(name, info.required, defaultValue);
-	}
+    /**
+     * Resolve the given parameter type and value name into an argument value.
+     *
+     * @param name the name of the value being resolved
+     * @param parameter the method parameter to resolve to an argument value (pre-nested in case of
+     *     a {@link java.util.Optional} declaration)
+     * @param exchange the current exchange
+     * @return the resolved argument (may be empty {@link Mono})
+     */
+    protected abstract Mono<Object> resolveName(
+            String name, MethodParameter parameter, ServerWebExchange exchange);
 
-	/**
-	 * Resolve the given annotation-specified value,
-	 * potentially containing placeholders and expressions.
-	 */
-	@Nullable
-	private Object resolveStringValue(String value) {
-		if (this.configurableBeanFactory == null || this.expressionContext == null) {
-			return value;
-		}
-		String placeholdersResolved = this.configurableBeanFactory.resolveEmbeddedValue(value);
-		BeanExpressionResolver exprResolver = this.configurableBeanFactory.getBeanExpressionResolver();
-		if (exprResolver == null) {
-			return value;
-		}
-		return exprResolver.evaluate(placeholdersResolved, this.expressionContext);
-	}
+    /** Apply type conversion if necessary. */
+    @Nullable
+    private Object applyConversion(
+            @Nullable Object value,
+            NamedValueInfo namedValueInfo,
+            MethodParameter parameter,
+            BindingContext bindingContext,
+            ServerWebExchange exchange) {
 
-	/**
-	 * Resolve the given parameter type and value name into an argument value.
-	 * @param name the name of the value being resolved
-	 * @param parameter the method parameter to resolve to an argument value
-	 * (pre-nested in case of a {@link java.util.Optional} declaration)
-	 * @param exchange the current exchange
-	 * @return the resolved argument (may be empty {@link Mono})
-	 */
-	protected abstract Mono<Object> resolveName(String name, MethodParameter parameter, ServerWebExchange exchange);
+        WebDataBinder binder = bindingContext.createDataBinder(exchange, namedValueInfo.name);
+        try {
+            value = binder.convertIfNecessary(value, parameter.getParameterType(), parameter);
+        } catch (ConversionNotSupportedException ex) {
+            throw new ServerErrorException("Conversion not supported.", parameter, ex);
+        } catch (TypeMismatchException ex) {
+            throw new ServerWebInputException("Type mismatch.", parameter, ex);
+        }
+        return value;
+    }
 
-	/**
-	 * Apply type conversion if necessary.
-	 */
-	@Nullable
-	private Object applyConversion(@Nullable Object value, NamedValueInfo namedValueInfo, MethodParameter parameter,
-			BindingContext bindingContext, ServerWebExchange exchange) {
+    /** Resolve the default value, if any. */
+    private Mono<Object> getDefaultValue(
+            NamedValueInfo namedValueInfo,
+            MethodParameter parameter,
+            BindingContext bindingContext,
+            Model model,
+            ServerWebExchange exchange) {
 
-		WebDataBinder binder = bindingContext.createDataBinder(exchange, namedValueInfo.name);
-		try {
-			value = binder.convertIfNecessary(value, parameter.getParameterType(), parameter);
-		}
-		catch (ConversionNotSupportedException ex) {
-			throw new ServerErrorException("Conversion not supported.", parameter, ex);
-		}
-		catch (TypeMismatchException ex) {
-			throw new ServerWebInputException("Type mismatch.", parameter, ex);
-		}
-		return value;
-	}
+        return Mono.fromSupplier(
+                () -> {
+                    Object value = null;
+                    if (namedValueInfo.defaultValue != null) {
+                        value = resolveStringValue(namedValueInfo.defaultValue);
+                    } else if (namedValueInfo.required && !parameter.isOptional()) {
+                        handleMissingValue(namedValueInfo.name, parameter, exchange);
+                    }
+                    value =
+                            handleNullValue(
+                                    namedValueInfo.name, value, parameter.getNestedParameterType());
+                    value =
+                            applyConversion(
+                                    value, namedValueInfo, parameter, bindingContext, exchange);
+                    handleResolvedValue(value, namedValueInfo.name, parameter, model, exchange);
+                    return value;
+                });
+    }
 
-	/**
-	 * Resolve the default value, if any.
-	 */
-	private Mono<Object> getDefaultValue(NamedValueInfo namedValueInfo, MethodParameter parameter,
-			BindingContext bindingContext, Model model, ServerWebExchange exchange) {
+    /**
+     * Invoked when a named value is required, but {@link #resolveName(String, MethodParameter,
+     * ServerWebExchange)} returned {@code null} and there is no default value. Subclasses typically
+     * throw an exception in this case.
+     *
+     * @param name the name for the value
+     * @param parameter the method parameter
+     * @param exchange the current exchange
+     */
+    @SuppressWarnings("UnusedParameters")
+    protected void handleMissingValue(
+            String name, MethodParameter parameter, ServerWebExchange exchange) {
+        handleMissingValue(name, parameter);
+    }
 
-		return Mono.fromSupplier(() -> {
-			Object value = null;
-			if (namedValueInfo.defaultValue != null) {
-				value = resolveStringValue(namedValueInfo.defaultValue);
-			}
-			else if (namedValueInfo.required && !parameter.isOptional()) {
-				handleMissingValue(namedValueInfo.name, parameter, exchange);
-			}
-			value = handleNullValue(namedValueInfo.name, value, parameter.getNestedParameterType());
-			value = applyConversion(value, namedValueInfo, parameter, bindingContext, exchange);
-			handleResolvedValue(value, namedValueInfo.name, parameter, model, exchange);
-			return value;
-		});
-	}
+    /**
+     * Invoked when a named value is required, but {@link #resolveName(String, MethodParameter,
+     * ServerWebExchange)} returned {@code null} and there is no default value. Subclasses typically
+     * throw an exception in this case.
+     *
+     * @param name the name for the value
+     * @param parameter the method parameter
+     */
+    protected void handleMissingValue(String name, MethodParameter parameter) {
+        String typeName = parameter.getNestedParameterType().getSimpleName();
+        throw new ServerWebInputException(
+                "Missing argument '" + name + "' for method " + "parameter of type " + typeName,
+                parameter);
+    }
 
-	/**
-	 * Invoked when a named value is required, but
-	 * {@link #resolveName(String, MethodParameter, ServerWebExchange)} returned
-	 * {@code null} and there is no default value. Subclasses typically throw an
-	 * exception in this case.
-	 * @param name the name for the value
-	 * @param parameter the method parameter
-	 * @param exchange the current exchange
-	 */
-	@SuppressWarnings("UnusedParameters")
-	protected void handleMissingValue(String name, MethodParameter parameter, ServerWebExchange exchange) {
-		handleMissingValue(name, parameter);
-	}
+    /**
+     * A {@code null} results in a {@code false} value for {@code boolean}s or an exception for
+     * other primitives.
+     */
+    @Nullable
+    private Object handleNullValue(String name, @Nullable Object value, Class<?> paramType) {
+        if (value == null) {
+            if (Boolean.TYPE.equals(paramType)) {
+                return Boolean.FALSE;
+            } else if (paramType.isPrimitive()) {
+                throw new IllegalStateException(
+                        "Optional "
+                                + paramType.getSimpleName()
+                                + " parameter '"
+                                + name
+                                + "' is present but cannot be translated into a"
+                                + " null value due to being declared as a primitive type. "
+                                + "Consider declaring it as object wrapper for the corresponding primitive type.");
+            }
+        }
+        return value;
+    }
 
-	/**
-	 * Invoked when a named value is required, but
-	 * {@link #resolveName(String, MethodParameter, ServerWebExchange)} returned
-	 * {@code null} and there is no default value. Subclasses typically throw an
-	 * exception in this case.
-	 * @param name the name for the value
-	 * @param parameter the method parameter
-	 */
-	protected void handleMissingValue(String name, MethodParameter parameter) {
-		String typeName = parameter.getNestedParameterType().getSimpleName();
-		throw new ServerWebInputException("Missing argument '" + name + "' for method " +
-				"parameter of type " + typeName, parameter);
-	}
+    /**
+     * Invoked after a value is resolved.
+     *
+     * @param arg the resolved argument value
+     * @param name the argument name
+     * @param parameter the argument parameter type
+     * @param model the model
+     * @param exchange the current exchange
+     */
+    @SuppressWarnings("UnusedParameters")
+    protected void handleResolvedValue(
+            @Nullable Object arg,
+            String name,
+            MethodParameter parameter,
+            Model model,
+            ServerWebExchange exchange) {}
 
-	/**
-	 * A {@code null} results in a {@code false} value for {@code boolean}s or
-	 * an exception for other primitives.
-	 */
-	@Nullable
-	private Object handleNullValue(String name, @Nullable Object value, Class<?> paramType) {
-		if (value == null) {
-			if (Boolean.TYPE.equals(paramType)) {
-				return Boolean.FALSE;
-			}
-			else if (paramType.isPrimitive()) {
-				throw new IllegalStateException("Optional " + paramType.getSimpleName() +
-						" parameter '" + name + "' is present but cannot be translated into a" +
-						" null value due to being declared as a primitive type. " +
-						"Consider declaring it as object wrapper for the corresponding primitive type.");
-			}
-		}
-		return value;
-	}
+    /**
+     * Represents the information about a named value, including name, whether it's required and a
+     * default value.
+     */
+    protected static class NamedValueInfo {
 
-	/**
-	 * Invoked after a value is resolved.
-	 * @param arg the resolved argument value
-	 * @param name the argument name
-	 * @param parameter the argument parameter type
-	 * @param model the model
-	 * @param exchange the current exchange
-	 */
-	@SuppressWarnings("UnusedParameters")
-	protected void handleResolvedValue(
-			@Nullable Object arg, String name, MethodParameter parameter, Model model, ServerWebExchange exchange) {
-	}
+        private final String name;
 
+        private final boolean required;
 
-	/**
-	 * Represents the information about a named value, including name, whether
-	 * it's required and a default value.
-	 */
-	protected static class NamedValueInfo {
+        @Nullable private final String defaultValue;
 
-		private final String name;
-
-		private final boolean required;
-
-		@Nullable
-		private final String defaultValue;
-
-		public NamedValueInfo(String name, boolean required, @Nullable String defaultValue) {
-			this.name = name;
-			this.required = required;
-			this.defaultValue = defaultValue;
-		}
-	}
-
+        public NamedValueInfo(String name, boolean required, @Nullable String defaultValue) {
+            this.name = name;
+            this.required = required;
+            this.defaultValue = defaultValue;
+        }
+    }
 }

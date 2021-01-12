@@ -23,28 +23,28 @@ import java.util.ServiceLoader;
 import org.springframework.beans.factory.BeanClassLoaderAware;
 
 /**
- * {@link org.springframework.beans.factory.FactoryBean} that exposes <i>all</i>
- * services for the configured service class, represented as a List of service objects,
- * obtained through the JDK 1.6 {@link java.util.ServiceLoader} facility.
+ * {@link org.springframework.beans.factory.FactoryBean} that exposes <i>all</i> services for the
+ * configured service class, represented as a List of service objects, obtained through the JDK 1.6
+ * {@link java.util.ServiceLoader} facility.
  *
  * @author Juergen Hoeller
  * @since 2.5
  * @see java.util.ServiceLoader
  */
-public class ServiceListFactoryBean extends AbstractServiceLoaderBasedFactoryBean implements BeanClassLoaderAware {
+public class ServiceListFactoryBean extends AbstractServiceLoaderBasedFactoryBean
+        implements BeanClassLoaderAware {
 
-	@Override
-	protected Object getObjectToExpose(ServiceLoader<?> serviceLoader) {
-		List<Object> result = new LinkedList<>();
-		for (Object loaderObject : serviceLoader) {
-			result.add(loaderObject);
-		}
-		return result;
-	}
+    @Override
+    protected Object getObjectToExpose(ServiceLoader<?> serviceLoader) {
+        List<Object> result = new LinkedList<>();
+        for (Object loaderObject : serviceLoader) {
+            result.add(loaderObject);
+        }
+        return result;
+    }
 
-	@Override
-	public Class<?> getObjectType() {
-		return List.class;
-	}
-
+    @Override
+    public Class<?> getObjectType() {
+        return List.class;
+    }
 }

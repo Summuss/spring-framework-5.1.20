@@ -35,54 +35,47 @@ import org.springframework.web.client.RestTemplate;
 import static org.junit.Assert.*;
 import static org.junit.Assume.*;
 
-/**
- * @author Arjen Poutsma
- */
+/** @author Arjen Poutsma */
 public class ZeroCopyIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 
-	private final ZeroCopyHandler handler = new ZeroCopyHandler();
+    private final ZeroCopyHandler handler = new ZeroCopyHandler();
 
+    @Override
+    protected HttpHandler createHttpHandler() {
+        return this.handler;
+    }
 
-	@Override
-	protected HttpHandler createHttpHandler() {
-		return this.handler;
-	}
+    @Test
+    public void zeroCopy() throws Exception {
+        // Zero-copy only does not support servlet
+        assumeTrue(server instanceof ReactorHttpServer || server instanceof UndertowHttpServer);
 
+        URI url = new URI("http://localhost:" + port);
+        RequestEntity<?> request = RequestEntity.get(url).build();
+        ResponseEntity<byte[]> response = new RestTemplate().exchange(request, byte[].class);
 
-	@Test
-	public void zeroCopy() throws Exception {
-		// Zero-copy only does not support servlet
-		assumeTrue(server instanceof ReactorHttpServer || server instanceof UndertowHttpServer);
+        Resource logo = new ClassPathResource("spring.png", ZeroCopyIntegrationTests.class);
 
-		URI url = new URI("http://localhost:" + port);
-		RequestEntity<?> request = RequestEntity.get(url).build();
-		ResponseEntity<byte[]> response = new RestTemplate().exchange(request, byte[].class);
+        assertTrue(response.hasBody());
+        assertEquals(logo.contentLength(), response.getHeaders().getContentLength());
+        assertEquals(logo.contentLength(), response.getBody().length);
+        assertEquals(MediaType.IMAGE_PNG, response.getHeaders().getContentType());
+    }
 
-		Resource logo = new ClassPathResource("spring.png", ZeroCopyIntegrationTests.class);
+    private static class ZeroCopyHandler implements HttpHandler {
 
-		assertTrue(response.hasBody());
-		assertEquals(logo.contentLength(), response.getHeaders().getContentLength());
-		assertEquals(logo.contentLength(), response.getBody().length);
-		assertEquals(MediaType.IMAGE_PNG, response.getHeaders().getContentType());
-	}
-
-
-	private static class ZeroCopyHandler implements HttpHandler {
-
-		@Override
-		public Mono<Void> handle(ServerHttpRequest request, ServerHttpResponse response) {
-			try {
-				ZeroCopyHttpOutputMessage zeroCopyResponse = (ZeroCopyHttpOutputMessage) response;
-				Resource logo = new ClassPathResource("spring.png", ZeroCopyIntegrationTests.class);
-				File logoFile = logo.getFile();
-				zeroCopyResponse.getHeaders().setContentType(MediaType.IMAGE_PNG);
-				zeroCopyResponse.getHeaders().setContentLength(logoFile.length());
-				return zeroCopyResponse.writeWith(logoFile, 0, logoFile.length());
-			}
-			catch (Throwable ex) {
-				return Mono.error(ex);
-			}
-		}
-	}
-
+        @Override
+        public Mono<Void> handle(ServerHttpRequest request, ServerHttpResponse response) {
+            try {
+                ZeroCopyHttpOutputMessage zeroCopyResponse = (ZeroCopyHttpOutputMessage) response;
+                Resource logo = new ClassPathResource("spring.png", ZeroCopyIntegrationTests.class);
+                File logoFile = logo.getFile();
+                zeroCopyResponse.getHeaders().setContentType(MediaType.IMAGE_PNG);
+                zeroCopyResponse.getHeaders().setContentLength(logoFile.length());
+                return zeroCopyResponse.writeWith(logoFile, 0, logoFile.length());
+            } catch (Throwable ex) {
+                return Mono.error(ex);
+            }
+        }
+    }
 }

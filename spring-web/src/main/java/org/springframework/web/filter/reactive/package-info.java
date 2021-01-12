@@ -1,6 +1,6 @@
 /**
- * {@link org.springframework.web.server.WebFilter} implementations for use in
- * reactive web applications.
+ * {@link org.springframework.web.server.WebFilter} implementations for use in reactive web
+ * applications.
  */
 @NonNullApi
 @NonNullFields

@@ -32,14 +32,12 @@ import org.junit.rules.ExpectedException;
 @Deprecated
 public class CompoundComparatorTests {
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
+    @Rule public ExpectedException thrown = ExpectedException.none();
 
-	@Test
-	public void shouldNeedAtLeastOneComparator() {
-		Comparator<String> c = new CompoundComparator<>();
-		thrown.expect(IllegalStateException.class);
-		c.compare("foo", "bar");
-	}
-
+    @Test
+    public void shouldNeedAtLeastOneComparator() {
+        Comparator<String> c = new CompoundComparator<>();
+        thrown.expect(IllegalStateException.class);
+        c.compare("foo", "bar");
+    }
 }

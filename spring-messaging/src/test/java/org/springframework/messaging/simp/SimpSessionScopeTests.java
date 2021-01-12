@@ -37,69 +37,66 @@ import static org.mockito.BDDMockito.*;
  */
 public class SimpSessionScopeTests {
 
-	private SimpSessionScope scope;
+    private SimpSessionScope scope;
 
-	@SuppressWarnings("rawtypes")
-	private ObjectFactory objectFactory;
+    @SuppressWarnings("rawtypes")
+    private ObjectFactory objectFactory;
 
-	private SimpAttributes simpAttributes;
+    private SimpAttributes simpAttributes;
 
+    @Before
+    public void setUp() {
+        this.scope = new SimpSessionScope();
+        this.objectFactory = Mockito.mock(ObjectFactory.class);
+        this.simpAttributes = new SimpAttributes("session1", new ConcurrentHashMap<>());
+        SimpAttributesContextHolder.setAttributes(this.simpAttributes);
+    }
 
-	@Before
-	public void setUp() {
-		this.scope = new SimpSessionScope();
-		this.objectFactory = Mockito.mock(ObjectFactory.class);
-		this.simpAttributes = new SimpAttributes("session1", new ConcurrentHashMap<>());
-		SimpAttributesContextHolder.setAttributes(this.simpAttributes);
-	}
+    @After
+    public void tearDown() {
+        SimpAttributesContextHolder.resetAttributes();
+    }
 
-	@After
-	public void tearDown() {
-		SimpAttributesContextHolder.resetAttributes();
-	}
+    @Test
+    public void get() {
+        this.simpAttributes.setAttribute("name", "value");
+        Object actual = this.scope.get("name", this.objectFactory);
 
-	@Test
-	public void get() {
-		this.simpAttributes.setAttribute("name", "value");
-		Object actual = this.scope.get("name", this.objectFactory);
+        assertThat(actual, is("value"));
+    }
 
-		assertThat(actual, is("value"));
-	}
+    @Test
+    public void getWithObjectFactory() {
+        given(this.objectFactory.getObject()).willReturn("value");
+        Object actual = this.scope.get("name", this.objectFactory);
 
-	@Test
-	public void getWithObjectFactory() {
-		given(this.objectFactory.getObject()).willReturn("value");
-		Object actual = this.scope.get("name", this.objectFactory);
+        assertThat(actual, is("value"));
+        assertThat(this.simpAttributes.getAttribute("name"), is("value"));
+    }
 
-		assertThat(actual, is("value"));
-		assertThat(this.simpAttributes.getAttribute("name"), is("value"));
-	}
+    @Test
+    public void remove() {
+        this.simpAttributes.setAttribute("name", "value");
 
-	@Test
-	public void remove() {
-		this.simpAttributes.setAttribute("name", "value");
+        Object removed = this.scope.remove("name");
+        assertThat(removed, is("value"));
+        assertThat(this.simpAttributes.getAttribute("name"), nullValue());
 
-		Object removed = this.scope.remove("name");
-		assertThat(removed, is("value"));
-		assertThat(this.simpAttributes.getAttribute("name"), nullValue());
+        removed = this.scope.remove("name");
+        assertThat(removed, nullValue());
+    }
 
-		removed = this.scope.remove("name");
-		assertThat(removed, nullValue());
-	}
+    @Test
+    public void registerDestructionCallback() {
+        Runnable runnable = Mockito.mock(Runnable.class);
+        this.scope.registerDestructionCallback("name", runnable);
 
-	@Test
-	public void registerDestructionCallback() {
-		Runnable runnable = Mockito.mock(Runnable.class);
-		this.scope.registerDestructionCallback("name", runnable);
+        this.simpAttributes.sessionCompleted();
+        verify(runnable, times(1)).run();
+    }
 
-		this.simpAttributes.sessionCompleted();
-		verify(runnable, times(1)).run();
-	}
-
-	@Test
-	public void getSessionId() {
-		assertThat(this.scope.getConversationId(), is("session1"));
-	}
-
-
+    @Test
+    public void getSessionId() {
+        assertThat(this.scope.getConversationId(), is("session1"));
+    }
 }

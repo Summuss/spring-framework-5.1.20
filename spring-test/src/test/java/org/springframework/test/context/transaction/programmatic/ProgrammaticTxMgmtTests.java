@@ -52,8 +52,8 @@ import static org.junit.Assert.*;
 import static org.springframework.test.transaction.TransactionTestUtils.*;
 
 /**
- * JUnit-based integration tests that verify support for programmatic transaction
- * management within the <em>Spring TestContext Framework</em>.
+ * JUnit-based integration tests that verify support for programmatic transaction management within
+ * the <em>Spring TestContext Framework</em>.
  *
  * @author Sam Brannen
  * @since 4.1
@@ -63,243 +63,248 @@ import static org.springframework.test.transaction.TransactionTestUtils.*;
 @Transactional
 public class ProgrammaticTxMgmtTests {
 
-	private String sqlScriptEncoding;
+    private String sqlScriptEncoding;
 
-	protected JdbcTemplate jdbcTemplate;
+    protected JdbcTemplate jdbcTemplate;
 
-	@Autowired
-	protected ApplicationContext applicationContext;
+    @Autowired protected ApplicationContext applicationContext;
 
-	@Rule
-	public TestName testName = new TestName();
+    @Rule public TestName testName = new TestName();
 
+    @Autowired
+    public void setDataSource(DataSource dataSource) {
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
+    }
 
-	@Autowired
-	public void setDataSource(DataSource dataSource) {
-		this.jdbcTemplate = new JdbcTemplate(dataSource);
-	}
+    @BeforeTransaction
+    public void beforeTransaction() {
+        deleteFromTables("user");
+        executeSqlScript("classpath:/org/springframework/test/context/jdbc/data.sql", false);
+    }
 
+    @AfterTransaction
+    public void afterTransaction() {
+        String method = testName.getMethodName();
+        switch (method) {
+            case "commitTxAndStartNewTx":
+            case "commitTxButDoNotStartNewTx":
+                {
+                    assertUsers("Dogbert");
+                    break;
+                }
+            case "rollbackTxAndStartNewTx":
+            case "rollbackTxButDoNotStartNewTx":
+            case "startTxWithExistingTransaction":
+                {
+                    assertUsers("Dilbert");
+                    break;
+                }
+            case "rollbackTxAndStartNewTxWithDefaultCommitSemantics":
+                {
+                    assertUsers("Dilbert", "Dogbert");
+                    break;
+                }
+            default:
+                {
+                    fail("missing 'after transaction' assertion for test method: " + method);
+                }
+        }
+    }
 
-	@BeforeTransaction
-	public void beforeTransaction() {
-		deleteFromTables("user");
-		executeSqlScript("classpath:/org/springframework/test/context/jdbc/data.sql", false);
-	}
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public void isActiveWithNonExistentTransactionContext() {
+        assertFalse(TestTransaction.isActive());
+    }
 
-	@AfterTransaction
-	public void afterTransaction() {
-		String method = testName.getMethodName();
-		switch (method) {
-			case "commitTxAndStartNewTx":
-			case "commitTxButDoNotStartNewTx": {
-				assertUsers("Dogbert");
-				break;
-			}
-			case "rollbackTxAndStartNewTx":
-			case "rollbackTxButDoNotStartNewTx":
-			case "startTxWithExistingTransaction": {
-				assertUsers("Dilbert");
-				break;
-			}
-			case "rollbackTxAndStartNewTxWithDefaultCommitSemantics": {
-				assertUsers("Dilbert", "Dogbert");
-				break;
-			}
-			default: {
-				fail("missing 'after transaction' assertion for test method: " + method);
-			}
-		}
-	}
+    @Test(expected = IllegalStateException.class)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public void flagForRollbackWithNonExistentTransactionContext() {
+        TestTransaction.flagForRollback();
+    }
 
-	@Test
-	@Transactional(propagation = Propagation.NOT_SUPPORTED)
-	public void isActiveWithNonExistentTransactionContext() {
-		assertFalse(TestTransaction.isActive());
-	}
+    @Test(expected = IllegalStateException.class)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public void flagForCommitWithNonExistentTransactionContext() {
+        TestTransaction.flagForCommit();
+    }
 
-	@Test(expected = IllegalStateException.class)
-	@Transactional(propagation = Propagation.NOT_SUPPORTED)
-	public void flagForRollbackWithNonExistentTransactionContext() {
-		TestTransaction.flagForRollback();
-	}
+    @Test(expected = IllegalStateException.class)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public void isFlaggedForRollbackWithNonExistentTransactionContext() {
+        TestTransaction.isFlaggedForRollback();
+    }
 
-	@Test(expected = IllegalStateException.class)
-	@Transactional(propagation = Propagation.NOT_SUPPORTED)
-	public void flagForCommitWithNonExistentTransactionContext() {
-		TestTransaction.flagForCommit();
-	}
+    @Test(expected = IllegalStateException.class)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public void startTxWithNonExistentTransactionContext() {
+        TestTransaction.start();
+    }
 
-	@Test(expected = IllegalStateException.class)
-	@Transactional(propagation = Propagation.NOT_SUPPORTED)
-	public void isFlaggedForRollbackWithNonExistentTransactionContext() {
-		TestTransaction.isFlaggedForRollback();
-	}
+    @Test(expected = IllegalStateException.class)
+    public void startTxWithExistingTransaction() {
+        TestTransaction.start();
+    }
 
-	@Test(expected = IllegalStateException.class)
-	@Transactional(propagation = Propagation.NOT_SUPPORTED)
-	public void startTxWithNonExistentTransactionContext() {
-		TestTransaction.start();
-	}
+    @Test(expected = IllegalStateException.class)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public void endTxWithNonExistentTransactionContext() {
+        TestTransaction.end();
+    }
 
-	@Test(expected = IllegalStateException.class)
-	public void startTxWithExistingTransaction() {
-		TestTransaction.start();
-	}
+    @Test
+    public void commitTxAndStartNewTx() {
+        assertInTransaction(true);
+        assertTrue(TestTransaction.isActive());
+        assertUsers("Dilbert");
+        deleteFromTables("user");
+        assertUsers();
 
-	@Test(expected = IllegalStateException.class)
-	@Transactional(propagation = Propagation.NOT_SUPPORTED)
-	public void endTxWithNonExistentTransactionContext() {
-		TestTransaction.end();
-	}
+        // Commit
+        TestTransaction.flagForCommit();
+        assertFalse(TestTransaction.isFlaggedForRollback());
+        TestTransaction.end();
+        assertInTransaction(false);
+        assertFalse(TestTransaction.isActive());
+        assertUsers();
 
-	@Test
-	public void commitTxAndStartNewTx() {
-		assertInTransaction(true);
-		assertTrue(TestTransaction.isActive());
-		assertUsers("Dilbert");
-		deleteFromTables("user");
-		assertUsers();
+        executeSqlScript(
+                "classpath:/org/springframework/test/context/jdbc/data-add-dogbert.sql", false);
+        assertUsers("Dogbert");
 
-		// Commit
-		TestTransaction.flagForCommit();
-		assertFalse(TestTransaction.isFlaggedForRollback());
-		TestTransaction.end();
-		assertInTransaction(false);
-		assertFalse(TestTransaction.isActive());
-		assertUsers();
+        TestTransaction.start();
+        assertInTransaction(true);
+        assertTrue(TestTransaction.isActive());
+    }
 
-		executeSqlScript("classpath:/org/springframework/test/context/jdbc/data-add-dogbert.sql", false);
-		assertUsers("Dogbert");
+    @Test
+    public void commitTxButDoNotStartNewTx() {
+        assertInTransaction(true);
+        assertTrue(TestTransaction.isActive());
+        assertUsers("Dilbert");
+        deleteFromTables("user");
+        assertUsers();
 
-		TestTransaction.start();
-		assertInTransaction(true);
-		assertTrue(TestTransaction.isActive());
-	}
+        // Commit
+        TestTransaction.flagForCommit();
+        assertFalse(TestTransaction.isFlaggedForRollback());
+        TestTransaction.end();
+        assertFalse(TestTransaction.isActive());
+        assertInTransaction(false);
+        assertUsers();
 
-	@Test
-	public void commitTxButDoNotStartNewTx() {
-		assertInTransaction(true);
-		assertTrue(TestTransaction.isActive());
-		assertUsers("Dilbert");
-		deleteFromTables("user");
-		assertUsers();
+        executeSqlScript(
+                "classpath:/org/springframework/test/context/jdbc/data-add-dogbert.sql", false);
+        assertUsers("Dogbert");
+    }
 
-		// Commit
-		TestTransaction.flagForCommit();
-		assertFalse(TestTransaction.isFlaggedForRollback());
-		TestTransaction.end();
-		assertFalse(TestTransaction.isActive());
-		assertInTransaction(false);
-		assertUsers();
+    @Test
+    public void rollbackTxAndStartNewTx() {
+        assertInTransaction(true);
+        assertTrue(TestTransaction.isActive());
+        assertUsers("Dilbert");
+        deleteFromTables("user");
+        assertUsers();
 
-		executeSqlScript("classpath:/org/springframework/test/context/jdbc/data-add-dogbert.sql", false);
-		assertUsers("Dogbert");
-	}
+        // Rollback (automatically)
+        assertTrue(TestTransaction.isFlaggedForRollback());
+        TestTransaction.end();
+        assertFalse(TestTransaction.isActive());
+        assertInTransaction(false);
+        assertUsers("Dilbert");
 
-	@Test
-	public void rollbackTxAndStartNewTx() {
-		assertInTransaction(true);
-		assertTrue(TestTransaction.isActive());
-		assertUsers("Dilbert");
-		deleteFromTables("user");
-		assertUsers();
+        // Start new transaction with default rollback semantics
+        TestTransaction.start();
+        assertInTransaction(true);
+        assertTrue(TestTransaction.isFlaggedForRollback());
+        assertTrue(TestTransaction.isActive());
 
-		// Rollback (automatically)
-		assertTrue(TestTransaction.isFlaggedForRollback());
-		TestTransaction.end();
-		assertFalse(TestTransaction.isActive());
-		assertInTransaction(false);
-		assertUsers("Dilbert");
+        executeSqlScript(
+                "classpath:/org/springframework/test/context/jdbc/data-add-dogbert.sql", false);
+        assertUsers("Dilbert", "Dogbert");
+    }
 
-		// Start new transaction with default rollback semantics
-		TestTransaction.start();
-		assertInTransaction(true);
-		assertTrue(TestTransaction.isFlaggedForRollback());
-		assertTrue(TestTransaction.isActive());
+    @Test
+    public void rollbackTxButDoNotStartNewTx() {
+        assertInTransaction(true);
+        assertTrue(TestTransaction.isActive());
+        assertUsers("Dilbert");
+        deleteFromTables("user");
+        assertUsers();
 
-		executeSqlScript("classpath:/org/springframework/test/context/jdbc/data-add-dogbert.sql", false);
-		assertUsers("Dilbert", "Dogbert");
-	}
+        // Rollback (automatically)
+        assertTrue(TestTransaction.isFlaggedForRollback());
+        TestTransaction.end();
+        assertFalse(TestTransaction.isActive());
+        assertInTransaction(false);
+        assertUsers("Dilbert");
+    }
 
-	@Test
-	public void rollbackTxButDoNotStartNewTx() {
-		assertInTransaction(true);
-		assertTrue(TestTransaction.isActive());
-		assertUsers("Dilbert");
-		deleteFromTables("user");
-		assertUsers();
+    @Test
+    @Commit
+    public void rollbackTxAndStartNewTxWithDefaultCommitSemantics() {
+        assertInTransaction(true);
+        assertTrue(TestTransaction.isActive());
+        assertUsers("Dilbert");
+        deleteFromTables("user");
+        assertUsers();
 
-		// Rollback (automatically)
-		assertTrue(TestTransaction.isFlaggedForRollback());
-		TestTransaction.end();
-		assertFalse(TestTransaction.isActive());
-		assertInTransaction(false);
-		assertUsers("Dilbert");
-	}
+        // Rollback
+        TestTransaction.flagForRollback();
+        assertTrue(TestTransaction.isFlaggedForRollback());
+        TestTransaction.end();
+        assertFalse(TestTransaction.isActive());
+        assertInTransaction(false);
+        assertUsers("Dilbert");
 
-	@Test
-	@Commit
-	public void rollbackTxAndStartNewTxWithDefaultCommitSemantics() {
-		assertInTransaction(true);
-		assertTrue(TestTransaction.isActive());
-		assertUsers("Dilbert");
-		deleteFromTables("user");
-		assertUsers();
+        // Start new transaction with default commit semantics
+        TestTransaction.start();
+        assertInTransaction(true);
+        assertFalse(TestTransaction.isFlaggedForRollback());
+        assertTrue(TestTransaction.isActive());
 
-		// Rollback
-		TestTransaction.flagForRollback();
-		assertTrue(TestTransaction.isFlaggedForRollback());
-		TestTransaction.end();
-		assertFalse(TestTransaction.isActive());
-		assertInTransaction(false);
-		assertUsers("Dilbert");
+        executeSqlScript(
+                "classpath:/org/springframework/test/context/jdbc/data-add-dogbert.sql", false);
+        assertUsers("Dilbert", "Dogbert");
+    }
 
-		// Start new transaction with default commit semantics
-		TestTransaction.start();
-		assertInTransaction(true);
-		assertFalse(TestTransaction.isFlaggedForRollback());
-		assertTrue(TestTransaction.isActive());
+    // -------------------------------------------------------------------------
 
-		executeSqlScript("classpath:/org/springframework/test/context/jdbc/data-add-dogbert.sql", false);
-		assertUsers("Dilbert", "Dogbert");
-	}
+    protected int deleteFromTables(String... names) {
+        return JdbcTestUtils.deleteFromTables(this.jdbcTemplate, names);
+    }
 
-	// -------------------------------------------------------------------------
+    protected void executeSqlScript(String sqlResourcePath, boolean continueOnError)
+            throws DataAccessException {
+        Resource resource = this.applicationContext.getResource(sqlResourcePath);
+        new ResourceDatabasePopulator(continueOnError, false, this.sqlScriptEncoding, resource)
+                .execute(jdbcTemplate.getDataSource());
+    }
 
-	protected int deleteFromTables(String... names) {
-		return JdbcTestUtils.deleteFromTables(this.jdbcTemplate, names);
-	}
+    private void assertUsers(String... users) {
+        List<String> expected = Arrays.asList(users);
+        Collections.sort(expected);
+        List<String> actual = jdbcTemplate.queryForList("select name from user", String.class);
+        Collections.sort(actual);
+        assertEquals("Users in database;", expected, actual);
+    }
 
-	protected void executeSqlScript(String sqlResourcePath, boolean continueOnError) throws DataAccessException {
-		Resource resource = this.applicationContext.getResource(sqlResourcePath);
-		new ResourceDatabasePopulator(continueOnError, false, this.sqlScriptEncoding, resource).execute(jdbcTemplate.getDataSource());
-	}
+    // -------------------------------------------------------------------------
 
-	private void assertUsers(String... users) {
-		List<String> expected = Arrays.asList(users);
-		Collections.sort(expected);
-		List<String> actual = jdbcTemplate.queryForList("select name from user", String.class);
-		Collections.sort(actual);
-		assertEquals("Users in database;", expected, actual);
-	}
+    @Configuration
+    static class Config {
 
-	// -------------------------------------------------------------------------
+        @Bean
+        public PlatformTransactionManager transactionManager() {
+            return new DataSourceTransactionManager(dataSource());
+        }
 
-	@Configuration
-	static class Config {
-
-		@Bean
-		public PlatformTransactionManager transactionManager() {
-			return new DataSourceTransactionManager(dataSource());
-		}
-
-		@Bean
-		public DataSource dataSource() {
-			return new EmbeddedDatabaseBuilder()//
-			.generateUniqueName(true)//
-			.addScript("classpath:/org/springframework/test/context/jdbc/schema.sql") //
-			.build();
-		}
-	}
-
+        @Bean
+        public DataSource dataSource() {
+            return new EmbeddedDatabaseBuilder() //
+                    .generateUniqueName(true) //
+                    .addScript("classpath:/org/springframework/test/context/jdbc/schema.sql") //
+                    .build();
+        }
+    }
 }

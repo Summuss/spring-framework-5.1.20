@@ -24,9 +24,8 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.servlet.ModelAndView;
 
 /**
- * SPI for resolving custom return values from a specific handler method.
- * Typically implemented to detect special return types, resolving
- * well-known result values for them.
+ * SPI for resolving custom return values from a specific handler method. Typically implemented to
+ * detect special return types, resolving well-known result values for them.
  *
  * <p>A typical implementation could look like as follows:
  *
@@ -47,13 +46,16 @@ import org.springframework.web.servlet.ModelAndView;
  */
 public interface ModelAndViewResolver {
 
-	/**
-	 * Marker to be returned when the resolver does not know how to handle the given method parameter.
-	 */
-	ModelAndView UNRESOLVED = new ModelAndView();
+    /**
+     * Marker to be returned when the resolver does not know how to handle the given method
+     * parameter.
+     */
+    ModelAndView UNRESOLVED = new ModelAndView();
 
-
-	ModelAndView resolveModelAndView(Method handlerMethod, Class<?> handlerType,
-			@Nullable Object returnValue, ExtendedModelMap implicitModel, NativeWebRequest webRequest);
-
+    ModelAndView resolveModelAndView(
+            Method handlerMethod,
+            Class<?> handlerType,
+            @Nullable Object returnValue,
+            ExtendedModelMap implicitModel,
+            NativeWebRequest webRequest);
 }

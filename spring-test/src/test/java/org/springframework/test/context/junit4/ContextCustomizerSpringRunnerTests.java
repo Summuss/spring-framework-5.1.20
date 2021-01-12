@@ -32,8 +32,8 @@ import static java.util.Collections.*;
 import static org.junit.Assert.*;
 
 /**
- * JUnit 4 based integration test which verifies support of
- * {@link ContextCustomizerFactory} and {@link ContextCustomizer}.
+ * JUnit 4 based integration test which verifies support of {@link ContextCustomizerFactory} and
+ * {@link ContextCustomizer}.
  *
  * @author Sam Brannen
  * @author Phillip Webb
@@ -43,24 +43,24 @@ import static org.junit.Assert.*;
 @BootstrapWith(CustomTestContextBootstrapper.class)
 public class ContextCustomizerSpringRunnerTests {
 
-	@Autowired String foo;
+    @Autowired String foo;
 
+    @Test
+    public void injectedBean() {
+        assertEquals("foo", foo);
+    }
 
-	@Test
-	public void injectedBean() {
-		assertEquals("foo", foo);
-	}
+    static class CustomTestContextBootstrapper extends DefaultTestContextBootstrapper {
 
-
-	static class CustomTestContextBootstrapper extends DefaultTestContextBootstrapper {
-
-		@Override
-		protected List<ContextCustomizerFactory> getContextCustomizerFactories() {
-			return singletonList(
-				(ContextCustomizerFactory) (testClass, configAttributes) ->
-					(ContextCustomizer) (context, mergedConfig) -> context.getBeanFactory().registerSingleton("foo", "foo")
-			);
-		}
-	}
-
+        @Override
+        protected List<ContextCustomizerFactory> getContextCustomizerFactories() {
+            return singletonList(
+                    (ContextCustomizerFactory)
+                            (testClass, configAttributes) ->
+                                    (ContextCustomizer)
+                                            (context, mergedConfig) ->
+                                                    context.getBeanFactory()
+                                                            .registerSingleton("foo", "foo"));
+        }
+    }
 }

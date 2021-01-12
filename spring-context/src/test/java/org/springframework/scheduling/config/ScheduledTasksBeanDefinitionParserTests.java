@@ -40,92 +40,98 @@ import static org.junit.Assert.*;
 @SuppressWarnings("unchecked")
 public class ScheduledTasksBeanDefinitionParserTests {
 
-	private ApplicationContext context;
+    private ApplicationContext context;
 
-	private ScheduledTaskRegistrar registrar;
+    private ScheduledTaskRegistrar registrar;
 
-	private Object testBean;
+    private Object testBean;
 
+    @Before
+    public void setup() {
+        this.context =
+                new ClassPathXmlApplicationContext(
+                        "scheduledTasksContext.xml", ScheduledTasksBeanDefinitionParserTests.class);
+        this.registrar =
+                this.context
+                        .getBeansOfType(ScheduledTaskRegistrar.class)
+                        .values()
+                        .iterator()
+                        .next();
+        this.testBean = this.context.getBean("testBean");
+    }
 
-	@Before
-	public void setup() {
-		this.context = new ClassPathXmlApplicationContext(
-				"scheduledTasksContext.xml", ScheduledTasksBeanDefinitionParserTests.class);
-		this.registrar = this.context.getBeansOfType(
-				ScheduledTaskRegistrar.class).values().iterator().next();
-		this.testBean = this.context.getBean("testBean");
-	}
+    @Test
+    public void checkScheduler() {
+        Object schedulerBean = this.context.getBean("testScheduler");
+        Object schedulerRef =
+                new DirectFieldAccessor(this.registrar).getPropertyValue("taskScheduler");
+        assertEquals(schedulerBean, schedulerRef);
+    }
 
-	@Test
-	public void checkScheduler() {
-		Object schedulerBean = this.context.getBean("testScheduler");
-		Object schedulerRef = new DirectFieldAccessor(this.registrar).getPropertyValue("taskScheduler");
-		assertEquals(schedulerBean, schedulerRef);
-	}
+    @Test
+    public void checkTarget() {
+        List<IntervalTask> tasks =
+                (List<IntervalTask>)
+                        new DirectFieldAccessor(this.registrar).getPropertyValue("fixedRateTasks");
+        Runnable runnable = tasks.get(0).getRunnable();
+        assertEquals(ScheduledMethodRunnable.class, runnable.getClass());
+        Object targetObject = ((ScheduledMethodRunnable) runnable).getTarget();
+        Method targetMethod = ((ScheduledMethodRunnable) runnable).getMethod();
+        assertEquals(this.testBean, targetObject);
+        assertEquals("test", targetMethod.getName());
+    }
 
-	@Test
-	public void checkTarget() {
-		List<IntervalTask> tasks = (List<IntervalTask>) new DirectFieldAccessor(
-				this.registrar).getPropertyValue("fixedRateTasks");
-		Runnable runnable = tasks.get(0).getRunnable();
-		assertEquals(ScheduledMethodRunnable.class, runnable.getClass());
-		Object targetObject = ((ScheduledMethodRunnable) runnable).getTarget();
-		Method targetMethod = ((ScheduledMethodRunnable) runnable).getMethod();
-		assertEquals(this.testBean, targetObject);
-		assertEquals("test", targetMethod.getName());
-	}
+    @Test
+    public void fixedRateTasks() {
+        List<IntervalTask> tasks =
+                (List<IntervalTask>)
+                        new DirectFieldAccessor(this.registrar).getPropertyValue("fixedRateTasks");
+        assertEquals(3, tasks.size());
+        assertEquals(1000L, tasks.get(0).getInterval());
+        assertEquals(2000L, tasks.get(1).getInterval());
+        assertEquals(4000L, tasks.get(2).getInterval());
+        assertEquals(500, tasks.get(2).getInitialDelay());
+    }
 
-	@Test
-	public void fixedRateTasks() {
-		List<IntervalTask> tasks = (List<IntervalTask>) new DirectFieldAccessor(
-				this.registrar).getPropertyValue("fixedRateTasks");
-		assertEquals(3, tasks.size());
-		assertEquals(1000L, tasks.get(0).getInterval());
-		assertEquals(2000L, tasks.get(1).getInterval());
-		assertEquals(4000L, tasks.get(2).getInterval());
-		assertEquals(500, tasks.get(2).getInitialDelay());
-	}
+    @Test
+    public void fixedDelayTasks() {
+        List<IntervalTask> tasks =
+                (List<IntervalTask>)
+                        new DirectFieldAccessor(this.registrar).getPropertyValue("fixedDelayTasks");
+        assertEquals(2, tasks.size());
+        assertEquals(3000L, tasks.get(0).getInterval());
+        assertEquals(3500L, tasks.get(1).getInterval());
+        assertEquals(250, tasks.get(1).getInitialDelay());
+    }
 
-	@Test
-	public void fixedDelayTasks() {
-		List<IntervalTask> tasks = (List<IntervalTask>) new DirectFieldAccessor(
-				this.registrar).getPropertyValue("fixedDelayTasks");
-		assertEquals(2, tasks.size());
-		assertEquals(3000L, tasks.get(0).getInterval());
-		assertEquals(3500L, tasks.get(1).getInterval());
-		assertEquals(250, tasks.get(1).getInitialDelay());
-	}
+    @Test
+    public void cronTasks() {
+        List<CronTask> tasks =
+                (List<CronTask>)
+                        new DirectFieldAccessor(this.registrar).getPropertyValue("cronTasks");
+        assertEquals(1, tasks.size());
+        assertEquals("*/4 * 9-17 * * MON-FRI", tasks.get(0).getExpression());
+    }
 
-	@Test
-	public void cronTasks() {
-		List<CronTask> tasks = (List<CronTask>) new DirectFieldAccessor(
-				this.registrar).getPropertyValue("cronTasks");
-		assertEquals(1, tasks.size());
-		assertEquals("*/4 * 9-17 * * MON-FRI", tasks.get(0).getExpression());
-	}
+    @Test
+    public void triggerTasks() {
+        List<TriggerTask> tasks =
+                (List<TriggerTask>)
+                        new DirectFieldAccessor(this.registrar).getPropertyValue("triggerTasks");
+        assertEquals(1, tasks.size());
+        assertThat(tasks.get(0).getTrigger(), instanceOf(TestTrigger.class));
+    }
 
-	@Test
-	public void triggerTasks() {
-		List<TriggerTask> tasks = (List<TriggerTask>) new DirectFieldAccessor(
-				this.registrar).getPropertyValue("triggerTasks");
-		assertEquals(1, tasks.size());
-		assertThat(tasks.get(0).getTrigger(), instanceOf(TestTrigger.class));
-	}
+    static class TestBean {
 
+        public void test() {}
+    }
 
-	static class TestBean {
+    static class TestTrigger implements Trigger {
 
-		public void test() {
-		}
-	}
-
-
-	static class TestTrigger implements Trigger {
-
-		@Override
-		public Date nextExecutionTime(TriggerContext triggerContext) {
-			return null;
-		}
-	}
-
+        @Override
+        public Date nextExecutionTime(TriggerContext triggerContext) {
+            return null;
+        }
+    }
 }

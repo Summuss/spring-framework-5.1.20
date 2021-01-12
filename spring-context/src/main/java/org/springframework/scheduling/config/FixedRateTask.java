@@ -26,14 +26,14 @@ package org.springframework.scheduling.config;
  */
 public class FixedRateTask extends IntervalTask {
 
-	/**
-	 * Create a new {@code FixedRateTask}.
-	 * @param runnable the underlying task to execute
-	 * @param interval how often in milliseconds the task should be executed
-	 * @param initialDelay the initial delay before first execution of the task
-	 */
-	public FixedRateTask(Runnable runnable, long interval, long initialDelay) {
-		super(runnable, interval, initialDelay);
-	}
-
+    /**
+     * Create a new {@code FixedRateTask}.
+     *
+     * @param runnable the underlying task to execute
+     * @param interval how often in milliseconds the task should be executed
+     * @param initialDelay the initial delay before first execution of the task
+     */
+    public FixedRateTask(Runnable runnable, long interval, long initialDelay) {
+        super(runnable, interval, initialDelay);
+    }
 }

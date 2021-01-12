@@ -30,21 +30,19 @@ import org.springframework.web.reactive.result.method.HandlerMethodArgumentResol
  */
 public class ArgumentResolverConfigurer {
 
-	private final List<HandlerMethodArgumentResolver> customResolvers = new ArrayList<>(8);
+    private final List<HandlerMethodArgumentResolver> customResolvers = new ArrayList<>(8);
 
+    /**
+     * Configure resolvers for custom controller method arguments.
+     *
+     * @param resolver the resolver(s) to add
+     */
+    public void addCustomResolver(HandlerMethodArgumentResolver... resolver) {
+        Assert.notNull(resolver, "'resolvers' must not be null");
+        this.customResolvers.addAll(Arrays.asList(resolver));
+    }
 
-	/**
-	 * Configure resolvers for custom controller method arguments.
-	 * @param resolver the resolver(s) to add
-	 */
-	public void addCustomResolver(HandlerMethodArgumentResolver... resolver) {
-		Assert.notNull(resolver, "'resolvers' must not be null");
-		this.customResolvers.addAll(Arrays.asList(resolver));
-	}
-
-
-	List<HandlerMethodArgumentResolver> getCustomResolvers() {
-		return this.customResolvers;
-	}
-
+    List<HandlerMethodArgumentResolver> getCustomResolvers() {
+        return this.customResolvers;
+    }
 }

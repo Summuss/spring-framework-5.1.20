@@ -44,185 +44,237 @@ import static org.junit.Assert.assertNotEquals;
  */
 public class BootstrapTestUtilsMergedConfigTests extends AbstractContextConfigurationUtilsTests {
 
-	@Rule
-	public final ExpectedException exception = ExpectedException.none();
+    @Rule public final ExpectedException exception = ExpectedException.none();
 
+    @Test
+    public void buildImplicitMergedConfigWithoutAnnotation() {
+        Class<?> testClass = Enigma.class;
+        MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
 
-	@Test
-	public void buildImplicitMergedConfigWithoutAnnotation() {
-		Class<?> testClass = Enigma.class;
-		MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
+        assertMergedConfig(
+                mergedConfig,
+                testClass,
+                EMPTY_STRING_ARRAY,
+                EMPTY_CLASS_ARRAY,
+                DelegatingSmartContextLoader.class);
+    }
 
-		assertMergedConfig(mergedConfig, testClass, EMPTY_STRING_ARRAY, EMPTY_CLASS_ARRAY, DelegatingSmartContextLoader.class);
-	}
+    /** @since 4.3 */
+    @Test
+    public void buildMergedConfigWithContextConfigurationWithoutLocationsClassesOrInitializers() {
+        exception.expect(IllegalStateException.class);
+        exception.expectMessage(
+                startsWith(
+                        "DelegatingSmartContextLoader was unable to detect defaults, "
+                                + "and no ApplicationContextInitializers or ContextCustomizers were declared for context configuration attributes"));
 
-	/**
-	 * @since 4.3
-	 */
-	@Test
-	public void buildMergedConfigWithContextConfigurationWithoutLocationsClassesOrInitializers() {
-		exception.expect(IllegalStateException.class);
-		exception.expectMessage(startsWith("DelegatingSmartContextLoader was unable to detect defaults, "
-				+ "and no ApplicationContextInitializers or ContextCustomizers were declared for context configuration attributes"));
+        buildMergedContextConfiguration(MissingContextAttributesTestCase.class);
+    }
 
-		buildMergedContextConfiguration(MissingContextAttributesTestCase.class);
-	}
+    @Test
+    public void buildMergedConfigWithBareAnnotations() {
+        Class<?> testClass = BareAnnotations.class;
+        MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
 
-	@Test
-	public void buildMergedConfigWithBareAnnotations() {
-		Class<?> testClass = BareAnnotations.class;
-		MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
+        assertMergedConfig(
+                mergedConfig,
+                testClass,
+                array(
+                        "classpath:org/springframework/test/context/support/AbstractContextConfigurationUtilsTests$BareAnnotations-context.xml"),
+                EMPTY_CLASS_ARRAY,
+                DelegatingSmartContextLoader.class);
+    }
 
-		assertMergedConfig(
-			mergedConfig,
-			testClass,
-			array("classpath:org/springframework/test/context/support/AbstractContextConfigurationUtilsTests$BareAnnotations-context.xml"),
-			EMPTY_CLASS_ARRAY, DelegatingSmartContextLoader.class);
-	}
+    @Test
+    public void buildMergedConfigWithLocalAnnotationAndLocations() {
+        Class<?> testClass = LocationsFoo.class;
+        MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
 
-	@Test
-	public void buildMergedConfigWithLocalAnnotationAndLocations() {
-		Class<?> testClass = LocationsFoo.class;
-		MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
+        assertMergedConfig(
+                mergedConfig,
+                testClass,
+                array("classpath:/foo.xml"),
+                EMPTY_CLASS_ARRAY,
+                DelegatingSmartContextLoader.class);
+    }
 
-		assertMergedConfig(mergedConfig, testClass, array("classpath:/foo.xml"), EMPTY_CLASS_ARRAY,
-			DelegatingSmartContextLoader.class);
-	}
+    @Test
+    public void buildMergedConfigWithMetaAnnotationAndLocations() {
+        Class<?> testClass = MetaLocationsFoo.class;
+        MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
 
-	@Test
-	public void buildMergedConfigWithMetaAnnotationAndLocations() {
-		Class<?> testClass = MetaLocationsFoo.class;
-		MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
+        assertMergedConfig(
+                mergedConfig,
+                testClass,
+                array("classpath:/foo.xml"),
+                EMPTY_CLASS_ARRAY,
+                DelegatingSmartContextLoader.class);
+    }
 
-		assertMergedConfig(mergedConfig, testClass, array("classpath:/foo.xml"), EMPTY_CLASS_ARRAY,
-			DelegatingSmartContextLoader.class);
-	}
+    @Test
+    public void buildMergedConfigWithMetaAnnotationAndClasses() {
+        buildMergedConfigWithMetaAnnotationAndClasses(Dog.class);
+        buildMergedConfigWithMetaAnnotationAndClasses(WorkingDog.class);
+        buildMergedConfigWithMetaAnnotationAndClasses(GermanShepherd.class);
+    }
 
-	@Test
-	public void buildMergedConfigWithMetaAnnotationAndClasses() {
-		buildMergedConfigWithMetaAnnotationAndClasses(Dog.class);
-		buildMergedConfigWithMetaAnnotationAndClasses(WorkingDog.class);
-		buildMergedConfigWithMetaAnnotationAndClasses(GermanShepherd.class);
-	}
+    private void buildMergedConfigWithMetaAnnotationAndClasses(Class<?> testClass) {
+        MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
+        assertMergedConfig(
+                mergedConfig,
+                testClass,
+                EMPTY_STRING_ARRAY,
+                array(FooConfig.class, BarConfig.class),
+                DelegatingSmartContextLoader.class);
+    }
 
-	private void buildMergedConfigWithMetaAnnotationAndClasses(Class<?> testClass) {
-		MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
-		assertMergedConfig(mergedConfig, testClass, EMPTY_STRING_ARRAY, array(FooConfig.class,
-			BarConfig.class), DelegatingSmartContextLoader.class);
-	}
+    @Test
+    public void buildMergedConfigWithLocalAnnotationAndClasses() {
+        Class<?> testClass = ClassesFoo.class;
+        MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
 
-	@Test
-	public void buildMergedConfigWithLocalAnnotationAndClasses() {
-		Class<?> testClass = ClassesFoo.class;
-		MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
+        assertMergedConfig(
+                mergedConfig,
+                testClass,
+                EMPTY_STRING_ARRAY,
+                array(FooConfig.class),
+                DelegatingSmartContextLoader.class);
+    }
 
-		assertMergedConfig(mergedConfig, testClass, EMPTY_STRING_ARRAY, array(FooConfig.class),
-			DelegatingSmartContextLoader.class);
-	}
+    /**
+     * Introduced to investigate claims made in a discussion on <a
+     * href="https://stackoverflow.com/questions/24725438/what-could-cause-a-class-implementing-applicationlistenercontextrefreshedevent">Stack
+     * Overflow</a>.
+     */
+    @Test
+    public void buildMergedConfigWithAtWebAppConfigurationWithAnnotationAndClassesOnSuperclass() {
+        Class<?> webTestClass = WebClassesFoo.class;
+        Class<?> standardTestClass = ClassesFoo.class;
+        WebMergedContextConfiguration webMergedConfig =
+                (WebMergedContextConfiguration) buildMergedContextConfiguration(webTestClass);
+        MergedContextConfiguration standardMergedConfig =
+                buildMergedContextConfiguration(standardTestClass);
 
-	/**
-	 * Introduced to investigate claims made in a discussion on
-	 * <a href="https://stackoverflow.com/questions/24725438/what-could-cause-a-class-implementing-applicationlistenercontextrefreshedevent">Stack Overflow</a>.
-	 */
-	@Test
-	public void buildMergedConfigWithAtWebAppConfigurationWithAnnotationAndClassesOnSuperclass() {
-		Class<?> webTestClass = WebClassesFoo.class;
-		Class<?> standardTestClass = ClassesFoo.class;
-		WebMergedContextConfiguration webMergedConfig = (WebMergedContextConfiguration) buildMergedContextConfiguration(webTestClass);
-		MergedContextConfiguration standardMergedConfig = buildMergedContextConfiguration(standardTestClass);
+        assertEquals(webMergedConfig, webMergedConfig);
+        assertEquals(standardMergedConfig, standardMergedConfig);
+        assertNotEquals(standardMergedConfig, webMergedConfig);
+        assertNotEquals(webMergedConfig, standardMergedConfig);
 
-		assertEquals(webMergedConfig, webMergedConfig);
-		assertEquals(standardMergedConfig, standardMergedConfig);
-		assertNotEquals(standardMergedConfig, webMergedConfig);
-		assertNotEquals(webMergedConfig, standardMergedConfig);
+        assertMergedConfig(
+                webMergedConfig,
+                webTestClass,
+                EMPTY_STRING_ARRAY,
+                array(FooConfig.class),
+                WebDelegatingSmartContextLoader.class);
+        assertMergedConfig(
+                standardMergedConfig,
+                standardTestClass,
+                EMPTY_STRING_ARRAY,
+                array(FooConfig.class),
+                DelegatingSmartContextLoader.class);
+    }
 
-		assertMergedConfig(webMergedConfig, webTestClass, EMPTY_STRING_ARRAY, array(FooConfig.class),
-			WebDelegatingSmartContextLoader.class);
-		assertMergedConfig(standardMergedConfig, standardTestClass, EMPTY_STRING_ARRAY,
-			array(FooConfig.class), DelegatingSmartContextLoader.class);
-	}
+    @Test
+    public void buildMergedConfigWithLocalAnnotationAndOverriddenContextLoaderAndLocations() {
+        Class<?> testClass = PropertiesLocationsFoo.class;
+        Class<? extends ContextLoader> expectedContextLoaderClass =
+                GenericPropertiesContextLoader.class;
+        MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
 
-	@Test
-	public void buildMergedConfigWithLocalAnnotationAndOverriddenContextLoaderAndLocations() {
-		Class<?> testClass = PropertiesLocationsFoo.class;
-		Class<? extends ContextLoader> expectedContextLoaderClass = GenericPropertiesContextLoader.class;
-		MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
+        assertMergedConfig(
+                mergedConfig,
+                testClass,
+                array("classpath:/foo.properties"),
+                EMPTY_CLASS_ARRAY,
+                expectedContextLoaderClass);
+    }
 
-		assertMergedConfig(mergedConfig, testClass, array("classpath:/foo.properties"), EMPTY_CLASS_ARRAY,
-			expectedContextLoaderClass);
-	}
+    @Test
+    public void buildMergedConfigWithLocalAnnotationAndOverriddenContextLoaderAndClasses() {
+        Class<?> testClass = PropertiesClassesFoo.class;
+        Class<? extends ContextLoader> expectedContextLoaderClass =
+                GenericPropertiesContextLoader.class;
+        MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
 
-	@Test
-	public void buildMergedConfigWithLocalAnnotationAndOverriddenContextLoaderAndClasses() {
-		Class<?> testClass = PropertiesClassesFoo.class;
-		Class<? extends ContextLoader> expectedContextLoaderClass = GenericPropertiesContextLoader.class;
-		MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
+        assertMergedConfig(
+                mergedConfig,
+                testClass,
+                EMPTY_STRING_ARRAY,
+                array(FooConfig.class),
+                expectedContextLoaderClass);
+    }
 
-		assertMergedConfig(mergedConfig, testClass, EMPTY_STRING_ARRAY, array(FooConfig.class),
-			expectedContextLoaderClass);
-	}
+    @Test
+    public void buildMergedConfigWithLocalAndInheritedAnnotationsAndLocations() {
+        Class<?> testClass = LocationsBar.class;
+        String[] expectedLocations = array("/foo.xml", "/bar.xml");
+        MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
 
-	@Test
-	public void buildMergedConfigWithLocalAndInheritedAnnotationsAndLocations() {
-		Class<?> testClass = LocationsBar.class;
-		String[] expectedLocations = array("/foo.xml", "/bar.xml");
-		MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
+        assertMergedConfig(
+                mergedConfig,
+                testClass,
+                expectedLocations,
+                EMPTY_CLASS_ARRAY,
+                AnnotationConfigContextLoader.class);
+    }
 
-		assertMergedConfig(mergedConfig, testClass, expectedLocations, EMPTY_CLASS_ARRAY,
-			AnnotationConfigContextLoader.class);
-	}
+    @Test
+    public void buildMergedConfigWithLocalAndInheritedAnnotationsAndClasses() {
+        Class<?> testClass = ClassesBar.class;
+        Class<?>[] expectedClasses = array(FooConfig.class, BarConfig.class);
+        MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
 
-	@Test
-	public void buildMergedConfigWithLocalAndInheritedAnnotationsAndClasses() {
-		Class<?> testClass = ClassesBar.class;
-		Class<?>[] expectedClasses = array(FooConfig.class, BarConfig.class);
-		MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
+        assertMergedConfig(
+                mergedConfig,
+                testClass,
+                EMPTY_STRING_ARRAY,
+                expectedClasses,
+                AnnotationConfigContextLoader.class);
+    }
 
-		assertMergedConfig(mergedConfig, testClass, EMPTY_STRING_ARRAY, expectedClasses,
-			AnnotationConfigContextLoader.class);
-	}
+    @Test
+    public void buildMergedConfigWithAnnotationsAndOverriddenLocations() {
+        Class<?> testClass = OverriddenLocationsBar.class;
+        String[] expectedLocations = array("/bar.xml");
+        MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
 
-	@Test
-	public void buildMergedConfigWithAnnotationsAndOverriddenLocations() {
-		Class<?> testClass = OverriddenLocationsBar.class;
-		String[] expectedLocations = array("/bar.xml");
-		MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
+        assertMergedConfig(
+                mergedConfig,
+                testClass,
+                expectedLocations,
+                EMPTY_CLASS_ARRAY,
+                AnnotationConfigContextLoader.class);
+    }
 
-		assertMergedConfig(mergedConfig, testClass, expectedLocations, EMPTY_CLASS_ARRAY,
-			AnnotationConfigContextLoader.class);
-	}
+    @Test
+    public void buildMergedConfigWithAnnotationsAndOverriddenClasses() {
+        Class<?> testClass = OverriddenClassesBar.class;
+        Class<?>[] expectedClasses = array(BarConfig.class);
+        MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
 
-	@Test
-	public void buildMergedConfigWithAnnotationsAndOverriddenClasses() {
-		Class<?> testClass = OverriddenClassesBar.class;
-		Class<?>[] expectedClasses = array(BarConfig.class);
-		MergedContextConfiguration mergedConfig = buildMergedContextConfiguration(testClass);
+        assertMergedConfig(
+                mergedConfig,
+                testClass,
+                EMPTY_STRING_ARRAY,
+                expectedClasses,
+                AnnotationConfigContextLoader.class);
+    }
 
-		assertMergedConfig(mergedConfig, testClass, EMPTY_STRING_ARRAY, expectedClasses,
-			AnnotationConfigContextLoader.class);
-	}
+    @ContextConfiguration
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.TYPE)
+    public static @interface SpringAppConfig {
 
+        Class<?>[] classes() default {};
+    }
 
-	@ContextConfiguration
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target(ElementType.TYPE)
-	public static @interface SpringAppConfig {
+    @SpringAppConfig(classes = {FooConfig.class, BarConfig.class})
+    public abstract static class Dog {}
 
-		Class<?>[] classes() default {};
-	}
+    public abstract static class WorkingDog extends Dog {}
 
-	@SpringAppConfig(classes = { FooConfig.class, BarConfig.class })
-	public static abstract class Dog {
-	}
+    public static class GermanShepherd extends WorkingDog {}
 
-	public static abstract class WorkingDog extends Dog {
-	}
-
-	public static class GermanShepherd extends WorkingDog {
-	}
-
-	@ContextConfiguration
-	static class MissingContextAttributesTestCase {
-	}
-
+    @ContextConfiguration
+    static class MissingContextAttributesTestCase {}
 }

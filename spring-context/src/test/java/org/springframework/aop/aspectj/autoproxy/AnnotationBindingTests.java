@@ -29,26 +29,24 @@ import static org.junit.Assert.*;
  */
 public class AnnotationBindingTests {
 
-	private AnnotatedTestBean testBean;
+    private AnnotatedTestBean testBean;
 
+    @Before
+    public void setup() {
+        ClassPathXmlApplicationContext ctx =
+                new ClassPathXmlApplicationContext(
+                        getClass().getSimpleName() + "-context.xml", getClass());
+        testBean = (AnnotatedTestBean) ctx.getBean("testBean");
+    }
 
-	@Before
-	public void setup() {
-		ClassPathXmlApplicationContext ctx =
-				new ClassPathXmlApplicationContext(getClass().getSimpleName() + "-context.xml", getClass());
-		testBean = (AnnotatedTestBean) ctx.getBean("testBean");
-	}
+    @Test
+    public void testAnnotationBindingInAroundAdvice() {
+        assertEquals("this value", testBean.doThis());
+        assertEquals("that value", testBean.doThat());
+    }
 
-
-	@Test
-	public void testAnnotationBindingInAroundAdvice() {
-		assertEquals("this value", testBean.doThis());
-		assertEquals("that value", testBean.doThat());
-	}
-
-	@Test
-	public void testNoMatchingWithoutAnnotationPresent() {
-		assertEquals("doTheOther", testBean.doTheOther());
-	}
-
+    @Test
+    public void testNoMatchingWithoutAnnotationPresent() {
+        assertEquals("doTheOther", testBean.doTheOther());
+    }
 }

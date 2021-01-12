@@ -3,30 +3,31 @@
 
 <beans>
 
-	<bean class="org.springframework.scripting.support.ScriptFactoryPostProcessor"/>
+    <bean class="org.springframework.scripting.support.ScriptFactoryPostProcessor"/>
 
-	<bean id="messenger" class="org.springframework.scripting.groovy.GroovyScriptFactory">
-		<constructor-arg>
-			<value>inline:package org.springframework.scripting;
+    <bean id="messenger" class="org.springframework.scripting.groovy.GroovyScriptFactory">
+        <constructor-arg>
+            <value>inline:package org.springframework.scripting;
 
-import org.springframework.scripting.Messenger
+                import org.springframework.scripting.Messenger
 
-class DelegatingMessenger implements Messenger {
+                class DelegatingMessenger implements Messenger {
 
-	private Messenger wrappedMessenger;
+                private Messenger wrappedMessenger;
 
-	public String getMessage() {
-		this.wrappedMessenger.getMessage();
-	}
+                public String getMessage() {
+                this.wrappedMessenger.getMessage();
+                }
 
-	public void setMessenger(Messenger wrappedMessenger) {
-		this.wrappedMessenger = wrappedMessenger;
-	}
-}</value>
-		</constructor-arg>
-		<property name="messenger" ref="wrappedMessenger"/>
-	</bean>
+                public void setMessenger(Messenger wrappedMessenger) {
+                this.wrappedMessenger = wrappedMessenger;
+                }
+                }
+            </value>
+        </constructor-arg>
+        <property name="messenger" ref="wrappedMessenger"/>
+    </bean>
 
-	<bean id="wrappedMessenger" class="org.springframework.scripting.support.StubMessenger"/>
+    <bean id="wrappedMessenger" class="org.springframework.scripting.support.StubMessenger"/>
 
 </beans>

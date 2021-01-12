@@ -24,14 +24,15 @@ import org.springframework.context.support.GenericApplicationContext;
 
 @SuppressWarnings("resource")
 public class PropertyPlaceholderConfigurerEnvironmentIntegrationTests {
-	@Test
-	public void test() {
-		GenericApplicationContext ctx = new GenericApplicationContext();
-		ctx.registerBeanDefinition("ppc",
-				rootBeanDefinition(PropertyPlaceholderConfigurer.class)
-				.addPropertyValue("searchSystemEnvironment", false)
-				.getBeanDefinition());
-		ctx.refresh();
-		ctx.getBean("ppc");
-	}
+    @Test
+    public void test() {
+        GenericApplicationContext ctx = new GenericApplicationContext();
+        ctx.registerBeanDefinition(
+                "ppc",
+                rootBeanDefinition(PropertyPlaceholderConfigurer.class)
+                        .addPropertyValue("searchSystemEnvironment", false)
+                        .getBeanDefinition());
+        ctx.refresh();
+        ctx.getBean("ppc");
+    }
 }

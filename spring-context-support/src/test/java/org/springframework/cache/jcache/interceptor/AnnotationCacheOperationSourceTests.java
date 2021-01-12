@@ -41,232 +41,277 @@ import org.springframework.util.ReflectionUtils;
 import static org.junit.Assert.*;
 import static org.mockito.BDDMockito.*;
 
-/**
- * @author Stephane Nicoll
- */
+/** @author Stephane Nicoll */
 public class AnnotationCacheOperationSourceTests extends AbstractJCacheTests {
 
-	private final DefaultJCacheOperationSource source = new DefaultJCacheOperationSource();
+    private final DefaultJCacheOperationSource source = new DefaultJCacheOperationSource();
 
-	private final DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
+    private final DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
 
+    @Before
+    public void setup() {
+        source.setCacheResolver(defaultCacheResolver);
+        source.setExceptionCacheResolver(defaultExceptionCacheResolver);
+        source.setKeyGenerator(defaultKeyGenerator);
+        source.setBeanFactory(beanFactory);
+    }
 
-	@Before
-	public void setup() {
-		source.setCacheResolver(defaultCacheResolver);
-		source.setExceptionCacheResolver(defaultExceptionCacheResolver);
-		source.setKeyGenerator(defaultKeyGenerator);
-		source.setBeanFactory(beanFactory);
-	}
+    @Test
+    public void cache() {
+        CacheResultOperation op =
+                getDefaultCacheOperation(CacheResultOperation.class, String.class);
+        assertDefaults(op);
+        assertNull(
+                "Exception caching not enabled so resolver should not be set",
+                op.getExceptionCacheResolver());
+    }
 
+    @Test
+    public void cacheWithException() {
+        CacheResultOperation op =
+                getDefaultCacheOperation(CacheResultOperation.class, String.class, boolean.class);
+        assertDefaults(op);
+        assertEquals(defaultExceptionCacheResolver, op.getExceptionCacheResolver());
+        assertEquals("exception", op.getExceptionCacheName());
+    }
 
-	@Test
-	public void cache() {
-		CacheResultOperation op = getDefaultCacheOperation(CacheResultOperation.class, String.class);
-		assertDefaults(op);
-		assertNull("Exception caching not enabled so resolver should not be set", op.getExceptionCacheResolver());
-	}
+    @Test
+    public void put() {
+        CachePutOperation op =
+                getDefaultCacheOperation(CachePutOperation.class, String.class, Object.class);
+        assertDefaults(op);
+    }
 
-	@Test
-	public void cacheWithException() {
-		CacheResultOperation op = getDefaultCacheOperation(CacheResultOperation.class, String.class, boolean.class);
-		assertDefaults(op);
-		assertEquals(defaultExceptionCacheResolver, op.getExceptionCacheResolver());
-		assertEquals("exception", op.getExceptionCacheName());
-	}
+    @Test
+    public void remove() {
+        CacheRemoveOperation op =
+                getDefaultCacheOperation(CacheRemoveOperation.class, String.class);
+        assertDefaults(op);
+    }
 
-	@Test
-	public void put() {
-		CachePutOperation op = getDefaultCacheOperation(CachePutOperation.class, String.class, Object.class);
-		assertDefaults(op);
-	}
+    @Test
+    public void removeAll() {
+        CacheRemoveAllOperation op = getDefaultCacheOperation(CacheRemoveAllOperation.class);
+        assertEquals(defaultCacheResolver, op.getCacheResolver());
+    }
 
-	@Test
-	public void remove() {
-		CacheRemoveOperation op = getDefaultCacheOperation(CacheRemoveOperation.class, String.class);
-		assertDefaults(op);
-	}
+    @Test
+    public void noAnnotation() {
+        assertNull(getCacheOperation(AnnotatedJCacheableService.class, name.getMethodName()));
+    }
 
-	@Test
-	public void removeAll() {
-		CacheRemoveAllOperation op = getDefaultCacheOperation(CacheRemoveAllOperation.class);
-		assertEquals(defaultCacheResolver, op.getCacheResolver());
-	}
+    @Test
+    public void multiAnnotations() {
+        thrown.expect(IllegalStateException.class);
+        getCacheOperation(InvalidCases.class, name.getMethodName());
+    }
 
-	@Test
-	public void noAnnotation() {
-		assertNull(getCacheOperation(AnnotatedJCacheableService.class, name.getMethodName()));
-	}
+    @Test
+    public void defaultCacheNameWithCandidate() {
+        Method method = ReflectionUtils.findMethod(Object.class, "toString");
+        assertEquals("foo", source.determineCacheName(method, null, "foo"));
+    }
 
-	@Test
-	public void multiAnnotations() {
-		thrown.expect(IllegalStateException.class);
-		getCacheOperation(InvalidCases.class, name.getMethodName());
-	}
+    @Test
+    public void defaultCacheNameWithDefaults() {
+        Method method = ReflectionUtils.findMethod(Object.class, "toString");
+        CacheDefaults mock = mock(CacheDefaults.class);
+        given(mock.cacheName()).willReturn("");
+        assertEquals("java.lang.Object.toString()", source.determineCacheName(method, mock, ""));
+    }
 
-	@Test
-	public void defaultCacheNameWithCandidate() {
-		Method method = ReflectionUtils.findMethod(Object.class, "toString");
-		assertEquals("foo", source.determineCacheName(method, null, "foo"));
-	}
+    @Test
+    public void defaultCacheNameNoDefaults() {
+        Method method = ReflectionUtils.findMethod(Object.class, "toString");
+        assertEquals("java.lang.Object.toString()", source.determineCacheName(method, null, ""));
+    }
 
-	@Test
-	public void defaultCacheNameWithDefaults() {
-		Method method = ReflectionUtils.findMethod(Object.class, "toString");
-		CacheDefaults mock = mock(CacheDefaults.class);
-		given(mock.cacheName()).willReturn("");
-		assertEquals("java.lang.Object.toString()", source.determineCacheName(method, mock, ""));
-	}
+    @Test
+    public void defaultCacheNameWithParameters() {
+        Method method =
+                ReflectionUtils.findMethod(Comparator.class, "compare", Object.class, Object.class);
+        assertEquals(
+                "java.util.Comparator.compare(java.lang.Object,java.lang.Object)",
+                source.determineCacheName(method, null, ""));
+    }
 
-	@Test
-	public void defaultCacheNameNoDefaults() {
-		Method method = ReflectionUtils.findMethod(Object.class, "toString");
-		assertEquals("java.lang.Object.toString()", source.determineCacheName(method, null, ""));
-	}
+    @Test
+    public void customCacheResolver() {
+        CacheResultOperation operation =
+                getCacheOperation(
+                        CacheResultOperation.class,
+                        CustomService.class,
+                        name.getMethodName(),
+                        Long.class);
+        assertJCacheResolver(operation.getCacheResolver(), TestableCacheResolver.class);
+        assertJCacheResolver(operation.getExceptionCacheResolver(), null);
+        assertEquals(KeyGeneratorAdapter.class, operation.getKeyGenerator().getClass());
+        assertEquals(
+                defaultKeyGenerator,
+                ((KeyGeneratorAdapter) operation.getKeyGenerator()).getTarget());
+    }
 
-	@Test
-	public void defaultCacheNameWithParameters() {
-		Method method = ReflectionUtils.findMethod(Comparator.class, "compare", Object.class, Object.class);
-		assertEquals("java.util.Comparator.compare(java.lang.Object,java.lang.Object)",
-				source.determineCacheName(method, null, ""));
-	}
+    @Test
+    public void customKeyGenerator() {
+        CacheResultOperation operation =
+                getCacheOperation(
+                        CacheResultOperation.class,
+                        CustomService.class,
+                        name.getMethodName(),
+                        Long.class);
+        assertEquals(defaultCacheResolver, operation.getCacheResolver());
+        assertNull(operation.getExceptionCacheResolver());
+        assertCacheKeyGenerator(operation.getKeyGenerator(), TestableCacheKeyGenerator.class);
+    }
 
-	@Test
-	public void customCacheResolver() {
-		CacheResultOperation operation =
-				getCacheOperation(CacheResultOperation.class, CustomService.class, name.getMethodName(), Long.class);
-		assertJCacheResolver(operation.getCacheResolver(), TestableCacheResolver.class);
-		assertJCacheResolver(operation.getExceptionCacheResolver(), null);
-		assertEquals(KeyGeneratorAdapter.class, operation.getKeyGenerator().getClass());
-		assertEquals(defaultKeyGenerator, ((KeyGeneratorAdapter) operation.getKeyGenerator()).getTarget());
-	}
+    @Test
+    public void customKeyGeneratorSpringBean() {
+        TestableCacheKeyGenerator bean = new TestableCacheKeyGenerator();
+        beanFactory.registerSingleton("fooBar", bean);
+        CacheResultOperation operation =
+                getCacheOperation(
+                        CacheResultOperation.class,
+                        CustomService.class,
+                        name.getMethodName(),
+                        Long.class);
+        assertEquals(defaultCacheResolver, operation.getCacheResolver());
+        assertNull(operation.getExceptionCacheResolver());
+        KeyGeneratorAdapter adapter = (KeyGeneratorAdapter) operation.getKeyGenerator();
+        assertSame(bean, adapter.getTarget()); // take bean from context
+    }
 
-	@Test
-	public void customKeyGenerator() {
-		CacheResultOperation operation =
-				getCacheOperation(CacheResultOperation.class, CustomService.class, name.getMethodName(), Long.class);
-		assertEquals(defaultCacheResolver, operation.getCacheResolver());
-		assertNull(operation.getExceptionCacheResolver());
-		assertCacheKeyGenerator(operation.getKeyGenerator(), TestableCacheKeyGenerator.class);
-	}
+    @Test
+    public void customKeyGeneratorAndCacheResolver() {
+        CacheResultOperation operation =
+                getCacheOperation(
+                        CacheResultOperation.class,
+                        CustomServiceWithDefaults.class,
+                        name.getMethodName(),
+                        Long.class);
+        assertJCacheResolver(operation.getCacheResolver(), TestableCacheResolver.class);
+        assertJCacheResolver(operation.getExceptionCacheResolver(), null);
+        assertCacheKeyGenerator(operation.getKeyGenerator(), TestableCacheKeyGenerator.class);
+    }
 
-	@Test
-	public void customKeyGeneratorSpringBean() {
-		TestableCacheKeyGenerator bean = new TestableCacheKeyGenerator();
-		beanFactory.registerSingleton("fooBar", bean);
-		CacheResultOperation operation =
-				getCacheOperation(CacheResultOperation.class, CustomService.class, name.getMethodName(), Long.class);
-		assertEquals(defaultCacheResolver, operation.getCacheResolver());
-		assertNull(operation.getExceptionCacheResolver());
-		KeyGeneratorAdapter adapter = (KeyGeneratorAdapter) operation.getKeyGenerator();
-		assertSame(bean, adapter.getTarget()); // take bean from context
-	}
+    @Test
+    public void customKeyGeneratorAndCacheResolverWithExceptionName() {
+        CacheResultOperation operation =
+                getCacheOperation(
+                        CacheResultOperation.class,
+                        CustomServiceWithDefaults.class,
+                        name.getMethodName(),
+                        Long.class);
+        assertJCacheResolver(operation.getCacheResolver(), TestableCacheResolver.class);
+        assertJCacheResolver(operation.getExceptionCacheResolver(), TestableCacheResolver.class);
+        assertCacheKeyGenerator(operation.getKeyGenerator(), TestableCacheKeyGenerator.class);
+    }
 
-	@Test
-	public void customKeyGeneratorAndCacheResolver() {
-		CacheResultOperation operation = getCacheOperation(CacheResultOperation.class,
-				CustomServiceWithDefaults.class, name.getMethodName(), Long.class);
-		assertJCacheResolver(operation.getCacheResolver(), TestableCacheResolver.class);
-		assertJCacheResolver(operation.getExceptionCacheResolver(), null);
-		assertCacheKeyGenerator(operation.getKeyGenerator(), TestableCacheKeyGenerator.class);
-	}
+    private void assertDefaults(AbstractJCacheKeyOperation<?> operation) {
+        assertEquals(defaultCacheResolver, operation.getCacheResolver());
+        assertEquals(KeyGeneratorAdapter.class, operation.getKeyGenerator().getClass());
+        assertEquals(
+                defaultKeyGenerator,
+                ((KeyGeneratorAdapter) operation.getKeyGenerator()).getTarget());
+    }
 
-	@Test
-	public void customKeyGeneratorAndCacheResolverWithExceptionName() {
-		CacheResultOperation operation = getCacheOperation(CacheResultOperation.class,
-				CustomServiceWithDefaults.class, name.getMethodName(), Long.class);
-		assertJCacheResolver(operation.getCacheResolver(), TestableCacheResolver.class);
-		assertJCacheResolver(operation.getExceptionCacheResolver(), TestableCacheResolver.class);
-		assertCacheKeyGenerator(operation.getKeyGenerator(), TestableCacheKeyGenerator.class);
-	}
+    protected <T extends JCacheOperation<?>> T getDefaultCacheOperation(
+            Class<T> operationType, Class<?>... parameterTypes) {
+        return getCacheOperation(
+                operationType,
+                AnnotatedJCacheableService.class,
+                name.getMethodName(),
+                parameterTypes);
+    }
 
-	private void assertDefaults(AbstractJCacheKeyOperation<?> operation) {
-		assertEquals(defaultCacheResolver, operation.getCacheResolver());
-		assertEquals(KeyGeneratorAdapter.class, operation.getKeyGenerator().getClass());
-		assertEquals(defaultKeyGenerator, ((KeyGeneratorAdapter) operation.getKeyGenerator()).getTarget());
-	}
+    protected <T extends JCacheOperation<?>> T getCacheOperation(
+            Class<T> operationType,
+            Class<?> targetType,
+            String methodName,
+            Class<?>... parameterTypes) {
 
-	protected <T extends JCacheOperation<?>> T getDefaultCacheOperation(Class<T> operationType, Class<?>... parameterTypes) {
-		return getCacheOperation(operationType, AnnotatedJCacheableService.class, name.getMethodName(), parameterTypes);
-	}
+        JCacheOperation<?> result = getCacheOperation(targetType, methodName, parameterTypes);
+        assertNotNull(result);
+        assertEquals(operationType, result.getClass());
+        return operationType.cast(result);
+    }
 
-	protected <T extends JCacheOperation<?>> T getCacheOperation(
-			Class<T> operationType, Class<?> targetType, String methodName, Class<?>... parameterTypes) {
+    private JCacheOperation<?> getCacheOperation(
+            Class<?> targetType, String methodName, Class<?>... parameterTypes) {
+        Method method = ReflectionUtils.findMethod(targetType, methodName, parameterTypes);
+        Assert.notNull(method, "requested method '" + methodName + "'does not exist");
+        return source.getCacheOperation(method, targetType);
+    }
 
-		JCacheOperation<?> result = getCacheOperation(targetType, methodName, parameterTypes);
-		assertNotNull(result);
-		assertEquals(operationType, result.getClass());
-		return operationType.cast(result);
-	}
+    private void assertJCacheResolver(
+            CacheResolver actual,
+            Class<? extends javax.cache.annotation.CacheResolver> expectedTargetType) {
 
-	private JCacheOperation<?> getCacheOperation(Class<?> targetType, String methodName, Class<?>... parameterTypes) {
-		Method method = ReflectionUtils.findMethod(targetType, methodName, parameterTypes);
-		Assert.notNull(method, "requested method '" + methodName + "'does not exist");
-		return source.getCacheOperation(method, targetType);
-	}
+        if (expectedTargetType == null) {
+            assertNull(actual);
+        } else {
+            assertEquals(
+                    "Wrong cache resolver implementation",
+                    CacheResolverAdapter.class,
+                    actual.getClass());
+            CacheResolverAdapter adapter = (CacheResolverAdapter) actual;
+            assertEquals(
+                    "Wrong target JCache implementation",
+                    expectedTargetType,
+                    adapter.getTarget().getClass());
+        }
+    }
 
-	private void assertJCacheResolver(CacheResolver actual,
-			Class<? extends javax.cache.annotation.CacheResolver> expectedTargetType) {
+    private void assertCacheKeyGenerator(
+            KeyGenerator actual, Class<? extends CacheKeyGenerator> expectedTargetType) {
+        assertEquals(
+                "Wrong cache resolver implementation",
+                KeyGeneratorAdapter.class,
+                actual.getClass());
+        KeyGeneratorAdapter adapter = (KeyGeneratorAdapter) actual;
+        assertEquals(
+                "Wrong target CacheKeyGenerator implementation",
+                expectedTargetType,
+                adapter.getTarget().getClass());
+    }
 
-		if (expectedTargetType == null) {
-			assertNull(actual);
-		}
-		else {
-			assertEquals("Wrong cache resolver implementation", CacheResolverAdapter.class, actual.getClass());
-			CacheResolverAdapter adapter = (CacheResolverAdapter) actual;
-			assertEquals("Wrong target JCache implementation", expectedTargetType, adapter.getTarget().getClass());
-		}
-	}
+    static class CustomService {
 
-	private void assertCacheKeyGenerator(KeyGenerator actual,
-			Class<? extends CacheKeyGenerator> expectedTargetType) {
-		assertEquals("Wrong cache resolver implementation", KeyGeneratorAdapter.class, actual.getClass());
-		KeyGeneratorAdapter adapter = (KeyGeneratorAdapter) actual;
-		assertEquals("Wrong target CacheKeyGenerator implementation", expectedTargetType, adapter.getTarget().getClass());
-	}
+        @CacheResult(cacheKeyGenerator = TestableCacheKeyGenerator.class)
+        public Object customKeyGenerator(Long id) {
+            return null;
+        }
 
+        @CacheResult(cacheKeyGenerator = TestableCacheKeyGenerator.class)
+        public Object customKeyGeneratorSpringBean(Long id) {
+            return null;
+        }
 
-	static class CustomService {
+        @CacheResult(cacheResolverFactory = TestableCacheResolverFactory.class)
+        public Object customCacheResolver(Long id) {
+            return null;
+        }
+    }
 
-		@CacheResult(cacheKeyGenerator = TestableCacheKeyGenerator.class)
-		public Object customKeyGenerator(Long id) {
-			return null;
-		}
+    @CacheDefaults(
+            cacheResolverFactory = TestableCacheResolverFactory.class,
+            cacheKeyGenerator = TestableCacheKeyGenerator.class)
+    static class CustomServiceWithDefaults {
 
-		@CacheResult(cacheKeyGenerator = TestableCacheKeyGenerator.class)
-		public Object customKeyGeneratorSpringBean(Long id) {
-			return null;
-		}
+        @CacheResult
+        public Object customKeyGeneratorAndCacheResolver(Long id) {
+            return null;
+        }
 
-		@CacheResult(cacheResolverFactory = TestableCacheResolverFactory.class)
-		public Object customCacheResolver(Long id) {
-			return null;
-		}
-	}
+        @CacheResult(exceptionCacheName = "exception")
+        public Object customKeyGeneratorAndCacheResolverWithExceptionName(Long id) {
+            return null;
+        }
+    }
 
+    static class InvalidCases {
 
-	@CacheDefaults(cacheResolverFactory = TestableCacheResolverFactory.class,
-			cacheKeyGenerator = TestableCacheKeyGenerator.class)
-	static class CustomServiceWithDefaults {
-
-		@CacheResult
-		public Object customKeyGeneratorAndCacheResolver(Long id) {
-			return null;
-		}
-
-		@CacheResult(exceptionCacheName = "exception")
-		public Object customKeyGeneratorAndCacheResolverWithExceptionName(Long id) {
-			return null;
-		}
-	}
-
-
-	static class InvalidCases {
-
-		@CacheRemove
-		@CacheRemoveAll
-		public void multiAnnotations() {
-		}
-	}
-
+        @CacheRemove
+        @CacheRemoveAll
+        public void multiAnnotations() {}
+    }
 }

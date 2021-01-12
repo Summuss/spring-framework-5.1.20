@@ -30,11 +30,11 @@ import org.springframework.core.annotation.AliasFor;
 @Retention(RetentionPolicy.RUNTIME)
 @interface NonPublicAliasedAnnotation {
 
-	String name();
+    String name();
 
-	@AliasFor("path")
-	String value() default "";
+    @AliasFor("path")
+    String value() default "";
 
-	@AliasFor("value")
-	String path() default "";
+    @AliasFor("value")
+    String path() default "";
 }

@@ -19,21 +19,19 @@ package org.springframework.web.reactive.function.server;
 import org.springframework.http.server.reactive.AbstractHttpHandlerIntegrationTests;
 import org.springframework.http.server.reactive.HttpHandler;
 
-/**
- * @author Arjen Poutsma
- */
-public abstract class AbstractRouterFunctionIntegrationTests extends AbstractHttpHandlerIntegrationTests {
+/** @author Arjen Poutsma */
+public abstract class AbstractRouterFunctionIntegrationTests
+        extends AbstractHttpHandlerIntegrationTests {
 
-	@Override
-	protected final HttpHandler createHttpHandler() {
-		RouterFunction<?> routerFunction = routerFunction();
-		return RouterFunctions.toHttpHandler(routerFunction, handlerStrategies());
-	}
+    @Override
+    protected final HttpHandler createHttpHandler() {
+        RouterFunction<?> routerFunction = routerFunction();
+        return RouterFunctions.toHttpHandler(routerFunction, handlerStrategies());
+    }
 
-	protected abstract RouterFunction<?> routerFunction();
+    protected abstract RouterFunction<?> routerFunction();
 
-	protected HandlerStrategies handlerStrategies() {
-		return HandlerStrategies.withDefaults();
-	}
-
+    protected HandlerStrategies handlerStrategies() {
+        return HandlerStrategies.withDefaults();
+    }
 }

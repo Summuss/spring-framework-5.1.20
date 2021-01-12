@@ -45,146 +45,144 @@ import org.springframework.context.support.StaticApplicationContext;
  */
 public class ScriptTemplateViewTests {
 
-	private ScriptTemplateView view;
+    private ScriptTemplateView view;
 
-	private ScriptTemplateConfigurer configurer;
+    private ScriptTemplateConfigurer configurer;
 
-	private StaticApplicationContext context;
+    private StaticApplicationContext context;
 
-	@Rule
-	public ExpectedException expectedException = ExpectedException.none();
+    @Rule public ExpectedException expectedException = ExpectedException.none();
 
+    @Before
+    public void setup() {
+        this.configurer = new ScriptTemplateConfigurer();
+        this.context = new StaticApplicationContext();
+        this.context
+                .getBeanFactory()
+                .registerSingleton("scriptTemplateConfigurer", this.configurer);
+        this.view = new ScriptTemplateView();
+    }
 
-	@Before
-	public void setup() {
-		this.configurer = new ScriptTemplateConfigurer();
-		this.context = new StaticApplicationContext();
-		this.context.getBeanFactory().registerSingleton("scriptTemplateConfigurer", this.configurer);
-		this.view = new ScriptTemplateView();
-	}
+    @Test
+    public void missingTemplate() throws Exception {
+        this.context.refresh();
+        this.view.setResourceLoaderPath(
+                "classpath:org/springframework/web/reactive/result/view/script/");
+        this.view.setUrl("missing.txt");
+        this.view.setEngine(mock(InvocableScriptEngine.class));
+        this.configurer.setRenderFunction("render");
+        this.view.setApplicationContext(this.context);
+        assertFalse(this.view.checkResourceExists(Locale.ENGLISH));
+    }
 
+    @Test
+    public void missingScriptTemplateConfig() throws Exception {
+        this.expectedException.expect(ApplicationContextException.class);
+        this.view.setApplicationContext(new StaticApplicationContext());
+        this.expectedException.expectMessage(contains("ScriptTemplateConfig"));
+    }
 
-	@Test
-	public void missingTemplate() throws Exception {
-		this.context.refresh();
-		this.view.setResourceLoaderPath("classpath:org/springframework/web/reactive/result/view/script/");
-		this.view.setUrl("missing.txt");
-		this.view.setEngine(mock(InvocableScriptEngine.class));
-		this.configurer.setRenderFunction("render");
-		this.view.setApplicationContext(this.context);
-		assertFalse(this.view.checkResourceExists(Locale.ENGLISH));
-	}
+    @Test
+    public void detectScriptTemplateConfigWithEngine() {
+        InvocableScriptEngine engine = mock(InvocableScriptEngine.class);
+        this.configurer.setEngine(engine);
+        this.configurer.setRenderObject("Template");
+        this.configurer.setRenderFunction("render");
+        this.configurer.setCharset(StandardCharsets.ISO_8859_1);
+        this.configurer.setSharedEngine(true);
 
-	@Test
-	public void missingScriptTemplateConfig() throws Exception {
-		this.expectedException.expect(ApplicationContextException.class);
-		this.view.setApplicationContext(new StaticApplicationContext());
-		this.expectedException.expectMessage(contains("ScriptTemplateConfig"));
-	}
+        DirectFieldAccessor accessor = new DirectFieldAccessor(this.view);
+        this.view.setApplicationContext(this.context);
+        assertEquals(engine, accessor.getPropertyValue("engine"));
+        assertEquals("Template", accessor.getPropertyValue("renderObject"));
+        assertEquals("render", accessor.getPropertyValue("renderFunction"));
+        assertEquals(StandardCharsets.ISO_8859_1, accessor.getPropertyValue("defaultCharset"));
+        assertEquals(true, accessor.getPropertyValue("sharedEngine"));
+    }
 
-	@Test
-	public void detectScriptTemplateConfigWithEngine() {
-		InvocableScriptEngine engine = mock(InvocableScriptEngine.class);
-		this.configurer.setEngine(engine);
-		this.configurer.setRenderObject("Template");
-		this.configurer.setRenderFunction("render");
-		this.configurer.setCharset(StandardCharsets.ISO_8859_1);
-		this.configurer.setSharedEngine(true);
+    @Test
+    public void detectScriptTemplateConfigWithEngineName() {
+        this.configurer.setEngineName("nashorn");
+        this.configurer.setRenderObject("Template");
+        this.configurer.setRenderFunction("render");
 
-		DirectFieldAccessor accessor = new DirectFieldAccessor(this.view);
-		this.view.setApplicationContext(this.context);
-		assertEquals(engine, accessor.getPropertyValue("engine"));
-		assertEquals("Template", accessor.getPropertyValue("renderObject"));
-		assertEquals("render", accessor.getPropertyValue("renderFunction"));
-		assertEquals(StandardCharsets.ISO_8859_1, accessor.getPropertyValue("defaultCharset"));
-		assertEquals(true, accessor.getPropertyValue("sharedEngine"));
-	}
+        DirectFieldAccessor accessor = new DirectFieldAccessor(this.view);
+        this.view.setApplicationContext(this.context);
+        assertEquals("nashorn", accessor.getPropertyValue("engineName"));
+        assertNotNull(accessor.getPropertyValue("engine"));
+        assertEquals("Template", accessor.getPropertyValue("renderObject"));
+        assertEquals("render", accessor.getPropertyValue("renderFunction"));
+        assertEquals(StandardCharsets.UTF_8, accessor.getPropertyValue("defaultCharset"));
+    }
 
-	@Test
-	public void detectScriptTemplateConfigWithEngineName() {
-		this.configurer.setEngineName("nashorn");
-		this.configurer.setRenderObject("Template");
-		this.configurer.setRenderFunction("render");
+    @Test
+    public void customEngineAndRenderFunction() throws Exception {
+        ScriptEngine engine = mock(InvocableScriptEngine.class);
+        given(engine.get("key")).willReturn("value");
+        this.view.setEngine(engine);
+        this.view.setRenderFunction("render");
+        this.view.setApplicationContext(this.context);
+        engine = this.view.getEngine();
+        assertNotNull(engine);
+        assertEquals("value", engine.get("key"));
+        DirectFieldAccessor accessor = new DirectFieldAccessor(this.view);
+        assertNull(accessor.getPropertyValue("renderObject"));
+        assertEquals("render", accessor.getPropertyValue("renderFunction"));
+        assertEquals(StandardCharsets.UTF_8, accessor.getPropertyValue("defaultCharset"));
+    }
 
-		DirectFieldAccessor accessor = new DirectFieldAccessor(this.view);
-		this.view.setApplicationContext(this.context);
-		assertEquals("nashorn", accessor.getPropertyValue("engineName"));
-		assertNotNull(accessor.getPropertyValue("engine"));
-		assertEquals("Template", accessor.getPropertyValue("renderObject"));
-		assertEquals("render", accessor.getPropertyValue("renderFunction"));
-		assertEquals(StandardCharsets.UTF_8, accessor.getPropertyValue("defaultCharset"));
-	}
+    @Test
+    public void nonSharedEngine() throws Exception {
+        int iterations = 20;
+        this.view.setEngineName("nashorn");
+        this.view.setRenderFunction("render");
+        this.view.setSharedEngine(false);
+        this.view.setApplicationContext(this.context);
+        ExecutorService executor = Executors.newFixedThreadPool(4);
+        List<Future<Boolean>> results = new ArrayList<>();
+        for (int i = 0; i < iterations; i++) {
+            results.add(executor.submit(() -> view.getEngine() != null));
+        }
+        assertEquals(iterations, results.size());
+        for (int i = 0; i < iterations; i++) {
+            assertTrue(results.get(i).get());
+        }
+        executor.shutdown();
+    }
 
-	@Test
-	public void customEngineAndRenderFunction() throws Exception {
-		ScriptEngine engine = mock(InvocableScriptEngine.class);
-		given(engine.get("key")).willReturn("value");
-		this.view.setEngine(engine);
-		this.view.setRenderFunction("render");
-		this.view.setApplicationContext(this.context);
-		engine = this.view.getEngine();
-		assertNotNull(engine);
-		assertEquals("value", engine.get("key"));
-		DirectFieldAccessor accessor = new DirectFieldAccessor(this.view);
-		assertNull(accessor.getPropertyValue("renderObject"));
-		assertEquals("render", accessor.getPropertyValue("renderFunction"));
-		assertEquals(StandardCharsets.UTF_8, accessor.getPropertyValue("defaultCharset"));
-	}
+    @Test
+    public void nonInvocableScriptEngine() throws Exception {
+        this.view.setEngine(mock(ScriptEngine.class));
+        this.view.setApplicationContext(this.context);
+    }
 
-	@Test
-	public void nonSharedEngine() throws Exception {
-		int iterations = 20;
-		this.view.setEngineName("nashorn");
-		this.view.setRenderFunction("render");
-		this.view.setSharedEngine(false);
-		this.view.setApplicationContext(this.context);
-		ExecutorService executor = Executors.newFixedThreadPool(4);
-		List<Future<Boolean>> results = new ArrayList<>();
-		for (int i = 0; i < iterations; i++) {
-			results.add(executor.submit(() -> view.getEngine() != null));
-		}
-		assertEquals(iterations, results.size());
-		for (int i = 0; i < iterations; i++) {
-			assertTrue(results.get(i).get());
-		}
-		executor.shutdown();
-	}
+    @Test
+    public void nonInvocableScriptEngineWithRenderFunction() throws Exception {
+        this.view.setEngine(mock(ScriptEngine.class));
+        this.view.setRenderFunction("render");
+        this.expectedException.expect(IllegalArgumentException.class);
+        this.view.setApplicationContext(this.context);
+    }
 
-	@Test
-	public void nonInvocableScriptEngine() throws Exception {
-		this.view.setEngine(mock(ScriptEngine.class));
-		this.view.setApplicationContext(this.context);
-	}
+    @Test
+    public void engineAndEngineNameBothDefined() {
+        this.view.setEngine(mock(InvocableScriptEngine.class));
+        this.view.setEngineName("test");
+        this.view.setRenderFunction("render");
+        this.expectedException.expect(IllegalArgumentException.class);
+        this.view.setApplicationContext(this.context);
+        this.expectedException.expectMessage(contains("'engine' or 'engineName'"));
+    }
 
-	@Test
-	public void nonInvocableScriptEngineWithRenderFunction() throws Exception {
-		this.view.setEngine(mock(ScriptEngine.class));
-		this.view.setRenderFunction("render");
-		this.expectedException.expect(IllegalArgumentException.class);
-		this.view.setApplicationContext(this.context);
-	}
+    @Test
+    public void engineSetterAndNonSharedEngine() {
+        this.view.setEngine(mock(InvocableScriptEngine.class));
+        this.view.setRenderFunction("render");
+        this.view.setSharedEngine(false);
+        this.expectedException.expect(IllegalArgumentException.class);
+        this.view.setApplicationContext(this.context);
+        this.expectedException.expectMessage(contains("sharedEngine"));
+    }
 
-	@Test
-	public void engineAndEngineNameBothDefined() {
-		this.view.setEngine(mock(InvocableScriptEngine.class));
-		this.view.setEngineName("test");
-		this.view.setRenderFunction("render");
-		this.expectedException.expect(IllegalArgumentException.class);
-		this.view.setApplicationContext(this.context);
-		this.expectedException.expectMessage(contains("'engine' or 'engineName'"));
-	}
-
-	@Test
-	public void engineSetterAndNonSharedEngine() {
-		this.view.setEngine(mock(InvocableScriptEngine.class));
-		this.view.setRenderFunction("render");
-		this.view.setSharedEngine(false);
-		this.expectedException.expect(IllegalArgumentException.class);
-		this.view.setApplicationContext(this.context);
-		this.expectedException.expectMessage(contains("sharedEngine"));
-	}
-
-	private interface InvocableScriptEngine extends ScriptEngine, Invocable {
-	}
-
+    private interface InvocableScriptEngine extends ScriptEngine, Invocable {}
 }

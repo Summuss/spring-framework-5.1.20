@@ -32,36 +32,33 @@ import org.springframework.lang.Nullable;
  */
 public class SimpleInstrumentableClassLoader extends OverridingClassLoader {
 
-	static {
-		ClassLoader.registerAsParallelCapable();
-	}
+    static {
+        ClassLoader.registerAsParallelCapable();
+    }
 
+    private final WeavingTransformer weavingTransformer;
 
-	private final WeavingTransformer weavingTransformer;
+    /**
+     * Create a new SimpleInstrumentableClassLoader for the given ClassLoader.
+     *
+     * @param parent the ClassLoader to build an instrumentable ClassLoader for
+     */
+    public SimpleInstrumentableClassLoader(@Nullable ClassLoader parent) {
+        super(parent);
+        this.weavingTransformer = new WeavingTransformer(parent);
+    }
 
+    /**
+     * Add a {@link ClassFileTransformer} to be applied by this ClassLoader.
+     *
+     * @param transformer the {@link ClassFileTransformer} to register
+     */
+    public void addTransformer(ClassFileTransformer transformer) {
+        this.weavingTransformer.addTransformer(transformer);
+    }
 
-	/**
-	 * Create a new SimpleInstrumentableClassLoader for the given ClassLoader.
-	 * @param parent the ClassLoader to build an instrumentable ClassLoader for
-	 */
-	public SimpleInstrumentableClassLoader(@Nullable ClassLoader parent) {
-		super(parent);
-		this.weavingTransformer = new WeavingTransformer(parent);
-	}
-
-
-	/**
-	 * Add a {@link ClassFileTransformer} to be applied by this ClassLoader.
-	 * @param transformer the {@link ClassFileTransformer} to register
-	 */
-	public void addTransformer(ClassFileTransformer transformer) {
-		this.weavingTransformer.addTransformer(transformer);
-	}
-
-
-	@Override
-	protected byte[] transformIfNecessary(String name, byte[] bytes) {
-		return this.weavingTransformer.transformIfNecessary(name, bytes);
-	}
-
+    @Override
+    protected byte[] transformIfNecessary(String name, byte[] bytes) {
+        return this.weavingTransformer.transformIfNecessary(name, bytes);
+    }
 }

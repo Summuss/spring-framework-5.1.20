@@ -36,7 +36,7 @@ inline fun <reified T : Any> BeanFactory.getBean(): T = getBean(T::class.java)
  */
 @Suppress("EXTENSION_SHADOWED_BY_MEMBER")
 inline fun <reified T : Any> BeanFactory.getBean(name: String): T =
-		getBean(name, T::class.java)
+        getBean(name, T::class.java)
 
 /**
  * Extension for [BeanFactory.getBean] providing a `getBean<Foo>(arg1, arg2)` variant.
@@ -45,8 +45,8 @@ inline fun <reified T : Any> BeanFactory.getBean(name: String): T =
  * @author Sebastien Deleuze
  * @since 5.0
  */
-inline fun <reified T : Any> BeanFactory.getBean(vararg args:Any): T =
-		getBean(T::class.java, *args)
+inline fun <reified T : Any> BeanFactory.getBean(vararg args: Any): T =
+        getBean(T::class.java, *args)
 
 /**
  * Extension for [BeanFactory.getBeanProvider] providing a `getBeanProvider<Foo>()` variant.
@@ -57,5 +57,5 @@ inline fun <reified T : Any> BeanFactory.getBean(vararg args:Any): T =
  * @since 5.1
  */
 inline fun <reified T : Any> BeanFactory.getBeanProvider(): ObjectProvider<T> =
-		getBeanProvider(ResolvableType.forType((object : ParameterizedTypeReference<T>() {}).type))
+        getBeanProvider(ResolvableType.forType((object : ParameterizedTypeReference<T>() {}).type))
 

@@ -36,8 +36,8 @@ import static java.lang.String.format;
 import static org.junit.Assert.*;
 
 /**
- * Integration tests for scoped proxy use in conjunction with aop: namespace.
- * Deemed an integration test because .web mocks and application contexts are required.
+ * Integration tests for scoped proxy use in conjunction with aop: namespace. Deemed an integration
+ * test because .web mocks and application contexts are required.
  *
  * @author Rob Harrop
  * @author Juergen Hoeller
@@ -46,94 +46,94 @@ import static org.junit.Assert.*;
  */
 public class AopNamespaceHandlerScopeIntegrationTests {
 
-	private static final String CONTEXT = format("classpath:%s-context.xml",
-			ClassUtils.convertClassNameToResourcePath(AopNamespaceHandlerScopeIntegrationTests.class.getName()));
+    private static final String CONTEXT =
+            format(
+                    "classpath:%s-context.xml",
+                    ClassUtils.convertClassNameToResourcePath(
+                            AopNamespaceHandlerScopeIntegrationTests.class.getName()));
 
-	private ApplicationContext context;
+    private ApplicationContext context;
 
+    @Before
+    public void setUp() {
+        XmlWebApplicationContext wac = new XmlWebApplicationContext();
+        wac.setConfigLocations(CONTEXT);
+        wac.refresh();
+        this.context = wac;
+    }
 
-	@Before
-	public void setUp() {
-		XmlWebApplicationContext wac = new XmlWebApplicationContext();
-		wac.setConfigLocations(CONTEXT);
-		wac.refresh();
-		this.context = wac;
-	}
+    @Test
+    public void testSingletonScoping() throws Exception {
+        ITestBean scoped = (ITestBean) this.context.getBean("singletonScoped");
+        assertTrue("Should be AOP proxy", AopUtils.isAopProxy(scoped));
+        assertTrue("Should be target class proxy", scoped instanceof TestBean);
+        String rob = "Rob Harrop";
+        String bram = "Bram Smeets";
+        assertEquals(rob, scoped.getName());
+        scoped.setName(bram);
+        assertEquals(bram, scoped.getName());
+        ITestBean deserialized = (ITestBean) SerializationTestUtils.serializeAndDeserialize(scoped);
+        assertEquals(bram, deserialized.getName());
+    }
 
+    @Test
+    public void testRequestScoping() throws Exception {
+        MockHttpServletRequest oldRequest = new MockHttpServletRequest();
+        MockHttpServletRequest newRequest = new MockHttpServletRequest();
 
-	@Test
-	public void testSingletonScoping() throws Exception {
-		ITestBean scoped = (ITestBean) this.context.getBean("singletonScoped");
-		assertTrue("Should be AOP proxy", AopUtils.isAopProxy(scoped));
-		assertTrue("Should be target class proxy", scoped instanceof TestBean);
-		String rob = "Rob Harrop";
-		String bram = "Bram Smeets";
-		assertEquals(rob, scoped.getName());
-		scoped.setName(bram);
-		assertEquals(bram, scoped.getName());
-		ITestBean deserialized = (ITestBean) SerializationTestUtils.serializeAndDeserialize(scoped);
-		assertEquals(bram, deserialized.getName());
-	}
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(oldRequest));
 
-	@Test
-	public void testRequestScoping() throws Exception {
-		MockHttpServletRequest oldRequest = new MockHttpServletRequest();
-		MockHttpServletRequest newRequest = new MockHttpServletRequest();
+        ITestBean scoped = (ITestBean) this.context.getBean("requestScoped");
+        assertTrue("Should be AOP proxy", AopUtils.isAopProxy(scoped));
+        assertTrue("Should be target class proxy", scoped instanceof TestBean);
 
-		RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(oldRequest));
+        ITestBean testBean = (ITestBean) this.context.getBean("testBean");
+        assertTrue("Should be AOP proxy", AopUtils.isAopProxy(testBean));
+        assertFalse("Regular bean should be JDK proxy", testBean instanceof TestBean);
 
-		ITestBean scoped = (ITestBean) this.context.getBean("requestScoped");
-		assertTrue("Should be AOP proxy", AopUtils.isAopProxy(scoped));
-		assertTrue("Should be target class proxy", scoped instanceof TestBean);
+        String rob = "Rob Harrop";
+        String bram = "Bram Smeets";
 
-		ITestBean testBean = (ITestBean) this.context.getBean("testBean");
-		assertTrue("Should be AOP proxy", AopUtils.isAopProxy(testBean));
-		assertFalse("Regular bean should be JDK proxy", testBean instanceof TestBean);
+        assertEquals(rob, scoped.getName());
+        scoped.setName(bram);
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(newRequest));
+        assertEquals(rob, scoped.getName());
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(oldRequest));
+        assertEquals(bram, scoped.getName());
 
-		String rob = "Rob Harrop";
-		String bram = "Bram Smeets";
+        assertTrue("Should have advisors", ((Advised) scoped).getAdvisors().length > 0);
+    }
 
-		assertEquals(rob, scoped.getName());
-		scoped.setName(bram);
-		RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(newRequest));
-		assertEquals(rob, scoped.getName());
-		RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(oldRequest));
-		assertEquals(bram, scoped.getName());
+    @Test
+    public void testSessionScoping() throws Exception {
+        MockHttpSession oldSession = new MockHttpSession();
+        MockHttpSession newSession = new MockHttpSession();
 
-		assertTrue("Should have advisors", ((Advised) scoped).getAdvisors().length > 0);
-	}
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setSession(oldSession);
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
-	@Test
-	public void testSessionScoping() throws Exception {
-		MockHttpSession oldSession = new MockHttpSession();
-		MockHttpSession newSession = new MockHttpSession();
+        ITestBean scoped = (ITestBean) this.context.getBean("sessionScoped");
+        assertTrue("Should be AOP proxy", AopUtils.isAopProxy(scoped));
+        assertFalse("Should not be target class proxy", scoped instanceof TestBean);
 
-		MockHttpServletRequest request = new MockHttpServletRequest();
-		request.setSession(oldSession);
-		RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+        ITestBean scopedAlias = (ITestBean) this.context.getBean("sessionScopedAlias");
+        assertSame(scoped, scopedAlias);
 
-		ITestBean scoped = (ITestBean) this.context.getBean("sessionScoped");
-		assertTrue("Should be AOP proxy", AopUtils.isAopProxy(scoped));
-		assertFalse("Should not be target class proxy", scoped instanceof TestBean);
+        ITestBean testBean = (ITestBean) this.context.getBean("testBean");
+        assertTrue("Should be AOP proxy", AopUtils.isAopProxy(testBean));
+        assertFalse("Regular bean should be JDK proxy", testBean instanceof TestBean);
 
-		ITestBean scopedAlias = (ITestBean) this.context.getBean("sessionScopedAlias");
-		assertSame(scoped, scopedAlias);
+        String rob = "Rob Harrop";
+        String bram = "Bram Smeets";
 
-		ITestBean testBean = (ITestBean) this.context.getBean("testBean");
-		assertTrue("Should be AOP proxy", AopUtils.isAopProxy(testBean));
-		assertFalse("Regular bean should be JDK proxy", testBean instanceof TestBean);
+        assertEquals(rob, scoped.getName());
+        scoped.setName(bram);
+        request.setSession(newSession);
+        assertEquals(rob, scoped.getName());
+        request.setSession(oldSession);
+        assertEquals(bram, scoped.getName());
 
-		String rob = "Rob Harrop";
-		String bram = "Bram Smeets";
-
-		assertEquals(rob, scoped.getName());
-		scoped.setName(bram);
-		request.setSession(newSession);
-		assertEquals(rob, scoped.getName());
-		request.setSession(oldSession);
-		assertEquals(bram, scoped.getName());
-
-		assertTrue("Should have advisors", ((Advised) scoped).getAdvisors().length > 0);
-	}
-
+        assertTrue("Should have advisors", ((Advised) scoped).getAdvisors().length > 0);
+    }
 }

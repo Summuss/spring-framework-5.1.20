@@ -38,55 +38,54 @@ import static org.junit.Assert.*;
  */
 public class EhCacheCacheTests extends AbstractCacheTests<EhCacheCache> {
 
-	private CacheManager cacheManager;
+    private CacheManager cacheManager;
 
-	private Ehcache nativeCache;
+    private Ehcache nativeCache;
 
-	private EhCacheCache cache;
+    private EhCacheCache cache;
 
+    @Before
+    public void setup() {
+        cacheManager =
+                new CacheManager(
+                        new Configuration()
+                                .name("EhCacheCacheTests")
+                                .defaultCache(new CacheConfiguration("default", 100)));
+        nativeCache = new net.sf.ehcache.Cache(new CacheConfiguration(CACHE_NAME, 100));
+        cacheManager.addCache(nativeCache);
 
-	@Before
-	public void setup() {
-		cacheManager = new CacheManager(new Configuration().name("EhCacheCacheTests")
-				.defaultCache(new CacheConfiguration("default", 100)));
-		nativeCache = new net.sf.ehcache.Cache(new CacheConfiguration(CACHE_NAME, 100));
-		cacheManager.addCache(nativeCache);
+        cache = new EhCacheCache(nativeCache);
+    }
 
-		cache = new EhCacheCache(nativeCache);
-	}
+    @After
+    public void shutdown() {
+        cacheManager.shutdown();
+    }
 
-	@After
-	public void shutdown() {
-		cacheManager.shutdown();
-	}
+    @Override
+    protected EhCacheCache getCache() {
+        return cache;
+    }
 
+    @Override
+    protected Ehcache getNativeCache() {
+        return nativeCache;
+    }
 
-	@Override
-	protected EhCacheCache getCache() {
-		return cache;
-	}
+    @Test
+    public void testExpiredElements() throws Exception {
+        Assume.group(TestGroup.LONG_RUNNING);
 
-	@Override
-	protected Ehcache getNativeCache() {
-		return nativeCache;
-	}
+        String key = "brancusi";
+        String value = "constantin";
+        Element brancusi = new Element(key, value);
+        // ttl = 10s
+        brancusi.setTimeToLive(3);
+        nativeCache.put(brancusi);
 
-
-	@Test
-	public void testExpiredElements() throws Exception {
-		Assume.group(TestGroup.LONG_RUNNING);
-
-		String key = "brancusi";
-		String value = "constantin";
-		Element brancusi = new Element(key, value);
-		// ttl = 10s
-		brancusi.setTimeToLive(3);
-		nativeCache.put(brancusi);
-
-		assertEquals(value, cache.get(key).get());
-		// wait for the entry to expire
-		Thread.sleep(5 * 1000);
-		assertNull(cache.get(key));
-	}
-
+        assertEquals(value, cache.get(key).get());
+        // wait for the entry to expire
+        Thread.sleep(5 * 1000);
+        assertNull(cache.get(key));
+    }
 }

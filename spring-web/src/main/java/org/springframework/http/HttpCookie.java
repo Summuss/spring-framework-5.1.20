@@ -20,9 +20,9 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Represents an HTTP cookie as a name-value pair consistent with the content of
- * the "Cookie" request header. The {@link ResponseCookie} sub-class has the
- * additional attributes expected in the "Set-Cookie" response header.
+ * Represents an HTTP cookie as a name-value pair consistent with the content of the "Cookie"
+ * request header. The {@link ResponseCookie} sub-class has the additional attributes expected in
+ * the "Set-Cookie" response header.
  *
  * @author Rossen Stoyanchev
  * @since 5.0
@@ -30,52 +30,45 @@ import org.springframework.util.Assert;
  */
 public class HttpCookie {
 
-	private final String name;
+    private final String name;
 
-	private final String value;
+    private final String value;
 
+    public HttpCookie(String name, @Nullable String value) {
+        Assert.hasLength(name, "'name' is required and must not be empty.");
+        this.name = name;
+        this.value = (value != null ? value : "");
+    }
 
-	public HttpCookie(String name, @Nullable String value) {
-		Assert.hasLength(name, "'name' is required and must not be empty.");
-		this.name = name;
-		this.value = (value != null ? value : "");
-	}
+    /** Return the cookie name. */
+    public String getName() {
+        return this.name;
+    }
 
-	/**
-	 * Return the cookie name.
-	 */
-	public String getName() {
-		return this.name;
-	}
+    /** Return the cookie value or an empty string (never {@code null}). */
+    public String getValue() {
+        return this.value;
+    }
 
-	/**
-	 * Return the cookie value or an empty string (never {@code null}).
-	 */
-	public String getValue() {
-		return this.value;
-	}
+    @Override
+    public int hashCode() {
+        return this.name.hashCode();
+    }
 
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof HttpCookie)) {
+            return false;
+        }
+        HttpCookie otherCookie = (HttpCookie) other;
+        return (this.name.equalsIgnoreCase(otherCookie.getName()));
+    }
 
-	@Override
-	public int hashCode() {
-		return this.name.hashCode();
-	}
-
-	@Override
-	public boolean equals(Object other) {
-		if (this == other) {
-			return true;
-		}
-		if (!(other instanceof HttpCookie)) {
-			return false;
-		}
-		HttpCookie otherCookie = (HttpCookie) other;
-		return (this.name.equalsIgnoreCase(otherCookie.getName()));
-	}
-
-	@Override
-	public String toString() {
-		return this.name + '=' + this.value;
-	}
-
+    @Override
+    public String toString() {
+        return this.name + '=' + this.value;
+    }
 }

@@ -43,126 +43,136 @@ import static org.mockito.Mockito.*;
  *
  * @author Rossen Stoyanchev
  */
-public class WebSocketServerSockJsSessionTests extends AbstractSockJsSessionTests<TestWebSocketServerSockJsSession> {
+public class WebSocketServerSockJsSessionTests
+        extends AbstractSockJsSessionTests<TestWebSocketServerSockJsSession> {
 
-	private TestWebSocketSession webSocketSession;
+    private TestWebSocketSession webSocketSession;
 
+    @Before
+    public void setup() {
+        super.setUp();
+        this.webSocketSession = new TestWebSocketSession();
+        this.webSocketSession.setOpen(true);
+    }
 
-	@Before
-	public void setup() {
-		super.setUp();
-		this.webSocketSession = new TestWebSocketSession();
-		this.webSocketSession.setOpen(true);
-	}
+    @Override
+    protected TestWebSocketServerSockJsSession initSockJsSession() {
+        return new TestWebSocketServerSockJsSession(
+                this.sockJsConfig, this.webSocketHandler, Collections.<String, Object>emptyMap());
+    }
 
-	@Override
-	protected TestWebSocketServerSockJsSession initSockJsSession() {
-		return new TestWebSocketServerSockJsSession(this.sockJsConfig, this.webSocketHandler,
-				Collections.<String, Object>emptyMap());
-	}
+    @Test
+    public void isActive() throws Exception {
+        assertFalse(this.session.isActive());
 
-	@Test
-	public void isActive() throws Exception {
-		assertFalse(this.session.isActive());
+        this.session.initializeDelegateSession(this.webSocketSession);
+        assertTrue(this.session.isActive());
 
-		this.session.initializeDelegateSession(this.webSocketSession);
-		assertTrue(this.session.isActive());
+        this.webSocketSession.setOpen(false);
+        assertFalse(this.session.isActive());
+    }
 
-		this.webSocketSession.setOpen(false);
-		assertFalse(this.session.isActive());
-	}
+    @Test
+    public void afterSessionInitialized() throws Exception {
+        this.session.initializeDelegateSession(this.webSocketSession);
+        assertEquals(
+                Collections.singletonList(new TextMessage("o")),
+                this.webSocketSession.getSentMessages());
+        assertEquals(Arrays.asList("schedule"), this.session.heartbeatSchedulingEvents);
+        verify(this.webSocketHandler).afterConnectionEstablished(this.session);
+        verifyNoMoreInteractions(this.taskScheduler, this.webSocketHandler);
+    }
 
-	@Test
-	public void afterSessionInitialized() throws Exception {
-		this.session.initializeDelegateSession(this.webSocketSession);
-		assertEquals(Collections.singletonList(new TextMessage("o")), this.webSocketSession.getSentMessages());
-		assertEquals(Arrays.asList("schedule"), this.session.heartbeatSchedulingEvents);
-		verify(this.webSocketHandler).afterConnectionEstablished(this.session);
-		verifyNoMoreInteractions(this.taskScheduler, this.webSocketHandler);
-	}
+    @Test
+    @SuppressWarnings("resource")
+    public void afterSessionInitializedOpenFrameFirst() throws Exception {
+        TextWebSocketHandler handler =
+                new TextWebSocketHandler() {
+                    @Override
+                    public void afterConnectionEstablished(WebSocketSession session)
+                            throws Exception {
+                        session.sendMessage(new TextMessage("go go"));
+                    }
+                };
+        TestWebSocketServerSockJsSession session =
+                new TestWebSocketServerSockJsSession(this.sockJsConfig, handler, null);
+        session.initializeDelegateSession(this.webSocketSession);
+        List<TextMessage> expected =
+                Arrays.asList(new TextMessage("o"), new TextMessage("a[\"go go\"]"));
+        assertEquals(expected, this.webSocketSession.getSentMessages());
+    }
 
-	@Test
-	@SuppressWarnings("resource")
-	public void afterSessionInitializedOpenFrameFirst() throws Exception {
-		TextWebSocketHandler handler = new TextWebSocketHandler() {
-			@Override
-			public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-				session.sendMessage(new TextMessage("go go"));
-			}
-		};
-		TestWebSocketServerSockJsSession session = new TestWebSocketServerSockJsSession(this.sockJsConfig, handler, null);
-		session.initializeDelegateSession(this.webSocketSession);
-		List<TextMessage> expected = Arrays.asList(new TextMessage("o"), new TextMessage("a[\"go go\"]"));
-		assertEquals(expected, this.webSocketSession.getSentMessages());
-	}
+    @Test
+    public void handleMessageEmptyPayload() throws Exception {
+        this.session.handleMessage(new TextMessage(""), this.webSocketSession);
+        verifyNoMoreInteractions(this.webSocketHandler);
+    }
 
-	@Test
-	public void handleMessageEmptyPayload() throws Exception {
-		this.session.handleMessage(new TextMessage(""), this.webSocketSession);
-		verifyNoMoreInteractions(this.webSocketHandler);
-	}
+    @Test
+    public void handleMessage() throws Exception {
 
-	@Test
-	public void handleMessage() throws Exception {
+        TextMessage message = new TextMessage("[\"x\"]");
+        this.session.handleMessage(message, this.webSocketSession);
 
-		TextMessage message = new TextMessage("[\"x\"]");
-		this.session.handleMessage(message, this.webSocketSession);
+        verify(this.webSocketHandler).handleMessage(this.session, new TextMessage("x"));
+        verifyNoMoreInteractions(this.webSocketHandler);
+    }
 
-		verify(this.webSocketHandler).handleMessage(this.session, new TextMessage("x"));
-		verifyNoMoreInteractions(this.webSocketHandler);
-	}
+    @Test
+    public void handleMessageBadData() throws Exception {
+        TextMessage message = new TextMessage("[\"x]");
+        this.session.handleMessage(message, this.webSocketSession);
 
-	@Test
-	public void handleMessageBadData() throws Exception {
-		TextMessage message = new TextMessage("[\"x]");
-		this.session.handleMessage(message, this.webSocketSession);
+        this.session.isClosed();
+        verify(this.webSocketHandler)
+                .handleTransportError(same(this.session), any(IOException.class));
+        verifyNoMoreInteractions(this.webSocketHandler);
+    }
 
-		this.session.isClosed();
-		verify(this.webSocketHandler).handleTransportError(same(this.session), any(IOException.class));
-		verifyNoMoreInteractions(this.webSocketHandler);
-	}
+    @Test
+    public void sendMessageInternal() throws Exception {
 
-	@Test
-	public void sendMessageInternal() throws Exception {
+        this.session.initializeDelegateSession(this.webSocketSession);
+        this.session.sendMessageInternal("x");
 
-		this.session.initializeDelegateSession(this.webSocketSession);
-		this.session.sendMessageInternal("x");
+        assertEquals(
+                Arrays.asList(new TextMessage("o"), new TextMessage("a[\"x\"]")),
+                this.webSocketSession.getSentMessages());
 
-		assertEquals(Arrays.asList(new TextMessage("o"), new TextMessage("a[\"x\"]")),
-				this.webSocketSession.getSentMessages());
+        assertEquals(
+                Arrays.asList("schedule", "cancel", "schedule"),
+                this.session.heartbeatSchedulingEvents);
+    }
 
-		assertEquals(Arrays.asList("schedule", "cancel", "schedule"), this.session.heartbeatSchedulingEvents);
-	}
+    @Test
+    public void disconnect() throws Exception {
 
-	@Test
-	public void disconnect() throws Exception {
+        this.session.initializeDelegateSession(this.webSocketSession);
+        this.session.close(CloseStatus.NOT_ACCEPTABLE);
 
-		this.session.initializeDelegateSession(this.webSocketSession);
-		this.session.close(CloseStatus.NOT_ACCEPTABLE);
+        assertEquals(CloseStatus.NOT_ACCEPTABLE, this.webSocketSession.getCloseStatus());
+    }
 
-		assertEquals(CloseStatus.NOT_ACCEPTABLE, this.webSocketSession.getCloseStatus());
-	}
+    static class TestWebSocketServerSockJsSession extends WebSocketServerSockJsSession {
 
+        private final List<String> heartbeatSchedulingEvents = new ArrayList<>();
 
-	static class TestWebSocketServerSockJsSession extends WebSocketServerSockJsSession {
+        public TestWebSocketServerSockJsSession(
+                SockJsServiceConfig config,
+                WebSocketHandler handler,
+                Map<String, Object> attributes) {
 
-		private final List<String> heartbeatSchedulingEvents = new ArrayList<>();
+            super("1", config, handler, attributes);
+        }
 
-		public TestWebSocketServerSockJsSession(SockJsServiceConfig config, WebSocketHandler handler,
-				Map<String, Object> attributes) {
+        @Override
+        protected void scheduleHeartbeat() {
+            this.heartbeatSchedulingEvents.add("schedule");
+        }
 
-			super("1", config, handler, attributes);
-		}
-
-		@Override
-		protected void scheduleHeartbeat() {
-			this.heartbeatSchedulingEvents.add("schedule");
-		}
-
-		@Override
-		protected void cancelHeartbeat() {
-			this.heartbeatSchedulingEvents.add("cancel");
-		}
-	}
-
+        @Override
+        protected void cancelHeartbeat() {
+            this.heartbeatSchedulingEvents.add("cancel");
+        }
+    }
 }

@@ -24,5 +24,4 @@ import org.springframework.stereotype.Controller;
  * @author Stephane Nicoll
  */
 @Controller
-public class SampleController {
-}
+public class SampleController {}

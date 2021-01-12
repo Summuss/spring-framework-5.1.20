@@ -35,17 +35,16 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * A Spring {@link FactoryBean} for creating a Quartz {@link org.quartz.CronTrigger}
- * instance, supporting bean-style usage for trigger configuration.
+ * A Spring {@link FactoryBean} for creating a Quartz {@link org.quartz.CronTrigger} instance,
+ * supporting bean-style usage for trigger configuration.
  *
- * <p>{@code CronTrigger(Impl)} itself is already a JavaBean but lacks sensible defaults.
- * This class uses the Spring bean name as job name, the Quartz default group ("DEFAULT")
- * as job group, the current time as start time, and indefinite repetition, if not specified.
+ * <p>{@code CronTrigger(Impl)} itself is already a JavaBean but lacks sensible defaults. This class
+ * uses the Spring bean name as job name, the Quartz default group ("DEFAULT") as job group, the
+ * current time as start time, and indefinite repetition, if not specified.
  *
- * <p>This class will also register the trigger with the job name and group of
- * a given {@link org.quartz.JobDetail}. This allows {@link SchedulerFactoryBean}
- * to automatically register a trigger for the corresponding JobDetail,
- * instead of registering the JobDetail separately.
+ * <p>This class will also register the trigger with the job name and group of a given {@link
+ * org.quartz.JobDetail}. This allows {@link SchedulerFactoryBean} to automatically register a
+ * trigger for the corresponding JobDetail, instead of registering the JobDetail separately.
  *
  * @author Juergen Hoeller
  * @since 3.1
@@ -56,229 +55,200 @@ import org.springframework.util.Assert;
  * @see SchedulerFactoryBean#setTriggers
  * @see SchedulerFactoryBean#setJobDetails
  */
-public class CronTriggerFactoryBean implements FactoryBean<CronTrigger>, BeanNameAware, InitializingBean {
+public class CronTriggerFactoryBean
+        implements FactoryBean<CronTrigger>, BeanNameAware, InitializingBean {
 
-	/** Constants for the CronTrigger class. */
-	private static final Constants constants = new Constants(CronTrigger.class);
+    /** Constants for the CronTrigger class. */
+    private static final Constants constants = new Constants(CronTrigger.class);
 
+    @Nullable private String name;
 
-	@Nullable
-	private String name;
+    @Nullable private String group;
 
-	@Nullable
-	private String group;
+    @Nullable private JobDetail jobDetail;
 
-	@Nullable
-	private JobDetail jobDetail;
+    private JobDataMap jobDataMap = new JobDataMap();
 
-	private JobDataMap jobDataMap = new JobDataMap();
+    @Nullable private Date startTime;
 
-	@Nullable
-	private Date startTime;
+    private long startDelay = 0;
 
-	private long startDelay = 0;
+    @Nullable private String cronExpression;
 
-	@Nullable
-	private String cronExpression;
+    @Nullable private TimeZone timeZone;
 
-	@Nullable
-	private TimeZone timeZone;
+    @Nullable private String calendarName;
 
-	@Nullable
-	private String calendarName;
+    private int priority;
 
-	private int priority;
+    private int misfireInstruction;
 
-	private int misfireInstruction;
+    @Nullable private String description;
 
-	@Nullable
-	private String description;
+    @Nullable private String beanName;
 
-	@Nullable
-	private String beanName;
+    @Nullable private CronTrigger cronTrigger;
 
-	@Nullable
-	private CronTrigger cronTrigger;
+    /** Specify the trigger's name. */
+    public void setName(String name) {
+        this.name = name;
+    }
 
+    /** Specify the trigger's group. */
+    public void setGroup(String group) {
+        this.group = group;
+    }
 
-	/**
-	 * Specify the trigger's name.
-	 */
-	public void setName(String name) {
-		this.name = name;
-	}
+    /** Set the JobDetail that this trigger should be associated with. */
+    public void setJobDetail(JobDetail jobDetail) {
+        this.jobDetail = jobDetail;
+    }
 
-	/**
-	 * Specify the trigger's group.
-	 */
-	public void setGroup(String group) {
-		this.group = group;
-	}
+    /**
+     * Set the trigger's JobDataMap.
+     *
+     * @see #setJobDataAsMap
+     */
+    public void setJobDataMap(JobDataMap jobDataMap) {
+        this.jobDataMap = jobDataMap;
+    }
 
-	/**
-	 * Set the JobDetail that this trigger should be associated with.
-	 */
-	public void setJobDetail(JobDetail jobDetail) {
-		this.jobDetail = jobDetail;
-	}
+    /** Return the trigger's JobDataMap. */
+    public JobDataMap getJobDataMap() {
+        return this.jobDataMap;
+    }
 
-	/**
-	 * Set the trigger's JobDataMap.
-	 * @see #setJobDataAsMap
-	 */
-	public void setJobDataMap(JobDataMap jobDataMap) {
-		this.jobDataMap = jobDataMap;
-	}
+    /**
+     * Register objects in the JobDataMap via a given Map.
+     *
+     * <p>These objects will be available to this Trigger only, in contrast to objects in the
+     * JobDetail's data map.
+     *
+     * @param jobDataAsMap a Map with String keys and any objects as values (for example
+     *     Spring-managed beans)
+     */
+    public void setJobDataAsMap(Map<String, ?> jobDataAsMap) {
+        this.jobDataMap.putAll(jobDataAsMap);
+    }
 
-	/**
-	 * Return the trigger's JobDataMap.
-	 */
-	public JobDataMap getJobDataMap() {
-		return this.jobDataMap;
-	}
+    /**
+     * Set a specific start time for the trigger.
+     *
+     * <p>Note that a dynamically computed {@link #setStartDelay} specification overrides a static
+     * timestamp set here.
+     */
+    public void setStartTime(Date startTime) {
+        this.startTime = startTime;
+    }
 
-	/**
-	 * Register objects in the JobDataMap via a given Map.
-	 * <p>These objects will be available to this Trigger only,
-	 * in contrast to objects in the JobDetail's data map.
-	 * @param jobDataAsMap a Map with String keys and any objects as values
-	 * (for example Spring-managed beans)
-	 */
-	public void setJobDataAsMap(Map<String, ?> jobDataAsMap) {
-		this.jobDataMap.putAll(jobDataAsMap);
-	}
+    /**
+     * Set the start delay in milliseconds.
+     *
+     * <p>The start delay is added to the current system time (when the bean starts) to control the
+     * start time of the trigger.
+     */
+    public void setStartDelay(long startDelay) {
+        Assert.isTrue(startDelay >= 0, "Start delay cannot be negative");
+        this.startDelay = startDelay;
+    }
 
-	/**
-	 * Set a specific start time for the trigger.
-	 * <p>Note that a dynamically computed {@link #setStartDelay} specification
-	 * overrides a static timestamp set here.
-	 */
-	public void setStartTime(Date startTime) {
-		this.startTime = startTime;
-	}
+    /** Specify the cron expression for this trigger. */
+    public void setCronExpression(String cronExpression) {
+        this.cronExpression = cronExpression;
+    }
 
-	/**
-	 * Set the start delay in milliseconds.
-	 * <p>The start delay is added to the current system time (when the bean starts)
-	 * to control the start time of the trigger.
-	 */
-	public void setStartDelay(long startDelay) {
-		Assert.isTrue(startDelay >= 0, "Start delay cannot be negative");
-		this.startDelay = startDelay;
-	}
+    /** Specify the time zone for this trigger's cron expression. */
+    public void setTimeZone(TimeZone timeZone) {
+        this.timeZone = timeZone;
+    }
 
-	/**
-	 * Specify the cron expression for this trigger.
-	 */
-	public void setCronExpression(String cronExpression) {
-		this.cronExpression = cronExpression;
-	}
+    /** Associate a specific calendar with this cron trigger. */
+    public void setCalendarName(String calendarName) {
+        this.calendarName = calendarName;
+    }
 
-	/**
-	 * Specify the time zone for this trigger's cron expression.
-	 */
-	public void setTimeZone(TimeZone timeZone) {
-		this.timeZone = timeZone;
-	}
+    /** Specify the priority of this trigger. */
+    public void setPriority(int priority) {
+        this.priority = priority;
+    }
 
-	/**
-	 * Associate a specific calendar with this cron trigger.
-	 */
-	public void setCalendarName(String calendarName) {
-		this.calendarName = calendarName;
-	}
+    /** Specify a misfire instruction for this trigger. */
+    public void setMisfireInstruction(int misfireInstruction) {
+        this.misfireInstruction = misfireInstruction;
+    }
 
-	/**
-	 * Specify the priority of this trigger.
-	 */
-	public void setPriority(int priority) {
-		this.priority = priority;
-	}
+    /**
+     * Set the misfire instruction via the name of the corresponding constant in the {@link
+     * org.quartz.CronTrigger} class. Default is {@code MISFIRE_INSTRUCTION_SMART_POLICY}.
+     *
+     * @see org.quartz.CronTrigger#MISFIRE_INSTRUCTION_FIRE_ONCE_NOW
+     * @see org.quartz.CronTrigger#MISFIRE_INSTRUCTION_DO_NOTHING
+     * @see org.quartz.Trigger#MISFIRE_INSTRUCTION_SMART_POLICY
+     */
+    public void setMisfireInstructionName(String constantName) {
+        this.misfireInstruction = constants.asNumber(constantName).intValue();
+    }
 
-	/**
-	 * Specify a misfire instruction for this trigger.
-	 */
-	public void setMisfireInstruction(int misfireInstruction) {
-		this.misfireInstruction = misfireInstruction;
-	}
+    /** Associate a textual description with this trigger. */
+    public void setDescription(String description) {
+        this.description = description;
+    }
 
-	/**
-	 * Set the misfire instruction via the name of the corresponding
-	 * constant in the {@link org.quartz.CronTrigger} class.
-	 * Default is {@code MISFIRE_INSTRUCTION_SMART_POLICY}.
-	 * @see org.quartz.CronTrigger#MISFIRE_INSTRUCTION_FIRE_ONCE_NOW
-	 * @see org.quartz.CronTrigger#MISFIRE_INSTRUCTION_DO_NOTHING
-	 * @see org.quartz.Trigger#MISFIRE_INSTRUCTION_SMART_POLICY
-	 */
-	public void setMisfireInstructionName(String constantName) {
-		this.misfireInstruction = constants.asNumber(constantName).intValue();
-	}
+    @Override
+    public void setBeanName(String beanName) {
+        this.beanName = beanName;
+    }
 
-	/**
-	 * Associate a textual description with this trigger.
-	 */
-	public void setDescription(String description) {
-		this.description = description;
-	}
+    @Override
+    public void afterPropertiesSet() throws ParseException {
+        Assert.notNull(this.cronExpression, "Property 'cronExpression' is required");
 
-	@Override
-	public void setBeanName(String beanName) {
-		this.beanName = beanName;
-	}
+        if (this.name == null) {
+            this.name = this.beanName;
+        }
+        if (this.group == null) {
+            this.group = Scheduler.DEFAULT_GROUP;
+        }
+        if (this.jobDetail != null) {
+            this.jobDataMap.put("jobDetail", this.jobDetail);
+        }
+        if (this.startDelay > 0 || this.startTime == null) {
+            this.startTime = new Date(System.currentTimeMillis() + this.startDelay);
+        }
+        if (this.timeZone == null) {
+            this.timeZone = TimeZone.getDefault();
+        }
 
+        CronTriggerImpl cti = new CronTriggerImpl();
+        cti.setName(this.name != null ? this.name : toString());
+        cti.setGroup(this.group);
+        if (this.jobDetail != null) {
+            cti.setJobKey(this.jobDetail.getKey());
+        }
+        cti.setJobDataMap(this.jobDataMap);
+        cti.setStartTime(this.startTime);
+        cti.setCronExpression(this.cronExpression);
+        cti.setTimeZone(this.timeZone);
+        cti.setCalendarName(this.calendarName);
+        cti.setPriority(this.priority);
+        cti.setMisfireInstruction(this.misfireInstruction);
+        cti.setDescription(this.description);
+        this.cronTrigger = cti;
+    }
 
-	@Override
-	public void afterPropertiesSet() throws ParseException {
-		Assert.notNull(this.cronExpression, "Property 'cronExpression' is required");
+    @Override
+    @Nullable
+    public CronTrigger getObject() {
+        return this.cronTrigger;
+    }
 
-		if (this.name == null) {
-			this.name = this.beanName;
-		}
-		if (this.group == null) {
-			this.group = Scheduler.DEFAULT_GROUP;
-		}
-		if (this.jobDetail != null) {
-			this.jobDataMap.put("jobDetail", this.jobDetail);
-		}
-		if (this.startDelay > 0 || this.startTime == null) {
-			this.startTime = new Date(System.currentTimeMillis() + this.startDelay);
-		}
-		if (this.timeZone == null) {
-			this.timeZone = TimeZone.getDefault();
-		}
+    @Override
+    public Class<?> getObjectType() {
+        return CronTrigger.class;
+    }
 
-		CronTriggerImpl cti = new CronTriggerImpl();
-		cti.setName(this.name != null ? this.name : toString());
-		cti.setGroup(this.group);
-		if (this.jobDetail != null) {
-			cti.setJobKey(this.jobDetail.getKey());
-		}
-		cti.setJobDataMap(this.jobDataMap);
-		cti.setStartTime(this.startTime);
-		cti.setCronExpression(this.cronExpression);
-		cti.setTimeZone(this.timeZone);
-		cti.setCalendarName(this.calendarName);
-		cti.setPriority(this.priority);
-		cti.setMisfireInstruction(this.misfireInstruction);
-		cti.setDescription(this.description);
-		this.cronTrigger = cti;
-	}
-
-
-	@Override
-	@Nullable
-	public CronTrigger getObject() {
-		return this.cronTrigger;
-	}
-
-	@Override
-	public Class<?> getObjectType() {
-		return CronTrigger.class;
-	}
-
-	@Override
-	public boolean isSingleton() {
-		return true;
-	}
-
+    @Override
+    public boolean isSingleton() {
+        return true;
+    }
 }

@@ -42,62 +42,62 @@ import static org.junit.Assert.*;
 @RunWith(SpringJUnit4ClassRunner.class)
 @WebAppConfiguration
 @ContextHierarchy({
-	//
-	@ContextConfiguration(name = "root", classes = AppConfig.class),
-	@ContextConfiguration(name = "dispatcher", classes = WebConfig.class) //
+    //
+    @ContextConfiguration(name = "root", classes = AppConfig.class),
+    @ContextConfiguration(name = "dispatcher", classes = WebConfig.class) //
 })
 public class ControllerIntegrationTests {
 
-	@Configuration
-	static class AppConfig {
+    @Configuration
+    static class AppConfig {
 
-		@Bean
-		public String foo() {
-			return "foo";
-		}
-	}
+        @Bean
+        public String foo() {
+            return "foo";
+        }
+    }
 
-	@Configuration
-	static class WebConfig {
+    @Configuration
+    static class WebConfig {
 
-		@Bean
-		public String bar() {
-			return "bar";
-		}
-	}
+        @Bean
+        public String bar() {
+            return "bar";
+        }
+    }
 
+    // -------------------------------------------------------------------------
 
-	// -------------------------------------------------------------------------
+    @Autowired private WebApplicationContext wac;
 
-	@Autowired
-	private WebApplicationContext wac;
+    @Autowired private String foo;
 
-	@Autowired
-	private String foo;
+    @Autowired private String bar;
 
-	@Autowired
-	private String bar;
+    @Test
+    public void verifyRootWacSupport() {
+        assertEquals("foo", foo);
+        assertEquals("bar", bar);
 
+        ApplicationContext parent = wac.getParent();
+        assertNotNull(parent);
+        assertTrue(parent instanceof WebApplicationContext);
+        WebApplicationContext root = (WebApplicationContext) parent;
+        assertFalse(root.getBeansOfType(String.class).containsKey("bar"));
 
-	@Test
-	public void verifyRootWacSupport() {
-		assertEquals("foo", foo);
-		assertEquals("bar", bar);
+        ServletContext childServletContext = wac.getServletContext();
+        assertNotNull(childServletContext);
+        ServletContext rootServletContext = root.getServletContext();
+        assertNotNull(rootServletContext);
+        assertSame(childServletContext, rootServletContext);
 
-		ApplicationContext parent = wac.getParent();
-		assertNotNull(parent);
-		assertTrue(parent instanceof WebApplicationContext);
-		WebApplicationContext root = (WebApplicationContext) parent;
-		assertFalse(root.getBeansOfType(String.class).containsKey("bar"));
-
-		ServletContext childServletContext = wac.getServletContext();
-		assertNotNull(childServletContext);
-		ServletContext rootServletContext = root.getServletContext();
-		assertNotNull(rootServletContext);
-		assertSame(childServletContext, rootServletContext);
-
-		assertSame(root, rootServletContext.getAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE));
-		assertSame(root, childServletContext.getAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE));
-	}
-
+        assertSame(
+                root,
+                rootServletContext.getAttribute(
+                        WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE));
+        assertSame(
+                root,
+                childServletContext.getAttribute(
+                        WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE));
+    }
 }

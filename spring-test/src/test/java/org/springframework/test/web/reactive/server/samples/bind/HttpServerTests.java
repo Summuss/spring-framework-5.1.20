@@ -37,38 +37,41 @@ import static org.springframework.web.reactive.function.server.RouterFunctions.*
  */
 public class HttpServerTests {
 
-	private ReactorHttpServer server;
+    private ReactorHttpServer server;
 
-	private WebTestClient client;
+    private WebTestClient client;
 
+    @Before
+    public void start() throws Exception {
+        HttpHandler httpHandler =
+                RouterFunctions.toHttpHandler(
+                        route(GET("/test"), request -> ServerResponse.ok().syncBody("It works!")));
 
-	@Before
-	public void start() throws Exception {
-		HttpHandler httpHandler = RouterFunctions.toHttpHandler(
-				route(GET("/test"), request -> ServerResponse.ok().syncBody("It works!")));
+        this.server = new ReactorHttpServer();
+        this.server.setHandler(httpHandler);
+        this.server.afterPropertiesSet();
+        this.server.start();
 
-		this.server = new ReactorHttpServer();
-		this.server.setHandler(httpHandler);
-		this.server.afterPropertiesSet();
-		this.server.start();
+        this.client =
+                WebTestClient.bindToServer()
+                        .baseUrl("http://localhost:" + this.server.getPort())
+                        .build();
+    }
 
-		this.client = WebTestClient.bindToServer()
-				.baseUrl("http://localhost:" + this.server.getPort())
-				.build();
-	}
+    @After
+    public void stop() {
+        this.server.stop();
+    }
 
-	@After
-	public void stop() {
-		this.server.stop();
-	}
-
-
-	@Test
-	public void test() {
-		this.client.get().uri("/test")
-				.exchange()
-				.expectStatus().isOk()
-				.expectBody(String.class).isEqualTo("It works!");
-	}
-
+    @Test
+    public void test() {
+        this.client
+                .get()
+                .uri("/test")
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectBody(String.class)
+                .isEqualTo("It works!");
+    }
 }

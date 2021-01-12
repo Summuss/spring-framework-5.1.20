@@ -43,211 +43,215 @@ import static org.junit.Assert.assertTrue;
  */
 public class NativeMessageHeaderAccessorTests {
 
-	@Rule
-	public final ExpectedException thrown = ExpectedException.none();
+    @Rule public final ExpectedException thrown = ExpectedException.none();
 
+    @Test
+    public void createFromNativeHeaderMap() {
+        MultiValueMap<String, String> inputNativeHeaders = new LinkedMultiValueMap<>();
+        inputNativeHeaders.add("foo", "bar");
+        inputNativeHeaders.add("bar", "baz");
 
-	@Test
-	public void createFromNativeHeaderMap() {
-		MultiValueMap<String, String> inputNativeHeaders = new LinkedMultiValueMap<>();
-		inputNativeHeaders.add("foo", "bar");
-		inputNativeHeaders.add("bar", "baz");
+        NativeMessageHeaderAccessor headerAccessor =
+                new NativeMessageHeaderAccessor(inputNativeHeaders);
+        Map<String, Object> actual = headerAccessor.toMap();
 
-		NativeMessageHeaderAccessor headerAccessor = new NativeMessageHeaderAccessor(inputNativeHeaders);
-		Map<String, Object> actual = headerAccessor.toMap();
+        assertEquals(actual.toString(), 1, actual.size());
+        assertNotNull(actual.get(NativeMessageHeaderAccessor.NATIVE_HEADERS));
+        assertEquals(inputNativeHeaders, actual.get(NativeMessageHeaderAccessor.NATIVE_HEADERS));
+        assertNotSame(inputNativeHeaders, actual.get(NativeMessageHeaderAccessor.NATIVE_HEADERS));
+    }
 
-		assertEquals(actual.toString(), 1, actual.size());
-		assertNotNull(actual.get(NativeMessageHeaderAccessor.NATIVE_HEADERS));
-		assertEquals(inputNativeHeaders, actual.get(NativeMessageHeaderAccessor.NATIVE_HEADERS));
-		assertNotSame(inputNativeHeaders, actual.get(NativeMessageHeaderAccessor.NATIVE_HEADERS));
-	}
+    @Test
+    public void createFromMessage() {
+        MultiValueMap<String, String> inputNativeHeaders = new LinkedMultiValueMap<>();
+        inputNativeHeaders.add("foo", "bar");
+        inputNativeHeaders.add("bar", "baz");
 
-	@Test
-	public void createFromMessage() {
-		MultiValueMap<String, String> inputNativeHeaders = new LinkedMultiValueMap<>();
-		inputNativeHeaders.add("foo", "bar");
-		inputNativeHeaders.add("bar", "baz");
+        Map<String, Object> inputHeaders = new HashMap<>();
+        inputHeaders.put("a", "b");
+        inputHeaders.put(NativeMessageHeaderAccessor.NATIVE_HEADERS, inputNativeHeaders);
 
-		Map<String, Object> inputHeaders = new HashMap<>();
-		inputHeaders.put("a", "b");
-		inputHeaders.put(NativeMessageHeaderAccessor.NATIVE_HEADERS, inputNativeHeaders);
+        GenericMessage<String> message = new GenericMessage<>("p", inputHeaders);
+        NativeMessageHeaderAccessor headerAccessor = new NativeMessageHeaderAccessor(message);
+        Map<String, Object> actual = headerAccessor.toMap();
 
-		GenericMessage<String> message = new GenericMessage<>("p", inputHeaders);
-		NativeMessageHeaderAccessor headerAccessor = new NativeMessageHeaderAccessor(message);
-		Map<String, Object> actual = headerAccessor.toMap();
+        assertEquals(2, actual.size());
+        assertEquals("b", actual.get("a"));
+        assertNotNull(actual.get(NativeMessageHeaderAccessor.NATIVE_HEADERS));
+        assertEquals(inputNativeHeaders, actual.get(NativeMessageHeaderAccessor.NATIVE_HEADERS));
+        assertNotSame(inputNativeHeaders, actual.get(NativeMessageHeaderAccessor.NATIVE_HEADERS));
+    }
 
-		assertEquals(2, actual.size());
-		assertEquals("b", actual.get("a"));
-		assertNotNull(actual.get(NativeMessageHeaderAccessor.NATIVE_HEADERS));
-		assertEquals(inputNativeHeaders, actual.get(NativeMessageHeaderAccessor.NATIVE_HEADERS));
-		assertNotSame(inputNativeHeaders, actual.get(NativeMessageHeaderAccessor.NATIVE_HEADERS));
-	}
+    @Test
+    public void createFromMessageNull() {
+        NativeMessageHeaderAccessor headerAccessor =
+                new NativeMessageHeaderAccessor((Message<?>) null);
 
-	@Test
-	public void createFromMessageNull() {
-		NativeMessageHeaderAccessor headerAccessor = new NativeMessageHeaderAccessor((Message<?>) null);
+        Map<String, Object> actual = headerAccessor.toMap();
+        assertEquals(0, actual.size());
 
-		Map<String, Object> actual = headerAccessor.toMap();
-		assertEquals(0, actual.size());
+        Map<String, List<String>> actualNativeHeaders = headerAccessor.toNativeHeaderMap();
+        assertEquals(Collections.emptyMap(), actualNativeHeaders);
+    }
 
-		Map<String, List<String>> actualNativeHeaders = headerAccessor.toNativeHeaderMap();
-		assertEquals(Collections.emptyMap(), actualNativeHeaders);
-	}
+    @Test
+    public void createFromMessageAndModify() {
 
-	@Test
-	public void createFromMessageAndModify() {
+        MultiValueMap<String, String> inputNativeHeaders = new LinkedMultiValueMap<>();
+        inputNativeHeaders.add("foo", "bar");
+        inputNativeHeaders.add("bar", "baz");
 
-		MultiValueMap<String, String> inputNativeHeaders = new LinkedMultiValueMap<>();
-		inputNativeHeaders.add("foo", "bar");
-		inputNativeHeaders.add("bar", "baz");
+        Map<String, Object> nativeHeaders = new HashMap<>();
+        nativeHeaders.put("a", "b");
+        nativeHeaders.put(NativeMessageHeaderAccessor.NATIVE_HEADERS, inputNativeHeaders);
 
-		Map<String, Object> nativeHeaders = new HashMap<>();
-		nativeHeaders.put("a", "b");
-		nativeHeaders.put(NativeMessageHeaderAccessor.NATIVE_HEADERS, inputNativeHeaders);
+        GenericMessage<String> message = new GenericMessage<>("p", nativeHeaders);
 
-		GenericMessage<String> message = new GenericMessage<>("p", nativeHeaders);
+        NativeMessageHeaderAccessor headerAccessor = new NativeMessageHeaderAccessor(message);
+        headerAccessor.setHeader("a", "B");
+        headerAccessor.setNativeHeader("foo", "BAR");
 
-		NativeMessageHeaderAccessor headerAccessor = new NativeMessageHeaderAccessor(message);
-		headerAccessor.setHeader("a", "B");
-		headerAccessor.setNativeHeader("foo", "BAR");
+        Map<String, Object> actual = headerAccessor.toMap();
 
-		Map<String, Object> actual = headerAccessor.toMap();
+        assertEquals(2, actual.size());
+        assertEquals("B", actual.get("a"));
 
-		assertEquals(2, actual.size());
-		assertEquals("B", actual.get("a"));
+        @SuppressWarnings("unchecked")
+        Map<String, List<String>> actualNativeHeaders =
+                (Map<String, List<String>>) actual.get(NativeMessageHeaderAccessor.NATIVE_HEADERS);
 
-		@SuppressWarnings("unchecked")
-		Map<String, List<String>> actualNativeHeaders =
-				(Map<String, List<String>>) actual.get(NativeMessageHeaderAccessor.NATIVE_HEADERS);
+        assertNotNull(actualNativeHeaders);
+        assertEquals(Arrays.asList("BAR"), actualNativeHeaders.get("foo"));
+        assertEquals(Arrays.asList("baz"), actualNativeHeaders.get("bar"));
+    }
 
-		assertNotNull(actualNativeHeaders);
-		assertEquals(Arrays.asList("BAR"), actualNativeHeaders.get("foo"));
-		assertEquals(Arrays.asList("baz"), actualNativeHeaders.get("bar"));
-	}
+    @Test
+    public void setNativeHeader() {
+        MultiValueMap<String, String> nativeHeaders = new LinkedMultiValueMap<>();
+        nativeHeaders.add("foo", "bar");
 
-	@Test
-	public void setNativeHeader() {
-		MultiValueMap<String, String> nativeHeaders = new LinkedMultiValueMap<>();
-		nativeHeaders.add("foo", "bar");
+        NativeMessageHeaderAccessor headers = new NativeMessageHeaderAccessor(nativeHeaders);
+        headers.setNativeHeader("foo", "baz");
 
-		NativeMessageHeaderAccessor headers = new NativeMessageHeaderAccessor(nativeHeaders);
-		headers.setNativeHeader("foo", "baz");
+        assertEquals(Arrays.asList("baz"), headers.getNativeHeader("foo"));
+    }
 
-		assertEquals(Arrays.asList("baz"), headers.getNativeHeader("foo"));
-	}
+    @Test
+    public void setNativeHeaderNullValue() {
+        MultiValueMap<String, String> nativeHeaders = new LinkedMultiValueMap<>();
+        nativeHeaders.add("foo", "bar");
 
-	@Test
-	public void setNativeHeaderNullValue() {
-		MultiValueMap<String, String> nativeHeaders = new LinkedMultiValueMap<>();
-		nativeHeaders.add("foo", "bar");
+        NativeMessageHeaderAccessor headers = new NativeMessageHeaderAccessor(nativeHeaders);
+        headers.setNativeHeader("foo", null);
 
-		NativeMessageHeaderAccessor headers = new NativeMessageHeaderAccessor(nativeHeaders);
-		headers.setNativeHeader("foo", null);
+        assertNull(headers.getNativeHeader("foo"));
+    }
 
-		assertNull(headers.getNativeHeader("foo"));
-	}
+    @Test
+    public void setNativeHeaderLazyInit() {
+        NativeMessageHeaderAccessor headerAccessor = new NativeMessageHeaderAccessor();
+        headerAccessor.setNativeHeader("foo", "baz");
 
-	@Test
-	public void setNativeHeaderLazyInit() {
-		NativeMessageHeaderAccessor headerAccessor = new NativeMessageHeaderAccessor();
-		headerAccessor.setNativeHeader("foo", "baz");
+        assertEquals(Collections.singletonList("baz"), headerAccessor.getNativeHeader("foo"));
+    }
 
-		assertEquals(Collections.singletonList("baz"), headerAccessor.getNativeHeader("foo"));
-	}
+    @Test
+    public void setNativeHeaderLazyInitNullValue() {
+        NativeMessageHeaderAccessor headerAccessor = new NativeMessageHeaderAccessor();
+        headerAccessor.setNativeHeader("foo", null);
 
-	@Test
-	public void setNativeHeaderLazyInitNullValue() {
-		NativeMessageHeaderAccessor headerAccessor = new NativeMessageHeaderAccessor();
-		headerAccessor.setNativeHeader("foo", null);
+        assertNull(headerAccessor.getNativeHeader("foo"));
+        assertNull(
+                headerAccessor.getMessageHeaders().get(NativeMessageHeaderAccessor.NATIVE_HEADERS));
+    }
 
-		assertNull(headerAccessor.getNativeHeader("foo"));
-		assertNull(headerAccessor.getMessageHeaders().get(NativeMessageHeaderAccessor.NATIVE_HEADERS));
-	}
+    @Test
+    public void setNativeHeaderImmutable() {
+        NativeMessageHeaderAccessor headerAccessor = new NativeMessageHeaderAccessor();
+        headerAccessor.setNativeHeader("foo", "bar");
+        headerAccessor.setImmutable();
 
-	@Test
-	public void setNativeHeaderImmutable() {
-		NativeMessageHeaderAccessor headerAccessor = new NativeMessageHeaderAccessor();
-		headerAccessor.setNativeHeader("foo", "bar");
-		headerAccessor.setImmutable();
+        this.thrown.expect(IllegalStateException.class);
+        this.thrown.expectMessage("Already immutable");
+        headerAccessor.setNativeHeader("foo", "baz");
+    }
 
-		this.thrown.expect(IllegalStateException.class);
-		this.thrown.expectMessage("Already immutable");
-		headerAccessor.setNativeHeader("foo", "baz");
-	}
+    @Test
+    public void addNativeHeader() {
+        MultiValueMap<String, String> nativeHeaders = new LinkedMultiValueMap<>();
+        nativeHeaders.add("foo", "bar");
 
-	@Test
-	public void addNativeHeader() {
-		MultiValueMap<String, String> nativeHeaders = new LinkedMultiValueMap<>();
-		nativeHeaders.add("foo", "bar");
+        NativeMessageHeaderAccessor headers = new NativeMessageHeaderAccessor(nativeHeaders);
+        headers.addNativeHeader("foo", "baz");
 
-		NativeMessageHeaderAccessor headers = new NativeMessageHeaderAccessor(nativeHeaders);
-		headers.addNativeHeader("foo", "baz");
+        assertEquals(Arrays.asList("bar", "baz"), headers.getNativeHeader("foo"));
+    }
 
-		assertEquals(Arrays.asList("bar", "baz"), headers.getNativeHeader("foo"));
-	}
+    @Test
+    public void addNativeHeaderNullValue() {
+        MultiValueMap<String, String> nativeHeaders = new LinkedMultiValueMap<>();
+        nativeHeaders.add("foo", "bar");
 
-	@Test
-	public void addNativeHeaderNullValue() {
-		MultiValueMap<String, String> nativeHeaders = new LinkedMultiValueMap<>();
-		nativeHeaders.add("foo", "bar");
+        NativeMessageHeaderAccessor headers = new NativeMessageHeaderAccessor(nativeHeaders);
+        headers.addNativeHeader("foo", null);
 
-		NativeMessageHeaderAccessor headers = new NativeMessageHeaderAccessor(nativeHeaders);
-		headers.addNativeHeader("foo", null);
+        assertEquals(Collections.singletonList("bar"), headers.getNativeHeader("foo"));
+    }
 
-		assertEquals(Collections.singletonList("bar"), headers.getNativeHeader("foo"));
-	}
+    @Test
+    public void addNativeHeaderLazyInit() {
+        NativeMessageHeaderAccessor headerAccessor = new NativeMessageHeaderAccessor();
+        headerAccessor.addNativeHeader("foo", "bar");
 
-	@Test
-	public void addNativeHeaderLazyInit() {
-		NativeMessageHeaderAccessor headerAccessor = new NativeMessageHeaderAccessor();
-		headerAccessor.addNativeHeader("foo", "bar");
+        assertEquals(Collections.singletonList("bar"), headerAccessor.getNativeHeader("foo"));
+    }
 
-		assertEquals(Collections.singletonList("bar"), headerAccessor.getNativeHeader("foo"));
-	}
+    @Test
+    public void addNativeHeaderLazyInitNullValue() {
+        NativeMessageHeaderAccessor headerAccessor = new NativeMessageHeaderAccessor();
+        headerAccessor.addNativeHeader("foo", null);
 
-	@Test
-	public void addNativeHeaderLazyInitNullValue() {
-		NativeMessageHeaderAccessor headerAccessor = new NativeMessageHeaderAccessor();
-		headerAccessor.addNativeHeader("foo", null);
+        assertNull(headerAccessor.getNativeHeader("foo"));
+        assertNull(
+                headerAccessor.getMessageHeaders().get(NativeMessageHeaderAccessor.NATIVE_HEADERS));
+    }
 
-		assertNull(headerAccessor.getNativeHeader("foo"));
-		assertNull(headerAccessor.getMessageHeaders().get(NativeMessageHeaderAccessor.NATIVE_HEADERS));
-	}
+    @Test
+    public void addNativeHeaderImmutable() {
+        NativeMessageHeaderAccessor headerAccessor = new NativeMessageHeaderAccessor();
+        headerAccessor.addNativeHeader("foo", "bar");
+        headerAccessor.setImmutable();
 
-	@Test
-	public void addNativeHeaderImmutable() {
-		NativeMessageHeaderAccessor headerAccessor = new NativeMessageHeaderAccessor();
-		headerAccessor.addNativeHeader("foo", "bar");
-		headerAccessor.setImmutable();
+        this.thrown.expect(IllegalStateException.class);
+        this.thrown.expectMessage("Already immutable");
+        headerAccessor.addNativeHeader("foo", "baz");
+    }
 
-		this.thrown.expect(IllegalStateException.class);
-		this.thrown.expectMessage("Already immutable");
-		headerAccessor.addNativeHeader("foo", "baz");
-	}
+    @Test
+    public void setImmutableIdempotent() {
+        NativeMessageHeaderAccessor headerAccessor = new NativeMessageHeaderAccessor();
+        headerAccessor.addNativeHeader("foo", "bar");
+        headerAccessor.setImmutable();
+        headerAccessor.setImmutable();
+    }
 
-	@Test
-	public void setImmutableIdempotent() {
-		NativeMessageHeaderAccessor headerAccessor = new NativeMessageHeaderAccessor();
-		headerAccessor.addNativeHeader("foo", "bar");
-		headerAccessor.setImmutable();
-		headerAccessor.setImmutable();
-	}
+    @Test // gh-25821
+    public void copyImmutableToMutable() {
+        NativeMessageHeaderAccessor source = new NativeMessageHeaderAccessor();
+        source.addNativeHeader("foo", "bar");
+        Message<String> message =
+                MessageBuilder.createMessage("payload", source.getMessageHeaders());
 
-	@Test // gh-25821
-	public void copyImmutableToMutable() {
-		NativeMessageHeaderAccessor source = new NativeMessageHeaderAccessor();
-		source.addNativeHeader("foo", "bar");
-		Message<String> message = MessageBuilder.createMessage("payload", source.getMessageHeaders());
+        NativeMessageHeaderAccessor target = new NativeMessageHeaderAccessor();
+        target.copyHeaders(message.getHeaders());
+        target.setLeaveMutable(true);
+        message = MessageBuilder.createMessage(message.getPayload(), target.getMessageHeaders());
 
-		NativeMessageHeaderAccessor target = new NativeMessageHeaderAccessor();
-		target.copyHeaders(message.getHeaders());
-		target.setLeaveMutable(true);
-		message = MessageBuilder.createMessage(message.getPayload(), target.getMessageHeaders());
-
-		MessageHeaderAccessor accessor = MessageHeaderAccessor.getMutableAccessor(message);
-		assertTrue(accessor.isMutable());
-		((NativeMessageHeaderAccessor) accessor).addNativeHeader("foo", "baz");
-		assertEquals(Arrays.asList("bar", "baz"), ((NativeMessageHeaderAccessor) accessor).getNativeHeader("foo"));
-	}
-
+        MessageHeaderAccessor accessor = MessageHeaderAccessor.getMutableAccessor(message);
+        assertTrue(accessor.isMutable());
+        ((NativeMessageHeaderAccessor) accessor).addNativeHeader("foo", "baz");
+        assertEquals(
+                Arrays.asList("bar", "baz"),
+                ((NativeMessageHeaderAccessor) accessor).getNativeHeader("foo"));
+    }
 }

@@ -17,8 +17,8 @@
 package org.springframework.tests.sample.beans;
 
 /**
- * Test class for Spring's ability to create objects using static
- * factory methods, rather than constructors.
+ * Test class for Spring's ability to create objects using static factory methods, rather than
+ * constructors.
  *
  * @author Rod Johnson
  * @author Juergen Hoeller
@@ -26,8 +26,7 @@ package org.springframework.tests.sample.beans;
  */
 public class FactoryMethods {
 
-	public static FactoryMethods nullInstance() {
-		return null;
-	}
-
+    public static FactoryMethods nullInstance() {
+        return null;
+    }
 }

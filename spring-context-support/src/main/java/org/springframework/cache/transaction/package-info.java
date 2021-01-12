@@ -1,6 +1,6 @@
 /**
- * Transaction-aware decorators for the org.springframework.cache package.
- * Provides synchronization of put operations with Spring-managed transactions.
+ * Transaction-aware decorators for the org.springframework.cache package. Provides synchronization
+ * of put operations with Spring-managed transactions.
  */
 @NonNullApi
 @NonNullFields

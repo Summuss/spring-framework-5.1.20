@@ -23,8 +23,8 @@ import java.util.Locale;
 import org.springframework.format.Formatter;
 
 /**
- * {@link Formatter} implementation for a JSR-310 {@link MonthDay},
- * following JSR-310's parsing rules for a MonthDay.
+ * {@link Formatter} implementation for a JSR-310 {@link MonthDay}, following JSR-310's parsing
+ * rules for a MonthDay.
  *
  * @author Juergen Hoeller
  * @since 4.2.4
@@ -32,14 +32,13 @@ import org.springframework.format.Formatter;
  */
 class MonthDayFormatter implements Formatter<MonthDay> {
 
-	@Override
-	public MonthDay parse(String text, Locale locale) throws ParseException {
-		return MonthDay.parse(text);
-	}
+    @Override
+    public MonthDay parse(String text, Locale locale) throws ParseException {
+        return MonthDay.parse(text);
+    }
 
-	@Override
-	public String print(MonthDay object, Locale locale) {
-		return object.toString();
-	}
-
+    @Override
+    public String print(MonthDay object, Locale locale) {
+        return object.toString();
+    }
 }

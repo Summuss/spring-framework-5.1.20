@@ -44,38 +44,34 @@ import static org.mockito.Mockito.*;
 @RunWith(MockitoJUnitRunner.class)
 public class WebConnectionHtmlUnitDriverTests {
 
-	private final WebConnectionHtmlUnitDriver driver = new WebConnectionHtmlUnitDriver();
+    private final WebConnectionHtmlUnitDriver driver = new WebConnectionHtmlUnitDriver();
 
-	@Mock
-	private WebConnection connection;
+    @Mock private WebConnection connection;
 
-	@Rule
-	public ExpectedException exception = ExpectedException.none();
+    @Rule public ExpectedException exception = ExpectedException.none();
 
-	@Before
-	public void setup() throws Exception {
-		when(this.connection.getResponse(any(WebRequest.class))).thenThrow(new IOException(""));
-	}
+    @Before
+    public void setup() throws Exception {
+        when(this.connection.getResponse(any(WebRequest.class))).thenThrow(new IOException(""));
+    }
 
+    @Test
+    public void getWebConnectionDefaultNotNull() {
+        assertThat(this.driver.getWebConnection(), notNullValue());
+    }
 
-	@Test
-	public void getWebConnectionDefaultNotNull() {
-		assertThat(this.driver.getWebConnection(), notNullValue());
-	}
+    @Test
+    public void setWebConnectionToNull() {
+        this.exception.expect(IllegalArgumentException.class);
+        this.driver.setWebConnection(null);
+    }
 
-	@Test
-	public void setWebConnectionToNull() {
-		this.exception.expect(IllegalArgumentException.class);
-		this.driver.setWebConnection(null);
-	}
+    @Test
+    public void setWebConnection() {
+        this.driver.setWebConnection(this.connection);
+        assertThat(this.driver.getWebConnection(), equalTo(this.connection));
 
-	@Test
-	public void setWebConnection() {
-		this.driver.setWebConnection(this.connection);
-		assertThat(this.driver.getWebConnection(), equalTo(this.connection));
-
-		this.exception.expect(WebDriverException.class);
-		this.driver.get("https://example.com");
-	}
-
+        this.exception.expect(WebDriverException.class);
+        this.driver.get("https://example.com");
+    }
 }

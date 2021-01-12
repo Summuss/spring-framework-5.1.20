@@ -24,7 +24,7 @@ package org.springframework.test.context.groovy
  */
 beans {
 
-	foo String, 'Groovy Foo'
-	bar String, 'Groovy Bar'
+    foo String, 'Groovy Foo'
+    bar String, 'Groovy Bar'
 
 }

@@ -28,25 +28,22 @@ import java.util.List;
  */
 class CandidateComponentsMetadata {
 
-	private final List<ItemMetadata> items;
+    private final List<ItemMetadata> items;
 
+    public CandidateComponentsMetadata() {
+        this.items = new ArrayList<>();
+    }
 
-	public CandidateComponentsMetadata() {
-		this.items = new ArrayList<>();
-	}
+    public void add(ItemMetadata item) {
+        this.items.add(item);
+    }
 
+    public List<ItemMetadata> getItems() {
+        return Collections.unmodifiableList(this.items);
+    }
 
-	public void add(ItemMetadata item) {
-		this.items.add(item);
-	}
-
-	public List<ItemMetadata> getItems() {
-		return Collections.unmodifiableList(this.items);
-	}
-
-	@Override
-	public String toString() {
-		return "CandidateComponentsMetadata{" + "items=" + this.items + '}';
-	}
-
+    @Override
+    public String toString() {
+        return "CandidateComponentsMetadata{" + "items=" + this.items + '}';
+    }
 }

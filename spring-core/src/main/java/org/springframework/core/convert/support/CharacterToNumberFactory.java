@@ -23,8 +23,9 @@ import org.springframework.util.NumberUtils;
 /**
  * Converts from a Character to any JDK-standard Number implementation.
  *
- * <p>Support Number classes including Byte, Short, Integer, Float, Double, Long, BigInteger, BigDecimal. This class
- * delegates to {@link NumberUtils#convertNumberToTargetClass(Number, Class)} to perform the conversion.
+ * <p>Support Number classes including Byte, Short, Integer, Float, Double, Long, BigInteger,
+ * BigDecimal. This class delegates to {@link NumberUtils#convertNumberToTargetClass(Number, Class)}
+ * to perform the conversion.
  *
  * @author Keith Donald
  * @since 3.0
@@ -40,23 +41,24 @@ import org.springframework.util.NumberUtils;
  */
 final class CharacterToNumberFactory implements ConverterFactory<Character, Number> {
 
-	@Override
-	public <T extends Number> Converter<Character, T> getConverter(Class<T> targetType) {
-		return new CharacterToNumber<>(targetType);
-	}
+    @Override
+    public <T extends Number> Converter<Character, T> getConverter(Class<T> targetType) {
+        return new CharacterToNumber<>(targetType);
+    }
 
-	private static final class CharacterToNumber<T extends Number> implements Converter<Character, T> {
+    private static final class CharacterToNumber<T extends Number>
+            implements Converter<Character, T> {
 
-		private final Class<T> targetType;
+        private final Class<T> targetType;
 
-		public CharacterToNumber(Class<T> targetType) {
-			this.targetType = targetType;
-		}
+        public CharacterToNumber(Class<T> targetType) {
+            this.targetType = targetType;
+        }
 
-		@Override
-		public T convert(Character source) {
-			return NumberUtils.convertNumberToTargetClass((short) source.charValue(), this.targetType);
-		}
-	}
-
+        @Override
+        public T convert(Character source) {
+            return NumberUtils.convertNumberToTargetClass(
+                    (short) source.charValue(), this.targetType);
+        }
+    }
 }

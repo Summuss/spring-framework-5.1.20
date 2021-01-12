@@ -27,7 +27,7 @@ package org.springframework.jdbc.core.namedparam
  *
  */
 operator fun MapSqlParameterSource.set(paramName: String, value: Any) {
-	this.addValue(paramName, value)
+    this.addValue(paramName, value)
 }
 
 /**
@@ -41,7 +41,7 @@ operator fun MapSqlParameterSource.set(paramName: String, value: Any) {
  *
  */
 operator fun MapSqlParameterSource.set(paramName: String, sqlType: Int, value: Any) {
-	this.addValue(paramName, value, sqlType)
+    this.addValue(paramName, value, sqlType)
 }
 
 /**
@@ -55,5 +55,5 @@ operator fun MapSqlParameterSource.set(paramName: String, sqlType: Int, value: A
  *
  */
 operator fun MapSqlParameterSource.set(paramName: String, sqlType: Int, typeName: String, value: Any) {
-	this.addValue(paramName, value, sqlType, typeName)
+    this.addValue(paramName, value, sqlType, typeName)
 }

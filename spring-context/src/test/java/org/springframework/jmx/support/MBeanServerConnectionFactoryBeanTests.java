@@ -34,8 +34,8 @@ import org.springframework.util.SocketUtils;
 import static org.junit.Assert.*;
 
 /**
- * To run the tests in the class, set the following Java system property:
- * {@code -DtestGroups=jmxmp}.
+ * To run the tests in the class, set the following Java system property: {@code
+ * -DtestGroups=jmxmp}.
  *
  * @author Rob Harrop
  * @author Juergen Hoeller
@@ -43,89 +43,92 @@ import static org.junit.Assert.*;
  */
 public class MBeanServerConnectionFactoryBeanTests extends AbstractMBeanServerTests {
 
-	private final String serviceUrl;
+    private final String serviceUrl;
 
-	{
-		int port = SocketUtils.findAvailableTcpPort(9800, 9900);
-		this.serviceUrl = "service:jmx:jmxmp://localhost:" + port;
-	}
+    {
+        int port = SocketUtils.findAvailableTcpPort(9800, 9900);
+        this.serviceUrl = "service:jmx:jmxmp://localhost:" + port;
+    }
 
-	private JMXServiceURL getJMXServiceUrl() throws MalformedURLException {
-		return new JMXServiceURL(serviceUrl);
-	}
+    private JMXServiceURL getJMXServiceUrl() throws MalformedURLException {
+        return new JMXServiceURL(serviceUrl);
+    }
 
-	private JMXConnectorServer getConnectorServer() throws Exception {
-		return JMXConnectorServerFactory.newJMXConnectorServer(getJMXServiceUrl(), null, getServer());
-	}
+    private JMXConnectorServer getConnectorServer() throws Exception {
+        return JMXConnectorServerFactory.newJMXConnectorServer(
+                getJMXServiceUrl(), null, getServer());
+    }
 
-	@Test
-	public void testTestValidConnection() throws Exception {
-		Assume.group(TestGroup.JMXMP);
-		JMXConnectorServer connectorServer = getConnectorServer();
-		connectorServer.start();
+    @Test
+    public void testTestValidConnection() throws Exception {
+        Assume.group(TestGroup.JMXMP);
+        JMXConnectorServer connectorServer = getConnectorServer();
+        connectorServer.start();
 
-		try {
-			MBeanServerConnectionFactoryBean bean = new MBeanServerConnectionFactoryBean();
-			bean.setServiceUrl(serviceUrl);
-			bean.afterPropertiesSet();
+        try {
+            MBeanServerConnectionFactoryBean bean = new MBeanServerConnectionFactoryBean();
+            bean.setServiceUrl(serviceUrl);
+            bean.afterPropertiesSet();
 
-			try {
-				MBeanServerConnection connection = bean.getObject();
-				assertNotNull("Connection should not be null", connection);
+            try {
+                MBeanServerConnection connection = bean.getObject();
+                assertNotNull("Connection should not be null", connection);
 
-				// perform simple MBean count test
-				assertEquals("MBean count should be the same", getServer().getMBeanCount(), connection.getMBeanCount());
-			}
-			finally {
-				bean.destroy();
-			}
-		}
-		finally {
-			connectorServer.stop();
-		}
-	}
+                // perform simple MBean count test
+                assertEquals(
+                        "MBean count should be the same",
+                        getServer().getMBeanCount(),
+                        connection.getMBeanCount());
+            } finally {
+                bean.destroy();
+            }
+        } finally {
+            connectorServer.stop();
+        }
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testWithNoServiceUrl() throws Exception {
-		MBeanServerConnectionFactoryBean bean = new MBeanServerConnectionFactoryBean();
-		bean.afterPropertiesSet();
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void testWithNoServiceUrl() throws Exception {
+        MBeanServerConnectionFactoryBean bean = new MBeanServerConnectionFactoryBean();
+        bean.afterPropertiesSet();
+    }
 
-	@Test
-	public void testTestWithLazyConnection() throws Exception {
-		Assume.group(TestGroup.JMXMP);
-		MBeanServerConnectionFactoryBean bean = new MBeanServerConnectionFactoryBean();
-		bean.setServiceUrl(serviceUrl);
-		bean.setConnectOnStartup(false);
-		bean.afterPropertiesSet();
+    @Test
+    public void testTestWithLazyConnection() throws Exception {
+        Assume.group(TestGroup.JMXMP);
+        MBeanServerConnectionFactoryBean bean = new MBeanServerConnectionFactoryBean();
+        bean.setServiceUrl(serviceUrl);
+        bean.setConnectOnStartup(false);
+        bean.afterPropertiesSet();
 
-		MBeanServerConnection connection = bean.getObject();
-		assertTrue(AopUtils.isAopProxy(connection));
+        MBeanServerConnection connection = bean.getObject();
+        assertTrue(AopUtils.isAopProxy(connection));
 
-		JMXConnectorServer connector = null;
-		try {
-			connector = getConnectorServer();
-			connector.start();
-			assertEquals("Incorrect MBean count", getServer().getMBeanCount(), connection.getMBeanCount());
-		}
-		finally {
-			bean.destroy();
-			if (connector != null) {
-				connector.stop();
-			}
-		}
-	}
+        JMXConnectorServer connector = null;
+        try {
+            connector = getConnectorServer();
+            connector.start();
+            assertEquals(
+                    "Incorrect MBean count",
+                    getServer().getMBeanCount(),
+                    connection.getMBeanCount());
+        } finally {
+            bean.destroy();
+            if (connector != null) {
+                connector.stop();
+            }
+        }
+    }
 
-	@Test
-	public void testWithLazyConnectionAndNoAccess() throws Exception {
-		MBeanServerConnectionFactoryBean bean = new MBeanServerConnectionFactoryBean();
-		bean.setServiceUrl(serviceUrl);
-		bean.setConnectOnStartup(false);
-		bean.afterPropertiesSet();
+    @Test
+    public void testWithLazyConnectionAndNoAccess() throws Exception {
+        MBeanServerConnectionFactoryBean bean = new MBeanServerConnectionFactoryBean();
+        bean.setServiceUrl(serviceUrl);
+        bean.setConnectOnStartup(false);
+        bean.afterPropertiesSet();
 
-		MBeanServerConnection connection = bean.getObject();
-		assertTrue(AopUtils.isAopProxy(connection));
-		bean.destroy();
-	}
-
+        MBeanServerConnection connection = bean.getObject();
+        assertTrue(AopUtils.isAopProxy(connection));
+        bean.destroy();
+    }
 }

@@ -36,37 +36,31 @@ import static org.junit.Assert.*;
 @ContextConfiguration
 public class TestHierarchyLevelOneWithBareContextConfigurationInSuperclassTests {
 
-	@Configuration
-	static class Config {
+    @Configuration
+    static class Config {
 
-		@Bean
-		public String foo() {
-			return "foo-level-1";
-		}
+        @Bean
+        public String foo() {
+            return "foo-level-1";
+        }
 
-		@Bean
-		public String bar() {
-			return "bar";
-		}
-	}
+        @Bean
+        public String bar() {
+            return "bar";
+        }
+    }
 
+    @Autowired private String foo;
 
-	@Autowired
-	private String foo;
+    @Autowired private String bar;
 
-	@Autowired
-	private String bar;
+    @Autowired private ApplicationContext context;
 
-	@Autowired
-	private ApplicationContext context;
-
-
-	@Test
-	public void loadContextHierarchy() {
-		assertNotNull("child ApplicationContext", context);
-		assertNull("parent ApplicationContext", context.getParent());
-		assertEquals("foo-level-1", foo);
-		assertEquals("bar", bar);
-	}
-
+    @Test
+    public void loadContextHierarchy() {
+        assertNotNull("child ApplicationContext", context);
+        assertNull("parent ApplicationContext", context.getParent());
+        assertEquals("foo-level-1", foo);
+        assertEquals("bar", bar);
+    }
 }

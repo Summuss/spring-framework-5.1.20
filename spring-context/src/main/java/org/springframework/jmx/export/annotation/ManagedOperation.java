@@ -23,9 +23,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Method-level annotation that indicates to expose a given method as a
- * JMX operation, corresponding to the {@code ManagedOperation} attribute.
- * Only valid when used on a method that is not a JavaBean getter or setter.
+ * Method-level annotation that indicates to expose a given method as a JMX operation, corresponding
+ * to the {@code ManagedOperation} attribute. Only valid when used on a method that is not a
+ * JavaBean getter or setter.
  *
  * @author Rob Harrop
  * @since 1.2
@@ -36,8 +36,7 @@ import java.lang.annotation.Target;
 @Documented
 public @interface ManagedOperation {
 
-	String description() default "";
+    String description() default "";
 
-	int currencyTimeLimit() default -1;
-
+    int currencyTimeLimit() default -1;
 }

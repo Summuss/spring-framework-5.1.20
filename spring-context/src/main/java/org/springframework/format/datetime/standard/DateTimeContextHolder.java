@@ -31,56 +31,53 @@ import org.springframework.lang.Nullable;
  */
 public final class DateTimeContextHolder {
 
-	private static final ThreadLocal<DateTimeContext> dateTimeContextHolder =
-			new NamedThreadLocal<>("DateTimeContext");
+    private static final ThreadLocal<DateTimeContext> dateTimeContextHolder =
+            new NamedThreadLocal<>("DateTimeContext");
 
+    private DateTimeContextHolder() {}
 
-	private DateTimeContextHolder() {
-	}
+    /** Reset the DateTimeContext for the current thread. */
+    public static void resetDateTimeContext() {
+        dateTimeContextHolder.remove();
+    }
 
+    /**
+     * Associate the given DateTimeContext with the current thread.
+     *
+     * @param dateTimeContext the current DateTimeContext, or {@code null} to reset the thread-bound
+     *     context
+     */
+    public static void setDateTimeContext(@Nullable DateTimeContext dateTimeContext) {
+        if (dateTimeContext == null) {
+            resetDateTimeContext();
+        } else {
+            dateTimeContextHolder.set(dateTimeContext);
+        }
+    }
 
-	/**
-	 * Reset the DateTimeContext for the current thread.
-	 */
-	public static void resetDateTimeContext() {
-		dateTimeContextHolder.remove();
-	}
+    /**
+     * Return the DateTimeContext associated with the current thread, if any.
+     *
+     * @return the current DateTimeContext, or {@code null} if none
+     */
+    @Nullable
+    public static DateTimeContext getDateTimeContext() {
+        return dateTimeContextHolder.get();
+    }
 
-	/**
-	 * Associate the given DateTimeContext with the current thread.
-	 * @param dateTimeContext the current DateTimeContext,
-	 * or {@code null} to reset the thread-bound context
-	 */
-	public static void setDateTimeContext(@Nullable DateTimeContext dateTimeContext) {
-		if (dateTimeContext == null) {
-			resetDateTimeContext();
-		}
-		else {
-			dateTimeContextHolder.set(dateTimeContext);
-		}
-	}
-
-	/**
-	 * Return the DateTimeContext associated with the current thread, if any.
-	 * @return the current DateTimeContext, or {@code null} if none
-	 */
-	@Nullable
-	public static DateTimeContext getDateTimeContext() {
-		return dateTimeContextHolder.get();
-	}
-
-
-	/**
-	 * Obtain a DateTimeFormatter with user-specific settings applied to the given base Formatter.
-	 * @param formatter the base formatter that establishes default formatting rules
-	 * (generally user independent)
-	 * @param locale the current user locale (may be {@code null} if not known)
-	 * @return the user-specific DateTimeFormatter
-	 */
-	public static DateTimeFormatter getFormatter(DateTimeFormatter formatter, @Nullable Locale locale) {
-		DateTimeFormatter formatterToUse = (locale != null ? formatter.withLocale(locale) : formatter);
-		DateTimeContext context = getDateTimeContext();
-		return (context != null ? context.getFormatter(formatterToUse) : formatterToUse);
-	}
-
+    /**
+     * Obtain a DateTimeFormatter with user-specific settings applied to the given base Formatter.
+     *
+     * @param formatter the base formatter that establishes default formatting rules (generally user
+     *     independent)
+     * @param locale the current user locale (may be {@code null} if not known)
+     * @return the user-specific DateTimeFormatter
+     */
+    public static DateTimeFormatter getFormatter(
+            DateTimeFormatter formatter, @Nullable Locale locale) {
+        DateTimeFormatter formatterToUse =
+                (locale != null ? formatter.withLocale(locale) : formatter);
+        DateTimeContext context = getDateTimeContext();
+        return (context != null ? context.getFormatter(formatterToUse) : formatterToUse);
+    }
 }

@@ -48,414 +48,403 @@ import org.springframework.web.servlet.mvc.condition.NameValueExpression;
 import org.springframework.web.util.WebUtils;
 
 /**
- * Abstract base class for classes for which {@link RequestMappingInfo} defines
- * the mapping between a request and a handler method.
+ * Abstract base class for classes for which {@link RequestMappingInfo} defines the mapping between
+ * a request and a handler method.
  *
  * @author Arjen Poutsma
  * @author Rossen Stoyanchev
  * @since 3.1
  */
-public abstract class RequestMappingInfoHandlerMapping extends AbstractHandlerMethodMapping<RequestMappingInfo> {
+public abstract class RequestMappingInfoHandlerMapping
+        extends AbstractHandlerMethodMapping<RequestMappingInfo> {
 
-	private static final Method HTTP_OPTIONS_HANDLE_METHOD;
+    private static final Method HTTP_OPTIONS_HANDLE_METHOD;
 
-	static {
-		try {
-			HTTP_OPTIONS_HANDLE_METHOD = HttpOptionsHandler.class.getMethod("handle");
-		}
-		catch (NoSuchMethodException ex) {
-			// Should never happen
-			throw new IllegalStateException("Failed to retrieve internal handler method for HTTP OPTIONS", ex);
-		}
-	}
+    static {
+        try {
+            HTTP_OPTIONS_HANDLE_METHOD = HttpOptionsHandler.class.getMethod("handle");
+        } catch (NoSuchMethodException ex) {
+            // Should never happen
+            throw new IllegalStateException(
+                    "Failed to retrieve internal handler method for HTTP OPTIONS", ex);
+        }
+    }
 
+    protected RequestMappingInfoHandlerMapping() {
+        setHandlerMethodMappingNamingStrategy(
+                new RequestMappingInfoHandlerMethodMappingNamingStrategy());
+    }
 
-	protected RequestMappingInfoHandlerMapping() {
-		setHandlerMethodMappingNamingStrategy(new RequestMappingInfoHandlerMethodMappingNamingStrategy());
-	}
+    /** Get the URL path patterns associated with this {@link RequestMappingInfo}. */
+    @Override
+    protected Set<String> getMappingPathPatterns(RequestMappingInfo info) {
+        return info.getPatternsCondition().getPatterns();
+    }
 
+    /**
+     * Check if the given RequestMappingInfo matches the current request and return a (potentially
+     * new) instance with conditions that match the current request -- for example with a subset of
+     * URL patterns.
+     *
+     * @return an info in case of a match; or {@code null} otherwise.
+     */
+    @Override
+    protected RequestMappingInfo getMatchingMapping(
+            RequestMappingInfo info, HttpServletRequest request) {
+        return info.getMatchingCondition(request);
+    }
 
-	/**
-	 * Get the URL path patterns associated with this {@link RequestMappingInfo}.
-	 */
-	@Override
-	protected Set<String> getMappingPathPatterns(RequestMappingInfo info) {
-		return info.getPatternsCondition().getPatterns();
-	}
+    /** Provide a Comparator to sort RequestMappingInfos matched to a request. */
+    @Override
+    protected Comparator<RequestMappingInfo> getMappingComparator(
+            final HttpServletRequest request) {
+        return (info1, info2) -> info1.compareTo(info2, request);
+    }
 
-	/**
-	 * Check if the given RequestMappingInfo matches the current request and
-	 * return a (potentially new) instance with conditions that match the
-	 * current request -- for example with a subset of URL patterns.
-	 * @return an info in case of a match; or {@code null} otherwise.
-	 */
-	@Override
-	protected RequestMappingInfo getMatchingMapping(RequestMappingInfo info, HttpServletRequest request) {
-		return info.getMatchingCondition(request);
-	}
+    /**
+     * Expose URI template variables, matrix variables, and producible media types in the request.
+     *
+     * @see HandlerMapping#URI_TEMPLATE_VARIABLES_ATTRIBUTE
+     * @see HandlerMapping#MATRIX_VARIABLES_ATTRIBUTE
+     * @see HandlerMapping#PRODUCIBLE_MEDIA_TYPES_ATTRIBUTE
+     */
+    @Override
+    protected void handleMatch(
+            RequestMappingInfo info, String lookupPath, HttpServletRequest request) {
+        super.handleMatch(info, lookupPath, request);
 
-	/**
-	 * Provide a Comparator to sort RequestMappingInfos matched to a request.
-	 */
-	@Override
-	protected Comparator<RequestMappingInfo> getMappingComparator(final HttpServletRequest request) {
-		return (info1, info2) -> info1.compareTo(info2, request);
-	}
+        String bestPattern;
+        Map<String, String> uriVariables;
 
-	/**
-	 * Expose URI template variables, matrix variables, and producible media types in the request.
-	 * @see HandlerMapping#URI_TEMPLATE_VARIABLES_ATTRIBUTE
-	 * @see HandlerMapping#MATRIX_VARIABLES_ATTRIBUTE
-	 * @see HandlerMapping#PRODUCIBLE_MEDIA_TYPES_ATTRIBUTE
-	 */
-	@Override
-	protected void handleMatch(RequestMappingInfo info, String lookupPath, HttpServletRequest request) {
-		super.handleMatch(info, lookupPath, request);
+        Set<String> patterns = info.getPatternsCondition().getPatterns();
+        if (patterns.isEmpty()) {
+            bestPattern = lookupPath;
+            uriVariables = Collections.emptyMap();
+        } else {
+            bestPattern = patterns.iterator().next();
+            uriVariables = getPathMatcher().extractUriTemplateVariables(bestPattern, lookupPath);
+        }
 
-		String bestPattern;
-		Map<String, String> uriVariables;
+        request.setAttribute(BEST_MATCHING_PATTERN_ATTRIBUTE, bestPattern);
 
-		Set<String> patterns = info.getPatternsCondition().getPatterns();
-		if (patterns.isEmpty()) {
-			bestPattern = lookupPath;
-			uriVariables = Collections.emptyMap();
-		}
-		else {
-			bestPattern = patterns.iterator().next();
-			uriVariables = getPathMatcher().extractUriTemplateVariables(bestPattern, lookupPath);
-		}
+        if (isMatrixVariableContentAvailable()) {
+            Map<String, MultiValueMap<String, String>> matrixVars =
+                    extractMatrixVariables(request, uriVariables);
+            request.setAttribute(HandlerMapping.MATRIX_VARIABLES_ATTRIBUTE, matrixVars);
+        }
 
-		request.setAttribute(BEST_MATCHING_PATTERN_ATTRIBUTE, bestPattern);
+        Map<String, String> decodedUriVariables =
+                getUrlPathHelper().decodePathVariables(request, uriVariables);
+        request.setAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, decodedUriVariables);
 
-		if (isMatrixVariableContentAvailable()) {
-			Map<String, MultiValueMap<String, String>> matrixVars = extractMatrixVariables(request, uriVariables);
-			request.setAttribute(HandlerMapping.MATRIX_VARIABLES_ATTRIBUTE, matrixVars);
-		}
+        if (!info.getProducesCondition().getProducibleMediaTypes().isEmpty()) {
+            Set<MediaType> mediaTypes = info.getProducesCondition().getProducibleMediaTypes();
+            request.setAttribute(PRODUCIBLE_MEDIA_TYPES_ATTRIBUTE, mediaTypes);
+        }
+    }
 
-		Map<String, String> decodedUriVariables = getUrlPathHelper().decodePathVariables(request, uriVariables);
-		request.setAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, decodedUriVariables);
+    private boolean isMatrixVariableContentAvailable() {
+        return !getUrlPathHelper().shouldRemoveSemicolonContent();
+    }
 
-		if (!info.getProducesCondition().getProducibleMediaTypes().isEmpty()) {
-			Set<MediaType> mediaTypes = info.getProducesCondition().getProducibleMediaTypes();
-			request.setAttribute(PRODUCIBLE_MEDIA_TYPES_ATTRIBUTE, mediaTypes);
-		}
-	}
+    private Map<String, MultiValueMap<String, String>> extractMatrixVariables(
+            HttpServletRequest request, Map<String, String> uriVariables) {
 
-	private boolean isMatrixVariableContentAvailable() {
-		return !getUrlPathHelper().shouldRemoveSemicolonContent();
-	}
+        Map<String, MultiValueMap<String, String>> result = new LinkedHashMap<>();
+        uriVariables.forEach(
+                (uriVarKey, uriVarValue) -> {
+                    int equalsIndex = uriVarValue.indexOf('=');
+                    if (equalsIndex == -1) {
+                        return;
+                    }
 
-	private Map<String, MultiValueMap<String, String>> extractMatrixVariables(
-			HttpServletRequest request, Map<String, String> uriVariables) {
+                    int semicolonIndex = uriVarValue.indexOf(';');
+                    if (semicolonIndex != -1 && semicolonIndex != 0) {
+                        uriVariables.put(uriVarKey, uriVarValue.substring(0, semicolonIndex));
+                    }
 
-		Map<String, MultiValueMap<String, String>> result = new LinkedHashMap<>();
-		uriVariables.forEach((uriVarKey, uriVarValue) -> {
+                    String matrixVariables;
+                    if (semicolonIndex == -1
+                            || semicolonIndex == 0
+                            || equalsIndex < semicolonIndex) {
+                        matrixVariables = uriVarValue;
+                    } else {
+                        matrixVariables = uriVarValue.substring(semicolonIndex + 1);
+                    }
 
-			int equalsIndex = uriVarValue.indexOf('=');
-			if (equalsIndex == -1) {
-				return;
-			}
+                    MultiValueMap<String, String> vars =
+                            WebUtils.parseMatrixVariables(matrixVariables);
+                    result.put(uriVarKey, getUrlPathHelper().decodeMatrixVariables(request, vars));
+                });
+        return result;
+    }
 
-			int semicolonIndex = uriVarValue.indexOf(';');
-			if (semicolonIndex != -1 && semicolonIndex != 0) {
-				uriVariables.put(uriVarKey, uriVarValue.substring(0, semicolonIndex));
-			}
+    /**
+     * Iterate all RequestMappingInfo's once again, look if any match by URL at least and raise
+     * exceptions according to what doesn't match.
+     *
+     * @throws HttpRequestMethodNotSupportedException if there are matches by URL but not by HTTP
+     *     method
+     * @throws HttpMediaTypeNotAcceptableException if there are matches by URL but not by
+     *     consumable/producible media types
+     */
+    @Override
+    protected HandlerMethod handleNoMatch(
+            Set<RequestMappingInfo> infos, String lookupPath, HttpServletRequest request)
+            throws ServletException {
 
-			String matrixVariables;
-			if (semicolonIndex == -1 || semicolonIndex == 0 || equalsIndex < semicolonIndex) {
-				matrixVariables = uriVarValue;
-			}
-			else {
-				matrixVariables = uriVarValue.substring(semicolonIndex + 1);
-			}
+        PartialMatchHelper helper = new PartialMatchHelper(infos, request);
+        if (helper.isEmpty()) {
+            return null;
+        }
 
-			MultiValueMap<String, String> vars = WebUtils.parseMatrixVariables(matrixVariables);
-			result.put(uriVarKey, getUrlPathHelper().decodeMatrixVariables(request, vars));
-		});
-		return result;
-	}
+        if (helper.hasMethodsMismatch()) {
+            Set<String> methods = helper.getAllowedMethods();
+            if (HttpMethod.OPTIONS.matches(request.getMethod())) {
+                HttpOptionsHandler handler = new HttpOptionsHandler(methods);
+                return new HandlerMethod(handler, HTTP_OPTIONS_HANDLE_METHOD);
+            }
+            throw new HttpRequestMethodNotSupportedException(request.getMethod(), methods);
+        }
 
-	/**
-	 * Iterate all RequestMappingInfo's once again, look if any match by URL at
-	 * least and raise exceptions according to what doesn't match.
-	 * @throws HttpRequestMethodNotSupportedException if there are matches by URL
-	 * but not by HTTP method
-	 * @throws HttpMediaTypeNotAcceptableException if there are matches by URL
-	 * but not by consumable/producible media types
-	 */
-	@Override
-	protected HandlerMethod handleNoMatch(
-			Set<RequestMappingInfo> infos, String lookupPath, HttpServletRequest request) throws ServletException {
+        if (helper.hasConsumesMismatch()) {
+            Set<MediaType> mediaTypes = helper.getConsumableMediaTypes();
+            MediaType contentType = null;
+            if (StringUtils.hasLength(request.getContentType())) {
+                try {
+                    contentType = MediaType.parseMediaType(request.getContentType());
+                } catch (InvalidMediaTypeException ex) {
+                    throw new HttpMediaTypeNotSupportedException(ex.getMessage());
+                }
+            }
+            throw new HttpMediaTypeNotSupportedException(contentType, new ArrayList<>(mediaTypes));
+        }
 
-		PartialMatchHelper helper = new PartialMatchHelper(infos, request);
-		if (helper.isEmpty()) {
-			return null;
-		}
+        if (helper.hasProducesMismatch()) {
+            Set<MediaType> mediaTypes = helper.getProducibleMediaTypes();
+            throw new HttpMediaTypeNotAcceptableException(new ArrayList<>(mediaTypes));
+        }
 
-		if (helper.hasMethodsMismatch()) {
-			Set<String> methods = helper.getAllowedMethods();
-			if (HttpMethod.OPTIONS.matches(request.getMethod())) {
-				HttpOptionsHandler handler = new HttpOptionsHandler(methods);
-				return new HandlerMethod(handler, HTTP_OPTIONS_HANDLE_METHOD);
-			}
-			throw new HttpRequestMethodNotSupportedException(request.getMethod(), methods);
-		}
+        if (helper.hasParamsMismatch()) {
+            List<String[]> conditions = helper.getParamConditions();
+            throw new UnsatisfiedServletRequestParameterException(
+                    conditions, request.getParameterMap());
+        }
 
-		if (helper.hasConsumesMismatch()) {
-			Set<MediaType> mediaTypes = helper.getConsumableMediaTypes();
-			MediaType contentType = null;
-			if (StringUtils.hasLength(request.getContentType())) {
-				try {
-					contentType = MediaType.parseMediaType(request.getContentType());
-				}
-				catch (InvalidMediaTypeException ex) {
-					throw new HttpMediaTypeNotSupportedException(ex.getMessage());
-				}
-			}
-			throw new HttpMediaTypeNotSupportedException(contentType, new ArrayList<>(mediaTypes));
-		}
+        return null;
+    }
 
-		if (helper.hasProducesMismatch()) {
-			Set<MediaType> mediaTypes = helper.getProducibleMediaTypes();
-			throw new HttpMediaTypeNotAcceptableException(new ArrayList<>(mediaTypes));
-		}
+    /** Aggregate all partial matches and expose methods checking across them. */
+    private static class PartialMatchHelper {
 
-		if (helper.hasParamsMismatch()) {
-			List<String[]> conditions = helper.getParamConditions();
-			throw new UnsatisfiedServletRequestParameterException(conditions, request.getParameterMap());
-		}
+        private final List<PartialMatch> partialMatches = new ArrayList<>();
 
-		return null;
-	}
+        public PartialMatchHelper(Set<RequestMappingInfo> infos, HttpServletRequest request) {
+            for (RequestMappingInfo info : infos) {
+                if (info.getPatternsCondition().getMatchingCondition(request) != null) {
+                    this.partialMatches.add(new PartialMatch(info, request));
+                }
+            }
+        }
 
+        /** Whether there any partial matches. */
+        public boolean isEmpty() {
+            return this.partialMatches.isEmpty();
+        }
 
-	/**
-	 * Aggregate all partial matches and expose methods checking across them.
-	 */
-	private static class PartialMatchHelper {
+        /** Any partial matches for "methods"? */
+        public boolean hasMethodsMismatch() {
+            for (PartialMatch match : this.partialMatches) {
+                if (match.hasMethodsMatch()) {
+                    return false;
+                }
+            }
+            return true;
+        }
 
-		private final List<PartialMatch> partialMatches = new ArrayList<>();
+        /** Any partial matches for "methods" and "consumes"? */
+        public boolean hasConsumesMismatch() {
+            for (PartialMatch match : this.partialMatches) {
+                if (match.hasConsumesMatch()) {
+                    return false;
+                }
+            }
+            return true;
+        }
 
-		public PartialMatchHelper(Set<RequestMappingInfo> infos, HttpServletRequest request) {
-			for (RequestMappingInfo info : infos) {
-				if (info.getPatternsCondition().getMatchingCondition(request) != null) {
-					this.partialMatches.add(new PartialMatch(info, request));
-				}
-			}
-		}
+        /** Any partial matches for "methods", "consumes", and "produces"? */
+        public boolean hasProducesMismatch() {
+            for (PartialMatch match : this.partialMatches) {
+                if (match.hasProducesMatch()) {
+                    return false;
+                }
+            }
+            return true;
+        }
 
-		/**
-		 * Whether there any partial matches.
-		 */
-		public boolean isEmpty() {
-			return this.partialMatches.isEmpty();
-		}
+        /** Any partial matches for "methods", "consumes", "produces", and "params"? */
+        public boolean hasParamsMismatch() {
+            for (PartialMatch match : this.partialMatches) {
+                if (match.hasParamsMatch()) {
+                    return false;
+                }
+            }
+            return true;
+        }
 
-		/**
-		 * Any partial matches for "methods"?
-		 */
-		public boolean hasMethodsMismatch() {
-			for (PartialMatch match : this.partialMatches) {
-				if (match.hasMethodsMatch()) {
-					return false;
-				}
-			}
-			return true;
-		}
+        /** Return declared HTTP methods. */
+        public Set<String> getAllowedMethods() {
+            Set<String> result = new LinkedHashSet<>();
+            for (PartialMatch match : this.partialMatches) {
+                for (RequestMethod method : match.getInfo().getMethodsCondition().getMethods()) {
+                    result.add(method.name());
+                }
+            }
+            return result;
+        }
 
-		/**
-		 * Any partial matches for "methods" and "consumes"?
-		 */
-		public boolean hasConsumesMismatch() {
-			for (PartialMatch match : this.partialMatches) {
-				if (match.hasConsumesMatch()) {
-					return false;
-				}
-			}
-			return true;
-		}
+        /**
+         * Return declared "consumable" types but only among those that also match the "methods"
+         * condition.
+         */
+        public Set<MediaType> getConsumableMediaTypes() {
+            Set<MediaType> result = new LinkedHashSet<>();
+            for (PartialMatch match : this.partialMatches) {
+                if (match.hasMethodsMatch()) {
+                    result.addAll(match.getInfo().getConsumesCondition().getConsumableMediaTypes());
+                }
+            }
+            return result;
+        }
 
-		/**
-		 * Any partial matches for "methods", "consumes", and "produces"?
-		 */
-		public boolean hasProducesMismatch() {
-			for (PartialMatch match : this.partialMatches) {
-				if (match.hasProducesMatch()) {
-					return false;
-				}
-			}
-			return true;
-		}
+        /**
+         * Return declared "producible" types but only among those that also match the "methods" and
+         * "consumes" conditions.
+         */
+        public Set<MediaType> getProducibleMediaTypes() {
+            Set<MediaType> result = new LinkedHashSet<>();
+            for (PartialMatch match : this.partialMatches) {
+                if (match.hasConsumesMatch()) {
+                    result.addAll(match.getInfo().getProducesCondition().getProducibleMediaTypes());
+                }
+            }
+            return result;
+        }
 
-		/**
-		 * Any partial matches for "methods", "consumes", "produces", and "params"?
-		 */
-		public boolean hasParamsMismatch() {
-			for (PartialMatch match : this.partialMatches) {
-				if (match.hasParamsMatch()) {
-					return false;
-				}
-			}
-			return true;
-		}
+        /**
+         * Return declared "params" conditions but only among those that also match the "methods",
+         * "consumes", and "params" conditions.
+         */
+        public List<String[]> getParamConditions() {
+            List<String[]> result = new ArrayList<>();
+            for (PartialMatch match : this.partialMatches) {
+                if (match.hasProducesMatch()) {
+                    Set<NameValueExpression<String>> set =
+                            match.getInfo().getParamsCondition().getExpressions();
+                    if (!CollectionUtils.isEmpty(set)) {
+                        int i = 0;
+                        String[] array = new String[set.size()];
+                        for (NameValueExpression<String> expression : set) {
+                            array[i++] = expression.toString();
+                        }
+                        result.add(array);
+                    }
+                }
+            }
+            return result;
+        }
 
-		/**
-		 * Return declared HTTP methods.
-		 */
-		public Set<String> getAllowedMethods() {
-			Set<String> result = new LinkedHashSet<>();
-			for (PartialMatch match : this.partialMatches) {
-				for (RequestMethod method : match.getInfo().getMethodsCondition().getMethods()) {
-					result.add(method.name());
-				}
-			}
-			return result;
-		}
+        /** Container for a RequestMappingInfo that matches the URL path at least. */
+        private static class PartialMatch {
 
-		/**
-		 * Return declared "consumable" types but only among those that also
-		 * match the "methods" condition.
-		 */
-		public Set<MediaType> getConsumableMediaTypes() {
-			Set<MediaType> result = new LinkedHashSet<>();
-			for (PartialMatch match : this.partialMatches) {
-				if (match.hasMethodsMatch()) {
-					result.addAll(match.getInfo().getConsumesCondition().getConsumableMediaTypes());
-				}
-			}
-			return result;
-		}
+            private final RequestMappingInfo info;
 
-		/**
-		 * Return declared "producible" types but only among those that also
-		 * match the "methods" and "consumes" conditions.
-		 */
-		public Set<MediaType> getProducibleMediaTypes() {
-			Set<MediaType> result = new LinkedHashSet<>();
-			for (PartialMatch match : this.partialMatches) {
-				if (match.hasConsumesMatch()) {
-					result.addAll(match.getInfo().getProducesCondition().getProducibleMediaTypes());
-				}
-			}
-			return result;
-		}
+            private final boolean methodsMatch;
 
-		/**
-		 * Return declared "params" conditions but only among those that also
-		 * match the "methods", "consumes", and "params" conditions.
-		 */
-		public List<String[]> getParamConditions() {
-			List<String[]> result = new ArrayList<>();
-			for (PartialMatch match : this.partialMatches) {
-				if (match.hasProducesMatch()) {
-					Set<NameValueExpression<String>> set = match.getInfo().getParamsCondition().getExpressions();
-					if (!CollectionUtils.isEmpty(set)) {
-						int i = 0;
-						String[] array = new String[set.size()];
-						for (NameValueExpression<String> expression : set) {
-							array[i++] = expression.toString();
-						}
-						result.add(array);
-					}
-				}
-			}
-			return result;
-		}
+            private final boolean consumesMatch;
 
+            private final boolean producesMatch;
 
-		/**
-		 * Container for a RequestMappingInfo that matches the URL path at least.
-		 */
-		private static class PartialMatch {
+            private final boolean paramsMatch;
 
-			private final RequestMappingInfo info;
+            /**
+             * Create a new {@link PartialMatch} instance.
+             *
+             * @param info the RequestMappingInfo that matches the URL path.
+             * @param request the current request
+             */
+            public PartialMatch(RequestMappingInfo info, HttpServletRequest request) {
+                this.info = info;
+                this.methodsMatch =
+                        (info.getMethodsCondition().getMatchingCondition(request) != null);
+                this.consumesMatch =
+                        (info.getConsumesCondition().getMatchingCondition(request) != null);
+                this.producesMatch =
+                        (info.getProducesCondition().getMatchingCondition(request) != null);
+                this.paramsMatch =
+                        (info.getParamsCondition().getMatchingCondition(request) != null);
+            }
 
-			private final boolean methodsMatch;
+            public RequestMappingInfo getInfo() {
+                return this.info;
+            }
 
-			private final boolean consumesMatch;
+            public boolean hasMethodsMatch() {
+                return this.methodsMatch;
+            }
 
-			private final boolean producesMatch;
+            public boolean hasConsumesMatch() {
+                return (hasMethodsMatch() && this.consumesMatch);
+            }
 
-			private final boolean paramsMatch;
+            public boolean hasProducesMatch() {
+                return (hasConsumesMatch() && this.producesMatch);
+            }
 
-			/**
-			 * Create a new {@link PartialMatch} instance.
-			 * @param info the RequestMappingInfo that matches the URL path.
-			 * @param request the current request
-			 */
-			public PartialMatch(RequestMappingInfo info, HttpServletRequest request) {
-				this.info = info;
-				this.methodsMatch = (info.getMethodsCondition().getMatchingCondition(request) != null);
-				this.consumesMatch = (info.getConsumesCondition().getMatchingCondition(request) != null);
-				this.producesMatch = (info.getProducesCondition().getMatchingCondition(request) != null);
-				this.paramsMatch = (info.getParamsCondition().getMatchingCondition(request) != null);
-			}
+            public boolean hasParamsMatch() {
+                return (hasProducesMatch() && this.paramsMatch);
+            }
 
-			public RequestMappingInfo getInfo() {
-				return this.info;
-			}
+            @Override
+            public String toString() {
+                return this.info.toString();
+            }
+        }
+    }
 
-			public boolean hasMethodsMatch() {
-				return this.methodsMatch;
-			}
+    /** Default handler for HTTP OPTIONS. */
+    private static class HttpOptionsHandler {
 
-			public boolean hasConsumesMatch() {
-				return (hasMethodsMatch() && this.consumesMatch);
-			}
+        private final HttpHeaders headers = new HttpHeaders();
 
-			public boolean hasProducesMatch() {
-				return (hasConsumesMatch() && this.producesMatch);
-			}
+        public HttpOptionsHandler(Set<String> declaredMethods) {
+            this.headers.setAllow(initAllowedHttpMethods(declaredMethods));
+        }
 
-			public boolean hasParamsMatch() {
-				return (hasProducesMatch() && this.paramsMatch);
-			}
+        private static Set<HttpMethod> initAllowedHttpMethods(Set<String> declaredMethods) {
+            Set<HttpMethod> result = new LinkedHashSet<>(declaredMethods.size());
+            if (declaredMethods.isEmpty()) {
+                for (HttpMethod method : HttpMethod.values()) {
+                    if (method != HttpMethod.TRACE) {
+                        result.add(method);
+                    }
+                }
+            } else {
+                for (String method : declaredMethods) {
+                    HttpMethod httpMethod = HttpMethod.valueOf(method);
+                    result.add(httpMethod);
+                    if (httpMethod == HttpMethod.GET) {
+                        result.add(HttpMethod.HEAD);
+                    }
+                }
+                result.add(HttpMethod.OPTIONS);
+            }
+            return result;
+        }
 
-			@Override
-			public String toString() {
-				return this.info.toString();
-			}
-		}
-	}
-
-
-	/**
-	 * Default handler for HTTP OPTIONS.
-	 */
-	private static class HttpOptionsHandler {
-
-		private final HttpHeaders headers = new HttpHeaders();
-
-		public HttpOptionsHandler(Set<String> declaredMethods) {
-			this.headers.setAllow(initAllowedHttpMethods(declaredMethods));
-		}
-
-		private static Set<HttpMethod> initAllowedHttpMethods(Set<String> declaredMethods) {
-			Set<HttpMethod> result = new LinkedHashSet<>(declaredMethods.size());
-			if (declaredMethods.isEmpty()) {
-				for (HttpMethod method : HttpMethod.values()) {
-					if (method != HttpMethod.TRACE) {
-						result.add(method);
-					}
-				}
-			}
-			else {
-				for (String method : declaredMethods) {
-					HttpMethod httpMethod = HttpMethod.valueOf(method);
-					result.add(httpMethod);
-					if (httpMethod == HttpMethod.GET) {
-						result.add(HttpMethod.HEAD);
-					}
-				}
-				result.add(HttpMethod.OPTIONS);
-			}
-			return result;
-		}
-
-		@SuppressWarnings("unused")
-		public HttpHeaders handle() {
-			return this.headers;
-		}
-	}
-
+        @SuppressWarnings("unused")
+        public HttpHeaders handle() {
+            return this.headers;
+        }
+    }
 }

@@ -36,60 +36,56 @@ import org.springframework.http.server.reactive.bootstrap.UndertowHttpServer;
 @RunWith(Parameterized.class)
 public abstract class AbstractHttpHandlerIntegrationTests {
 
-	protected Log logger = LogFactory.getLog(getClass());
+    protected Log logger = LogFactory.getLog(getClass());
 
-	protected int port;
+    protected int port;
 
-	@Parameterized.Parameter(0)
-	public HttpServer server;
+    @Parameterized.Parameter(0)
+    public HttpServer server;
 
+    @Parameterized.Parameters(name = "server [{0}]")
+    public static Object[][] arguments() {
+        File base = new File(System.getProperty("java.io.tmpdir"));
+        return new Object[][] {
+            {new JettyHttpServer()},
+            {new ReactorHttpServer()},
+            {new TomcatHttpServer(base.getAbsolutePath())},
+            {new UndertowHttpServer()}
+        };
+    }
 
-	@Parameterized.Parameters(name = "server [{0}]")
-	public static Object[][] arguments() {
-		File base = new File(System.getProperty("java.io.tmpdir"));
-		return new Object[][] {
-				{new JettyHttpServer()},
-				{new ReactorHttpServer()},
-				{new TomcatHttpServer(base.getAbsolutePath())},
-				{new UndertowHttpServer()}
-		};
-	}
+    @Before
+    public void setup() throws Exception {
+        this.server.setHandler(createHttpHandler());
+        this.server.afterPropertiesSet();
+        this.server.start();
 
+        // Set dynamically chosen port
+        this.port = this.server.getPort();
+    }
 
-	@Before
-	public void setup() throws Exception {
-		this.server.setHandler(createHttpHandler());
-		this.server.afterPropertiesSet();
-		this.server.start();
+    @After
+    public void tearDown() throws Exception {
+        this.server.stop();
+        this.port = 0;
+    }
 
-		// Set dynamically chosen port
-		this.port = this.server.getPort();
-	}
+    protected abstract HttpHandler createHttpHandler();
 
-	@After
-	public void tearDown() throws Exception {
-		this.server.stop();
-		this.port = 0;
-	}
-
-
-	protected abstract HttpHandler createHttpHandler();
-
-
-	/**
-	 * Return an interval stream of N number of ticks and buffer the emissions
-	 * to avoid back pressure failures (e.g. on slow CI server).
-	 *
-	 * <p>Use this method as follows:
-	 * <ul>
-	 * <li>Tests that verify N number of items followed by verifyOnComplete()
-	 * should set the number of emissions to N.
-	 * <li>Tests that verify N number of items followed by thenCancel() should
-	 * set the number of buffered to an arbitrary number greater than N.
-	 * </ul>
-	 */
-	public static Flux<Long> testInterval(Duration period, int count) {
-		return Flux.interval(period).take(count).onBackpressureBuffer(count);
-	}
-
+    /**
+     * Return an interval stream of N number of ticks and buffer the emissions to avoid back
+     * pressure failures (e.g. on slow CI server).
+     *
+     * <p>Use this method as follows:
+     *
+     * <ul>
+     *   <li>Tests that verify N number of items followed by verifyOnComplete() should set the
+     *       number of emissions to N.
+     *   <li>Tests that verify N number of items followed by thenCancel() should set the number of
+     *       buffered to an arbitrary number greater than N.
+     * </ul>
+     */
+    public static Flux<Long> testInterval(Duration period, int count) {
+        return Flux.interval(period).take(count).onBackpressureBuffer(count);
+    }
 }

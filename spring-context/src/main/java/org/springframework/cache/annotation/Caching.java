@@ -26,8 +26,8 @@ import java.lang.annotation.Target;
 /**
  * Group annotation for multiple cache annotations (of different or the same type).
  *
- * <p>This annotation may be used as a <em>meta-annotation</em> to create custom
- * <em>composed annotations</em> with attribute overrides.
+ * <p>This annotation may be used as a <em>meta-annotation</em> to create custom <em>composed
+ * annotations</em> with attribute overrides.
  *
  * @author Costin Leau
  * @author Chris Beams
@@ -39,10 +39,9 @@ import java.lang.annotation.Target;
 @Documented
 public @interface Caching {
 
-	Cacheable[] cacheable() default {};
+    Cacheable[] cacheable() default {};
 
-	CachePut[] put() default {};
+    CachePut[] put() default {};
 
-	CacheEvict[] evict() default {};
-
+    CacheEvict[] evict() default {};
 }

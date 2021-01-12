@@ -31,9 +31,8 @@ import static org.junit.Assert.*;
 @ContextConfiguration
 public class BasicGroovyWacTests extends AbstractBasicWacTests {
 
-	@Test
-	public void groovyFooAutowired() {
-		assertEquals("Groovy Foo", foo);
-	}
-
+    @Test
+    public void groovyFooAutowired() {
+        assertEquals("Groovy Foo", foo);
+    }
 }

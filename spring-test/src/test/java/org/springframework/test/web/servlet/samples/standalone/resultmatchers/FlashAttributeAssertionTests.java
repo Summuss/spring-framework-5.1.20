@@ -39,52 +39,54 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.*;
  */
 public class FlashAttributeAssertionTests {
 
-	private MockMvc mockMvc;
+    private MockMvc mockMvc;
 
+    @Before
+    public void setup() {
+        this.mockMvc =
+                standaloneSetup(new PersonController())
+                        .alwaysExpect(status().isFound())
+                        .alwaysExpect(flash().attributeCount(3))
+                        .build();
+    }
 
-	@Before
-	public void setup() {
-		this.mockMvc = standaloneSetup(new PersonController())
-				.alwaysExpect(status().isFound())
-				.alwaysExpect(flash().attributeCount(3))
-				.build();
-	}
+    @Test
+    public void testExists() throws Exception {
+        this.mockMvc
+                .perform(post("/persons"))
+                .andExpect(flash().attributeExists("one", "two", "three"));
+    }
 
-	@Test
-	public void testExists() throws Exception {
-		this.mockMvc.perform(post("/persons"))
-			.andExpect(flash().attributeExists("one", "two", "three"));
-	}
+    @Test
+    public void testEqualTo() throws Exception {
+        this.mockMvc
+                .perform(post("/persons"))
+                .andExpect(flash().attribute("one", "1"))
+                .andExpect(flash().attribute("two", 2.222))
+                .andExpect(flash().attribute("three", new URL("https://example.com")))
+                .andExpect(flash().attribute("one", equalTo("1"))) // Hamcrest...
+                .andExpect(flash().attribute("two", equalTo(2.222)))
+                .andExpect(flash().attribute("three", equalTo(new URL("https://example.com"))));
+    }
 
-	@Test
-	public void testEqualTo() throws Exception {
-		this.mockMvc.perform(post("/persons"))
-			.andExpect(flash().attribute("one", "1"))
-			.andExpect(flash().attribute("two", 2.222))
-			.andExpect(flash().attribute("three", new URL("https://example.com")))
-			.andExpect(flash().attribute("one", equalTo("1")))	// Hamcrest...
-			.andExpect(flash().attribute("two", equalTo(2.222)))
-			.andExpect(flash().attribute("three", equalTo(new URL("https://example.com"))));
-	}
+    @Test
+    public void testMatchers() throws Exception {
+        this.mockMvc
+                .perform(post("/persons"))
+                .andExpect(flash().attribute("one", containsString("1")))
+                .andExpect(flash().attribute("two", closeTo(2, 0.5)))
+                .andExpect(flash().attribute("three", notNullValue()));
+    }
 
-	@Test
-	public void testMatchers() throws Exception {
-		this.mockMvc.perform(post("/persons"))
-			.andExpect(flash().attribute("one", containsString("1")))
-			.andExpect(flash().attribute("two", closeTo(2, 0.5)))
-			.andExpect(flash().attribute("three", notNullValue()));
-	}
+    @Controller
+    private static class PersonController {
 
-
-	@Controller
-	private static class PersonController {
-
-		@RequestMapping(value="/persons", method=RequestMethod.POST)
-		public String save(RedirectAttributes redirectAttrs) throws Exception {
-			redirectAttrs.addFlashAttribute("one", "1");
-			redirectAttrs.addFlashAttribute("two", 2.222);
-			redirectAttrs.addFlashAttribute("three", new URL("https://example.com"));
-			return "redirect:/person/1";
-		}
-	}
+        @RequestMapping(value = "/persons", method = RequestMethod.POST)
+        public String save(RedirectAttributes redirectAttrs) throws Exception {
+            redirectAttrs.addFlashAttribute("one", "1");
+            redirectAttrs.addFlashAttribute("two", 2.222);
+            redirectAttrs.addFlashAttribute("three", new URL("https://example.com"));
+            return "redirect:/person/1";
+        }
+    }
 }

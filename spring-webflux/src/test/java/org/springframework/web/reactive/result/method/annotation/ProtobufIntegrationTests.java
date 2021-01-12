@@ -43,143 +43,185 @@ import org.springframework.web.reactive.protobuf.SecondMsg;
  */
 public class ProtobufIntegrationTests extends AbstractRequestMappingIntegrationTests {
 
-	public static final Msg TEST_MSG =
-			Msg.newBuilder().setFoo("Foo").setBlah(SecondMsg.newBuilder().setBlah(123).build()).build();
+    public static final Msg TEST_MSG =
+            Msg.newBuilder()
+                    .setFoo("Foo")
+                    .setBlah(SecondMsg.newBuilder().setBlah(123).build())
+                    .build();
 
-	private WebClient webClient;
+    private WebClient webClient;
 
+    @Override
+    @Before
+    public void setup() throws Exception {
+        super.setup();
+        this.webClient = WebClient.create("http://localhost:" + this.port);
+    }
 
-	@Override
-	@Before
-	public void setup() throws Exception {
-		super.setup();
-		this.webClient = WebClient.create("http://localhost:" + this.port);
-	}
+    @Override
+    protected ApplicationContext initApplicationContext() {
+        AnnotationConfigApplicationContext wac = new AnnotationConfigApplicationContext();
+        wac.register(TestConfiguration.class);
+        wac.refresh();
+        return wac;
+    }
 
-	@Override
-	protected ApplicationContext initApplicationContext() {
-		AnnotationConfigApplicationContext wac = new AnnotationConfigApplicationContext();
-		wac.register(TestConfiguration .class);
-		wac.refresh();
-		return wac;
-	}
+    @Test
+    public void value() {
+        Mono<Msg> result =
+                this.webClient
+                        .get()
+                        .uri("/message")
+                        .exchange()
+                        .doOnNext(
+                                response -> {
+                                    Assert.assertFalse(
+                                            response.headers()
+                                                    .contentType()
+                                                    .get()
+                                                    .getParameters()
+                                                    .containsKey("delimited"));
+                                    Assert.assertEquals(
+                                            "sample.proto",
+                                            response.headers().header("X-Protobuf-Schema").get(0));
+                                    Assert.assertEquals(
+                                            "Msg",
+                                            response.headers().header("X-Protobuf-Message").get(0));
+                                })
+                        .flatMap(response -> response.bodyToMono(Msg.class));
 
+        StepVerifier.create(result).expectNext(TEST_MSG).verifyComplete();
+    }
 
-	@Test
-	public void value() {
-		Mono<Msg> result = this.webClient.get()
-				.uri("/message")
-				.exchange()
-				.doOnNext(response -> {
-					Assert.assertFalse(response.headers().contentType().get().getParameters().containsKey("delimited"));
-					Assert.assertEquals("sample.proto", response.headers().header("X-Protobuf-Schema").get(0));
-					Assert.assertEquals("Msg", response.headers().header("X-Protobuf-Message").get(0));
-				})
-				.flatMap(response -> response.bodyToMono(Msg.class));
+    @Test
+    public void values() {
+        Flux<Msg> result =
+                this.webClient
+                        .get()
+                        .uri("/messages")
+                        .exchange()
+                        .doOnNext(
+                                response -> {
+                                    Assert.assertEquals(
+                                            "true",
+                                            response.headers()
+                                                    .contentType()
+                                                    .get()
+                                                    .getParameters()
+                                                    .get("delimited"));
+                                    Assert.assertEquals(
+                                            "sample.proto",
+                                            response.headers().header("X-Protobuf-Schema").get(0));
+                                    Assert.assertEquals(
+                                            "Msg",
+                                            response.headers().header("X-Protobuf-Message").get(0));
+                                })
+                        .flatMapMany(response -> response.bodyToFlux(Msg.class));
 
-		StepVerifier.create(result)
-				.expectNext(TEST_MSG)
-				.verifyComplete();
-	}
+        StepVerifier.create(result)
+                .expectNext(TEST_MSG)
+                .expectNext(TEST_MSG)
+                .expectNext(TEST_MSG)
+                .verifyComplete();
+    }
 
-	@Test
-	public void values() {
-		Flux<Msg> result = this.webClient.get()
-				.uri("/messages")
-				.exchange()
-				.doOnNext(response -> {
-					Assert.assertEquals("true", response.headers().contentType().get().getParameters().get("delimited"));
-					Assert.assertEquals("sample.proto", response.headers().header("X-Protobuf-Schema").get(0));
-					Assert.assertEquals("Msg", response.headers().header("X-Protobuf-Message").get(0));
-				})
-				.flatMapMany(response -> response.bodyToFlux(Msg.class));
+    @Test
+    public void streaming() {
+        Flux<Msg> result =
+                this.webClient
+                        .get()
+                        .uri("/message-stream")
+                        .exchange()
+                        .doOnNext(
+                                response -> {
+                                    Assert.assertEquals(
+                                            "true",
+                                            response.headers()
+                                                    .contentType()
+                                                    .get()
+                                                    .getParameters()
+                                                    .get("delimited"));
+                                    Assert.assertEquals(
+                                            "sample.proto",
+                                            response.headers().header("X-Protobuf-Schema").get(0));
+                                    Assert.assertEquals(
+                                            "Msg",
+                                            response.headers().header("X-Protobuf-Message").get(0));
+                                })
+                        .flatMapMany(response -> response.bodyToFlux(Msg.class));
 
-		StepVerifier.create(result)
-				.expectNext(TEST_MSG)
-				.expectNext(TEST_MSG)
-				.expectNext(TEST_MSG)
-				.verifyComplete();
-	}
+        StepVerifier.create(result)
+                .expectNext(
+                        Msg.newBuilder()
+                                .setFoo("Foo")
+                                .setBlah(SecondMsg.newBuilder().setBlah(0).build())
+                                .build())
+                .expectNext(
+                        Msg.newBuilder()
+                                .setFoo("Foo")
+                                .setBlah(SecondMsg.newBuilder().setBlah(1).build())
+                                .build())
+                .thenCancel()
+                .verify();
+    }
 
-	@Test
-	public void streaming() {
-		Flux<Msg> result = this.webClient.get()
-				.uri("/message-stream")
-				.exchange()
-				.doOnNext(response -> {
-					Assert.assertEquals("true", response.headers().contentType().get().getParameters().get("delimited"));
-					Assert.assertEquals("sample.proto", response.headers().header("X-Protobuf-Schema").get(0));
-					Assert.assertEquals("Msg", response.headers().header("X-Protobuf-Message").get(0));
-				})
-				.flatMapMany(response -> response.bodyToFlux(Msg.class));
+    @Test
+    public void empty() {
+        Mono<Msg> result = this.webClient.get().uri("/empty").retrieve().bodyToMono(Msg.class);
 
-		StepVerifier.create(result)
-				.expectNext(Msg.newBuilder().setFoo("Foo").setBlah(SecondMsg.newBuilder().setBlah(0).build()).build())
-				.expectNext(Msg.newBuilder().setFoo("Foo").setBlah(SecondMsg.newBuilder().setBlah(1).build()).build())
-				.thenCancel()
-				.verify();
-	}
+        StepVerifier.create(result).verifyComplete();
+    }
 
-	@Test
-	public void empty() {
-		Mono<Msg> result = this.webClient.get()
-				.uri("/empty")
-				.retrieve()
-				.bodyToMono(Msg.class);
+    @Test
+    public void defaultInstance() {
+        Mono<Msg> result =
+                this.webClient.get().uri("/default-instance").retrieve().bodyToMono(Msg.class);
 
-		StepVerifier.create(result)
-				.verifyComplete();
-	}
+        StepVerifier.create(result).verifyComplete();
+    }
 
-	@Test
-	public void defaultInstance() {
-		Mono<Msg> result = this.webClient.get()
-				.uri("/default-instance")
-				.retrieve()
-				.bodyToMono(Msg.class);
+    @RestController
+    @SuppressWarnings("unused")
+    static class ProtobufController {
 
-		StepVerifier.create(result)
-				.verifyComplete();
-	}
+        @GetMapping("/message")
+        Mono<Msg> message() {
+            return Mono.just(TEST_MSG);
+        }
 
+        @GetMapping("/messages")
+        Flux<Msg> messages() {
+            return Flux.just(TEST_MSG, TEST_MSG, TEST_MSG);
+        }
 
-	@RestController
-	@SuppressWarnings("unused")
-	static class ProtobufController {
+        @GetMapping(value = "/message-stream", produces = "application/x-protobuf;delimited=true")
+        Flux<Msg> messageStream() {
+            return testInterval(Duration.ofMillis(50), 5)
+                    .map(
+                            l ->
+                                    Msg.newBuilder()
+                                            .setFoo("Foo")
+                                            .setBlah(
+                                                    SecondMsg.newBuilder()
+                                                            .setBlah(l.intValue())
+                                                            .build())
+                                            .build());
+        }
 
-		@GetMapping("/message")
-		Mono<Msg> message() {
-			return Mono.just(TEST_MSG);
-		}
+        @GetMapping("/empty")
+        Mono<Msg> empty() {
+            return Mono.empty();
+        }
 
-		@GetMapping("/messages")
-		Flux<Msg> messages() {
-			return Flux.just(TEST_MSG, TEST_MSG, TEST_MSG);
-		}
+        @GetMapping("default-instance")
+        Mono<Msg> defaultInstance() {
+            return Mono.just(Msg.getDefaultInstance());
+        }
+    }
 
-		@GetMapping(value = "/message-stream", produces = "application/x-protobuf;delimited=true")
-		Flux<Msg> messageStream() {
-			return testInterval(Duration.ofMillis(50), 5).map(l ->
-					Msg.newBuilder().setFoo("Foo").setBlah(SecondMsg.newBuilder().setBlah(l.intValue()).build()).build());
-		}
-
-		@GetMapping("/empty")
-		Mono<Msg> empty() {
-			return Mono.empty();
-		}
-
-		@GetMapping("default-instance")
-		Mono<Msg> defaultInstance() {
-			return Mono.just(Msg.getDefaultInstance());
-		}
-	}
-
-
-	@Configuration
-	@EnableWebFlux
-	@ComponentScan(resourcePattern = "**/ProtobufIntegrationTests*.class")
-	@SuppressWarnings("unused")
-	static class TestConfiguration {
-	}
-
+    @Configuration
+    @EnableWebFlux
+    @ComponentScan(resourcePattern = "**/ProtobufIntegrationTests*.class")
+    @SuppressWarnings("unused")
+    static class TestConfiguration {}
 }

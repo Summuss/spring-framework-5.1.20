@@ -17,12 +17,10 @@
 package org.springframework.test.web.servlet;
 
 /**
- * A {@code ResultMatcher} matches the result of an executed request against
- * some expectation.
+ * A {@code ResultMatcher} matches the result of an executed request against some expectation.
  *
- * <p>See static factory methods in
- * {@link org.springframework.test.web.servlet.result.MockMvcResultMatchers
- * MockMvcResultMatchers}.
+ * <p>See static factory methods in {@link
+ * org.springframework.test.web.servlet.result.MockMvcResultMatchers MockMvcResultMatchers}.
  *
  * <h3>Example Using Status and Content Result Matchers</h3>
  *
@@ -49,25 +47,25 @@ package org.springframework.test.web.servlet;
 @FunctionalInterface
 public interface ResultMatcher {
 
-	/**
-	 * Assert the result of an executed request.
-	 * @param result the result of the executed request
-	 * @throws Exception if a failure occurs
-	 */
-	void match(MvcResult result) throws Exception;
+    /**
+     * Assert the result of an executed request.
+     *
+     * @param result the result of the executed request
+     * @throws Exception if a failure occurs
+     */
+    void match(MvcResult result) throws Exception;
 
-
-	/**
-	 * Static method for matching with an array of result matchers.
-	 * @param matchers the matchers
-	 * @since 5.1
-	 */
-	static ResultMatcher matchAll(ResultMatcher... matchers) {
-		return result -> {
-			for (ResultMatcher matcher : matchers) {
-			matcher.match(result);
-			}
-		};
-	}
-
+    /**
+     * Static method for matching with an array of result matchers.
+     *
+     * @param matchers the matchers
+     * @since 5.1
+     */
+    static ResultMatcher matchAll(ResultMatcher... matchers) {
+        return result -> {
+            for (ResultMatcher matcher : matchers) {
+                matcher.match(result);
+            }
+        };
+    }
 }

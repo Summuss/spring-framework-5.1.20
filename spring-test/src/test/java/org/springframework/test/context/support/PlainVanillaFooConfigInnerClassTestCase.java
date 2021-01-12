@@ -25,8 +25,6 @@ package org.springframework.test.context.support;
  */
 public class PlainVanillaFooConfigInnerClassTestCase {
 
-	// Intentionally NOT annotated with @Configuration
-	static class FooConfig {
-	}
-
+    // Intentionally NOT annotated with @Configuration
+    static class FooConfig {}
 }

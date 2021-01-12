@@ -30,54 +30,56 @@ import org.springframework.web.socket.sockjs.transport.TransportType;
 import org.springframework.web.socket.sockjs.transport.session.StreamingSockJsSession;
 
 /**
- * A TransportHandler for sending messages via Server-Sent Events:
- * <a href="https://dev.w3.org/html5/eventsource/">https://dev.w3.org/html5/eventsource/</a>.
+ * A TransportHandler for sending messages via Server-Sent Events: <a
+ * href="https://dev.w3.org/html5/eventsource/">https://dev.w3.org/html5/eventsource/</a>.
  *
  * @author Rossen Stoyanchev
  * @since 4.0
  */
 public class EventSourceTransportHandler extends AbstractHttpSendingTransportHandler {
 
-	@Override
-	public TransportType getTransportType() {
-		return TransportType.EVENT_SOURCE;
-	}
+    @Override
+    public TransportType getTransportType() {
+        return TransportType.EVENT_SOURCE;
+    }
 
-	@Override
-	protected MediaType getContentType() {
-		return new MediaType("text", "event-stream", StandardCharsets.UTF_8);
-	}
+    @Override
+    protected MediaType getContentType() {
+        return new MediaType("text", "event-stream", StandardCharsets.UTF_8);
+    }
 
-	@Override
-	public boolean checkSessionType(SockJsSession session) {
-		return (session instanceof EventSourceStreamingSockJsSession);
-	}
+    @Override
+    public boolean checkSessionType(SockJsSession session) {
+        return (session instanceof EventSourceStreamingSockJsSession);
+    }
 
-	@Override
-	public StreamingSockJsSession createSession(
-			String sessionId, WebSocketHandler handler, Map<String, Object> attributes) {
+    @Override
+    public StreamingSockJsSession createSession(
+            String sessionId, WebSocketHandler handler, Map<String, Object> attributes) {
 
-		return new EventSourceStreamingSockJsSession(sessionId, getServiceConfig(), handler, attributes);
-	}
+        return new EventSourceStreamingSockJsSession(
+                sessionId, getServiceConfig(), handler, attributes);
+    }
 
-	@Override
-	protected SockJsFrameFormat getFrameFormat(ServerHttpRequest request) {
-		return new DefaultSockJsFrameFormat("data: %s\r\n\r\n");
-	}
+    @Override
+    protected SockJsFrameFormat getFrameFormat(ServerHttpRequest request) {
+        return new DefaultSockJsFrameFormat("data: %s\r\n\r\n");
+    }
 
+    private static class EventSourceStreamingSockJsSession extends StreamingSockJsSession {
 
-	private static class EventSourceStreamingSockJsSession extends StreamingSockJsSession {
+        public EventSourceStreamingSockJsSession(
+                String sessionId,
+                SockJsServiceConfig config,
+                WebSocketHandler wsHandler,
+                Map<String, Object> attributes) {
 
-		public EventSourceStreamingSockJsSession(String sessionId, SockJsServiceConfig config,
-				WebSocketHandler wsHandler, Map<String, Object> attributes) {
+            super(sessionId, config, wsHandler, attributes);
+        }
 
-			super(sessionId, config, wsHandler, attributes);
-		}
-
-		@Override
-		protected byte[] getPrelude(ServerHttpRequest request) {
-			return new byte[] {'\r', '\n'};
-		}
-	}
-
+        @Override
+        protected byte[] getPrelude(ServerHttpRequest request) {
+            return new byte[] {'\r', '\n'};
+        }
+    }
 }

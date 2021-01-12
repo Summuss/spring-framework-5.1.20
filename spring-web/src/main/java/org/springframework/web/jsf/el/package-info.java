@@ -1,6 +1,6 @@
 /**
- * ELResolvers for integrating a JSF web layer with a Spring service layer
- * which is hosted in a Spring root WebApplicationContext.
+ * ELResolvers for integrating a JSF web layer with a Spring service layer which is hosted in a
+ * Spring root WebApplicationContext.
  */
 @NonNullApi
 @NonNullFields

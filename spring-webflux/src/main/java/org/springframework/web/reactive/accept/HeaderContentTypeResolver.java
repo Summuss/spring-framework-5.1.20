@@ -32,18 +32,17 @@ import org.springframework.web.server.ServerWebExchange;
  */
 public class HeaderContentTypeResolver implements RequestedContentTypeResolver {
 
-	@Override
-	public List<MediaType> resolveMediaTypes(ServerWebExchange exchange) throws NotAcceptableStatusException {
-		try {
-			List<MediaType> mediaTypes = exchange.getRequest().getHeaders().getAccept();
-			MediaType.sortBySpecificityAndQuality(mediaTypes);
-			return (!CollectionUtils.isEmpty(mediaTypes) ? mediaTypes : MEDIA_TYPE_ALL_LIST);
-		}
-		catch (InvalidMediaTypeException ex) {
-			String value = exchange.getRequest().getHeaders().getFirst("Accept");
-			throw new NotAcceptableStatusException(
-					"Could not parse 'Accept' header [" + value + "]: " + ex.getMessage());
-		}
-	}
-
+    @Override
+    public List<MediaType> resolveMediaTypes(ServerWebExchange exchange)
+            throws NotAcceptableStatusException {
+        try {
+            List<MediaType> mediaTypes = exchange.getRequest().getHeaders().getAccept();
+            MediaType.sortBySpecificityAndQuality(mediaTypes);
+            return (!CollectionUtils.isEmpty(mediaTypes) ? mediaTypes : MEDIA_TYPE_ALL_LIST);
+        } catch (InvalidMediaTypeException ex) {
+            String value = exchange.getRequest().getHeaders().getFirst("Accept");
+            throw new NotAcceptableStatusException(
+                    "Could not parse 'Accept' header [" + value + "]: " + ex.getMessage());
+        }
+    }
 }

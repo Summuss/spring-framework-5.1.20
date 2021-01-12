@@ -29,9 +29,8 @@ import org.springframework.scheduling.Trigger;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 
 /**
- * Enables Spring's scheduled task execution capability, similar to
- * functionality found in Spring's {@code <task:*>} XML namespace. To be used
- * on @{@link Configuration} classes as follows:
+ * Enables Spring's scheduled task execution capability, similar to functionality found in Spring's
+ * {@code <task:*>} XML namespace. To be used on @{@link Configuration} classes as follows:
  *
  * <pre class="code">
  * &#064;Configuration
@@ -41,8 +40,8 @@ import org.springframework.scheduling.config.ScheduledTaskRegistrar;
  *     // various &#064;Bean definitions
  * }</pre>
  *
- * This enables detection of @{@link Scheduled} annotations on any Spring-managed
- * bean in the container. For example, given a class {@code MyTask}
+ * This enables detection of @{@link Scheduled} annotations on any Spring-managed bean in the
+ * container. For example, given a class {@code MyTask}
  *
  * <pre class="code">
  * package com.myco.tasks;
@@ -55,8 +54,7 @@ import org.springframework.scheduling.config.ScheduledTaskRegistrar;
  *     }
  * }</pre>
  *
- * the following configuration would ensure that {@code MyTask.work()} is called
- * once every 1000 ms:
+ * the following configuration would ensure that {@code MyTask.work()} is called once every 1000 ms:
  *
  * <pre class="code">
  * &#064;Configuration
@@ -69,9 +67,8 @@ import org.springframework.scheduling.config.ScheduledTaskRegistrar;
  *     }
  * }</pre>
  *
- * Alternatively, if {@code MyTask} were annotated with {@code @Component}, the
- * following configuration would ensure that its {@code @Scheduled} method is
- * invoked at the desired interval:
+ * Alternatively, if {@code MyTask} were annotated with {@code @Component}, the following
+ * configuration would ensure that its {@code @Scheduled} method is invoked at the desired interval:
  *
  * <pre class="code">
  * &#064;Configuration
@@ -94,18 +91,16 @@ import org.springframework.scheduling.config.ScheduledTaskRegistrar;
  *     }
  * }</pre>
  *
- * <p>By default, will be searching for an associated scheduler definition: either
- * a unique {@link org.springframework.scheduling.TaskScheduler} bean in the context,
- * or a {@code TaskScheduler} bean named "taskScheduler" otherwise; the same lookup
- * will also be performed for a {@link java.util.concurrent.ScheduledExecutorService}
- * bean. If neither of the two is resolvable, a local single-threaded default
- * scheduler will be created and used within the registrar.
+ * <p>By default, will be searching for an associated scheduler definition: either a unique {@link
+ * org.springframework.scheduling.TaskScheduler} bean in the context, or a {@code TaskScheduler}
+ * bean named "taskScheduler" otherwise; the same lookup will also be performed for a {@link
+ * java.util.concurrent.ScheduledExecutorService} bean. If neither of the two is resolvable, a local
+ * single-threaded default scheduler will be created and used within the registrar.
  *
- * <p>When more control is desired, a {@code @Configuration} class may implement
- * {@link SchedulingConfigurer}. This allows access to the underlying
- * {@link ScheduledTaskRegistrar} instance. For example, the following example
- * demonstrates how to customize the {@link Executor} used to execute scheduled
- * tasks:
+ * <p>When more control is desired, a {@code @Configuration} class may implement {@link
+ * SchedulingConfigurer}. This allows access to the underlying {@link ScheduledTaskRegistrar}
+ * instance. For example, the following example demonstrates how to customize the {@link Executor}
+ * used to execute scheduled tasks:
  *
  * <pre class="code">
  * &#064;Configuration
@@ -123,14 +118,13 @@ import org.springframework.scheduling.config.ScheduledTaskRegistrar;
  *     }
  * }</pre>
  *
- * <p>Note in the example above the use of {@code @Bean(destroyMethod="shutdown")}.
- * This ensures that the task executor is properly shut down when the Spring
- * application context itself is closed.
+ * <p>Note in the example above the use of {@code @Bean(destroyMethod="shutdown")}. This ensures
+ * that the task executor is properly shut down when the Spring application context itself is
+ * closed.
  *
- * <p>Implementing {@code SchedulingConfigurer} also allows for fine-grained
- * control over task registration via the {@code ScheduledTaskRegistrar}.
- * For example, the following configures the execution of a particular bean
- * method per a custom {@code Trigger} implementation:
+ * <p>Implementing {@code SchedulingConfigurer} also allows for fine-grained control over task
+ * registration via the {@code ScheduledTaskRegistrar}. For example, the following configures the
+ * execution of a particular bean method per a custom {@code Trigger} implementation:
  *
  * <pre class="code">
  * &#064;Configuration
@@ -161,8 +155,7 @@ import org.springframework.scheduling.config.ScheduledTaskRegistrar;
  *     }
  * }</pre>
  *
- * <p>For reference, the example above can be compared to the following Spring XML
- * configuration:
+ * <p>For reference, the example above can be compared to the following Spring XML configuration:
  *
  * <pre class="code">
  * &lt;beans>
@@ -180,17 +173,16 @@ import org.springframework.scheduling.config.ScheduledTaskRegistrar;
  * &lt;/beans&gt;
  * </pre>
  *
- * The examples are equivalent save that in XML a <em>fixed-rate</em> period is used
- * instead of a custom <em>{@code Trigger}</em> implementation; this is because the
- * {@code task:} namespace {@code scheduled} cannot easily expose such support. This is
- * but one demonstration how the code-based approach allows for maximum configurability
- * through direct access to actual componentry.<p>
+ * The examples are equivalent save that in XML a <em>fixed-rate</em> period is used instead of a
+ * custom <em>{@code Trigger}</em> implementation; this is because the {@code task:} namespace
+ * {@code scheduled} cannot easily expose such support. This is but one demonstration how the
+ * code-based approach allows for maximum configurability through direct access to actual
+ * componentry.
  *
- * <b>Note: {@code @EnableScheduling} applies to its local application context only,
- * allowing for selective scheduling of beans at different levels.</b> Please redeclare
- * {@code @EnableScheduling} in each individual context, e.g. the common root web
- * application context and any separate {@code DispatcherServlet} application contexts,
- * if you need to apply its behavior at multiple levels.
+ * <p><b>Note: {@code @EnableScheduling} applies to its local application context only, allowing for
+ * selective scheduling of beans at different levels.</b> Please redeclare {@code @EnableScheduling}
+ * in each individual context, e.g. the common root web application context and any separate {@code
+ * DispatcherServlet} application contexts, if you need to apply its behavior at multiple levels.
  *
  * @author Chris Beams
  * @author Juergen Hoeller
@@ -206,6 +198,4 @@ import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 @Retention(RetentionPolicy.RUNTIME)
 @Import(SchedulingConfiguration.class)
 @Documented
-public @interface EnableScheduling {
-
-}
+public @interface EnableScheduling {}

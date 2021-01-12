@@ -35,126 +35,134 @@ import static org.junit.Assert.fail;
 
 /**
  * Unit tests for {@link PathResourceResolver}.
+ *
  * @author Rossen Stoyanchev
  */
 public class PathResourceResolverTests {
 
-	private static final Duration TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration TIMEOUT = Duration.ofSeconds(5);
 
+    private final PathResourceResolver resolver = new PathResourceResolver();
 
-	private final PathResourceResolver resolver = new PathResourceResolver();
+    @Test
+    public void resolveFromClasspath() throws IOException {
+        Resource location = new ClassPathResource("test/", PathResourceResolver.class);
+        String path = "bar.css";
+        List<Resource> locations = singletonList(location);
+        Resource actual = this.resolver.resolveResource(null, path, locations, null).block(TIMEOUT);
 
+        assertEquals(location.createRelative(path), actual);
+    }
 
-	@Test
-	public void resolveFromClasspath() throws IOException {
-		Resource location = new ClassPathResource("test/", PathResourceResolver.class);
-		String path = "bar.css";
-		List<Resource> locations = singletonList(location);
-		Resource actual = this.resolver.resolveResource(null, path, locations, null).block(TIMEOUT);
+    @Test
+    public void resolveFromClasspathRoot() {
+        Resource location = new ClassPathResource("/");
+        String path = "org/springframework/web/reactive/resource/test/bar.css";
+        List<Resource> locations = singletonList(location);
+        Resource actual = this.resolver.resolveResource(null, path, locations, null).block(TIMEOUT);
 
-		assertEquals(location.createRelative(path), actual);
-	}
+        assertNotNull(actual);
+    }
 
-	@Test
-	public void resolveFromClasspathRoot() {
-		Resource location = new ClassPathResource("/");
-		String path = "org/springframework/web/reactive/resource/test/bar.css";
-		List<Resource> locations = singletonList(location);
-		Resource actual = this.resolver.resolveResource(null, path, locations, null).block(TIMEOUT);
+    @Test // gh-22272
+    public void resolveWithEncodedPath() throws IOException {
+        Resource classpathLocation = new ClassPathResource("test/", PathResourceResolver.class);
+        testWithEncodedPath(classpathLocation);
+        testWithEncodedPath(new FileUrlResource(classpathLocation.getURL()));
+    }
 
-		assertNotNull(actual);
-	}
+    private void testWithEncodedPath(Resource location) throws IOException {
+        String path = "foo%20foo.txt";
+        List<Resource> locations = singletonList(location);
+        Resource actual = this.resolver.resolveResource(null, path, locations, null).block(TIMEOUT);
 
-	@Test // gh-22272
-	public void resolveWithEncodedPath() throws IOException {
-		Resource classpathLocation = new ClassPathResource("test/", PathResourceResolver.class);
-		testWithEncodedPath(classpathLocation);
-		testWithEncodedPath(new FileUrlResource(classpathLocation.getURL()));
-	}
+        assertNotNull(actual);
+        assertEquals("foo foo.txt", actual.getFile().getName());
+    }
 
-	private void testWithEncodedPath(Resource location) throws IOException {
-		String path = "foo%20foo.txt";
-		List<Resource> locations = singletonList(location);
-		Resource actual = this.resolver.resolveResource(null, path, locations, null).block(TIMEOUT);
+    @Test
+    public void checkResource() throws IOException {
+        Resource location = new ClassPathResource("test/", PathResourceResolver.class);
+        testCheckResource(location, "../testsecret/secret.txt");
+        testCheckResource(location, "test/../../testsecret/secret.txt");
 
-		assertNotNull(actual);
-		assertEquals("foo foo.txt", actual.getFile().getName());
-	}
+        location = new UrlResource(getClass().getResource("./test/"));
+        String secretPath =
+                new UrlResource(getClass().getResource("testsecret/secret.txt")).getURL().getPath();
+        testCheckResource(location, "file:" + secretPath);
+        testCheckResource(location, "/file:" + secretPath);
+        testCheckResource(location, "/" + secretPath);
+        testCheckResource(location, "////../.." + secretPath);
+        testCheckResource(location, "/%2E%2E/testsecret/secret.txt");
+        testCheckResource(location, "/%2e%2e/testsecret/secret.txt");
+        testCheckResource(location, " " + secretPath);
+        testCheckResource(location, "/  " + secretPath);
+        testCheckResource(location, "url:" + secretPath);
+    }
 
-	@Test
-	public void checkResource() throws IOException {
-		Resource location = new ClassPathResource("test/", PathResourceResolver.class);
-		testCheckResource(location, "../testsecret/secret.txt");
-		testCheckResource(location, "test/../../testsecret/secret.txt");
+    private void testCheckResource(Resource location, String requestPath) throws IOException {
+        List<Resource> locations = singletonList(location);
+        Resource actual =
+                this.resolver.resolveResource(null, requestPath, locations, null).block(TIMEOUT);
+        if (!location.createRelative(requestPath).exists() && !requestPath.contains(":")) {
+            fail(requestPath + " doesn't actually exist as a relative path");
+        }
+        assertNull(actual);
+    }
 
-		location = new UrlResource(getClass().getResource("./test/"));
-		String secretPath = new UrlResource(getClass().getResource("testsecret/secret.txt")).getURL().getPath();
-		testCheckResource(location, "file:" + secretPath);
-		testCheckResource(location, "/file:" + secretPath);
-		testCheckResource(location, "/" + secretPath);
-		testCheckResource(location, "////../.." + secretPath);
-		testCheckResource(location, "/%2E%2E/testsecret/secret.txt");
-		testCheckResource(location, "/%2e%2e/testsecret/secret.txt");
-		testCheckResource(location, " " + secretPath);
-		testCheckResource(location, "/  " + secretPath);
-		testCheckResource(location, "url:" + secretPath);
-	}
+    @Test // gh-23463
+    public void ignoreInvalidEscapeSequence() throws IOException {
+        UrlResource location = new UrlResource(getClass().getResource("./test/"));
+        Resource resource = location.createRelative("test%file.txt");
+        assertTrue(this.resolver.checkResource(resource, location));
+    }
 
-	private void testCheckResource(Resource location, String requestPath) throws IOException {
-		List<Resource> locations = singletonList(location);
-		Resource actual = this.resolver.resolveResource(null, requestPath, locations, null).block(TIMEOUT);
-		if (!location.createRelative(requestPath).exists() && !requestPath.contains(":")) {
-			fail(requestPath + " doesn't actually exist as a relative path");
-		}
-		assertNull(actual);
-	}
+    @Test
+    public void checkResourceWithAllowedLocations() {
+        this.resolver.setAllowedLocations(
+                new ClassPathResource("test/", PathResourceResolver.class),
+                new ClassPathResource("testalternatepath/", PathResourceResolver.class));
 
-	@Test // gh-23463
-	public void ignoreInvalidEscapeSequence() throws IOException {
-		UrlResource location = new UrlResource(getClass().getResource("./test/"));
-		Resource resource = location.createRelative("test%file.txt");
-		assertTrue(this.resolver.checkResource(resource, location));
-	}
+        Resource location = getResource("main.css");
+        String actual =
+                this.resolver
+                        .resolveUrlPath(
+                                "../testalternatepath/bar.css", singletonList(location), null)
+                        .block(TIMEOUT);
 
-	@Test
-	public void checkResourceWithAllowedLocations() {
-		this.resolver.setAllowedLocations(
-				new ClassPathResource("test/", PathResourceResolver.class),
-				new ClassPathResource("testalternatepath/", PathResourceResolver.class)
-		);
+        assertEquals("../testalternatepath/bar.css", actual);
+    }
 
-		Resource location = getResource("main.css");
-		String actual = this.resolver.resolveUrlPath("../testalternatepath/bar.css",
-				singletonList(location), null).block(TIMEOUT);
+    @Test // SPR-12624
+    public void checkRelativeLocation() throws Exception {
+        String locationUrl =
+                new UrlResource(getClass().getResource("./test/")).getURL().toExternalForm();
+        Resource location =
+                new UrlResource(locationUrl.replace("/springframework", "/../org/springframework"));
+        List<Resource> locations = singletonList(location);
+        assertNotNull(
+                this.resolver.resolveResource(null, "main.css", locations, null).block(TIMEOUT));
+    }
 
-		assertEquals("../testalternatepath/bar.css", actual);
-	}
+    @Test // SPR-12747
+    public void checkFileLocation() throws Exception {
+        Resource resource = getResource("main.css");
+        assertTrue(this.resolver.checkResource(resource, resource));
+    }
 
-	@Test // SPR-12624
-	public void checkRelativeLocation() throws Exception {
-		String locationUrl= new UrlResource(getClass().getResource("./test/")).getURL().toExternalForm();
-		Resource location = new UrlResource(locationUrl.replace("/springframework","/../org/springframework"));
-		List<Resource> locations = singletonList(location);
-		assertNotNull(this.resolver.resolveResource(null, "main.css", locations, null).block(TIMEOUT));
-	}
+    @Test // SPR-13241
+    public void resolvePathRootResource() {
+        Resource webjarsLocation =
+                new ClassPathResource("/META-INF/resources/webjars/", PathResourceResolver.class);
+        String path =
+                this.resolver
+                        .resolveUrlPathInternal("", singletonList(webjarsLocation), null)
+                        .block(TIMEOUT);
 
-	@Test // SPR-12747
-	public void checkFileLocation() throws Exception {
-		Resource resource = getResource("main.css");
-		assertTrue(this.resolver.checkResource(resource, resource));
-	}
+        assertNull(path);
+    }
 
-	@Test // SPR-13241
-	public void resolvePathRootResource() {
-		Resource webjarsLocation = new ClassPathResource("/META-INF/resources/webjars/", PathResourceResolver.class);
-		String path = this.resolver.resolveUrlPathInternal(
-				"", singletonList(webjarsLocation), null).block(TIMEOUT);
-
-		assertNull(path);
-	}
-
-	private Resource getResource(String filePath) {
-		return new ClassPathResource("test/" + filePath, getClass());
-	}
-
+    private Resource getResource(String filePath) {
+        return new ClassPathResource("test/" + filePath, getClass());
+    }
 }

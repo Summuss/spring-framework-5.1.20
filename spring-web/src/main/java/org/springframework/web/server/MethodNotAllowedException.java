@@ -38,62 +38,58 @@ import org.springframework.util.CollectionUtils;
 @SuppressWarnings("serial")
 public class MethodNotAllowedException extends ResponseStatusException {
 
-	private final String method;
+    private final String method;
 
-	private final Set<HttpMethod> httpMethods;
+    private final Set<HttpMethod> httpMethods;
 
+    public MethodNotAllowedException(HttpMethod method, Collection<HttpMethod> supportedMethods) {
+        this(method.name(), supportedMethods);
+    }
 
-	public MethodNotAllowedException(HttpMethod method, Collection<HttpMethod> supportedMethods) {
-		this(method.name(), supportedMethods);
-	}
+    public MethodNotAllowedException(
+            String method, @Nullable Collection<HttpMethod> supportedMethods) {
+        super(HttpStatus.METHOD_NOT_ALLOWED, "Request method '" + method + "' not supported");
+        Assert.notNull(method, "'method' is required");
+        if (supportedMethods == null) {
+            supportedMethods = Collections.emptySet();
+        }
+        this.method = method;
+        this.httpMethods = Collections.unmodifiableSet(new HashSet<>(supportedMethods));
+    }
 
-	public MethodNotAllowedException(String method, @Nullable Collection<HttpMethod> supportedMethods) {
-		super(HttpStatus.METHOD_NOT_ALLOWED, "Request method '" + method + "' not supported");
-		Assert.notNull(method, "'method' is required");
-		if (supportedMethods == null) {
-			supportedMethods = Collections.emptySet();
-		}
-		this.method = method;
-		this.httpMethods = Collections.unmodifiableSet(new HashSet<>(supportedMethods));
-	}
+    /**
+     * Return a Map with an "Allow" header.
+     *
+     * @since 5.1.11
+     */
+    @SuppressWarnings("deprecation")
+    @Override
+    public Map<String, String> getHeaders() {
+        return getResponseHeaders().toSingleValueMap();
+    }
 
+    /**
+     * Return HttpHeaders with an "Allow" header.
+     *
+     * @since 5.1.13
+     */
+    @Override
+    public HttpHeaders getResponseHeaders() {
+        if (CollectionUtils.isEmpty(this.httpMethods)) {
+            return HttpHeaders.EMPTY;
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAllow(this.httpMethods);
+        return headers;
+    }
 
-	/**
-	 * Return a Map with an "Allow" header.
-	 * @since 5.1.11
-	 */
-	@SuppressWarnings("deprecation")
-	@Override
-	public Map<String, String> getHeaders() {
-		return getResponseHeaders().toSingleValueMap();
-	}
+    /** Return the HTTP method for the failed request. */
+    public String getHttpMethod() {
+        return this.method;
+    }
 
-	/**
-	 * Return HttpHeaders with an "Allow" header.
-	 * @since 5.1.13
-	 */
-	@Override
-	public HttpHeaders getResponseHeaders() {
-		if (CollectionUtils.isEmpty(this.httpMethods)) {
-			return HttpHeaders.EMPTY;
-		}
-		HttpHeaders headers = new HttpHeaders();
-		headers.setAllow(this.httpMethods);
-		return headers;
-	}
-
-	/**
-	 * Return the HTTP method for the failed request.
-	 */
-	public String getHttpMethod() {
-		return this.method;
-	}
-
-	/**
-	 * Return the list of supported HTTP methods.
-	 */
-	public Set<HttpMethod> getSupportedMethods() {
-		return this.httpMethods;
-	}
-
+    /** Return the list of supported HTTP methods. */
+    public Set<HttpMethod> getSupportedMethods() {
+        return this.httpMethods;
+    }
 }

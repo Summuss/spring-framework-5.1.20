@@ -1,6 +1,4 @@
-/**
- * Configuration support for WebSocket request handling.
- */
+/** Configuration support for WebSocket request handling. */
 @NonNullApi
 @NonNullFields
 package org.springframework.web.socket.config;

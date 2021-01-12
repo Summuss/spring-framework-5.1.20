@@ -22,8 +22,8 @@ import org.springframework.beans.factory.parsing.CompositeComponentDefinition;
 import org.springframework.lang.Nullable;
 
 /**
- * {@link org.springframework.beans.factory.parsing.ComponentDefinition}
- * that holds an aspect definition, including its nested pointcuts.
+ * {@link org.springframework.beans.factory.parsing.ComponentDefinition} that holds an aspect
+ * definition, including its nested pointcuts.
  *
  * @author Rob Harrop
  * @author Juergen Hoeller
@@ -33,28 +33,28 @@ import org.springframework.lang.Nullable;
  */
 public class AspectComponentDefinition extends CompositeComponentDefinition {
 
-	private final BeanDefinition[] beanDefinitions;
+    private final BeanDefinition[] beanDefinitions;
 
-	private final BeanReference[] beanReferences;
+    private final BeanReference[] beanReferences;
 
+    public AspectComponentDefinition(
+            String aspectName,
+            @Nullable BeanDefinition[] beanDefinitions,
+            @Nullable BeanReference[] beanReferences,
+            @Nullable Object source) {
 
-	public AspectComponentDefinition(String aspectName, @Nullable BeanDefinition[] beanDefinitions,
-			@Nullable BeanReference[] beanReferences, @Nullable Object source) {
+        super(aspectName, source);
+        this.beanDefinitions = (beanDefinitions != null ? beanDefinitions : new BeanDefinition[0]);
+        this.beanReferences = (beanReferences != null ? beanReferences : new BeanReference[0]);
+    }
 
-		super(aspectName, source);
-		this.beanDefinitions = (beanDefinitions != null ? beanDefinitions : new BeanDefinition[0]);
-		this.beanReferences = (beanReferences != null ? beanReferences : new BeanReference[0]);
-	}
+    @Override
+    public BeanDefinition[] getBeanDefinitions() {
+        return this.beanDefinitions;
+    }
 
-
-	@Override
-	public BeanDefinition[] getBeanDefinitions() {
-		return this.beanDefinitions;
-	}
-
-	@Override
-	public BeanReference[] getBeanReferences() {
-		return this.beanReferences;
-	}
-
+    @Override
+    public BeanReference[] getBeanReferences() {
+        return this.beanReferences;
+    }
 }

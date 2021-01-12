@@ -48,297 +48,286 @@ import org.springframework.web.servlet.View;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
-/**
- * @author Sebastien Deleuze
- */
+/** @author Sebastien Deleuze */
 public class MappingJackson2XmlViewTests {
 
-	private MappingJackson2XmlView view;
+    private MappingJackson2XmlView view;
 
-	private MockHttpServletRequest request;
+    private MockHttpServletRequest request;
 
-	private MockHttpServletResponse response;
+    private MockHttpServletResponse response;
 
-	private Context jsContext;
+    private Context jsContext;
 
-	private ScriptableObject jsScope;
+    private ScriptableObject jsScope;
 
+    @Before
+    public void setUp() {
+        request = new MockHttpServletRequest();
+        response = new MockHttpServletResponse();
 
-	@Before
-	public void setUp() {
-		request = new MockHttpServletRequest();
-		response = new MockHttpServletResponse();
+        jsContext = ContextFactory.getGlobal().enterContext();
+        jsScope = jsContext.initStandardObjects();
 
-		jsContext = ContextFactory.getGlobal().enterContext();
-		jsScope = jsContext.initStandardObjects();
+        view = new MappingJackson2XmlView();
+    }
 
-		view = new MappingJackson2XmlView();
-	}
+    @Test
+    public void isExposePathVars() {
+        assertEquals("Must not expose path variables", false, view.isExposePathVariables());
+    }
 
+    @Test
+    public void renderSimpleMap() throws Exception {
+        Map<String, Object> model = new HashMap<>();
+        model.put("bindingResult", mock(BindingResult.class, "binding_result"));
+        model.put("foo", "bar");
 
-	@Test
-	public void isExposePathVars() {
-		assertEquals("Must not expose path variables", false, view.isExposePathVariables());
-	}
+        view.setUpdateContentLength(true);
+        view.render(model, request, response);
 
-	@Test
-	public void renderSimpleMap() throws Exception {
-		Map<String, Object> model = new HashMap<>();
-		model.put("bindingResult", mock(BindingResult.class, "binding_result"));
-		model.put("foo", "bar");
+        assertEquals("no-store", response.getHeader("Cache-Control"));
 
-		view.setUpdateContentLength(true);
-		view.render(model, request, response);
+        assertEquals(MappingJackson2XmlView.DEFAULT_CONTENT_TYPE, response.getContentType());
 
-		assertEquals("no-store", response.getHeader("Cache-Control"));
+        String jsonResult = response.getContentAsString();
+        assertTrue(jsonResult.length() > 0);
+        assertEquals(jsonResult.length(), response.getContentLength());
 
-		assertEquals(MappingJackson2XmlView.DEFAULT_CONTENT_TYPE, response.getContentType());
+        validateResult();
+    }
 
-		String jsonResult = response.getContentAsString();
-		assertTrue(jsonResult.length() > 0);
-		assertEquals(jsonResult.length(), response.getContentLength());
+    @Test
+    public void renderWithSelectedContentType() throws Exception {
+        Map<String, Object> model = new HashMap<>();
+        model.put("foo", "bar");
 
-		validateResult();
-	}
+        view.render(model, request, response);
+        assertEquals("application/xml", response.getContentType());
 
-	@Test
-	public void renderWithSelectedContentType() throws Exception {
-		Map<String, Object> model = new HashMap<>();
-		model.put("foo", "bar");
+        request.setAttribute(
+                View.SELECTED_CONTENT_TYPE, new MediaType("application", "vnd.example-v2+xml"));
+        view.render(model, request, response);
 
-		view.render(model, request, response);
-		assertEquals("application/xml", response.getContentType());
+        assertEquals("application/vnd.example-v2+xml", response.getContentType());
+    }
 
-		request.setAttribute(View.SELECTED_CONTENT_TYPE, new MediaType("application", "vnd.example-v2+xml"));
-		view.render(model, request, response);
+    @Test
+    public void renderCaching() throws Exception {
+        view.setDisableCaching(false);
 
-		assertEquals("application/vnd.example-v2+xml", response.getContentType());
-	}
+        Map<String, Object> model = new HashMap<>();
+        model.put("bindingResult", mock(BindingResult.class, "binding_result"));
+        model.put("foo", "bar");
 
-	@Test
-	public void renderCaching() throws Exception {
-		view.setDisableCaching(false);
+        view.render(model, request, response);
 
-		Map<String, Object> model = new HashMap<>();
-		model.put("bindingResult", mock(BindingResult.class, "binding_result"));
-		model.put("foo", "bar");
+        assertNull(response.getHeader("Cache-Control"));
+    }
 
-		view.render(model, request, response);
+    @Test
+    public void renderSimpleBean() throws Exception {
+        Object bean = new TestBeanSimple();
+        Map<String, Object> model = new HashMap<>();
+        model.put("bindingResult", mock(BindingResult.class, "binding_result"));
+        model.put("foo", bean);
 
-		assertNull(response.getHeader("Cache-Control"));
-	}
+        view.setUpdateContentLength(true);
+        view.render(model, request, response);
 
-	@Test
-	public void renderSimpleBean() throws Exception {
-		Object bean = new TestBeanSimple();
-		Map<String, Object> model = new HashMap<>();
-		model.put("bindingResult", mock(BindingResult.class, "binding_result"));
-		model.put("foo", bean);
+        assertTrue(response.getContentAsString().length() > 0);
+        assertEquals(response.getContentAsString().length(), response.getContentLength());
 
-		view.setUpdateContentLength(true);
-		view.render(model, request, response);
+        validateResult();
+    }
 
-		assertTrue(response.getContentAsString().length() > 0);
-		assertEquals(response.getContentAsString().length(), response.getContentLength());
+    @Test
+    public void renderWithCustomSerializerLocatedByAnnotation() throws Exception {
+        Object bean = new TestBeanSimpleAnnotated();
+        Map<String, Object> model = new HashMap<>();
+        model.put("foo", bean);
 
-		validateResult();
-	}
+        view.render(model, request, response);
 
-	@Test
-	public void renderWithCustomSerializerLocatedByAnnotation() throws Exception {
-		Object bean = new TestBeanSimpleAnnotated();
-		Map<String, Object> model = new HashMap<>();
-		model.put("foo", bean);
+        assertTrue(response.getContentAsString().length() > 0);
+        assertTrue(
+                response.getContentAsString().contains("<testBeanSimple>custom</testBeanSimple>"));
 
-		view.render(model, request, response);
+        validateResult();
+    }
 
-		assertTrue(response.getContentAsString().length() > 0);
-		assertTrue(response.getContentAsString().contains("<testBeanSimple>custom</testBeanSimple>"));
+    @Test
+    public void renderWithCustomSerializerLocatedByFactory() throws Exception {
+        SerializerFactory factory = new DelegatingSerializerFactory(null);
+        XmlMapper mapper = new XmlMapper();
+        mapper.setSerializerFactory(factory);
+        view.setObjectMapper(mapper);
 
-		validateResult();
-	}
+        Object bean = new TestBeanSimple();
+        Map<String, Object> model = new HashMap<>();
+        model.put("foo", bean);
 
-	@Test
-	public void renderWithCustomSerializerLocatedByFactory() throws Exception {
-		SerializerFactory factory = new DelegatingSerializerFactory(null);
-		XmlMapper mapper = new XmlMapper();
-		mapper.setSerializerFactory(factory);
-		view.setObjectMapper(mapper);
+        view.render(model, request, response);
 
-		Object bean = new TestBeanSimple();
-		Map<String, Object> model = new HashMap<>();
-		model.put("foo", bean);
+        String result = response.getContentAsString();
+        assertTrue(result.length() > 0);
+        assertTrue(result.contains("custom</testBeanSimple>"));
 
-		view.render(model, request, response);
+        validateResult();
+    }
 
-		String result = response.getContentAsString();
-		assertTrue(result.length() > 0);
-		assertTrue(result.contains("custom</testBeanSimple>"));
+    @Test
+    public void renderOnlySpecifiedModelKey() throws Exception {
 
-		validateResult();
-	}
+        view.setModelKey("bar");
+        Map<String, Object> model = new HashMap<>();
+        model.put("foo", "foo");
+        model.put("bar", "bar");
+        model.put("baz", "baz");
 
-	@Test
-	public void renderOnlySpecifiedModelKey() throws Exception {
+        view.render(model, request, response);
 
-		view.setModelKey("bar");
-		Map<String, Object> model = new HashMap<>();
-		model.put("foo", "foo");
-		model.put("bar", "bar");
-		model.put("baz", "baz");
+        String result = response.getContentAsString();
+        assertTrue(result.length() > 0);
+        assertFalse(result.contains("foo"));
+        assertTrue(result.contains("bar"));
+        assertFalse(result.contains("baz"));
 
-		view.render(model, request, response);
+        validateResult();
+    }
 
-		String result = response.getContentAsString();
-		assertTrue(result.length() > 0);
-		assertFalse(result.contains("foo"));
-		assertTrue(result.contains("bar"));
-		assertFalse(result.contains("baz"));
+    @Test(expected = IllegalStateException.class)
+    public void renderModelWithMultipleKeys() throws Exception {
 
-		validateResult();
-	}
+        Map<String, Object> model = new TreeMap<>();
+        model.put("foo", "foo");
+        model.put("bar", "bar");
 
-	@Test(expected = IllegalStateException.class)
-	public void renderModelWithMultipleKeys() throws Exception {
+        view.render(model, request, response);
 
-		Map<String, Object> model = new TreeMap<>();
-		model.put("foo", "foo");
-		model.put("bar", "bar");
+        fail();
+    }
 
-		view.render(model, request, response);
+    @Test
+    public void renderSimpleBeanWithJsonView() throws Exception {
+        Object bean = new TestBeanSimple();
+        Map<String, Object> model = new HashMap<>();
+        model.put("bindingResult", mock(BindingResult.class, "binding_result"));
+        model.put("foo", bean);
+        model.put(JsonView.class.getName(), MyJacksonView1.class);
 
-		fail();
-	}
+        view.setUpdateContentLength(true);
+        view.render(model, request, response);
 
-	@Test
-	public void renderSimpleBeanWithJsonView() throws Exception {
-		Object bean = new TestBeanSimple();
-		Map<String, Object> model = new HashMap<>();
-		model.put("bindingResult", mock(BindingResult.class, "binding_result"));
-		model.put("foo", bean);
-		model.put(JsonView.class.getName(), MyJacksonView1.class);
+        String content = response.getContentAsString();
+        assertTrue(content.length() > 0);
+        assertEquals(content.length(), response.getContentLength());
+        assertTrue(content.contains("foo"));
+        assertFalse(content.contains("boo"));
+        assertFalse(content.contains(JsonView.class.getName()));
+    }
 
-		view.setUpdateContentLength(true);
-		view.render(model, request, response);
+    private void validateResult() throws Exception {
+        Object xmlResult =
+                jsContext.evaluateString(
+                        jsScope, "(" + response.getContentAsString() + ")", "XML Stream", 1, null);
+        assertNotNull("XML Result did not eval as valid JavaScript", xmlResult);
+        assertEquals("application/xml", response.getContentType());
+    }
 
-		String content = response.getContentAsString();
-		assertTrue(content.length() > 0);
-		assertEquals(content.length(), response.getContentLength());
-		assertTrue(content.contains("foo"));
-		assertFalse(content.contains("boo"));
-		assertFalse(content.contains(JsonView.class.getName()));
-	}
+    public interface MyJacksonView1 {}
 
-	private void validateResult() throws Exception {
-		Object xmlResult =
-				jsContext.evaluateString(jsScope, "(" + response.getContentAsString() + ")", "XML Stream", 1, null);
-		assertNotNull("XML Result did not eval as valid JavaScript", xmlResult);
-		assertEquals("application/xml", response.getContentType());
-	}
+    public interface MyJacksonView2 {}
 
+    @SuppressWarnings("unused")
+    public static class TestBeanSimple {
 
-	public interface MyJacksonView1 {
-	}
+        @JsonView(MyJacksonView1.class)
+        private String property1 = "foo";
 
+        private boolean test = false;
 
-	public interface MyJacksonView2 {
-	}
+        @JsonView(MyJacksonView2.class)
+        private String property2 = "boo";
 
+        private TestChildBean child = new TestChildBean();
 
-	@SuppressWarnings("unused")
-	public static class TestBeanSimple {
+        public String getProperty1() {
+            return property1;
+        }
 
-		@JsonView(MyJacksonView1.class)
-		private String property1 = "foo";
+        public boolean getTest() {
+            return test;
+        }
 
-		private boolean test = false;
+        public String getProperty2() {
+            return property2;
+        }
 
-		@JsonView(MyJacksonView2.class)
-		private String property2 = "boo";
+        public Date getNow() {
+            return new Date();
+        }
 
-		private TestChildBean child = new TestChildBean();
+        public TestChildBean getChild() {
+            return child;
+        }
+    }
 
-		public String getProperty1() {
-			return property1;
-		}
+    @JsonSerialize(using = TestBeanSimpleSerializer.class)
+    public static class TestBeanSimpleAnnotated extends TestBeanSimple {}
 
-		public boolean getTest() {
-			return test;
-		}
+    public static class TestChildBean {
 
-		public String getProperty2() {
-			return property2;
-		}
+        private String value = "bar";
 
-		public Date getNow() {
-			return new Date();
-		}
+        private String baz = null;
 
-		public TestChildBean getChild() {
-			return child;
-		}
-	}
+        private TestBeanSimple parent = null;
 
+        public String getValue() {
+            return value;
+        }
 
-	@JsonSerialize(using=TestBeanSimpleSerializer.class)
-	public static class TestBeanSimpleAnnotated extends TestBeanSimple {
-	}
+        public String getBaz() {
+            return baz;
+        }
 
+        public TestBeanSimple getParent() {
+            return parent;
+        }
 
-	public static class TestChildBean {
+        public void setParent(TestBeanSimple parent) {
+            this.parent = parent;
+        }
+    }
 
-		private String value = "bar";
+    public static class TestBeanSimpleSerializer extends JsonSerializer<Object> {
 
-		private String baz = null;
+        @Override
+        public void serialize(Object value, JsonGenerator jgen, SerializerProvider provider)
+                throws IOException {
+            jgen.writeStartObject();
+            jgen.writeFieldName("testBeanSimple");
+            jgen.writeString("custom");
+            jgen.writeEndObject();
+        }
+    }
 
-		private TestBeanSimple parent = null;
+    @SuppressWarnings("serial")
+    public static class DelegatingSerializerFactory extends BeanSerializerFactory {
 
-		public String getValue() {
-			return value;
-		}
+        protected DelegatingSerializerFactory(SerializerFactoryConfig config) {
+            super(config);
+        }
 
-		public String getBaz() {
-			return baz;
-		}
-
-		public TestBeanSimple getParent() {
-			return parent;
-		}
-
-		public void setParent(TestBeanSimple parent) {
-			this.parent = parent;
-		}
-	}
-
-
-	public static class TestBeanSimpleSerializer extends JsonSerializer<Object> {
-
-		@Override
-		public void serialize(Object value, JsonGenerator jgen, SerializerProvider provider) throws IOException {
-			jgen.writeStartObject();
-			jgen.writeFieldName("testBeanSimple");
-			jgen.writeString("custom");
-			jgen.writeEndObject();
-		}
-	}
-
-
-	@SuppressWarnings("serial")
-	public static class DelegatingSerializerFactory extends BeanSerializerFactory {
-
-		protected DelegatingSerializerFactory(SerializerFactoryConfig config) {
-			super(config);
-		}
-
-		@Override
-		public JsonSerializer<Object> createSerializer(SerializerProvider prov, JavaType type) throws JsonMappingException {
-			if (type.getRawClass() == TestBeanSimple.class) {
-				return new TestBeanSimpleSerializer();
-			}
-			else {
-				return super.createSerializer(prov, type);
-			}
-		}
-	}
-
+        @Override
+        public JsonSerializer<Object> createSerializer(SerializerProvider prov, JavaType type)
+                throws JsonMappingException {
+            if (type.getRawClass() == TestBeanSimple.class) {
+                return new TestBeanSimpleSerializer();
+            } else {
+                return super.createSerializer(prov, type);
+            }
+        }
+    }
 }

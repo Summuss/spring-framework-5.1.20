@@ -38,84 +38,94 @@ import static org.junit.Assert.assertEquals;
  */
 public class InstantFormatterTests {
 
-	private final InstantFormatter instantFormatter = new InstantFormatter();
+    private final InstantFormatter instantFormatter = new InstantFormatter();
 
+    @Test
+    public void should_parse_an_ISO_formatted_string_representation_of_an_Instant() {
+        new ISOSerializedInstantProvider()
+                .provideArguments()
+                .forEach(
+                        input -> {
+                            try {
+                                Instant expected =
+                                        DateTimeFormatter.ISO_INSTANT.parse(input, Instant::from);
 
-	@Test
-	public void should_parse_an_ISO_formatted_string_representation_of_an_Instant() {
-		new ISOSerializedInstantProvider().provideArguments().forEach(input -> {
-			try {
-				Instant expected = DateTimeFormatter.ISO_INSTANT.parse(input, Instant::from);
+                                Instant actual = instantFormatter.parse(input, null);
 
-				Instant actual = instantFormatter.parse(input, null);
+                                assertEquals(expected, actual);
+                            } catch (ParseException ex) {
+                                throw new RuntimeException(ex);
+                            }
+                        });
+    }
 
-				assertEquals(expected, actual);
-			}
-			catch (ParseException ex) {
-				throw new RuntimeException(ex);
-			}
-		});
-	}
+    @Test
+    public void should_parse_an_RFC1123_formatted_string_representation_of_an_Instant() {
+        new RFC1123SerializedInstantProvider()
+                .provideArguments()
+                .forEach(
+                        input -> {
+                            try {
+                                Instant expected =
+                                        DateTimeFormatter.RFC_1123_DATE_TIME.parse(
+                                                input, Instant::from);
 
-	@Test
-	public void should_parse_an_RFC1123_formatted_string_representation_of_an_Instant() {
-		new RFC1123SerializedInstantProvider().provideArguments().forEach(input -> {
-			try {
-				Instant expected = DateTimeFormatter.RFC_1123_DATE_TIME.parse(input, Instant::from);
+                                Instant actual = instantFormatter.parse(input, null);
 
-				Instant actual = instantFormatter.parse(input, null);
+                                assertEquals(expected, actual);
+                            } catch (ParseException ex) {
+                                throw new RuntimeException(ex);
+                            }
+                        });
+    }
 
-				assertEquals(expected, actual);
-			}
-			catch (ParseException ex) {
-				throw new RuntimeException(ex);
-			}
-		});
-	}
+    @Test
+    public void should_serialize_an_Instant_using_ISO_format_and_ignoring_Locale() {
+        new RandomInstantProvider()
+                .randomInstantStream(MIN, MAX)
+                .forEach(
+                        instant -> {
+                            String expected = DateTimeFormatter.ISO_INSTANT.format(instant);
 
-	@Test
-	public void should_serialize_an_Instant_using_ISO_format_and_ignoring_Locale() {
-		new RandomInstantProvider().randomInstantStream(MIN, MAX).forEach(instant -> {
-			String expected = DateTimeFormatter.ISO_INSTANT.format(instant);
+                            String actual = instantFormatter.print(instant, null);
 
-			String actual = instantFormatter.print(instant, null);
+                            assertEquals(expected, actual);
+                        });
+    }
 
-			assertEquals(expected, actual);
-		});
-	}
+    private static class RandomInstantProvider {
 
+        private static final long DATA_SET_SIZE = 10;
 
-	private static class RandomInstantProvider {
+        private static final Random random = new Random();
 
-		private static final long DATA_SET_SIZE = 10;
+        Stream<Instant> randomInstantStream(Instant min, Instant max) {
+            return Stream.concat(
+                    Stream.of(
+                            Instant.now()), // make sure that the data set includes current instant
+                    random.longs(min.getEpochSecond(), max.getEpochSecond())
+                            .limit(DATA_SET_SIZE)
+                            .mapToObj(Instant::ofEpochSecond));
+        }
+    }
 
-		private static final Random random = new Random();
+    private static class ISOSerializedInstantProvider extends RandomInstantProvider {
 
-		Stream<Instant> randomInstantStream(Instant min, Instant max) {
-			return Stream.concat(Stream.of(Instant.now()), // make sure that the data set includes current instant
-				random.longs(min.getEpochSecond(), max.getEpochSecond()).limit(DATA_SET_SIZE).mapToObj(Instant::ofEpochSecond));
-		}
-	}
+        Stream<String> provideArguments() {
+            return randomInstantStream(MIN, MAX).map(DateTimeFormatter.ISO_INSTANT::format);
+        }
+    }
 
-	private static class ISOSerializedInstantProvider extends RandomInstantProvider {
+    private static class RFC1123SerializedInstantProvider extends RandomInstantProvider {
 
-		Stream<String> provideArguments() {
-			return randomInstantStream(MIN, MAX).map(DateTimeFormatter.ISO_INSTANT::format);
-		}
-	}
+        // RFC-1123 supports only 4-digit years
+        private static final Instant min = Instant.parse("0000-01-01T00:00:00.00Z");
 
-	private static class RFC1123SerializedInstantProvider extends RandomInstantProvider {
+        private static final Instant max = Instant.parse("9999-12-31T23:59:59.99Z");
 
-		// RFC-1123 supports only 4-digit years
-		private static final Instant min = Instant.parse("0000-01-01T00:00:00.00Z");
-
-		private static final Instant max = Instant.parse("9999-12-31T23:59:59.99Z");
-
-
-		Stream<String> provideArguments() {
-			return randomInstantStream(min, max)
-					.map(DateTimeFormatter.RFC_1123_DATE_TIME.withZone(systemDefault())::format);
-		}
-	}
-
+        Stream<String> provideArguments() {
+            return randomInstantStream(min, max)
+                    .map(DateTimeFormatter.RFC_1123_DATE_TIME.withZone(systemDefault())::format);
+        }
+    }
 }

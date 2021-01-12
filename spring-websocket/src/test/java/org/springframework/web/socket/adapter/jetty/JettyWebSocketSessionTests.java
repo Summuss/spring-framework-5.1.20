@@ -39,86 +39,84 @@ import static org.mockito.BDDMockito.*;
  */
 public class JettyWebSocketSessionTests {
 
-	private final Map<String, Object> attributes = new HashMap<>();
+    private final Map<String, Object> attributes = new HashMap<>();
 
+    @Test
+    @SuppressWarnings("resource")
+    public void getPrincipalWithConstructorArg() {
+        TestPrincipal user = new TestPrincipal("joe");
+        JettyWebSocketSession session = new JettyWebSocketSession(attributes, user);
 
-	@Test
-	@SuppressWarnings("resource")
-	public void getPrincipalWithConstructorArg() {
-		TestPrincipal user = new TestPrincipal("joe");
-		JettyWebSocketSession session = new JettyWebSocketSession(attributes, user);
+        assertSame(user, session.getPrincipal());
+    }
 
-		assertSame(user, session.getPrincipal());
-	}
+    @Test
+    @SuppressWarnings("resource")
+    public void getPrincipalFromNativeSession() {
+        TestPrincipal user = new TestPrincipal("joe");
 
-	@Test
-	@SuppressWarnings("resource")
-	public void getPrincipalFromNativeSession() {
-		TestPrincipal user = new TestPrincipal("joe");
+        UpgradeRequest request = Mockito.mock(UpgradeRequest.class);
+        given(request.getUserPrincipal()).willReturn(user);
 
-		UpgradeRequest request = Mockito.mock(UpgradeRequest.class);
-		given(request.getUserPrincipal()).willReturn(user);
+        UpgradeResponse response = Mockito.mock(UpgradeResponse.class);
+        given(response.getAcceptedSubProtocol()).willReturn(null);
 
-		UpgradeResponse response = Mockito.mock(UpgradeResponse.class);
-		given(response.getAcceptedSubProtocol()).willReturn(null);
+        Session nativeSession = Mockito.mock(Session.class);
+        given(nativeSession.getUpgradeRequest()).willReturn(request);
+        given(nativeSession.getUpgradeResponse()).willReturn(response);
 
-		Session nativeSession = Mockito.mock(Session.class);
-		given(nativeSession.getUpgradeRequest()).willReturn(request);
-		given(nativeSession.getUpgradeResponse()).willReturn(response);
+        JettyWebSocketSession session = new JettyWebSocketSession(attributes);
+        session.initializeNativeSession(nativeSession);
 
-		JettyWebSocketSession session = new JettyWebSocketSession(attributes);
-		session.initializeNativeSession(nativeSession);
+        reset(nativeSession);
 
-		reset(nativeSession);
+        assertSame(user, session.getPrincipal());
+        verifyNoMoreInteractions(nativeSession);
+    }
 
-		assertSame(user, session.getPrincipal());
-		verifyNoMoreInteractions(nativeSession);
-	}
+    @Test
+    @SuppressWarnings("resource")
+    public void getPrincipalNotAvailable() {
+        UpgradeRequest request = Mockito.mock(UpgradeRequest.class);
+        given(request.getUserPrincipal()).willReturn(null);
 
-	@Test
-	@SuppressWarnings("resource")
-	public void getPrincipalNotAvailable() {
-		UpgradeRequest request = Mockito.mock(UpgradeRequest.class);
-		given(request.getUserPrincipal()).willReturn(null);
+        UpgradeResponse response = Mockito.mock(UpgradeResponse.class);
+        given(response.getAcceptedSubProtocol()).willReturn(null);
 
-		UpgradeResponse response = Mockito.mock(UpgradeResponse.class);
-		given(response.getAcceptedSubProtocol()).willReturn(null);
+        Session nativeSession = Mockito.mock(Session.class);
+        given(nativeSession.getUpgradeRequest()).willReturn(request);
+        given(nativeSession.getUpgradeResponse()).willReturn(response);
 
-		Session nativeSession = Mockito.mock(Session.class);
-		given(nativeSession.getUpgradeRequest()).willReturn(request);
-		given(nativeSession.getUpgradeResponse()).willReturn(response);
+        JettyWebSocketSession session = new JettyWebSocketSession(attributes);
+        session.initializeNativeSession(nativeSession);
 
-		JettyWebSocketSession session = new JettyWebSocketSession(attributes);
-		session.initializeNativeSession(nativeSession);
+        reset(nativeSession);
 
-		reset(nativeSession);
+        assertNull(session.getPrincipal());
+        verifyNoMoreInteractions(nativeSession);
+    }
 
-		assertNull(session.getPrincipal());
-		verifyNoMoreInteractions(nativeSession);
-	}
+    @Test
+    @SuppressWarnings("resource")
+    public void getAcceptedProtocol() {
+        String protocol = "foo";
 
-	@Test
-	@SuppressWarnings("resource")
-	public void getAcceptedProtocol() {
-		String protocol = "foo";
+        UpgradeRequest request = Mockito.mock(UpgradeRequest.class);
+        given(request.getUserPrincipal()).willReturn(null);
 
-		UpgradeRequest request = Mockito.mock(UpgradeRequest.class);
-		given(request.getUserPrincipal()).willReturn(null);
+        UpgradeResponse response = Mockito.mock(UpgradeResponse.class);
+        given(response.getAcceptedSubProtocol()).willReturn(protocol);
 
-		UpgradeResponse response = Mockito.mock(UpgradeResponse.class);
-		given(response.getAcceptedSubProtocol()).willReturn(protocol);
+        Session nativeSession = Mockito.mock(Session.class);
+        given(nativeSession.getUpgradeRequest()).willReturn(request);
+        given(nativeSession.getUpgradeResponse()).willReturn(response);
 
-		Session nativeSession = Mockito.mock(Session.class);
-		given(nativeSession.getUpgradeRequest()).willReturn(request);
-		given(nativeSession.getUpgradeResponse()).willReturn(response);
+        JettyWebSocketSession session = new JettyWebSocketSession(attributes);
+        session.initializeNativeSession(nativeSession);
 
-		JettyWebSocketSession session = new JettyWebSocketSession(attributes);
-		session.initializeNativeSession(nativeSession);
+        reset(nativeSession);
 
-		reset(nativeSession);
-
-		assertSame(protocol, session.getAcceptedProtocol());
-		verifyNoMoreInteractions(nativeSession);
-	}
-
+        assertSame(protocol, session.getAcceptedProtocol());
+        verifyNoMoreInteractions(nativeSession);
+    }
 }

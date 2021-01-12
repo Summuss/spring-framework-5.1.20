@@ -46,260 +46,265 @@ import static org.junit.Assert.*;
  */
 public class ChannelSendOperatorTests {
 
-	private OneByOneAsyncWriter writer;
+    private OneByOneAsyncWriter writer;
 
+    @Before
+    public void setUp() throws Exception {
+        this.writer = new OneByOneAsyncWriter();
+    }
 
-	@Before
-	public void setUp() throws Exception {
-		this.writer = new OneByOneAsyncWriter();
-	}
+    @Test
+    public void errorBeforeFirstItem() throws Exception {
+        IllegalStateException error = new IllegalStateException("boo");
+        Mono<Void> completion = Mono.<String>error(error).as(this::sendOperator);
+        Signal<Void> signal = completion.materialize().block();
 
+        assertNotNull(signal);
+        assertSame("Unexpected signal: " + signal, error, signal.getThrowable());
+    }
 
-	@Test
-	public void errorBeforeFirstItem() throws Exception {
-		IllegalStateException error = new IllegalStateException("boo");
-		Mono<Void> completion = Mono.<String>error(error).as(this::sendOperator);
-		Signal<Void> signal = completion.materialize().block();
+    @Test
+    public void completionBeforeFirstItem() throws Exception {
+        Mono<Void> completion = Flux.<String>empty().as(this::sendOperator);
+        Signal<Void> signal = completion.materialize().block();
 
-		assertNotNull(signal);
-		assertSame("Unexpected signal: " + signal, error, signal.getThrowable());
-	}
+        assertNotNull(signal);
+        assertTrue("Unexpected signal: " + signal, signal.isOnComplete());
 
-	@Test
-	public void completionBeforeFirstItem() throws Exception {
-		Mono<Void> completion = Flux.<String>empty().as(this::sendOperator);
-		Signal<Void> signal = completion.materialize().block();
+        assertEquals(0, this.writer.items.size());
+        assertTrue(this.writer.completed);
+    }
 
-		assertNotNull(signal);
-		assertTrue("Unexpected signal: " + signal, signal.isOnComplete());
+    @Test
+    public void writeOneItem() throws Exception {
+        Mono<Void> completion = Flux.just("one").as(this::sendOperator);
+        Signal<Void> signal = completion.materialize().block();
 
-		assertEquals(0, this.writer.items.size());
-		assertTrue(this.writer.completed);
-	}
+        assertNotNull(signal);
+        assertTrue("Unexpected signal: " + signal, signal.isOnComplete());
 
-	@Test
-	public void writeOneItem() throws Exception {
-		Mono<Void> completion = Flux.just("one").as(this::sendOperator);
-		Signal<Void> signal = completion.materialize().block();
+        assertEquals(1, this.writer.items.size());
+        assertEquals("one", this.writer.items.get(0));
+        assertTrue(this.writer.completed);
+    }
 
-		assertNotNull(signal);
-		assertTrue("Unexpected signal: " + signal, signal.isOnComplete());
+    @Test
+    public void writeMultipleItems() {
+        List<String> items = Arrays.asList("one", "two", "three");
+        Mono<Void> completion = Flux.fromIterable(items).as(this::sendOperator);
+        Signal<Void> signal = completion.materialize().block();
 
-		assertEquals(1, this.writer.items.size());
-		assertEquals("one", this.writer.items.get(0));
-		assertTrue(this.writer.completed);
-	}
+        assertNotNull(signal);
+        assertTrue("Unexpected signal: " + signal, signal.isOnComplete());
 
+        assertEquals(3, this.writer.items.size());
+        assertEquals("one", this.writer.items.get(0));
+        assertEquals("two", this.writer.items.get(1));
+        assertEquals("three", this.writer.items.get(2));
+        assertTrue(this.writer.completed);
+    }
 
-	@Test
-	public void writeMultipleItems() {
-		List<String> items = Arrays.asList("one", "two", "three");
-		Mono<Void> completion = Flux.fromIterable(items).as(this::sendOperator);
-		Signal<Void> signal = completion.materialize().block();
+    @Test
+    public void errorAfterMultipleItems() {
+        IllegalStateException error = new IllegalStateException("boo");
+        Flux<String> publisher =
+                Flux.generate(
+                        () -> 0,
+                        (idx, subscriber) -> {
+                            int i = ++idx;
+                            subscriber.next(String.valueOf(i));
+                            if (i == 3) {
+                                subscriber.error(error);
+                            }
+                            return i;
+                        });
+        Mono<Void> completion = publisher.as(this::sendOperator);
+        Signal<Void> signal = completion.materialize().block();
 
-		assertNotNull(signal);
-		assertTrue("Unexpected signal: " + signal, signal.isOnComplete());
+        assertNotNull(signal);
+        assertSame("Unexpected signal: " + signal, error, signal.getThrowable());
 
-		assertEquals(3, this.writer.items.size());
-		assertEquals("one", this.writer.items.get(0));
-		assertEquals("two", this.writer.items.get(1));
-		assertEquals("three", this.writer.items.get(2));
-		assertTrue(this.writer.completed);
-	}
+        assertEquals(3, this.writer.items.size());
+        assertEquals("1", this.writer.items.get(0));
+        assertEquals("2", this.writer.items.get(1));
+        assertEquals("3", this.writer.items.get(2));
+        assertSame(error, this.writer.error);
+    }
 
-	@Test
-	public void errorAfterMultipleItems() {
-		IllegalStateException error = new IllegalStateException("boo");
-		Flux<String> publisher = Flux.generate(() -> 0, (idx , subscriber) -> {
-			int i = ++idx;
-			subscriber.next(String.valueOf(i));
-			if (i == 3) {
-				subscriber.error(error);
-			}
-			return i;
-		});
-		Mono<Void> completion = publisher.as(this::sendOperator);
-		Signal<Void> signal = completion.materialize().block();
+    @Test // gh-22720
+    public void cancelWhileItemCached() {
+        LeakAwareDataBufferFactory bufferFactory = new LeakAwareDataBufferFactory();
 
-		assertNotNull(signal);
-		assertSame("Unexpected signal: " + signal, error, signal.getThrowable());
+        ChannelSendOperator<DataBuffer> operator =
+                new ChannelSendOperator<>(
+                        Mono.fromCallable(
+                                () -> {
+                                    DataBuffer dataBuffer = bufferFactory.allocateBuffer();
+                                    dataBuffer.write("foo", StandardCharsets.UTF_8);
+                                    return dataBuffer;
+                                }),
+                        publisher -> {
+                            ZeroDemandSubscriber subscriber = new ZeroDemandSubscriber();
+                            publisher.subscribe(subscriber);
+                            return Mono.never();
+                        });
 
-		assertEquals(3, this.writer.items.size());
-		assertEquals("1", this.writer.items.get(0));
-		assertEquals("2", this.writer.items.get(1));
-		assertEquals("3", this.writer.items.get(2));
-		assertSame(error, this.writer.error);
-	}
+        BaseSubscriber<Void> subscriber = new BaseSubscriber<Void>() {};
+        operator.subscribe(subscriber);
+        subscriber.cancel();
 
-	@Test // gh-22720
-	public void cancelWhileItemCached() {
-		LeakAwareDataBufferFactory bufferFactory = new LeakAwareDataBufferFactory();
+        bufferFactory.checkForLeaks();
+    }
 
-		ChannelSendOperator<DataBuffer> operator = new ChannelSendOperator<>(
-				Mono.fromCallable(() -> {
-					DataBuffer dataBuffer = bufferFactory.allocateBuffer();
-					dataBuffer.write("foo", StandardCharsets.UTF_8);
-					return dataBuffer;
-				}),
-				publisher -> {
-					ZeroDemandSubscriber subscriber = new ZeroDemandSubscriber();
-					publisher.subscribe(subscriber);
-					return Mono.never();
-				});
+    @Test // gh-22720
+    public void errorFromWriteSourceWhileItemCached() {
 
-		BaseSubscriber<Void> subscriber = new BaseSubscriber<Void>() {};
-		operator.subscribe(subscriber);
-		subscriber.cancel();
+        // 1. First item received
+        // 2. writeFunction applied and writeCompletionBarrier subscribed to it
+        // 3. Write Publisher fails right after that and before request(n) from server
 
-		bufferFactory.checkForLeaks();
-	}
+        LeakAwareDataBufferFactory bufferFactory = new LeakAwareDataBufferFactory();
+        ZeroDemandSubscriber writeSubscriber = new ZeroDemandSubscriber();
 
-	@Test // gh-22720
-	public void errorFromWriteSourceWhileItemCached() {
+        ChannelSendOperator<DataBuffer> operator =
+                new ChannelSendOperator<>(
+                        Flux.create(
+                                sink -> {
+                                    DataBuffer dataBuffer = bufferFactory.allocateBuffer();
+                                    dataBuffer.write("foo", StandardCharsets.UTF_8);
+                                    sink.next(dataBuffer);
+                                    sink.error(new IllegalStateException("err"));
+                                }),
+                        publisher -> {
+                            publisher.subscribe(writeSubscriber);
+                            return Mono.never();
+                        });
 
-		// 1. First item received
-		// 2. writeFunction applied and writeCompletionBarrier subscribed to it
-		// 3. Write Publisher fails right after that and before request(n) from server
+        operator.subscribe(new BaseSubscriber<Void>() {});
+        try {
+            writeSubscriber.signalDemand(1); // Let cached signals ("foo" and error) be published..
+        } catch (Throwable ex) {
+            assertNotNull(ex.getCause());
+            assertEquals("err", ex.getCause().getMessage());
+        }
 
-		LeakAwareDataBufferFactory bufferFactory = new LeakAwareDataBufferFactory();
-		ZeroDemandSubscriber writeSubscriber = new ZeroDemandSubscriber();
+        bufferFactory.checkForLeaks();
+    }
 
-		ChannelSendOperator<DataBuffer> operator = new ChannelSendOperator<>(
-				Flux.create(sink -> {
-					DataBuffer dataBuffer = bufferFactory.allocateBuffer();
-					dataBuffer.write("foo", StandardCharsets.UTF_8);
-					sink.next(dataBuffer);
-					sink.error(new IllegalStateException("err"));
-				}),
-				publisher -> {
-					publisher.subscribe(writeSubscriber);
-					return Mono.never();
-				});
+    @Test // gh-22720
+    public void errorFromWriteFunctionWhileItemCached() {
 
+        // 1. First item received
+        // 2. writeFunction applied and writeCompletionBarrier subscribed to it
+        // 3. writeFunction fails, e.g. to flush status and headers, before request(n) from server
 
-		operator.subscribe(new BaseSubscriber<Void>() {});
-		try {
-			writeSubscriber.signalDemand(1);  // Let cached signals ("foo" and error) be published..
-		}
-		catch (Throwable ex) {
-			assertNotNull(ex.getCause());
-			assertEquals("err", ex.getCause().getMessage());
-		}
+        LeakAwareDataBufferFactory bufferFactory = new LeakAwareDataBufferFactory();
 
-		bufferFactory.checkForLeaks();
-	}
+        ChannelSendOperator<DataBuffer> operator =
+                new ChannelSendOperator<>(
+                        Flux.create(
+                                sink -> {
+                                    DataBuffer dataBuffer = bufferFactory.allocateBuffer();
+                                    dataBuffer.write("foo", StandardCharsets.UTF_8);
+                                    sink.next(dataBuffer);
+                                }),
+                        publisher -> {
+                            publisher.subscribe(new ZeroDemandSubscriber());
+                            return Mono.error(new IllegalStateException("err"));
+                        });
 
-	@Test // gh-22720
-	public void errorFromWriteFunctionWhileItemCached() {
+        StepVerifier.create(operator).expectErrorMessage("err").verify(Duration.ofSeconds(5));
+        bufferFactory.checkForLeaks();
+    }
 
-		// 1. First item received
-		// 2. writeFunction applied and writeCompletionBarrier subscribed to it
-		// 3. writeFunction fails, e.g. to flush status and headers, before request(n) from server
+    @Test // gh-23175
+    public void errorInWriteFunction() {
 
-		LeakAwareDataBufferFactory bufferFactory = new LeakAwareDataBufferFactory();
+        StepVerifier.create(
+                        new ChannelSendOperator<>(
+                                Mono.just("one"),
+                                p -> {
+                                    throw new IllegalStateException("boo");
+                                }))
+                .expectErrorMessage("boo")
+                .verify(Duration.ofMillis(5000));
 
-		ChannelSendOperator<DataBuffer> operator = new ChannelSendOperator<>(
-				Flux.create(sink -> {
-					DataBuffer dataBuffer = bufferFactory.allocateBuffer();
-					dataBuffer.write("foo", StandardCharsets.UTF_8);
-					sink.next(dataBuffer);
-				}),
-				publisher -> {
-					publisher.subscribe(new ZeroDemandSubscriber());
-					return Mono.error(new IllegalStateException("err"));
-				});
+        StepVerifier.create(
+                        new ChannelSendOperator<>(
+                                Mono.empty(),
+                                p -> {
+                                    throw new IllegalStateException("boo");
+                                }))
+                .expectErrorMessage("boo")
+                .verify(Duration.ofMillis(5000));
+    }
 
-		StepVerifier.create(operator).expectErrorMessage("err").verify(Duration.ofSeconds(5));
-		bufferFactory.checkForLeaks();
-	}
+    private <T> Mono<Void> sendOperator(Publisher<String> source) {
+        return new ChannelSendOperator<>(source, writer::send);
+    }
 
-	@Test // gh-23175
-	public void errorInWriteFunction() {
+    private static class OneByOneAsyncWriter {
 
-		StepVerifier
-				.create(new ChannelSendOperator<>(Mono.just("one"), p -> {
-					throw new IllegalStateException("boo");
-				}))
-				.expectErrorMessage("boo")
-				.verify(Duration.ofMillis(5000));
+        private List<String> items = new ArrayList<>();
 
-		StepVerifier
-				.create(new ChannelSendOperator<>(Mono.empty(), p -> {
-					throw new IllegalStateException("boo");
-				}))
-				.expectErrorMessage("boo")
-				.verify(Duration.ofMillis(5000));
-	}
+        private boolean completed = false;
 
+        private Throwable error;
 
-	private <T> Mono<Void> sendOperator(Publisher<String> source){
-		return new ChannelSendOperator<>(source, writer::send);
-	}
+        public Publisher<Void> send(Publisher<String> publisher) {
+            return subscriber ->
+                    Executors.newSingleThreadScheduledExecutor()
+                            .schedule(
+                                    () -> publisher.subscribe(new WriteSubscriber(subscriber)),
+                                    50,
+                                    TimeUnit.MILLISECONDS);
+        }
 
+        private class WriteSubscriber implements Subscriber<String> {
 
-	private static class OneByOneAsyncWriter {
+            private Subscription subscription;
 
-		private List<String> items = new ArrayList<>();
+            private final Subscriber<? super Void> subscriber;
 
-		private boolean completed = false;
+            public WriteSubscriber(Subscriber<? super Void> subscriber) {
+                this.subscriber = subscriber;
+            }
 
-		private Throwable error;
+            @Override
+            public void onSubscribe(Subscription subscription) {
+                this.subscription = subscription;
+                this.subscription.request(1);
+            }
 
+            @Override
+            public void onNext(String item) {
+                items.add(item);
+                this.subscription.request(1);
+            }
 
-		public Publisher<Void> send(Publisher<String> publisher) {
-			return subscriber -> Executors.newSingleThreadScheduledExecutor().schedule(() ->
-							publisher.subscribe(new WriteSubscriber(subscriber)),50, TimeUnit.MILLISECONDS);
-		}
+            @Override
+            public void onError(Throwable ex) {
+                error = ex;
+                this.subscriber.onError(ex);
+            }
 
+            @Override
+            public void onComplete() {
+                completed = true;
+                this.subscriber.onComplete();
+            }
+        }
+    }
 
-		private class WriteSubscriber implements Subscriber<String> {
+    private static class ZeroDemandSubscriber extends BaseSubscriber<DataBuffer> {
 
-			private Subscription subscription;
+        @Override
+        protected void hookOnSubscribe(Subscription subscription) {
+            // Just subscribe without requesting
+        }
 
-			private final Subscriber<? super Void> subscriber;
-
-			public WriteSubscriber(Subscriber<? super Void> subscriber) {
-				this.subscriber = subscriber;
-			}
-
-			@Override
-			public void onSubscribe(Subscription subscription) {
-				this.subscription = subscription;
-				this.subscription.request(1);
-			}
-
-			@Override
-			public void onNext(String item) {
-				items.add(item);
-				this.subscription.request(1);
-			}
-
-			@Override
-			public void onError(Throwable ex) {
-				error = ex;
-				this.subscriber.onError(ex);
-			}
-
-			@Override
-			public void onComplete() {
-				completed = true;
-				this.subscriber.onComplete();
-			}
-		}
-	}
-
-
-	private static class ZeroDemandSubscriber extends BaseSubscriber<DataBuffer> {
-
-
-		@Override
-		protected void hookOnSubscribe(Subscription subscription) {
-			// Just subscribe without requesting
-		}
-
-		public void signalDemand(long demand) {
-			upstream().request(demand);
-		}
-	}
-
+        public void signalDemand(long demand) {
+            upstream().request(demand);
+        }
+    }
 }

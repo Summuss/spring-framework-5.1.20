@@ -29,8 +29,8 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import static org.junit.Assert.*;
 
 /**
- * Integration tests for {@link TestPropertySource @TestPropertySource}
- * support with an explicitly named properties file.
+ * Integration tests for {@link TestPropertySource @TestPropertySource} support with an explicitly
+ * named properties file.
  *
  * @author Sam Brannen
  * @since 4.1
@@ -40,23 +40,19 @@ import static org.junit.Assert.*;
 @TestPropertySource("explicit.properties")
 public class ExplicitPropertiesFileTestPropertySourceTests {
 
-	@Autowired
-	protected Environment env;
+    @Autowired protected Environment env;
 
+    @Test
+    public void verifyPropertiesAreAvailableInEnvironment() {
+        String userHomeKey = "user.home";
+        assertEquals(System.getProperty(userHomeKey), env.getProperty(userHomeKey));
+        assertEquals("enigma", env.getProperty("explicit"));
+    }
 
-	@Test
-	public void verifyPropertiesAreAvailableInEnvironment() {
-		String userHomeKey = "user.home";
-		assertEquals(System.getProperty(userHomeKey), env.getProperty(userHomeKey));
-		assertEquals("enigma", env.getProperty("explicit"));
-	}
+    // -------------------------------------------------------------------
 
-
-	// -------------------------------------------------------------------
-
-	@Configuration
-	static class Config {
-		/* no user beans required for these tests */
-	}
-
+    @Configuration
+    static class Config {
+        /* no user beans required for these tests */
+    }
 }

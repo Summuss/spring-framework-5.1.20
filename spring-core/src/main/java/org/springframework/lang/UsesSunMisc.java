@@ -23,8 +23,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Indicates that the annotated element uses an API from the {@code sun.misc}
- * package.
+ * Indicates that the annotated element uses an API from the {@code sun.misc} package.
  *
  * @author Stephane Nicoll
  * @since 4.3
@@ -32,5 +31,4 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD, ElementType.CONSTRUCTOR, ElementType.TYPE})
 @Documented
-public @interface UsesSunMisc {
-}
+public @interface UsesSunMisc {}

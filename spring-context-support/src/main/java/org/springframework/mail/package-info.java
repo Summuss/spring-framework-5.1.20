@@ -1,6 +1,5 @@
 /**
- * Spring's generic mail infrastructure.
- * Concrete implementations are provided in the subpackages.
+ * Spring's generic mail infrastructure. Concrete implementations are provided in the subpackages.
  */
 @NonNullApi
 @NonNullFields

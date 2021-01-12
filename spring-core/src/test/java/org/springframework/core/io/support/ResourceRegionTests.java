@@ -29,19 +29,18 @@ import static org.mockito.Mockito.*;
  */
 public class ResourceRegionTests {
 
-	@Test(expected = IllegalArgumentException.class)
-	public void shouldThrowExceptionWithNullResource() {
-		new ResourceRegion(null, 0, 1);
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldThrowExceptionWithNullResource() {
+        new ResourceRegion(null, 0, 1);
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void shouldThrowExceptionForNegativePosition() {
-		new ResourceRegion(mock(Resource.class), -1, 1);
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldThrowExceptionForNegativePosition() {
+        new ResourceRegion(mock(Resource.class), -1, 1);
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void shouldThrowExceptionForNegativeCount() {
-		new ResourceRegion(mock(Resource.class), 0, -1);
-	}
-
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldThrowExceptionForNegativeCount() {
+        new ResourceRegion(mock(Resource.class), 0, -1);
+    }
 }

@@ -25,6 +25,5 @@ import javax.jms.TextMessage;
  */
 public interface ResponsiveJmsTextMessageReturningMessageDelegate {
 
-	TextMessage handleMessage(TextMessage message);
-
+    TextMessage handleMessage(TextMessage message);
 }

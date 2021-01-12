@@ -25,12 +25,11 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * One-way PropertyEditor which can convert from a text String to a
- * {@code java.io.InputStream}, interpreting the given String as a
- * Spring resource location (e.g. a URL String).
+ * One-way PropertyEditor which can convert from a text String to a {@code java.io.InputStream},
+ * interpreting the given String as a Spring resource location (e.g. a URL String).
  *
- * <p>Supports Spring-style URL notation: any fully qualified standard URL
- * ("file:", "http:", etc.) and Spring's special "classpath:" pseudo-URL.
+ * <p>Supports Spring-style URL notation: any fully qualified standard URL ("file:", "http:", etc.)
+ * and Spring's special "classpath:" pseudo-URL.
  *
  * <p>Note that such streams usually do not get closed by Spring itself!
  *
@@ -44,46 +43,42 @@ import org.springframework.util.Assert;
  */
 public class InputStreamEditor extends PropertyEditorSupport {
 
-	private final ResourceEditor resourceEditor;
+    private final ResourceEditor resourceEditor;
 
+    /** Create a new InputStreamEditor, using the default ResourceEditor underneath. */
+    public InputStreamEditor() {
+        this.resourceEditor = new ResourceEditor();
+    }
 
-	/**
-	 * Create a new InputStreamEditor, using the default ResourceEditor underneath.
-	 */
-	public InputStreamEditor() {
-		this.resourceEditor = new ResourceEditor();
-	}
+    /**
+     * Create a new InputStreamEditor, using the given ResourceEditor underneath.
+     *
+     * @param resourceEditor the ResourceEditor to use
+     */
+    public InputStreamEditor(ResourceEditor resourceEditor) {
+        Assert.notNull(resourceEditor, "ResourceEditor must not be null");
+        this.resourceEditor = resourceEditor;
+    }
 
-	/**
-	 * Create a new InputStreamEditor, using the given ResourceEditor underneath.
-	 * @param resourceEditor the ResourceEditor to use
-	 */
-	public InputStreamEditor(ResourceEditor resourceEditor) {
-		Assert.notNull(resourceEditor, "ResourceEditor must not be null");
-		this.resourceEditor = resourceEditor;
-	}
+    @Override
+    public void setAsText(String text) throws IllegalArgumentException {
+        this.resourceEditor.setAsText(text);
+        Resource resource = (Resource) this.resourceEditor.getValue();
+        try {
+            setValue(resource != null ? resource.getInputStream() : null);
+        } catch (IOException ex) {
+            throw new IllegalArgumentException(
+                    "Failed to retrieve InputStream for " + resource, ex);
+        }
+    }
 
-
-	@Override
-	public void setAsText(String text) throws IllegalArgumentException {
-		this.resourceEditor.setAsText(text);
-		Resource resource = (Resource) this.resourceEditor.getValue();
-		try {
-			setValue(resource != null ? resource.getInputStream() : null);
-		}
-		catch (IOException ex) {
-			throw new IllegalArgumentException("Failed to retrieve InputStream for " + resource, ex);
-		}
-	}
-
-	/**
-	 * This implementation returns {@code null} to indicate that
-	 * there is no appropriate text representation.
-	 */
-	@Override
-	@Nullable
-	public String getAsText() {
-		return null;
-	}
-
+    /**
+     * This implementation returns {@code null} to indicate that there is no appropriate text
+     * representation.
+     */
+    @Override
+    @Nullable
+    public String getAsText() {
+        return null;
+    }
 }

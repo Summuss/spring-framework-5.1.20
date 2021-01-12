@@ -32,19 +32,12 @@ import org.springframework.util.MultiValueMap;
  */
 public interface ClientHttpRequest extends ReactiveHttpOutputMessage {
 
-	/**
-	 * Return the HTTP method of the request.
-	 */
-	HttpMethod getMethod();
+    /** Return the HTTP method of the request. */
+    HttpMethod getMethod();
 
-	/**
-	 * Return the URI of the request.
-	 */
-	URI getURI();
+    /** Return the URI of the request. */
+    URI getURI();
 
-	/**
-	 * Return a mutable map of request cookies to send to the server.
-	 */
-	MultiValueMap<String, HttpCookie> getCookies();
-
+    /** Return a mutable map of request cookies to send to the server. */
+    MultiValueMap<String, HttpCookie> getCookies();
 }

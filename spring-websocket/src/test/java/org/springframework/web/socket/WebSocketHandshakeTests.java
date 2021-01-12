@@ -51,108 +51,110 @@ import static org.junit.Assert.*;
 @RunWith(Parameterized.class)
 public class WebSocketHandshakeTests extends AbstractWebSocketIntegrationTests {
 
-	@Parameters(name = "server [{0}], client [{1}]")
-	public static Iterable<Object[]> arguments() {
-		return Arrays.asList(new Object[][] {
-				{new JettyWebSocketTestServer(), new JettyWebSocketClient()},
-				{new TomcatWebSocketTestServer(), new StandardWebSocketClient()},
-				{new UndertowTestServer(), new JettyWebSocketClient()}
-		});
-	}
+    @Parameters(name = "server [{0}], client [{1}]")
+    public static Iterable<Object[]> arguments() {
+        return Arrays.asList(
+                new Object[][] {
+                    {new JettyWebSocketTestServer(), new JettyWebSocketClient()},
+                    {new TomcatWebSocketTestServer(), new StandardWebSocketClient()},
+                    {new UndertowTestServer(), new JettyWebSocketClient()}
+                });
+    }
 
+    @Override
+    protected Class<?>[] getAnnotatedConfigClasses() {
+        return new Class<?>[] {TestConfig.class};
+    }
 
-	@Override
-	protected Class<?>[] getAnnotatedConfigClasses() {
-		return new Class<?>[] {TestConfig.class};
-	}
+    @Test
+    public void subProtocolNegotiation() throws Exception {
+        WebSocketHttpHeaders headers = new WebSocketHttpHeaders();
+        headers.setSecWebSocketProtocol("foo");
+        URI url = new URI(getWsBaseUrl() + "/ws");
+        WebSocketSession session =
+                this.webSocketClient.doHandshake(new TextWebSocketHandler(), headers, url).get();
+        assertEquals("foo", session.getAcceptedProtocol());
+        session.close();
+    }
 
-	@Test
-	public void subProtocolNegotiation() throws Exception {
-		WebSocketHttpHeaders headers = new WebSocketHttpHeaders();
-		headers.setSecWebSocketProtocol("foo");
-		URI url = new URI(getWsBaseUrl() + "/ws");
-		WebSocketSession session = this.webSocketClient.doHandshake(new TextWebSocketHandler(), headers, url).get();
-		assertEquals("foo", session.getAcceptedProtocol());
-		session.close();
-	}
+    @Test // SPR-12727
+    public void unsolicitedPongWithEmptyPayload() throws Exception {
+        String url = getWsBaseUrl() + "/ws";
+        WebSocketSession session =
+                this.webSocketClient.doHandshake(new AbstractWebSocketHandler() {}, url).get();
 
-	@Test  // SPR-12727
-	public void unsolicitedPongWithEmptyPayload() throws Exception {
-		String url = getWsBaseUrl() + "/ws";
-		WebSocketSession session = this.webSocketClient.doHandshake(new AbstractWebSocketHandler() {}, url).get();
+        TestWebSocketHandler serverHandler = this.wac.getBean(TestWebSocketHandler.class);
+        serverHandler.setWaitMessageCount(1);
 
-		TestWebSocketHandler serverHandler = this.wac.getBean(TestWebSocketHandler.class);
-		serverHandler.setWaitMessageCount(1);
+        session.sendMessage(new PongMessage());
 
-		session.sendMessage(new PongMessage());
+        serverHandler.await();
+        assertNull(serverHandler.getTransportError());
+        assertEquals(1, serverHandler.getReceivedMessages().size());
+        assertEquals(PongMessage.class, serverHandler.getReceivedMessages().get(0).getClass());
+    }
 
-		serverHandler.await();
-		assertNull(serverHandler.getTransportError());
-		assertEquals(1, serverHandler.getReceivedMessages().size());
-		assertEquals(PongMessage.class, serverHandler.getReceivedMessages().get(0).getClass());
-	}
+    @Configuration
+    @EnableWebSocket
+    static class TestConfig implements WebSocketConfigurer {
 
+        @Autowired
+        private DefaultHandshakeHandler
+                handshakeHandler; // can't rely on classpath for server detection
 
-	@Configuration
-	@EnableWebSocket
-	static class TestConfig implements WebSocketConfigurer {
+        @Override
+        public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+            this.handshakeHandler.setSupportedProtocols("foo", "bar", "baz");
+            registry.addHandler(handler(), "/ws").setHandshakeHandler(this.handshakeHandler);
+        }
 
-		@Autowired
-		private DefaultHandshakeHandler handshakeHandler;  // can't rely on classpath for server detection
+        @Bean
+        public TestWebSocketHandler handler() {
+            return new TestWebSocketHandler();
+        }
+    }
 
-		@Override
-		public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-			this.handshakeHandler.setSupportedProtocols("foo", "bar", "baz");
-			registry.addHandler(handler(), "/ws").setHandshakeHandler(this.handshakeHandler);
-		}
+    @SuppressWarnings("rawtypes")
+    private static class TestWebSocketHandler extends AbstractWebSocketHandler {
 
-		@Bean
-		public TestWebSocketHandler handler() {
-			return new TestWebSocketHandler();
-		}
+        private List<WebSocketMessage> receivedMessages = new ArrayList<>();
 
-	}
+        private int waitMessageCount;
 
-	@SuppressWarnings("rawtypes")
-	private static class TestWebSocketHandler extends AbstractWebSocketHandler {
+        private final CountDownLatch latch = new CountDownLatch(1);
 
-		private List<WebSocketMessage> receivedMessages = new ArrayList<>();
+        private Throwable transportError;
 
-		private int waitMessageCount;
+        public void setWaitMessageCount(int waitMessageCount) {
+            this.waitMessageCount = waitMessageCount;
+        }
 
-		private final CountDownLatch latch = new CountDownLatch(1);
+        public List<WebSocketMessage> getReceivedMessages() {
+            return this.receivedMessages;
+        }
 
-		private Throwable transportError;
+        public Throwable getTransportError() {
+            return this.transportError;
+        }
 
-		public void setWaitMessageCount(int waitMessageCount) {
-			this.waitMessageCount = waitMessageCount;
-		}
+        @Override
+        public void handleMessage(WebSocketSession session, WebSocketMessage<?> message)
+                throws Exception {
+            this.receivedMessages.add(message);
+            if (this.receivedMessages.size() >= this.waitMessageCount) {
+                this.latch.countDown();
+            }
+        }
 
-		public List<WebSocketMessage> getReceivedMessages() {
-			return this.receivedMessages;
-		}
+        @Override
+        public void handleTransportError(WebSocketSession session, Throwable exception)
+                throws Exception {
+            this.transportError = exception;
+            this.latch.countDown();
+        }
 
-		public Throwable getTransportError() {
-			return this.transportError;
-		}
-
-		@Override
-		public void handleMessage(WebSocketSession session, WebSocketMessage<?> message) throws Exception {
-			this.receivedMessages.add(message);
-			if (this.receivedMessages.size() >= this.waitMessageCount) {
-				this.latch.countDown();
-			}
-		}
-
-		@Override
-		public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {
-			this.transportError = exception;
-			this.latch.countDown();
-		}
-
-		public void await() throws InterruptedException {
-			this.latch.await(5, TimeUnit.SECONDS);
-		}
-	}
-
+        public void await() throws InterruptedException {
+            this.latch.await(5, TimeUnit.SECONDS);
+        }
+    }
 }

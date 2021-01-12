@@ -21,39 +21,37 @@ import org.junit.Test;
 import org.springframework.context.support.GenericXmlApplicationContext;
 
 /**
- * Tests ensuring that tasks scheduled using the <task:scheduled> element
- * are never marked lazy, even if the enclosing <beans> element declares
- * default-lazy-init="true". See  SPR-8498
+ * Tests ensuring that tasks scheduled using the <task:scheduled> element are never marked lazy,
+ * even if the enclosing <beans> element declares default-lazy-init="true". See SPR-8498
  *
  * @author Mike Youngstrom
  * @author Chris Beams
  */
 public class LazyScheduledTasksBeanDefinitionParserTests {
 
-	@Test(timeout = 5000)
-	public void checkTarget() {
-		Task task =
-			new GenericXmlApplicationContext(
-					LazyScheduledTasksBeanDefinitionParserTests.class,
-					"lazyScheduledTasksContext.xml")
-				.getBean(Task.class);
+    @Test(timeout = 5000)
+    public void checkTarget() {
+        Task task =
+                new GenericXmlApplicationContext(
+                                LazyScheduledTasksBeanDefinitionParserTests.class,
+                                "lazyScheduledTasksContext.xml")
+                        .getBean(Task.class);
 
-		while (!task.executed) {
-			try {
-				Thread.sleep(10);
-			}
-			catch (Exception ex) { /* Do Nothing */ }
-		}
-	}
+        while (!task.executed) {
+            try {
+                Thread.sleep(10);
+            } catch (Exception ex) {
+                /* Do Nothing */
+            }
+        }
+    }
 
+    static class Task {
 
-	static class Task {
+        volatile boolean executed = false;
 
-		volatile boolean executed = false;
-
-		public void doWork() {
-			executed = true;
-		}
-	}
-
+        public void doWork() {
+            executed = true;
+        }
+    }
 }

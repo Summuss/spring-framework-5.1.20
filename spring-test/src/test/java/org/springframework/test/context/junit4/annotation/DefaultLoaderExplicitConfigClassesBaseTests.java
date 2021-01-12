@@ -28,9 +28,8 @@ import org.springframework.tests.sample.beans.Employee;
 import static org.junit.Assert.*;
 
 /**
- * Integration tests that verify support for configuration classes in
- * the Spring TestContext Framework in conjunction with the
- * {@link DelegatingSmartContextLoader}.
+ * Integration tests that verify support for configuration classes in the Spring TestContext
+ * Framework in conjunction with the {@link DelegatingSmartContextLoader}.
  *
  * @author Sam Brannen
  * @since 3.1
@@ -39,14 +38,11 @@ import static org.junit.Assert.*;
 @ContextConfiguration(classes = DefaultLoaderDefaultConfigClassesBaseTests.Config.class)
 public class DefaultLoaderExplicitConfigClassesBaseTests {
 
-	@Autowired
-	protected Employee employee;
+    @Autowired protected Employee employee;
 
-
-	@Test
-	public void verifyEmployeeSetFromBaseContextConfig() {
-		assertNotNull("The employee should have been autowired.", this.employee);
-		assertEquals("John Smith", this.employee.getName());
-	}
-
+    @Test
+    public void verifyEmployeeSetFromBaseContextConfig() {
+        assertNotNull("The employee should have been autowired.", this.employee);
+        assertEquals("John Smith", this.employee.getName());
+    }
 }

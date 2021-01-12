@@ -35,40 +35,32 @@ import org.springframework.web.server.WebHandler;
  */
 public class ExceptionHandlingWebHandler extends WebHandlerDecorator {
 
+    private final List<WebExceptionHandler> exceptionHandlers;
 
-	private final List<WebExceptionHandler> exceptionHandlers;
+    public ExceptionHandlingWebHandler(WebHandler delegate, List<WebExceptionHandler> handlers) {
+        super(delegate);
+        this.exceptionHandlers = Collections.unmodifiableList(new ArrayList<>(handlers));
+    }
 
+    /** Return a read-only list of the configured exception handlers. */
+    public List<WebExceptionHandler> getExceptionHandlers() {
+        return this.exceptionHandlers;
+    }
 
-	public ExceptionHandlingWebHandler(WebHandler delegate, List<WebExceptionHandler> handlers) {
-		super(delegate);
-		this.exceptionHandlers = Collections.unmodifiableList(new ArrayList<>(handlers));
-	}
+    @Override
+    public Mono<Void> handle(ServerWebExchange exchange) {
 
+        Mono<Void> completion;
+        try {
+            completion = super.handle(exchange);
+        } catch (Throwable ex) {
+            completion = Mono.error(ex);
+        }
 
-	/**
-	 * Return a read-only list of the configured exception handlers.
-	 */
-	public List<WebExceptionHandler> getExceptionHandlers() {
-		return this.exceptionHandlers;
-	}
+        for (WebExceptionHandler handler : this.exceptionHandlers) {
+            completion = completion.onErrorResume(ex -> handler.handle(exchange, ex));
+        }
 
-
-	@Override
-	public Mono<Void> handle(ServerWebExchange exchange) {
-
-		Mono<Void> completion;
-		try {
-			completion = super.handle(exchange);
-		}
-		catch (Throwable ex) {
-			completion = Mono.error(ex);
-		}
-
-		for (WebExceptionHandler handler : this.exceptionHandlers) {
-			completion = completion.onErrorResume(ex -> handler.handle(exchange, ex));
-		}
-
-		return completion;
-	}
-
+        return completion;
+    }
 }

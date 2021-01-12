@@ -35,54 +35,58 @@ import org.xmlunit.matchers.CompareMatcher;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-/**
- * @author Arjen Poutsma
- */
+/** @author Arjen Poutsma */
 public class AtomFeedViewTests {
 
-	private final AbstractAtomFeedView view = new MyAtomFeedView();
+    private final AbstractAtomFeedView view = new MyAtomFeedView();
 
-	@Test
-	public void render() throws Exception {
-		MockHttpServletRequest request = new MockHttpServletRequest();
-		MockHttpServletResponse response = new MockHttpServletResponse();
+    @Test
+    public void render() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
 
-		Map<String, String> model = new LinkedHashMap<>();
-		model.put("2", "This is entry 2");
-		model.put("1", "This is entry 1");
+        Map<String, String> model = new LinkedHashMap<>();
+        model.put("2", "This is entry 2");
+        model.put("1", "This is entry 1");
 
-		view.render(model, request, response);
-		assertEquals("Invalid content-type", "application/atom+xml", response.getContentType());
-		String expected = "<feed xmlns=\"http://www.w3.org/2005/Atom\">" + "<title>Test Feed</title>" +
-				"<entry><title>2</title><summary>This is entry 2</summary></entry>" +
-				"<entry><title>1</title><summary>This is entry 1</summary></entry>" + "</feed>";
-		assertThat(response.getContentAsString(), isSimilarTo(expected));
-	}
+        view.render(model, request, response);
+        assertEquals("Invalid content-type", "application/atom+xml", response.getContentType());
+        String expected =
+                "<feed xmlns=\"http://www.w3.org/2005/Atom\">"
+                        + "<title>Test Feed</title>"
+                        + "<entry><title>2</title><summary>This is entry 2</summary></entry>"
+                        + "<entry><title>1</title><summary>This is entry 1</summary></entry>"
+                        + "</feed>";
+        assertThat(response.getContentAsString(), isSimilarTo(expected));
+    }
 
-	private static CompareMatcher isSimilarTo(String content) {
-		return CompareMatcher.isSimilarTo(content).ignoreWhitespace();
-	}
+    private static CompareMatcher isSimilarTo(String content) {
+        return CompareMatcher.isSimilarTo(content).ignoreWhitespace();
+    }
 
-	private static class MyAtomFeedView extends AbstractAtomFeedView {
+    private static class MyAtomFeedView extends AbstractAtomFeedView {
 
-		@Override
-		protected void buildFeedMetadata(Map<String, Object>model, Feed feed, HttpServletRequest request) {
-			feed.setTitle("Test Feed");
-		}
+        @Override
+        protected void buildFeedMetadata(
+                Map<String, Object> model, Feed feed, HttpServletRequest request) {
+            feed.setTitle("Test Feed");
+        }
 
-		@Override
-		protected List<Entry> buildFeedEntries(Map<String, Object> model, HttpServletRequest request, HttpServletResponse response) {
-			List<Entry> entries = new ArrayList<>();
-			for (String name : model.keySet()) {
-				Entry entry = new Entry();
-				entry.setTitle(name);
-				Content content = new Content();
-				content.setValue((String) model.get(name));
-				entry.setSummary(content);
-				entries.add(entry);
-			}
-			return entries;
-		}
-	}
-
+        @Override
+        protected List<Entry> buildFeedEntries(
+                Map<String, Object> model,
+                HttpServletRequest request,
+                HttpServletResponse response) {
+            List<Entry> entries = new ArrayList<>();
+            for (String name : model.keySet()) {
+                Entry entry = new Entry();
+                entry.setTitle(name);
+                Content content = new Content();
+                content.setValue((String) model.get(name));
+                entry.setSummary(content);
+                entries.add(entry);
+            }
+            return entries;
+        }
+    }
 }

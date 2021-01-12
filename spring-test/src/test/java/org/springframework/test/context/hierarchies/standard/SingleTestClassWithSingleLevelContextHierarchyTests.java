@@ -37,28 +37,23 @@ import static org.junit.Assert.*;
 @ContextHierarchy(@ContextConfiguration)
 public class SingleTestClassWithSingleLevelContextHierarchyTests {
 
-	@Configuration
-	static class Config {
+    @Configuration
+    static class Config {
 
-		@Bean
-		public String foo() {
-			return "foo";
-		}
-	}
+        @Bean
+        public String foo() {
+            return "foo";
+        }
+    }
 
+    @Autowired private String foo;
 
-	@Autowired
-	private String foo;
+    @Autowired private ApplicationContext context;
 
-	@Autowired
-	private ApplicationContext context;
-
-
-	@Test
-	public void loadContextHierarchy() {
-		assertNotNull("child ApplicationContext", context);
-		assertNull("parent ApplicationContext", context.getParent());
-		assertEquals("foo", foo);
-	}
-
+    @Test
+    public void loadContextHierarchy() {
+        assertNotNull("child ApplicationContext", context);
+        assertNull("parent ApplicationContext", context.getParent());
+        assertEquals("foo", foo);
+    }
 }

@@ -33,5 +33,4 @@ import org.springframework.stereotype.Controller;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Controller
-public @interface MetaController {
-}
+public @interface MetaController {}

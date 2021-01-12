@@ -28,7 +28,7 @@ import java.util.function.Supplier
  * @since 5.0
  */
 inline fun <reified T : Any> GenericApplicationContext.registerBean(vararg customizers: BeanDefinitionCustomizer) {
-	registerBean(T::class.java, *customizers)
+    registerBean(T::class.java, *customizers)
 }
 
 /**
@@ -39,8 +39,8 @@ inline fun <reified T : Any> GenericApplicationContext.registerBean(vararg custo
  * @since 5.0
  */
 inline fun <reified T : Any> GenericApplicationContext.registerBean(beanName: String,
-		vararg customizers: BeanDefinitionCustomizer) {
-	registerBean(beanName, T::class.java, *customizers)
+                                                                    vararg customizers: BeanDefinitionCustomizer) {
+    registerBean(beanName, T::class.java, *customizers)
 }
 
 /**
@@ -50,8 +50,8 @@ inline fun <reified T : Any> GenericApplicationContext.registerBean(beanName: St
  * @since 5.0
  */
 inline fun <reified T : Any> GenericApplicationContext.registerBean(
-		vararg customizers: BeanDefinitionCustomizer, crossinline function: (ApplicationContext) -> T) {
-	registerBean(T::class.java, Supplier { function.invoke(this) }, *customizers)
+        vararg customizers: BeanDefinitionCustomizer, crossinline function: (ApplicationContext) -> T) {
+    registerBean(T::class.java, Supplier { function.invoke(this) }, *customizers)
 }
 
 /**
@@ -62,8 +62,8 @@ inline fun <reified T : Any> GenericApplicationContext.registerBean(
  * @since 5.0
  */
 inline fun <reified T : Any> GenericApplicationContext.registerBean(name: String,
-		vararg customizers: BeanDefinitionCustomizer, crossinline function: (ApplicationContext) -> T) {
-	registerBean(name, T::class.java, Supplier { function.invoke(this) }, *customizers)
+                                                                    vararg customizers: BeanDefinitionCustomizer, crossinline function: (ApplicationContext) -> T) {
+    registerBean(name, T::class.java, Supplier { function.invoke(this) }, *customizers)
 }
 
 /**
@@ -74,5 +74,5 @@ inline fun <reified T : Any> GenericApplicationContext.registerBean(name: String
  * @since 5.0
  */
 fun GenericApplicationContext(configure: GenericApplicationContext.() -> Unit) =
-		GenericApplicationContext().apply(configure)
+        GenericApplicationContext().apply(configure)
 

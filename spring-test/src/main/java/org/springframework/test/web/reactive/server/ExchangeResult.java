@@ -38,14 +38,12 @@ import org.springframework.util.Assert;
 import org.springframework.util.MultiValueMap;
 
 /**
- * Container for request and response details for exchanges performed through
- * {@link WebTestClient}.
+ * Container for request and response details for exchanges performed through {@link WebTestClient}.
  *
- * <p>Note that a decoded response body is not exposed at this level since the
- * body may not have been decoded and consumed yet. Sub-types
- * {@link EntityExchangeResult} and {@link FluxExchangeResult} provide access
- * to a decoded response entity and a decoded (but not consumed) response body
- * respectively.
+ * <p>Note that a decoded response body is not exposed at this level since the body may not have
+ * been decoded and consumed yet. Sub-types {@link EntityExchangeResult} and {@link
+ * FluxExchangeResult} provide access to a decoded response entity and a decoded (but not consumed)
+ * response body respectively.
  *
  * @author Rossen Stoyanchev
  * @since 5.0
@@ -54,202 +52,205 @@ import org.springframework.util.MultiValueMap;
  */
 public class ExchangeResult {
 
-	private static final List<MediaType> PRINTABLE_MEDIA_TYPES = Arrays.asList(
-			MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML,
-			MediaType.parseMediaType("text/*"), MediaType.APPLICATION_FORM_URLENCODED);
+    private static final List<MediaType> PRINTABLE_MEDIA_TYPES =
+            Arrays.asList(
+                    MediaType.APPLICATION_JSON,
+                    MediaType.APPLICATION_XML,
+                    MediaType.parseMediaType("text/*"),
+                    MediaType.APPLICATION_FORM_URLENCODED);
 
+    private final ClientHttpRequest request;
 
-	private final ClientHttpRequest request;
+    private final ClientHttpResponse response;
 
-	private final ClientHttpResponse response;
+    private final Mono<byte[]> requestBody;
 
-	private final Mono<byte[]> requestBody;
+    private final Mono<byte[]> responseBody;
 
-	private final Mono<byte[]> responseBody;
+    private final Duration timeout;
 
-	private final Duration timeout;
+    @Nullable private final String uriTemplate;
 
-	@Nullable
-	private final String uriTemplate;
+    /**
+     * Create an instance with an HTTP request and response along with promises for the serialized
+     * request and response body content.
+     *
+     * @param request the HTTP request
+     * @param response the HTTP response
+     * @param requestBody capture of serialized request body content
+     * @param responseBody capture of serialized response body content
+     * @param timeout how long to wait for content to materialize
+     * @param uriTemplate the URI template used to set up the request, if any
+     */
+    ExchangeResult(
+            ClientHttpRequest request,
+            ClientHttpResponse response,
+            Mono<byte[]> requestBody,
+            Mono<byte[]> responseBody,
+            Duration timeout,
+            @Nullable String uriTemplate) {
 
+        Assert.notNull(request, "ClientHttpRequest is required");
+        Assert.notNull(response, "ClientHttpResponse is required");
+        Assert.notNull(requestBody, "'requestBody' is required");
+        Assert.notNull(responseBody, "'responseBody' is required");
 
-	/**
-	 * Create an instance with an HTTP request and response along with promises
-	 * for the serialized request and response body content.
-	 *
-	 * @param request the HTTP request
-	 * @param response the HTTP response
-	 * @param requestBody capture of serialized request body content
-	 * @param responseBody capture of serialized response body content
-	 * @param timeout how long to wait for content to materialize
-	 * @param uriTemplate the URI template used to set up the request, if any
-	 */
-	ExchangeResult(ClientHttpRequest request, ClientHttpResponse response,
-			Mono<byte[]> requestBody, Mono<byte[]> responseBody, Duration timeout, @Nullable String uriTemplate) {
+        this.request = request;
+        this.response = response;
+        this.requestBody = requestBody;
+        this.responseBody = responseBody;
+        this.timeout = timeout;
+        this.uriTemplate = uriTemplate;
+    }
 
-		Assert.notNull(request, "ClientHttpRequest is required");
-		Assert.notNull(response, "ClientHttpResponse is required");
-		Assert.notNull(requestBody, "'requestBody' is required");
-		Assert.notNull(responseBody, "'responseBody' is required");
+    /** Copy constructor to use after body is decoded and/or consumed. */
+    ExchangeResult(ExchangeResult other) {
+        this.request = other.request;
+        this.response = other.response;
+        this.requestBody = other.requestBody;
+        this.responseBody = other.responseBody;
+        this.timeout = other.timeout;
+        this.uriTemplate = other.uriTemplate;
+    }
 
-		this.request = request;
-		this.response = response;
-		this.requestBody = requestBody;
-		this.responseBody = responseBody;
-		this.timeout = timeout;
-		this.uriTemplate = uriTemplate;
-	}
+    /** Return the method of the request. */
+    public HttpMethod getMethod() {
+        return this.request.getMethod();
+    }
 
-	/**
-	 * Copy constructor to use after body is decoded and/or consumed.
-	 */
-	ExchangeResult(ExchangeResult other) {
-		this.request = other.request;
-		this.response = other.response;
-		this.requestBody = other.requestBody;
-		this.responseBody = other.responseBody;
-		this.timeout = other.timeout;
-		this.uriTemplate = other.uriTemplate;
-	}
+    /** Return the URI of the request. */
+    public URI getUrl() {
+        return this.request.getURI();
+    }
 
+    /** Return the original URI template used to prepare the request, if any. */
+    @Nullable
+    public String getUriTemplate() {
+        return this.uriTemplate;
+    }
 
-	/**
-	 * Return the method of the request.
-	 */
-	public HttpMethod getMethod() {
-		return this.request.getMethod();
-	}
+    /** Return the request headers sent to the server. */
+    public HttpHeaders getRequestHeaders() {
+        return this.request.getHeaders();
+    }
 
-	/**
-	 * Return the URI of the request.
-	 */
-	public URI getUrl() {
-		return this.request.getURI();
-	}
+    /**
+     * Return the raw request body content written through the request.
+     *
+     * <p><strong>Note:</strong> If the request content has not been consumed for any reason yet,
+     * use of this method will trigger consumption.
+     *
+     * @throws IllegalStateException if the request body is not been fully written.
+     */
+    @Nullable
+    public byte[] getRequestBodyContent() {
+        return this.requestBody.block(this.timeout);
+    }
 
-	/**
-	 * Return the original URI template used to prepare the request, if any.
-	 */
-	@Nullable
-	public String getUriTemplate() {
-		return this.uriTemplate;
-	}
+    /** Return the HTTP status code as an {@link HttpStatus} enum value. */
+    public HttpStatus getStatus() {
+        return this.response.getStatusCode();
+    }
 
-	/**
-	 * Return the request headers sent to the server.
-	 */
-	public HttpHeaders getRequestHeaders() {
-		return this.request.getHeaders();
-	}
+    /**
+     * Return the HTTP status code (potentially non-standard and not resolvable through the {@link
+     * HttpStatus} enum) as an integer.
+     *
+     * @since 5.1.10
+     */
+    public int getRawStatusCode() {
+        return this.response.getRawStatusCode();
+    }
 
-	/**
-	 * Return the raw request body content written through the request.
-	 * <p><strong>Note:</strong> If the request content has not been consumed
-	 * for any reason yet, use of this method will trigger consumption.
-	 * @throws IllegalStateException if the request body is not been fully written.
-	 */
-	@Nullable
-	public byte[] getRequestBodyContent() {
-		return this.requestBody.block(this.timeout);
-	}
+    /** Return the response headers received from the server. */
+    public HttpHeaders getResponseHeaders() {
+        return this.response.getHeaders();
+    }
 
+    /** Return response cookies received from the server. */
+    public MultiValueMap<String, ResponseCookie> getResponseCookies() {
+        return this.response.getCookies();
+    }
 
-	/**
-	 * Return the HTTP status code as an {@link HttpStatus} enum value.
-	 */
-	public HttpStatus getStatus() {
-		return this.response.getStatusCode();
-	}
+    /**
+     * Return the raw request body content written to the response.
+     *
+     * <p><strong>Note:</strong> If the response content has not been consumed yet, use of this
+     * method will trigger consumption.
+     *
+     * @throws IllegalStateException if the response is not been fully read.
+     */
+    @Nullable
+    public byte[] getResponseBodyContent() {
+        return this.responseBody.block(this.timeout);
+    }
 
-	/**
-	 * Return the HTTP status code (potentially non-standard and not resolvable
-	 * through the {@link HttpStatus} enum) as an integer.
-	 * @since 5.1.10
-	 */
-	public int getRawStatusCode() {
-		return this.response.getRawStatusCode();
-	}
+    /**
+     * Execute the given Runnable, catch any {@link AssertionError}, decorate with {@code
+     * AssertionError} containing diagnostic information about the request and response, and then
+     * re-throw.
+     */
+    public void assertWithDiagnostics(Runnable assertion) {
+        try {
+            assertion.run();
+        } catch (AssertionError ex) {
+            throw new AssertionError(ex.getMessage() + "\n" + this, ex);
+        }
+    }
 
-	/**
-	 * Return the response headers received from the server.
-	 */
-	public HttpHeaders getResponseHeaders() {
-		return this.response.getHeaders();
-	}
+    @Override
+    public String toString() {
+        return "\n"
+                + "> "
+                + getMethod()
+                + " "
+                + getUrl()
+                + "\n"
+                + "> "
+                + formatHeaders(getRequestHeaders(), "\n> ")
+                + "\n"
+                + "\n"
+                + formatBody(getRequestHeaders().getContentType(), this.requestBody)
+                + "\n"
+                + "\n"
+                + "< "
+                + getStatus()
+                + " "
+                + getStatus().getReasonPhrase()
+                + "\n"
+                + "< "
+                + formatHeaders(getResponseHeaders(), "\n< ")
+                + "\n"
+                + "\n"
+                + formatBody(getResponseHeaders().getContentType(), this.responseBody)
+                + "\n";
+    }
 
-	/**
-	 * Return response cookies received from the server.
-	 */
-	public MultiValueMap<String, ResponseCookie> getResponseCookies() {
-		return this.response.getCookies();
-	}
+    private String formatHeaders(HttpHeaders headers, String delimiter) {
+        return headers.entrySet().stream()
+                .map(entry -> entry.getKey() + ": " + entry.getValue())
+                .collect(Collectors.joining(delimiter));
+    }
 
-	/**
-	 * Return the raw request body content written to the response.
-	 * <p><strong>Note:</strong> If the response content has not been consumed
-	 * yet, use of this method will trigger consumption.
-	 * @throws IllegalStateException if the response is not been fully read.
-	 */
-	@Nullable
-	public byte[] getResponseBodyContent() {
-		return this.responseBody.block(this.timeout);
-	}
-
-
-	/**
-	 * Execute the given Runnable, catch any {@link AssertionError}, decorate
-	 * with {@code AssertionError} containing diagnostic information about the
-	 * request and response, and then re-throw.
-	 */
-	public void assertWithDiagnostics(Runnable assertion) {
-		try {
-			assertion.run();
-		}
-		catch (AssertionError ex) {
-			throw new AssertionError(ex.getMessage() + "\n" + this, ex);
-		}
-	}
-
-
-	@Override
-	public String toString() {
-		return "\n" +
-				"> " + getMethod() + " " + getUrl() + "\n" +
-				"> " + formatHeaders(getRequestHeaders(), "\n> ") + "\n" +
-				"\n" +
-				formatBody(getRequestHeaders().getContentType(), this.requestBody) + "\n" +
-				"\n" +
-				"< " + getStatus() + " " + getStatus().getReasonPhrase() + "\n" +
-				"< " + formatHeaders(getResponseHeaders(), "\n< ") + "\n" +
-				"\n" +
-				formatBody(getResponseHeaders().getContentType(), this.responseBody) +"\n";
-	}
-
-	private String formatHeaders(HttpHeaders headers, String delimiter) {
-		return headers.entrySet().stream()
-				.map(entry -> entry.getKey() + ": " + entry.getValue())
-				.collect(Collectors.joining(delimiter));
-	}
-
-	@Nullable
-	private String formatBody(@Nullable MediaType contentType, Mono<byte[]> body) {
-		return body
-				.map(bytes -> {
-					if (contentType == null) {
-						return bytes.length + " bytes of content (unknown content-type).";
-					}
-					Charset charset = contentType.getCharset();
-					if (charset != null) {
-						return new String(bytes, charset);
-					}
-					if (PRINTABLE_MEDIA_TYPES.stream().anyMatch(contentType::isCompatibleWith)) {
-						return new String(bytes, StandardCharsets.UTF_8);
-					}
-					return bytes.length + " bytes of content.";
-				})
-				.defaultIfEmpty("No content")
-				.onErrorResume(ex -> Mono.just("Failed to obtain content: " + ex.getMessage()))
-				.block(this.timeout);
-	}
-
+    @Nullable
+    private String formatBody(@Nullable MediaType contentType, Mono<byte[]> body) {
+        return body.map(
+                        bytes -> {
+                            if (contentType == null) {
+                                return bytes.length + " bytes of content (unknown content-type).";
+                            }
+                            Charset charset = contentType.getCharset();
+                            if (charset != null) {
+                                return new String(bytes, charset);
+                            }
+                            if (PRINTABLE_MEDIA_TYPES.stream()
+                                    .anyMatch(contentType::isCompatibleWith)) {
+                                return new String(bytes, StandardCharsets.UTF_8);
+                            }
+                            return bytes.length + " bytes of content.";
+                        })
+                .defaultIfEmpty("No content")
+                .onErrorResume(ex -> Mono.just("Failed to obtain content: " + ex.getMessage()))
+                .block(this.timeout);
+    }
 }

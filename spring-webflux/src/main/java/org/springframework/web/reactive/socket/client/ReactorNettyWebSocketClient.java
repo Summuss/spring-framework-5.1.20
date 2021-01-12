@@ -41,79 +41,80 @@ import org.springframework.web.reactive.socket.adapter.ReactorNettyWebSocketSess
  */
 public class ReactorNettyWebSocketClient implements WebSocketClient {
 
-	private static final Log logger = LogFactory.getLog(ReactorNettyWebSocketClient.class);
+    private static final Log logger = LogFactory.getLog(ReactorNettyWebSocketClient.class);
 
+    private final HttpClient httpClient;
 
-	private final HttpClient httpClient;
+    /** Default constructor. */
+    public ReactorNettyWebSocketClient() {
+        this(HttpClient.create());
+    }
 
+    /**
+     * Constructor that accepts an existing {@link HttpClient} builder.
+     *
+     * @since 5.1
+     */
+    public ReactorNettyWebSocketClient(HttpClient httpClient) {
+        Assert.notNull(httpClient, "HttpClient is required");
+        this.httpClient = httpClient;
+    }
 
-	/**
-	 * Default constructor.
-	 */
-	public ReactorNettyWebSocketClient() {
-		this(HttpClient.create());
-	}
+    /** Return the configured {@link HttpClient}. */
+    public HttpClient getHttpClient() {
+        return this.httpClient;
+    }
 
-	/**
-	 * Constructor that accepts an existing {@link HttpClient} builder.
-	 * @since 5.1
-	 */
-	public ReactorNettyWebSocketClient(HttpClient httpClient) {
-		Assert.notNull(httpClient, "HttpClient is required");
-		this.httpClient = httpClient;
-	}
+    @Override
+    public Mono<Void> execute(URI url, WebSocketHandler handler) {
+        return execute(url, new HttpHeaders(), handler);
+    }
 
+    @Override
+    public Mono<Void> execute(URI url, HttpHeaders requestHeaders, WebSocketHandler handler) {
+        return getHttpClient()
+                .headers(nettyHeaders -> setNettyHeaders(requestHeaders, nettyHeaders))
+                .websocket(StringUtils.collectionToCommaDelimitedString(handler.getSubProtocols()))
+                .uri(url.toString())
+                .handle(
+                        (inbound, outbound) -> {
+                            HttpHeaders responseHeaders = toHttpHeaders(inbound);
+                            String protocol = responseHeaders.getFirst("Sec-WebSocket-Protocol");
+                            HandshakeInfo info =
+                                    new HandshakeInfo(url, responseHeaders, Mono.empty(), protocol);
+                            NettyDataBufferFactory factory =
+                                    new NettyDataBufferFactory(outbound.alloc());
+                            WebSocketSession session =
+                                    new ReactorNettyWebSocketSession(
+                                            inbound, outbound, info, factory);
+                            if (logger.isDebugEnabled()) {
+                                logger.debug(
+                                        "Started session '" + session.getId() + "' for " + url);
+                            }
+                            return handler.handle(session);
+                        })
+                .doOnRequest(
+                        n -> {
+                            if (logger.isDebugEnabled()) {
+                                logger.debug("Connecting to " + url);
+                            }
+                        })
+                .next();
+    }
 
-	/**
-	 * Return the configured {@link HttpClient}.
-	 */
-	public HttpClient getHttpClient() {
-		return this.httpClient;
-	}
+    private void setNettyHeaders(
+            HttpHeaders httpHeaders, io.netty.handler.codec.http.HttpHeaders nettyHeaders) {
+        httpHeaders.forEach(nettyHeaders::set);
+    }
 
-
-	@Override
-	public Mono<Void> execute(URI url, WebSocketHandler handler) {
-		return execute(url, new HttpHeaders(), handler);
-	}
-
-	@Override
-	public Mono<Void> execute(URI url, HttpHeaders requestHeaders, WebSocketHandler handler) {
-		return getHttpClient()
-				.headers(nettyHeaders -> setNettyHeaders(requestHeaders, nettyHeaders))
-				.websocket(StringUtils.collectionToCommaDelimitedString(handler.getSubProtocols()))
-				.uri(url.toString())
-				.handle((inbound, outbound) -> {
-					HttpHeaders responseHeaders = toHttpHeaders(inbound);
-					String protocol = responseHeaders.getFirst("Sec-WebSocket-Protocol");
-					HandshakeInfo info = new HandshakeInfo(url, responseHeaders, Mono.empty(), protocol);
-					NettyDataBufferFactory factory = new NettyDataBufferFactory(outbound.alloc());
-					WebSocketSession session = new ReactorNettyWebSocketSession(inbound, outbound, info, factory);
-					if (logger.isDebugEnabled()) {
-						logger.debug("Started session '" + session.getId() + "' for " + url);
-					}
-					return handler.handle(session);
-				})
-				.doOnRequest(n -> {
-					if (logger.isDebugEnabled()) {
-						logger.debug("Connecting to " + url);
-					}
-				})
-				.next();
-	}
-
-	private void setNettyHeaders(HttpHeaders httpHeaders, io.netty.handler.codec.http.HttpHeaders nettyHeaders) {
-		httpHeaders.forEach(nettyHeaders::set);
-	}
-
-	private HttpHeaders toHttpHeaders(WebsocketInbound inbound) {
-		HttpHeaders headers = new HttpHeaders();
-		io.netty.handler.codec.http.HttpHeaders nettyHeaders = inbound.headers();
-		nettyHeaders.forEach(entry -> {
-			String name = entry.getKey();
-			headers.put(name, nettyHeaders.getAll(name));
-		});
-		return headers;
-	}
-
+    private HttpHeaders toHttpHeaders(WebsocketInbound inbound) {
+        HttpHeaders headers = new HttpHeaders();
+        io.netty.handler.codec.http.HttpHeaders nettyHeaders = inbound.headers();
+        nettyHeaders.forEach(
+                entry -> {
+                    String name = entry.getKey();
+                    headers.put(name, nettyHeaders.getAll(name));
+                });
+        return headers;
+    }
 }

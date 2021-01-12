@@ -30,86 +30,71 @@ import org.springframework.core.type.AnnotatedTypeMetadata;
 
 import static org.junit.Assert.*;
 
-/**
- * @author Andy Wilkinson
- */
+/** @author Andy Wilkinson */
 public class ImportWithConditionTests {
 
-	private AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+    private AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
 
-	@Test
-	public void conditionalThenUnconditional() throws Exception {
-		this.context.register(ConditionalThenUnconditional.class);
-		this.context.refresh();
-		assertFalse(this.context.containsBean("beanTwo"));
-		assertTrue(this.context.containsBean("beanOne"));
-	}
+    @Test
+    public void conditionalThenUnconditional() throws Exception {
+        this.context.register(ConditionalThenUnconditional.class);
+        this.context.refresh();
+        assertFalse(this.context.containsBean("beanTwo"));
+        assertTrue(this.context.containsBean("beanOne"));
+    }
 
-	@Test
-	public void unconditionalThenConditional() throws Exception {
-		this.context.register(UnconditionalThenConditional.class);
-		this.context.refresh();
-		assertFalse(this.context.containsBean("beanTwo"));
-		assertTrue(this.context.containsBean("beanOne"));
-	}
+    @Test
+    public void unconditionalThenConditional() throws Exception {
+        this.context.register(UnconditionalThenConditional.class);
+        this.context.refresh();
+        assertFalse(this.context.containsBean("beanTwo"));
+        assertTrue(this.context.containsBean("beanOne"));
+    }
 
+    @Configuration
+    @Import({ConditionalConfiguration.class, UnconditionalConfiguration.class})
+    protected static class ConditionalThenUnconditional {
 
-	@Configuration
-	@Import({ConditionalConfiguration.class, UnconditionalConfiguration.class})
-	protected static class ConditionalThenUnconditional {
+        @Autowired private BeanOne beanOne;
+    }
 
-		@Autowired
-		private BeanOne beanOne;
-	}
+    @Configuration
+    @Import({UnconditionalConfiguration.class, ConditionalConfiguration.class})
+    protected static class UnconditionalThenConditional {
 
+        @Autowired private BeanOne beanOne;
+    }
 
-	@Configuration
-	@Import({UnconditionalConfiguration.class, ConditionalConfiguration.class})
-	protected static class UnconditionalThenConditional {
+    @Configuration
+    @Import(BeanProvidingConfiguration.class)
+    protected static class UnconditionalConfiguration {}
 
-		@Autowired
-		private BeanOne beanOne;
-	}
+    @Configuration
+    @Conditional(NeverMatchingCondition.class)
+    @Import(BeanProvidingConfiguration.class)
+    protected static class ConditionalConfiguration {}
 
+    @Configuration
+    protected static class BeanProvidingConfiguration {
 
-	@Configuration
-	@Import(BeanProvidingConfiguration.class)
-	protected static class UnconditionalConfiguration {
-	}
+        @Bean
+        BeanOne beanOne() {
+            return new BeanOne();
+        }
+    }
 
+    private static final class BeanOne {}
 
-	@Configuration
-	@Conditional(NeverMatchingCondition.class)
-	@Import(BeanProvidingConfiguration.class)
-	protected static class ConditionalConfiguration {
-	}
+    private static final class NeverMatchingCondition implements ConfigurationCondition {
 
+        @Override
+        public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+            return false;
+        }
 
-	@Configuration
-	protected static class BeanProvidingConfiguration {
-
-		@Bean
-		BeanOne beanOne() {
-			return new BeanOne();
-		}
-	}
-
-
-	private static final class BeanOne {
-	}
-
-
-	private static final class NeverMatchingCondition implements ConfigurationCondition {
-
-		@Override
-		public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
-			return false;
-		}
-
-		@Override
-		public ConfigurationPhase getConfigurationPhase() {
-			return ConfigurationPhase.REGISTER_BEAN;
-		}
-	}
-
+        @Override
+        public ConfigurationPhase getConfigurationPhase() {
+            return ConfigurationPhase.REGISTER_BEAN;
+        }
+    }
 }

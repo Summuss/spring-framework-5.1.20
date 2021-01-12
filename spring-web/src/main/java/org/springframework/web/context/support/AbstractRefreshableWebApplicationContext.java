@@ -35,41 +35,37 @@ import org.springframework.web.context.ServletConfigAware;
 import org.springframework.web.context.ServletContextAware;
 
 /**
- * {@link org.springframework.context.support.AbstractRefreshableApplicationContext}
- * subclass which implements the
- * {@link org.springframework.web.context.ConfigurableWebApplicationContext}
- * interface for web environments. Provides a "configLocations" property,
- * to be populated through the ConfigurableWebApplicationContext interface
- * on web application startup.
+ * {@link org.springframework.context.support.AbstractRefreshableApplicationContext} subclass which
+ * implements the {@link org.springframework.web.context.ConfigurableWebApplicationContext}
+ * interface for web environments. Provides a "configLocations" property, to be populated through
+ * the ConfigurableWebApplicationContext interface on web application startup.
  *
- * <p>This class is as easy to subclass as AbstractRefreshableApplicationContext:
- * All you need to implements is the {@link #loadBeanDefinitions} method;
- * see the superclass javadoc for details. Note that implementations are supposed
- * to load bean definitions from the files specified by the locations returned
- * by the {@link #getConfigLocations} method.
+ * <p>This class is as easy to subclass as AbstractRefreshableApplicationContext: All you need to
+ * implements is the {@link #loadBeanDefinitions} method; see the superclass javadoc for details.
+ * Note that implementations are supposed to load bean definitions from the files specified by the
+ * locations returned by the {@link #getConfigLocations} method.
  *
- * <p>Interprets resource paths as servlet context resources, i.e. as paths beneath
- * the web application root. Absolute paths, e.g. for files outside the web app root,
- * can be accessed via "file:" URLs, as implemented by
- * {@link org.springframework.core.io.DefaultResourceLoader}.
+ * <p>Interprets resource paths as servlet context resources, i.e. as paths beneath the web
+ * application root. Absolute paths, e.g. for files outside the web app root, can be accessed via
+ * "file:" URLs, as implemented by {@link org.springframework.core.io.DefaultResourceLoader}.
  *
- * <p>In addition to the special beans detected by
- * {@link org.springframework.context.support.AbstractApplicationContext},
- * this class detects a bean of type {@link org.springframework.ui.context.ThemeSource}
- * in the context, under the special bean name "themeSource".
+ * <p>In addition to the special beans detected by {@link
+ * org.springframework.context.support.AbstractApplicationContext}, this class detects a bean of
+ * type {@link org.springframework.ui.context.ThemeSource} in the context, under the special bean
+ * name "themeSource".
  *
- * <p><b>This is the web context to be subclassed for a different bean definition format.</b>
- * Such a context implementation can be specified as "contextClass" context-param
- * for {@link org.springframework.web.context.ContextLoader} or as "contextClass"
- * init-param for {@link org.springframework.web.servlet.FrameworkServlet},
- * replacing the default {@link XmlWebApplicationContext}. It will then automatically
- * receive the "contextConfigLocation" context-param or init-param, respectively.
+ * <p><b>This is the web context to be subclassed for a different bean definition format.</b> Such a
+ * context implementation can be specified as "contextClass" context-param for {@link
+ * org.springframework.web.context.ContextLoader} or as "contextClass" init-param for {@link
+ * org.springframework.web.servlet.FrameworkServlet}, replacing the default {@link
+ * XmlWebApplicationContext}. It will then automatically receive the "contextConfigLocation"
+ * context-param or init-param, respectively.
  *
- * <p>Note that WebApplicationContext implementations are generally supposed
- * to configure themselves based on the configuration received through the
- * {@link ConfigurableWebApplicationContext} interface. In contrast, a standalone
- * application context might allow for configuration in custom startup code
- * (for example, {@link org.springframework.context.support.GenericApplicationContext}).
+ * <p>Note that WebApplicationContext implementations are generally supposed to configure themselves
+ * based on the configuration received through the {@link ConfigurableWebApplicationContext}
+ * interface. In contrast, a standalone application context might allow for configuration in custom
+ * startup code (for example, {@link
+ * org.springframework.context.support.GenericApplicationContext}).
  *
  * @author Juergen Hoeller
  * @since 1.1.3
@@ -78,146 +74,142 @@ import org.springframework.web.context.ServletContextAware;
  * @see org.springframework.ui.context.ThemeSource
  * @see XmlWebApplicationContext
  */
-public abstract class AbstractRefreshableWebApplicationContext extends AbstractRefreshableConfigApplicationContext
-		implements ConfigurableWebApplicationContext, ThemeSource {
+public abstract class AbstractRefreshableWebApplicationContext
+        extends AbstractRefreshableConfigApplicationContext
+        implements ConfigurableWebApplicationContext, ThemeSource {
 
-	/** Servlet context that this context runs in. */
-	@Nullable
-	private ServletContext servletContext;
+    /** Servlet context that this context runs in. */
+    @Nullable private ServletContext servletContext;
 
-	/** Servlet config that this context runs in, if any. */
-	@Nullable
-	private ServletConfig servletConfig;
+    /** Servlet config that this context runs in, if any. */
+    @Nullable private ServletConfig servletConfig;
 
-	/** Namespace of this context, or {@code null} if root. */
-	@Nullable
-	private String namespace;
+    /** Namespace of this context, or {@code null} if root. */
+    @Nullable private String namespace;
 
-	/** the ThemeSource for this ApplicationContext. */
-	@Nullable
-	private ThemeSource themeSource;
+    /** the ThemeSource for this ApplicationContext. */
+    @Nullable private ThemeSource themeSource;
 
+    public AbstractRefreshableWebApplicationContext() {
+        setDisplayName("Root WebApplicationContext");
+    }
 
-	public AbstractRefreshableWebApplicationContext() {
-		setDisplayName("Root WebApplicationContext");
-	}
+    @Override
+    public void setServletContext(@Nullable ServletContext servletContext) {
+        this.servletContext = servletContext;
+    }
 
+    @Override
+    @Nullable
+    public ServletContext getServletContext() {
+        return this.servletContext;
+    }
 
-	@Override
-	public void setServletContext(@Nullable ServletContext servletContext) {
-		this.servletContext = servletContext;
-	}
+    @Override
+    public void setServletConfig(@Nullable ServletConfig servletConfig) {
+        this.servletConfig = servletConfig;
+        if (servletConfig != null && this.servletContext == null) {
+            setServletContext(servletConfig.getServletContext());
+        }
+    }
 
-	@Override
-	@Nullable
-	public ServletContext getServletContext() {
-		return this.servletContext;
-	}
+    @Override
+    @Nullable
+    public ServletConfig getServletConfig() {
+        return this.servletConfig;
+    }
 
-	@Override
-	public void setServletConfig(@Nullable ServletConfig servletConfig) {
-		this.servletConfig = servletConfig;
-		if (servletConfig != null && this.servletContext == null) {
-			setServletContext(servletConfig.getServletContext());
-		}
-	}
+    @Override
+    public void setNamespace(@Nullable String namespace) {
+        this.namespace = namespace;
+        if (namespace != null) {
+            setDisplayName("WebApplicationContext for namespace '" + namespace + "'");
+        }
+    }
 
-	@Override
-	@Nullable
-	public ServletConfig getServletConfig() {
-		return this.servletConfig;
-	}
+    @Override
+    @Nullable
+    public String getNamespace() {
+        return this.namespace;
+    }
 
-	@Override
-	public void setNamespace(@Nullable String namespace) {
-		this.namespace = namespace;
-		if (namespace != null) {
-			setDisplayName("WebApplicationContext for namespace '" + namespace + "'");
-		}
-	}
+    @Override
+    public String[] getConfigLocations() {
+        return super.getConfigLocations();
+    }
 
-	@Override
-	@Nullable
-	public String getNamespace() {
-		return this.namespace;
-	}
+    @Override
+    public String getApplicationName() {
+        return (this.servletContext != null ? this.servletContext.getContextPath() : "");
+    }
 
-	@Override
-	public String[] getConfigLocations() {
-		return super.getConfigLocations();
-	}
+    /**
+     * Create and return a new {@link StandardServletEnvironment}. Subclasses may override in order
+     * to configure the environment or specialize the environment type returned.
+     */
+    @Override
+    protected ConfigurableEnvironment createEnvironment() {
+        return new StandardServletEnvironment();
+    }
 
-	@Override
-	public String getApplicationName() {
-		return (this.servletContext != null ? this.servletContext.getContextPath() : "");
-	}
+    /** Register request/session scopes, a {@link ServletContextAwareProcessor}, etc. */
+    @Override
+    protected void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) {
+        beanFactory.addBeanPostProcessor(
+                new ServletContextAwareProcessor(this.servletContext, this.servletConfig));
+        beanFactory.ignoreDependencyInterface(ServletContextAware.class);
+        beanFactory.ignoreDependencyInterface(ServletConfigAware.class);
 
-	/**
-	 * Create and return a new {@link StandardServletEnvironment}. Subclasses may override
-	 * in order to configure the environment or specialize the environment type returned.
-	 */
-	@Override
-	protected ConfigurableEnvironment createEnvironment() {
-		return new StandardServletEnvironment();
-	}
+        WebApplicationContextUtils.registerWebApplicationScopes(beanFactory, this.servletContext);
+        WebApplicationContextUtils.registerEnvironmentBeans(
+                beanFactory, this.servletContext, this.servletConfig);
+    }
 
-	/**
-	 * Register request/session scopes, a {@link ServletContextAwareProcessor}, etc.
-	 */
-	@Override
-	protected void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) {
-		beanFactory.addBeanPostProcessor(new ServletContextAwareProcessor(this.servletContext, this.servletConfig));
-		beanFactory.ignoreDependencyInterface(ServletContextAware.class);
-		beanFactory.ignoreDependencyInterface(ServletConfigAware.class);
+    /**
+     * This implementation supports file paths beneath the root of the ServletContext.
+     *
+     * @see ServletContextResource
+     */
+    @Override
+    protected Resource getResourceByPath(String path) {
+        Assert.state(this.servletContext != null, "No ServletContext available");
+        return new ServletContextResource(this.servletContext, path);
+    }
 
-		WebApplicationContextUtils.registerWebApplicationScopes(beanFactory, this.servletContext);
-		WebApplicationContextUtils.registerEnvironmentBeans(beanFactory, this.servletContext, this.servletConfig);
-	}
+    /**
+     * This implementation supports pattern matching in unexpanded WARs too.
+     *
+     * @see ServletContextResourcePatternResolver
+     */
+    @Override
+    protected ResourcePatternResolver getResourcePatternResolver() {
+        return new ServletContextResourcePatternResolver(this);
+    }
 
-	/**
-	 * This implementation supports file paths beneath the root of the ServletContext.
-	 * @see ServletContextResource
-	 */
-	@Override
-	protected Resource getResourceByPath(String path) {
-		Assert.state(this.servletContext != null, "No ServletContext available");
-		return new ServletContextResource(this.servletContext, path);
-	}
+    /** Initialize the theme capability. */
+    @Override
+    protected void onRefresh() {
+        this.themeSource = UiApplicationContextUtils.initThemeSource(this);
+    }
 
-	/**
-	 * This implementation supports pattern matching in unexpanded WARs too.
-	 * @see ServletContextResourcePatternResolver
-	 */
-	@Override
-	protected ResourcePatternResolver getResourcePatternResolver() {
-		return new ServletContextResourcePatternResolver(this);
-	}
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Replace {@code Servlet}-related property sources.
+     */
+    @Override
+    protected void initPropertySources() {
+        ConfigurableEnvironment env = getEnvironment();
+        if (env instanceof ConfigurableWebEnvironment) {
+            ((ConfigurableWebEnvironment) env)
+                    .initPropertySources(this.servletContext, this.servletConfig);
+        }
+    }
 
-	/**
-	 * Initialize the theme capability.
-	 */
-	@Override
-	protected void onRefresh() {
-		this.themeSource = UiApplicationContextUtils.initThemeSource(this);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 * <p>Replace {@code Servlet}-related property sources.
-	 */
-	@Override
-	protected void initPropertySources() {
-		ConfigurableEnvironment env = getEnvironment();
-		if (env instanceof ConfigurableWebEnvironment) {
-			((ConfigurableWebEnvironment) env).initPropertySources(this.servletContext, this.servletConfig);
-		}
-	}
-
-	@Override
-	@Nullable
-	public Theme getTheme(String themeName) {
-		Assert.state(this.themeSource != null, "No ThemeSource available");
-		return this.themeSource.getTheme(themeName);
-	}
-
+    @Override
+    @Nullable
+    public Theme getTheme(String themeName) {
+        Assert.state(this.themeSource != null, "No ThemeSource available");
+        return this.themeSource.getTheme(themeName);
+    }
 }

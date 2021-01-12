@@ -42,69 +42,85 @@ import static org.hamcrest.Matchers.*;
  */
 public class JsonContentTests {
 
-	private final WebTestClient client = WebTestClient.bindToController(new PersonController()).build();
+    private final WebTestClient client =
+            WebTestClient.bindToController(new PersonController()).build();
 
+    @Test
+    public void jsonContent() {
+        this.client
+                .get()
+                .uri("/persons")
+                .accept(MediaType.APPLICATION_JSON_UTF8)
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectBody()
+                .json("[{\"name\":\"Jane\"},{\"name\":\"Jason\"},{\"name\":\"John\"}]");
+    }
 
-	@Test
-	public void jsonContent() {
-		this.client.get().uri("/persons")
-				.accept(MediaType.APPLICATION_JSON_UTF8)
-				.exchange()
-				.expectStatus().isOk()
-				.expectBody().json("[{\"name\":\"Jane\"},{\"name\":\"Jason\"},{\"name\":\"John\"}]");
-	}
+    @Test
+    public void jsonPathIsEqualTo() {
+        this.client
+                .get()
+                .uri("/persons")
+                .accept(MediaType.APPLICATION_JSON_UTF8)
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectBody()
+                .jsonPath("$[0].name")
+                .isEqualTo("Jane")
+                .jsonPath("$[1].name")
+                .isEqualTo("Jason")
+                .jsonPath("$[2].name")
+                .isEqualTo("John");
+    }
 
-	@Test
-	public void jsonPathIsEqualTo() {
-		this.client.get().uri("/persons")
-				.accept(MediaType.APPLICATION_JSON_UTF8)
-				.exchange()
-				.expectStatus().isOk()
-				.expectBody()
-				.jsonPath("$[0].name").isEqualTo("Jane")
-				.jsonPath("$[1].name").isEqualTo("Jason")
-				.jsonPath("$[2].name").isEqualTo("John");
-	}
+    @Test
+    public void jsonPathMatches() {
+        this.client
+                .get()
+                .uri("/persons/John")
+                .accept(MediaType.APPLICATION_JSON_UTF8)
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectBody()
+                .jsonPath("$.name")
+                .value(containsString("oh"));
+    }
 
-	@Test
-	public void jsonPathMatches() {
-		this.client.get().uri("/persons/John")
-				.accept(MediaType.APPLICATION_JSON_UTF8)
-				.exchange()
-				.expectStatus().isOk()
-				.expectBody()
-				.jsonPath("$.name").value(containsString("oh"));
-	}
+    @Test
+    public void postJsonContent() {
+        this.client
+                .post()
+                .uri("/persons")
+                .contentType(MediaType.APPLICATION_JSON_UTF8)
+                .syncBody("{\"name\":\"John\"}")
+                .exchange()
+                .expectStatus()
+                .isCreated()
+                .expectBody()
+                .isEmpty();
+    }
 
-	@Test
-	public void postJsonContent() {
-		this.client.post().uri("/persons")
-				.contentType(MediaType.APPLICATION_JSON_UTF8)
-				.syncBody("{\"name\":\"John\"}")
-				.exchange()
-				.expectStatus().isCreated()
-				.expectBody().isEmpty();
-	}
+    @RestController
+    @RequestMapping("/persons")
+    static class PersonController {
 
+        @GetMapping
+        Flux<Person> getPersons() {
+            return Flux.just(new Person("Jane"), new Person("Jason"), new Person("John"));
+        }
 
-	@RestController
-	@RequestMapping("/persons")
-	static class PersonController {
+        @GetMapping("/{name}")
+        Person getPerson(@PathVariable String name) {
+            return new Person(name);
+        }
 
-		@GetMapping
-		Flux<Person> getPersons() {
-			return Flux.just(new Person("Jane"), new Person("Jason"), new Person("John"));
-		}
-
-		@GetMapping("/{name}")
-		Person getPerson(@PathVariable String name) {
-			return new Person(name);
-		}
-
-		@PostMapping
-		ResponseEntity<String> savePerson(@RequestBody Person person) {
-			return ResponseEntity.created(URI.create("/persons/" + person.getName())).build();
-		}
-	}
-
+        @PostMapping
+        ResponseEntity<String> savePerson(@RequestBody Person person) {
+            return ResponseEntity.created(URI.create("/persons/" + person.getName())).build();
+        }
+    }
 }

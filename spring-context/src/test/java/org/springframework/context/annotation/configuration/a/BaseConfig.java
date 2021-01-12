@@ -21,23 +21,23 @@ import org.springframework.context.annotation.configuration.PackagePrivateBeanMe
 
 public abstract class BaseConfig {
 
-	// ---- reproduce ----
-	@Bean
-	Bar packagePrivateBar() {
-		return new Bar();
-	}
+    // ---- reproduce ----
+    @Bean
+    Bar packagePrivateBar() {
+        return new Bar();
+    }
 
-	public Bar reproBar() {
-		return packagePrivateBar();
-	}
+    public Bar reproBar() {
+        return packagePrivateBar();
+    }
 
-	// ---- workaround ----
-	@Bean
-	protected Bar protectedBar() {
-		return new Bar();
-	}
+    // ---- workaround ----
+    @Bean
+    protected Bar protectedBar() {
+        return new Bar();
+    }
 
-	public Bar workaroundBar() {
-		return protectedBar();
-	}
+    public Bar workaroundBar() {
+        return protectedBar();
+    }
 }

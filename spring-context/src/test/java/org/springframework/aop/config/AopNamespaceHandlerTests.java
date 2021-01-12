@@ -39,159 +39,175 @@ import static org.junit.Assert.*;
  */
 public class AopNamespaceHandlerTests {
 
-	private ApplicationContext context;
+    private ApplicationContext context;
 
+    @Before
+    public void setup() {
+        this.context =
+                new ClassPathXmlApplicationContext(
+                        getClass().getSimpleName() + "-context.xml", getClass());
+    }
 
-	@Before
-	public void setup() {
-		this.context = new ClassPathXmlApplicationContext(getClass().getSimpleName() + "-context.xml", getClass());
-	}
+    protected ITestBean getTestBean() {
+        return (ITestBean) this.context.getBean("testBean");
+    }
 
-	protected ITestBean getTestBean() {
-		return (ITestBean) this.context.getBean("testBean");
-	}
+    @Test
+    public void testIsProxy() throws Exception {
+        ITestBean bean = getTestBean();
 
+        assertTrue("Bean is not a proxy", AopUtils.isAopProxy(bean));
 
-	@Test
-	public void testIsProxy() throws Exception {
-		ITestBean bean = getTestBean();
+        // check the advice details
+        Advised advised = (Advised) bean;
+        Advisor[] advisors = advised.getAdvisors();
 
-		assertTrue("Bean is not a proxy", AopUtils.isAopProxy(bean));
+        assertTrue("Advisors should not be empty", advisors.length > 0);
+    }
 
-		// check the advice details
-		Advised advised = (Advised) bean;
-		Advisor[] advisors = advised.getAdvisors();
+    @Test
+    public void testAdviceInvokedCorrectly() throws Exception {
+        CountingBeforeAdvice getAgeCounter =
+                (CountingBeforeAdvice) this.context.getBean("getAgeCounter");
+        CountingBeforeAdvice getNameCounter =
+                (CountingBeforeAdvice) this.context.getBean("getNameCounter");
 
-		assertTrue("Advisors should not be empty", advisors.length > 0);
-	}
+        ITestBean bean = getTestBean();
 
-	@Test
-	public void testAdviceInvokedCorrectly() throws Exception {
-		CountingBeforeAdvice getAgeCounter = (CountingBeforeAdvice) this.context.getBean("getAgeCounter");
-		CountingBeforeAdvice getNameCounter = (CountingBeforeAdvice) this.context.getBean("getNameCounter");
+        assertEquals("Incorrect initial getAge count", 0, getAgeCounter.getCalls("getAge"));
+        assertEquals("Incorrect initial getName count", 0, getNameCounter.getCalls("getName"));
 
-		ITestBean bean = getTestBean();
+        bean.getAge();
 
-		assertEquals("Incorrect initial getAge count", 0, getAgeCounter.getCalls("getAge"));
-		assertEquals("Incorrect initial getName count", 0, getNameCounter.getCalls("getName"));
+        assertEquals(
+                "Incorrect getAge count on getAge counter", 1, getAgeCounter.getCalls("getAge"));
+        assertEquals(
+                "Incorrect getAge count on getName counter", 0, getNameCounter.getCalls("getAge"));
 
-		bean.getAge();
+        bean.getName();
 
-		assertEquals("Incorrect getAge count on getAge counter", 1, getAgeCounter.getCalls("getAge"));
-		assertEquals("Incorrect getAge count on getName counter", 0, getNameCounter.getCalls("getAge"));
+        assertEquals(
+                "Incorrect getName count on getName counter",
+                1,
+                getNameCounter.getCalls("getName"));
+        assertEquals(
+                "Incorrect getName count on getAge counter", 0, getAgeCounter.getCalls("getName"));
+    }
 
-		bean.getName();
+    @Test
+    public void testAspectApplied() throws Exception {
+        ITestBean bean = getTestBean();
 
-		assertEquals("Incorrect getName count on getName counter", 1, getNameCounter.getCalls("getName"));
-		assertEquals("Incorrect getName count on getAge counter", 0, getAgeCounter.getCalls("getName"));
-	}
+        CountingAspectJAdvice advice =
+                (CountingAspectJAdvice) this.context.getBean("countingAdvice");
 
-	@Test
-	public void testAspectApplied() throws Exception {
-		ITestBean bean = getTestBean();
+        assertEquals("Incorrect before count", 0, advice.getBeforeCount());
+        assertEquals("Incorrect after count", 0, advice.getAfterCount());
 
-		CountingAspectJAdvice advice = (CountingAspectJAdvice) this.context.getBean("countingAdvice");
+        bean.setName("Sally");
 
-		assertEquals("Incorrect before count", 0, advice.getBeforeCount());
-		assertEquals("Incorrect after count", 0, advice.getAfterCount());
+        assertEquals("Incorrect before count", 1, advice.getBeforeCount());
+        assertEquals("Incorrect after count", 1, advice.getAfterCount());
 
-		bean.setName("Sally");
+        bean.getName();
 
-		assertEquals("Incorrect before count", 1, advice.getBeforeCount());
-		assertEquals("Incorrect after count", 1, advice.getAfterCount());
+        assertEquals("Incorrect before count", 1, advice.getBeforeCount());
+        assertEquals("Incorrect after count", 1, advice.getAfterCount());
+    }
 
-		bean.getName();
+    @Test
+    public void testAspectAppliedForInitializeBeanWithEmptyName() {
+        ITestBean bean =
+                (ITestBean)
+                        this.context
+                                .getAutowireCapableBeanFactory()
+                                .initializeBean(new TestBean(), "");
 
-		assertEquals("Incorrect before count", 1, advice.getBeforeCount());
-		assertEquals("Incorrect after count", 1, advice.getAfterCount());
-	}
+        CountingAspectJAdvice advice =
+                (CountingAspectJAdvice) this.context.getBean("countingAdvice");
 
-	@Test
-	public void testAspectAppliedForInitializeBeanWithEmptyName() {
-		ITestBean bean = (ITestBean) this.context.getAutowireCapableBeanFactory().initializeBean(new TestBean(), "");
+        assertEquals("Incorrect before count", 0, advice.getBeforeCount());
+        assertEquals("Incorrect after count", 0, advice.getAfterCount());
 
-		CountingAspectJAdvice advice = (CountingAspectJAdvice) this.context.getBean("countingAdvice");
+        bean.setName("Sally");
 
-		assertEquals("Incorrect before count", 0, advice.getBeforeCount());
-		assertEquals("Incorrect after count", 0, advice.getAfterCount());
+        assertEquals("Incorrect before count", 1, advice.getBeforeCount());
+        assertEquals("Incorrect after count", 1, advice.getAfterCount());
 
-		bean.setName("Sally");
+        bean.getName();
 
-		assertEquals("Incorrect before count", 1, advice.getBeforeCount());
-		assertEquals("Incorrect after count", 1, advice.getAfterCount());
+        assertEquals("Incorrect before count", 1, advice.getBeforeCount());
+        assertEquals("Incorrect after count", 1, advice.getAfterCount());
+    }
 
-		bean.getName();
+    @Test
+    public void testAspectAppliedForInitializeBeanWithNullName() {
+        ITestBean bean =
+                (ITestBean)
+                        this.context
+                                .getAutowireCapableBeanFactory()
+                                .initializeBean(new TestBean(), null);
 
-		assertEquals("Incorrect before count", 1, advice.getBeforeCount());
-		assertEquals("Incorrect after count", 1, advice.getAfterCount());
-	}
+        CountingAspectJAdvice advice =
+                (CountingAspectJAdvice) this.context.getBean("countingAdvice");
 
-	@Test
-	public void testAspectAppliedForInitializeBeanWithNullName() {
-		ITestBean bean = (ITestBean) this.context.getAutowireCapableBeanFactory().initializeBean(new TestBean(), null);
+        assertEquals("Incorrect before count", 0, advice.getBeforeCount());
+        assertEquals("Incorrect after count", 0, advice.getAfterCount());
 
-		CountingAspectJAdvice advice = (CountingAspectJAdvice) this.context.getBean("countingAdvice");
+        bean.setName("Sally");
 
-		assertEquals("Incorrect before count", 0, advice.getBeforeCount());
-		assertEquals("Incorrect after count", 0, advice.getAfterCount());
+        assertEquals("Incorrect before count", 1, advice.getBeforeCount());
+        assertEquals("Incorrect after count", 1, advice.getAfterCount());
 
-		bean.setName("Sally");
+        bean.getName();
 
-		assertEquals("Incorrect before count", 1, advice.getBeforeCount());
-		assertEquals("Incorrect after count", 1, advice.getAfterCount());
-
-		bean.getName();
-
-		assertEquals("Incorrect before count", 1, advice.getBeforeCount());
-		assertEquals("Incorrect after count", 1, advice.getAfterCount());
-	}
-
+        assertEquals("Incorrect before count", 1, advice.getBeforeCount());
+        assertEquals("Incorrect after count", 1, advice.getAfterCount());
+    }
 }
-
 
 class CountingAspectJAdvice {
 
-	private int beforeCount;
+    private int beforeCount;
 
-	private int afterCount;
+    private int afterCount;
 
-	private int aroundCount;
+    private int aroundCount;
 
-	public void myBeforeAdvice() throws Throwable {
-		this.beforeCount++;
-	}
+    public void myBeforeAdvice() throws Throwable {
+        this.beforeCount++;
+    }
 
-	public void myAfterAdvice() throws Throwable {
-		this.afterCount++;
-	}
+    public void myAfterAdvice() throws Throwable {
+        this.afterCount++;
+    }
 
-	public void myAroundAdvice(ProceedingJoinPoint pjp) throws Throwable {
-		this.aroundCount++;
-		pjp.proceed();
-	}
+    public void myAroundAdvice(ProceedingJoinPoint pjp) throws Throwable {
+        this.aroundCount++;
+        pjp.proceed();
+    }
 
-	public void myAfterReturningAdvice(int age) {
-		this.afterCount++;
-	}
+    public void myAfterReturningAdvice(int age) {
+        this.afterCount++;
+    }
 
-	public void myAfterThrowingAdvice(RuntimeException ex) {
-		this.afterCount++;
-	}
+    public void myAfterThrowingAdvice(RuntimeException ex) {
+        this.afterCount++;
+    }
 
-	public void mySetAgeAdvice(int newAge, ITestBean bean) {
-		// no-op
-	}
+    public void mySetAgeAdvice(int newAge, ITestBean bean) {
+        // no-op
+    }
 
-	public int getBeforeCount() {
-		return this.beforeCount;
-	}
+    public int getBeforeCount() {
+        return this.beforeCount;
+    }
 
-	public int getAfterCount() {
-		return this.afterCount;
-	}
+    public int getAfterCount() {
+        return this.afterCount;
+    }
 
-	public int getAroundCount() {
-		return this.aroundCount;
-	}
-
+    public int getAroundCount() {
+        return this.aroundCount;
+    }
 }

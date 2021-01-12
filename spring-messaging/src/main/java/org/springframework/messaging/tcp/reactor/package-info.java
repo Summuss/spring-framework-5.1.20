@@ -1,6 +1,4 @@
-/**
- * Contains support for TCP messaging based on Reactor.
- */
+/** Contains support for TCP messaging based on Reactor. */
 @NonNullApi
 @NonNullFields
 package org.springframework.messaging.tcp.reactor;

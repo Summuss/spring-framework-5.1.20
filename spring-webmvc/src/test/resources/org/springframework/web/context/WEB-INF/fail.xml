@@ -3,6 +3,6 @@
 
 <beans>
 
-	<bean id="fail" class="java.lang.Integer"/>
+    <bean id="fail" class="java.lang.Integer"/>
 
 </beans>

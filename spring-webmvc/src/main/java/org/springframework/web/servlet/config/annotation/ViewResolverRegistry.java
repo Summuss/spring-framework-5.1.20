@@ -44,9 +44,9 @@ import org.springframework.web.servlet.view.tiles3.TilesConfigurer;
 import org.springframework.web.servlet.view.tiles3.TilesViewResolver;
 
 /**
- * Assist with the configuration of a chain of
- * {@link org.springframework.web.servlet.ViewResolver ViewResolver} instances.
- * This class is expected to be used via {@link WebMvcConfigurer#configureViewResolvers}.
+ * Assist with the configuration of a chain of {@link org.springframework.web.servlet.ViewResolver
+ * ViewResolver} instances. This class is expected to be used via {@link
+ * WebMvcConfigurer#configureViewResolvers}.
  *
  * @author Sebastien Deleuze
  * @author Rossen Stoyanchev
@@ -54,275 +54,278 @@ import org.springframework.web.servlet.view.tiles3.TilesViewResolver;
  */
 public class ViewResolverRegistry {
 
-	@Nullable
-	private ContentNegotiationManager contentNegotiationManager;
+    @Nullable private ContentNegotiationManager contentNegotiationManager;
 
-	@Nullable
-	private ApplicationContext applicationContext;
+    @Nullable private ApplicationContext applicationContext;
 
-	@Nullable
-	private ContentNegotiatingViewResolver contentNegotiatingResolver;
+    @Nullable private ContentNegotiatingViewResolver contentNegotiatingResolver;
 
-	private final List<ViewResolver> viewResolvers = new ArrayList<>(4);
+    private final List<ViewResolver> viewResolvers = new ArrayList<>(4);
 
-	@Nullable
-	private Integer order;
+    @Nullable private Integer order;
 
+    /**
+     * Class constructor with {@link ContentNegotiationManager} and {@link ApplicationContext}.
+     *
+     * @since 4.3.12
+     */
+    public ViewResolverRegistry(
+            ContentNegotiationManager contentNegotiationManager,
+            @Nullable ApplicationContext context) {
 
-	/**
-	 * Class constructor with {@link ContentNegotiationManager} and {@link ApplicationContext}.
-	 * @since 4.3.12
-	 */
-	public ViewResolverRegistry(
-			ContentNegotiationManager contentNegotiationManager, @Nullable ApplicationContext context) {
+        this.contentNegotiationManager = contentNegotiationManager;
+        this.applicationContext = context;
+    }
 
-		this.contentNegotiationManager = contentNegotiationManager;
-		this.applicationContext = context;
-	}
+    /** Whether any view resolvers have been registered. */
+    public boolean hasRegistrations() {
+        return (this.contentNegotiatingResolver != null || !this.viewResolvers.isEmpty());
+    }
 
+    /**
+     * Enable use of a {@link ContentNegotiatingViewResolver} to front all other configured view
+     * resolvers and select among all selected Views based on media types requested by the client
+     * (e.g. in the Accept header).
+     *
+     * <p>If invoked multiple times the provided default views will be added to any other default
+     * views that may have been configured already.
+     *
+     * @see ContentNegotiatingViewResolver#setDefaultViews
+     */
+    public void enableContentNegotiation(View... defaultViews) {
+        initContentNegotiatingViewResolver(defaultViews);
+    }
 
-	/**
-	 * Whether any view resolvers have been registered.
-	 */
-	public boolean hasRegistrations() {
-		return (this.contentNegotiatingResolver != null || !this.viewResolvers.isEmpty());
-	}
+    /**
+     * Enable use of a {@link ContentNegotiatingViewResolver} to front all other configured view
+     * resolvers and select among all selected Views based on media types requested by the client
+     * (e.g. in the Accept header).
+     *
+     * <p>If invoked multiple times the provided default views will be added to any other default
+     * views that may have been configured already.
+     *
+     * @see ContentNegotiatingViewResolver#setDefaultViews
+     */
+    public void enableContentNegotiation(boolean useNotAcceptableStatus, View... defaultViews) {
+        ContentNegotiatingViewResolver vr = initContentNegotiatingViewResolver(defaultViews);
+        vr.setUseNotAcceptableStatusCode(useNotAcceptableStatus);
+    }
 
-	/**
-	 * Enable use of a {@link ContentNegotiatingViewResolver} to front all other
-	 * configured view resolvers and select among all selected Views based on
-	 * media types requested by the client (e.g. in the Accept header).
-	 * <p>If invoked multiple times the provided default views will be added to
-	 * any other default views that may have been configured already.
-	 * @see ContentNegotiatingViewResolver#setDefaultViews
-	 */
-	public void enableContentNegotiation(View... defaultViews) {
-		initContentNegotiatingViewResolver(defaultViews);
-	}
+    private ContentNegotiatingViewResolver initContentNegotiatingViewResolver(View[] defaultViews) {
+        // ContentNegotiatingResolver in the registry: elevate its precedence!
+        this.order = (this.order != null ? this.order : Ordered.HIGHEST_PRECEDENCE);
 
-	/**
-	 * Enable use of a {@link ContentNegotiatingViewResolver} to front all other
-	 * configured view resolvers and select among all selected Views based on
-	 * media types requested by the client (e.g. in the Accept header).
-	 * <p>If invoked multiple times the provided default views will be added to
-	 * any other default views that may have been configured already.
-	 * @see ContentNegotiatingViewResolver#setDefaultViews
-	 */
-	public void enableContentNegotiation(boolean useNotAcceptableStatus, View... defaultViews) {
-		ContentNegotiatingViewResolver vr = initContentNegotiatingViewResolver(defaultViews);
-		vr.setUseNotAcceptableStatusCode(useNotAcceptableStatus);
-	}
+        if (this.contentNegotiatingResolver != null) {
+            if (!ObjectUtils.isEmpty(defaultViews)
+                    && !CollectionUtils.isEmpty(
+                            this.contentNegotiatingResolver.getDefaultViews())) {
+                List<View> views =
+                        new ArrayList<>(this.contentNegotiatingResolver.getDefaultViews());
+                views.addAll(Arrays.asList(defaultViews));
+                this.contentNegotiatingResolver.setDefaultViews(views);
+            }
+        } else {
+            this.contentNegotiatingResolver = new ContentNegotiatingViewResolver();
+            this.contentNegotiatingResolver.setDefaultViews(Arrays.asList(defaultViews));
+            this.contentNegotiatingResolver.setViewResolvers(this.viewResolvers);
+            if (this.contentNegotiationManager != null) {
+                this.contentNegotiatingResolver.setContentNegotiationManager(
+                        this.contentNegotiationManager);
+            }
+        }
+        return this.contentNegotiatingResolver;
+    }
 
-	private ContentNegotiatingViewResolver initContentNegotiatingViewResolver(View[] defaultViews) {
-		// ContentNegotiatingResolver in the registry: elevate its precedence!
-		this.order = (this.order != null ? this.order : Ordered.HIGHEST_PRECEDENCE);
+    /**
+     * Register JSP view resolver using a default view name prefix of "/WEB-INF/" and a default
+     * suffix of ".jsp".
+     *
+     * <p>When this method is invoked more than once, each call will register a new ViewResolver
+     * instance. Note that since it's not easy to determine if a JSP exists without forwarding to
+     * it, using multiple JSP-based view resolvers only makes sense in combination with the
+     * "viewNames" property on the resolver indicating which view names are handled by which
+     * resolver.
+     */
+    public UrlBasedViewResolverRegistration jsp() {
+        return jsp("/WEB-INF/", ".jsp");
+    }
 
-		if (this.contentNegotiatingResolver != null) {
-			if (!ObjectUtils.isEmpty(defaultViews) &&
-					!CollectionUtils.isEmpty(this.contentNegotiatingResolver.getDefaultViews())) {
-				List<View> views = new ArrayList<>(this.contentNegotiatingResolver.getDefaultViews());
-				views.addAll(Arrays.asList(defaultViews));
-				this.contentNegotiatingResolver.setDefaultViews(views);
-			}
-		}
-		else {
-			this.contentNegotiatingResolver = new ContentNegotiatingViewResolver();
-			this.contentNegotiatingResolver.setDefaultViews(Arrays.asList(defaultViews));
-			this.contentNegotiatingResolver.setViewResolvers(this.viewResolvers);
-			if (this.contentNegotiationManager != null) {
-				this.contentNegotiatingResolver.setContentNegotiationManager(this.contentNegotiationManager);
-			}
-		}
-		return this.contentNegotiatingResolver;
-	}
+    /**
+     * Register JSP view resolver with the specified prefix and suffix.
+     *
+     * <p>When this method is invoked more than once, each call will register a new ViewResolver
+     * instance. Note that since it's not easy to determine if a JSP exists without forwarding to
+     * it, using multiple JSP-based view resolvers only makes sense in combination with the
+     * "viewNames" property on the resolver indicating which view names are handled by which
+     * resolver.
+     */
+    public UrlBasedViewResolverRegistration jsp(String prefix, String suffix) {
+        InternalResourceViewResolver resolver = new InternalResourceViewResolver();
+        resolver.setPrefix(prefix);
+        resolver.setSuffix(suffix);
+        this.viewResolvers.add(resolver);
+        return new UrlBasedViewResolverRegistration(resolver);
+    }
 
-	/**
-	 * Register JSP view resolver using a default view name prefix of "/WEB-INF/"
-	 * and a default suffix of ".jsp".
-	 * <p>When this method is invoked more than once, each call will register a
-	 * new ViewResolver instance. Note that since it's not easy to determine
-	 * if a JSP exists without forwarding to it, using multiple JSP-based view
-	 * resolvers only makes sense in combination with the "viewNames" property
-	 * on the resolver indicating which view names are handled by which resolver.
-	 */
-	public UrlBasedViewResolverRegistration jsp() {
-		return jsp("/WEB-INF/", ".jsp");
-	}
+    /**
+     * Register Tiles 3.x view resolver.
+     *
+     * <p><strong>Note</strong> that you must also configure Tiles by adding a {@link
+     * org.springframework.web.servlet.view.tiles3.TilesConfigurer} bean.
+     */
+    public UrlBasedViewResolverRegistration tiles() {
+        if (!checkBeanOfType(TilesConfigurer.class)) {
+            throw new BeanInitializationException(
+                    "In addition to a Tiles view resolver "
+                            + "there must also be a single TilesConfigurer bean in this web application context "
+                            + "(or its parent).");
+        }
+        TilesRegistration registration = new TilesRegistration();
+        this.viewResolvers.add(registration.getViewResolver());
+        return registration;
+    }
 
-	/**
-	 * Register JSP view resolver with the specified prefix and suffix.
-	 * <p>When this method is invoked more than once, each call will register a
-	 * new ViewResolver instance. Note that since it's not easy to determine
-	 * if a JSP exists without forwarding to it, using multiple JSP-based view
-	 * resolvers only makes sense in combination with the "viewNames" property
-	 * on the resolver indicating which view names are handled by which resolver.
-	 */
-	public UrlBasedViewResolverRegistration jsp(String prefix, String suffix) {
-		InternalResourceViewResolver resolver = new InternalResourceViewResolver();
-		resolver.setPrefix(prefix);
-		resolver.setSuffix(suffix);
-		this.viewResolvers.add(resolver);
-		return new UrlBasedViewResolverRegistration(resolver);
-	}
+    /**
+     * Register a FreeMarker view resolver with an empty default view name prefix and a default
+     * suffix of ".ftl".
+     *
+     * <p><strong>Note</strong> that you must also configure FreeMarker by adding a {@link
+     * org.springframework.web.servlet.view.freemarker.FreeMarkerConfigurer} bean.
+     */
+    public UrlBasedViewResolverRegistration freeMarker() {
+        if (!checkBeanOfType(FreeMarkerConfigurer.class)) {
+            throw new BeanInitializationException(
+                    "In addition to a FreeMarker view resolver "
+                            + "there must also be a single FreeMarkerConfig bean in this web application context "
+                            + "(or its parent): FreeMarkerConfigurer is the usual implementation. "
+                            + "This bean may be given any name.");
+        }
+        FreeMarkerRegistration registration = new FreeMarkerRegistration();
+        this.viewResolvers.add(registration.getViewResolver());
+        return registration;
+    }
 
-	/**
-	 * Register Tiles 3.x view resolver.
-	 * <p><strong>Note</strong> that you must also configure Tiles by adding a
-	 * {@link org.springframework.web.servlet.view.tiles3.TilesConfigurer} bean.
-	 */
-	public UrlBasedViewResolverRegistration tiles() {
-		if (!checkBeanOfType(TilesConfigurer.class)) {
-			throw new BeanInitializationException("In addition to a Tiles view resolver " +
-					"there must also be a single TilesConfigurer bean in this web application context " +
-					"(or its parent).");
-		}
-		TilesRegistration registration = new TilesRegistration();
-		this.viewResolvers.add(registration.getViewResolver());
-		return registration;
-	}
+    /**
+     * Register a Groovy markup view resolver with an empty default view name prefix and a default
+     * suffix of ".tpl".
+     */
+    public UrlBasedViewResolverRegistration groovy() {
+        if (!checkBeanOfType(GroovyMarkupConfigurer.class)) {
+            throw new BeanInitializationException(
+                    "In addition to a Groovy markup view resolver "
+                            + "there must also be a single GroovyMarkupConfig bean in this web application context "
+                            + "(or its parent): GroovyMarkupConfigurer is the usual implementation. "
+                            + "This bean may be given any name.");
+        }
+        GroovyMarkupRegistration registration = new GroovyMarkupRegistration();
+        this.viewResolvers.add(registration.getViewResolver());
+        return registration;
+    }
 
-	/**
-	 * Register a FreeMarker view resolver with an empty default view name
-	 * prefix and a default suffix of ".ftl".
-	 * <p><strong>Note</strong> that you must also configure FreeMarker by adding a
-	 * {@link org.springframework.web.servlet.view.freemarker.FreeMarkerConfigurer} bean.
-	 */
-	public UrlBasedViewResolverRegistration freeMarker() {
-		if (!checkBeanOfType(FreeMarkerConfigurer.class)) {
-			throw new BeanInitializationException("In addition to a FreeMarker view resolver " +
-					"there must also be a single FreeMarkerConfig bean in this web application context " +
-					"(or its parent): FreeMarkerConfigurer is the usual implementation. " +
-					"This bean may be given any name.");
-		}
-		FreeMarkerRegistration registration = new FreeMarkerRegistration();
-		this.viewResolvers.add(registration.getViewResolver());
-		return registration;
-	}
+    /**
+     * Register a script template view resolver with an empty default view name prefix and suffix.
+     *
+     * @since 4.2
+     */
+    public UrlBasedViewResolverRegistration scriptTemplate() {
+        if (!checkBeanOfType(ScriptTemplateConfigurer.class)) {
+            throw new BeanInitializationException(
+                    "In addition to a script template view resolver "
+                            + "there must also be a single ScriptTemplateConfig bean in this web application context "
+                            + "(or its parent): ScriptTemplateConfigurer is the usual implementation. "
+                            + "This bean may be given any name.");
+        }
+        ScriptRegistration registration = new ScriptRegistration();
+        this.viewResolvers.add(registration.getViewResolver());
+        return registration;
+    }
 
-	/**
-	 * Register a Groovy markup view resolver with an empty default view name
-	 * prefix and a default suffix of ".tpl".
-	 */
-	public UrlBasedViewResolverRegistration groovy() {
-		if (!checkBeanOfType(GroovyMarkupConfigurer.class)) {
-			throw new BeanInitializationException("In addition to a Groovy markup view resolver " +
-					"there must also be a single GroovyMarkupConfig bean in this web application context " +
-					"(or its parent): GroovyMarkupConfigurer is the usual implementation. " +
-					"This bean may be given any name.");
-		}
-		GroovyMarkupRegistration registration = new GroovyMarkupRegistration();
-		this.viewResolvers.add(registration.getViewResolver());
-		return registration;
-	}
+    /**
+     * Register a bean name view resolver that interprets view names as the names of {@link
+     * org.springframework.web.servlet.View} beans.
+     */
+    public void beanName() {
+        BeanNameViewResolver resolver = new BeanNameViewResolver();
+        this.viewResolvers.add(resolver);
+    }
 
-	/**
-	 * Register a script template view resolver with an empty default view name prefix and suffix.
-	 * @since 4.2
-	 */
-	public UrlBasedViewResolverRegistration scriptTemplate() {
-		if (!checkBeanOfType(ScriptTemplateConfigurer.class)) {
-			throw new BeanInitializationException("In addition to a script template view resolver " +
-					"there must also be a single ScriptTemplateConfig bean in this web application context " +
-					"(or its parent): ScriptTemplateConfigurer is the usual implementation. " +
-					"This bean may be given any name.");
-		}
-		ScriptRegistration registration = new ScriptRegistration();
-		this.viewResolvers.add(registration.getViewResolver());
-		return registration;
-	}
+    /**
+     * Register a {@link ViewResolver} bean instance. This may be useful to configure a custom (or
+     * 3rd party) resolver implementation. It may also be used as an alternative to other
+     * registration methods in this class when they don't expose some more advanced property that
+     * needs to be set.
+     */
+    public void viewResolver(ViewResolver viewResolver) {
+        if (viewResolver instanceof ContentNegotiatingViewResolver) {
+            throw new BeanInitializationException(
+                    "addViewResolver cannot be used to configure a ContentNegotiatingViewResolver. "
+                            + "Please use the method enableContentNegotiation instead.");
+        }
+        this.viewResolvers.add(viewResolver);
+    }
 
-	/**
-	 * Register a bean name view resolver that interprets view names as the names
-	 * of {@link org.springframework.web.servlet.View} beans.
-	 */
-	public void beanName() {
-		BeanNameViewResolver resolver = new BeanNameViewResolver();
-		this.viewResolvers.add(resolver);
-	}
+    /**
+     * ViewResolver's registered through this registry are encapsulated in an instance of {@link
+     * org.springframework.web.servlet.view.ViewResolverComposite ViewResolverComposite} and follow
+     * the order of registration. This property determines the order of the ViewResolverComposite
+     * itself relative to any additional ViewResolver's (not registered here) present in the Spring
+     * configuration
+     *
+     * <p>By default this property is not set, which means the resolver is ordered at {@link
+     * Ordered#LOWEST_PRECEDENCE} unless content negotiation is enabled in which case the order (if
+     * not set explicitly) is changed to {@link Ordered#HIGHEST_PRECEDENCE}.
+     */
+    public void order(int order) {
+        this.order = order;
+    }
 
-	/**
-	 * Register a {@link ViewResolver} bean instance. This may be useful to
-	 * configure a custom (or 3rd party) resolver implementation. It may also be
-	 * used as an alternative to other registration methods in this class when
-	 * they don't expose some more advanced property that needs to be set.
-	 */
-	public void viewResolver(ViewResolver viewResolver) {
-		if (viewResolver instanceof ContentNegotiatingViewResolver) {
-			throw new BeanInitializationException(
-					"addViewResolver cannot be used to configure a ContentNegotiatingViewResolver. " +
-					"Please use the method enableContentNegotiation instead.");
-		}
-		this.viewResolvers.add(viewResolver);
-	}
+    private boolean checkBeanOfType(Class<?> beanType) {
+        return (this.applicationContext == null
+                || !ObjectUtils.isEmpty(
+                        BeanFactoryUtils.beanNamesForTypeIncludingAncestors(
+                                this.applicationContext, beanType, false, false)));
+    }
 
-	/**
-	 * ViewResolver's registered through this registry are encapsulated in an
-	 * instance of {@link org.springframework.web.servlet.view.ViewResolverComposite
-	 * ViewResolverComposite} and follow the order of registration.
-	 * This property determines the order of the ViewResolverComposite itself
-	 * relative to any additional ViewResolver's (not registered here) present in
-	 * the Spring configuration
-	 * <p>By default this property is not set, which means the resolver is ordered
-	 * at {@link Ordered#LOWEST_PRECEDENCE} unless content negotiation is enabled
-	 * in which case the order (if not set explicitly) is changed to
-	 * {@link Ordered#HIGHEST_PRECEDENCE}.
-	 */
-	public void order(int order) {
-		this.order = order;
-	}
+    protected int getOrder() {
+        return (this.order != null ? this.order : Ordered.LOWEST_PRECEDENCE);
+    }
 
+    protected List<ViewResolver> getViewResolvers() {
+        if (this.contentNegotiatingResolver != null) {
+            return Collections.<ViewResolver>singletonList(this.contentNegotiatingResolver);
+        } else {
+            return this.viewResolvers;
+        }
+    }
 
-	private boolean checkBeanOfType(Class<?> beanType) {
-		return (this.applicationContext == null ||
-				!ObjectUtils.isEmpty(BeanFactoryUtils.beanNamesForTypeIncludingAncestors(
-						this.applicationContext, beanType, false, false)));
-	}
+    private static class TilesRegistration extends UrlBasedViewResolverRegistration {
 
-	protected int getOrder() {
-		return (this.order != null ? this.order : Ordered.LOWEST_PRECEDENCE);
-	}
+        public TilesRegistration() {
+            super(new TilesViewResolver());
+        }
+    }
 
-	protected List<ViewResolver> getViewResolvers() {
-		if (this.contentNegotiatingResolver != null) {
-			return Collections.<ViewResolver>singletonList(this.contentNegotiatingResolver);
-		}
-		else {
-			return this.viewResolvers;
-		}
-	}
+    private static class FreeMarkerRegistration extends UrlBasedViewResolverRegistration {
 
+        public FreeMarkerRegistration() {
+            super(new FreeMarkerViewResolver());
+            getViewResolver().setSuffix(".ftl");
+        }
+    }
 
-	private static class TilesRegistration extends UrlBasedViewResolverRegistration {
+    private static class GroovyMarkupRegistration extends UrlBasedViewResolverRegistration {
 
-		public TilesRegistration() {
-			super(new TilesViewResolver());
-		}
-	}
+        public GroovyMarkupRegistration() {
+            super(new GroovyMarkupViewResolver());
+            getViewResolver().setSuffix(".tpl");
+        }
+    }
 
-	private static class FreeMarkerRegistration extends UrlBasedViewResolverRegistration {
+    private static class ScriptRegistration extends UrlBasedViewResolverRegistration {
 
-		public FreeMarkerRegistration() {
-			super(new FreeMarkerViewResolver());
-			getViewResolver().setSuffix(".ftl");
-		}
-	}
-
-
-	private static class GroovyMarkupRegistration extends UrlBasedViewResolverRegistration {
-
-		public GroovyMarkupRegistration() {
-			super(new GroovyMarkupViewResolver());
-			getViewResolver().setSuffix(".tpl");
-		}
-	}
-
-
-	private static class ScriptRegistration extends UrlBasedViewResolverRegistration {
-
-		public ScriptRegistration() {
-			super(new ScriptTemplateViewResolver());
-			getViewResolver();
-		}
-	}
-
+        public ScriptRegistration() {
+            super(new ScriptTemplateViewResolver());
+            getViewResolver();
+        }
+    }
 }

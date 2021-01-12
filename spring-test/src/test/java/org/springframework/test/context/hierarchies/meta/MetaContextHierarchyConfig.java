@@ -34,39 +34,36 @@ import org.springframework.test.context.ContextHierarchy;
  * @author Sam Brannen
  * @since 4.0.3
  */
-@ContextHierarchy(@ContextConfiguration(classes = { DevConfig.class, ProductionConfig.class }))
+@ContextHierarchy(@ContextConfiguration(classes = {DevConfig.class, ProductionConfig.class}))
 @ActiveProfiles("dev")
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-public @interface MetaContextHierarchyConfig {
-}
+public @interface MetaContextHierarchyConfig {}
 
 @Configuration
 @DevProfile
 class DevConfig {
 
-	@Bean
-	public String foo() {
-		return "Dev Foo";
-	}
+    @Bean
+    public String foo() {
+        return "Dev Foo";
+    }
 }
 
 @Configuration
 @ProdProfile
 class ProductionConfig {
 
-	@Bean
-	public String foo() {
-		return "Production Foo";
-	}
+    @Bean
+    public String foo() {
+        return "Production Foo";
+    }
 }
 
 @Profile("dev")
 @Retention(RetentionPolicy.RUNTIME)
-@interface DevProfile {
-}
+@interface DevProfile {}
 
 @Profile("prod")
 @Retention(RetentionPolicy.RUNTIME)
-@interface ProdProfile {
-}
+@interface ProdProfile {}

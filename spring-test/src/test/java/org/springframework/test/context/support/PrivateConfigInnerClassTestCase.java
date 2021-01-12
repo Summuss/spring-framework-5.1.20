@@ -27,9 +27,7 @@ import org.springframework.context.annotation.Configuration;
  */
 public class PrivateConfigInnerClassTestCase {
 
-	// Intentionally private
-	@Configuration
-	private static class PrivateConfig {
-	}
-
+    // Intentionally private
+    @Configuration
+    private static class PrivateConfig {}
 }

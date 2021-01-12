@@ -40,12 +40,11 @@ import org.springframework.web.reactive.socket.WebSocketMessage.Type;
 import org.springframework.web.reactive.socket.WebSocketSession;
 
 /**
- * Base class for {@link WebSocketSession} implementations that bridge between
- * event-listener WebSocket APIs (e.g. Java WebSocket API JSR-356, Jetty,
- * Undertow) and Reactive Streams.
+ * Base class for {@link WebSocketSession} implementations that bridge between event-listener
+ * WebSocket APIs (e.g. Java WebSocket API JSR-356, Jetty, Undertow) and Reactive Streams.
  *
- * <p>Also an implementation of {@code Subscriber&lt;Void&gt;} so it can be used as
- * the completion subscriber for session handling
+ * <p>Also an implementation of {@code Subscriber&lt;Void&gt;} so it can be used as the completion
+ * subscriber for session handling
  *
  * @author Violeta Georgieva
  * @author Rossen Stoyanchev
@@ -53,284 +52,277 @@ import org.springframework.web.reactive.socket.WebSocketSession;
  * @param <T> the native delegate type
  */
 public abstract class AbstractListenerWebSocketSession<T> extends AbstractWebSocketSession<T>
-		implements Subscriber<Void> {
+        implements Subscriber<Void> {
 
-	/**
-	 * The "back-pressure" buffer size to use if the underlying WebSocket API
-	 * does not have flow control for receiving messages.
-	 */
-	private static final int RECEIVE_BUFFER_SIZE = 8192;
+    /**
+     * The "back-pressure" buffer size to use if the underlying WebSocket API does not have flow
+     * control for receiving messages.
+     */
+    private static final int RECEIVE_BUFFER_SIZE = 8192;
 
+    @Nullable private final MonoProcessor<Void> completionMono;
 
-	@Nullable
-	private final MonoProcessor<Void> completionMono;
+    private final WebSocketReceivePublisher receivePublisher;
 
-	private final WebSocketReceivePublisher receivePublisher;
+    @Nullable private volatile WebSocketSendProcessor sendProcessor;
 
-	@Nullable
-	private volatile WebSocketSendProcessor sendProcessor;
+    private final AtomicBoolean sendCalled = new AtomicBoolean();
 
-	private final AtomicBoolean sendCalled = new AtomicBoolean();
+    /**
+     * Base constructor.
+     *
+     * @param delegate the native WebSocket session, channel, or connection
+     * @param id the session id
+     * @param handshakeInfo the handshake info
+     * @param bufferFactory the DataBuffer factor for the current connection
+     */
+    public AbstractListenerWebSocketSession(
+            T delegate, String id, HandshakeInfo handshakeInfo, DataBufferFactory bufferFactory) {
 
+        this(delegate, id, handshakeInfo, bufferFactory, null);
+    }
 
-	/**
-	 * Base constructor.
- 	 * @param delegate the native WebSocket session, channel, or connection
-	 * @param id the session id
-	 * @param handshakeInfo the handshake info
-	 * @param bufferFactory the DataBuffer factor for the current connection
-	 */
-	public AbstractListenerWebSocketSession(
-			T delegate, String id, HandshakeInfo handshakeInfo, DataBufferFactory bufferFactory) {
+    /**
+     * Alternative constructor with completion {@code Mono&lt;Void&gt;} to propagate the session
+     * completion (success or error) (for client-side use).
+     */
+    public AbstractListenerWebSocketSession(
+            T delegate,
+            String id,
+            HandshakeInfo info,
+            DataBufferFactory bufferFactory,
+            @Nullable MonoProcessor<Void> completionMono) {
 
-		this(delegate, id, handshakeInfo, bufferFactory, null);
-	}
+        super(delegate, id, info, bufferFactory);
+        this.receivePublisher = new WebSocketReceivePublisher();
+        this.completionMono = completionMono;
+    }
 
-	/**
-	 * Alternative constructor with completion {@code Mono&lt;Void&gt;} to propagate
-	 * the session completion (success or error) (for client-side use).
-	 */
-	public AbstractListenerWebSocketSession(T delegate, String id, HandshakeInfo info,
-			DataBufferFactory bufferFactory, @Nullable MonoProcessor<Void> completionMono) {
+    protected WebSocketSendProcessor getSendProcessor() {
+        WebSocketSendProcessor sendProcessor = this.sendProcessor;
+        Assert.state(sendProcessor != null, "No WebSocketSendProcessor available");
+        return sendProcessor;
+    }
 
-		super(delegate, id, info, bufferFactory);
-		this.receivePublisher = new WebSocketReceivePublisher();
-		this.completionMono = completionMono;
-	}
+    @Override
+    public Flux<WebSocketMessage> receive() {
+        return (canSuspendReceiving()
+                ? Flux.from(this.receivePublisher)
+                : Flux.from(this.receivePublisher).onBackpressureBuffer(RECEIVE_BUFFER_SIZE));
+    }
 
+    @Override
+    public Mono<Void> send(Publisher<WebSocketMessage> messages) {
+        if (this.sendCalled.compareAndSet(false, true)) {
+            WebSocketSendProcessor sendProcessor = new WebSocketSendProcessor();
+            this.sendProcessor = sendProcessor;
+            return Mono.from(
+                    subscriber -> {
+                        messages.subscribe(sendProcessor);
+                        sendProcessor.subscribe(subscriber);
+                    });
+        } else {
+            return Mono.error(new IllegalStateException("send() has already been called"));
+        }
+    }
 
-	protected WebSocketSendProcessor getSendProcessor() {
-		WebSocketSendProcessor sendProcessor = this.sendProcessor;
-		Assert.state(sendProcessor != null, "No WebSocketSendProcessor available");
-		return sendProcessor;
-	}
+    /**
+     * Whether the underlying WebSocket API has flow control and can suspend and resume the
+     * receiving of messages.
+     *
+     * <p><strong>Note:</strong> Sub-classes are encouraged to start out in suspended mode, if
+     * possible, and wait until demand is received.
+     */
+    protected abstract boolean canSuspendReceiving();
 
-	@Override
-	public Flux<WebSocketMessage> receive() {
-		return (canSuspendReceiving() ? Flux.from(this.receivePublisher) :
-				Flux.from(this.receivePublisher).onBackpressureBuffer(RECEIVE_BUFFER_SIZE));
-	}
+    /**
+     * Suspend receiving until received message(s) are processed and more demand is generated by the
+     * downstream Subscriber.
+     *
+     * <p><strong>Note:</strong> if the underlying WebSocket API does not provide flow control for
+     * receiving messages, this method should be a no-op and {@link #canSuspendReceiving()} should
+     * return {@code false}.
+     */
+    protected abstract void suspendReceiving();
 
-	@Override
-	public Mono<Void> send(Publisher<WebSocketMessage> messages) {
-		if (this.sendCalled.compareAndSet(false, true)) {
-			WebSocketSendProcessor sendProcessor = new WebSocketSendProcessor();
-			this.sendProcessor = sendProcessor;
-			return Mono.from(subscriber -> {
-					messages.subscribe(sendProcessor);
-					sendProcessor.subscribe(subscriber);
-			});
-		}
-		else {
-			return Mono.error(new IllegalStateException("send() has already been called"));
-		}
-	}
+    /**
+     * Resume receiving new message(s) after demand is generated by the downstream Subscriber.
+     *
+     * <p><strong>Note:</strong> if the underlying WebSocket API does not provide flow control for
+     * receiving messages, this method should be a no-op and {@link #canSuspendReceiving()} should
+     * return {@code false}.
+     */
+    protected abstract void resumeReceiving();
 
-	/**
-	 * Whether the underlying WebSocket API has flow control and can suspend and
-	 * resume the receiving of messages.
-	 * <p><strong>Note:</strong> Sub-classes are encouraged to start out in
-	 * suspended mode, if possible, and wait until demand is received.
-	 */
-	protected abstract boolean canSuspendReceiving();
+    /**
+     * Send the given WebSocket message.
+     *
+     * <p><strong>Note:</strong> Sub-classes are responsible for releasing the payload data buffer,
+     * once fully written, if pooled buffers apply to the underlying container.
+     */
+    protected abstract boolean sendMessage(WebSocketMessage message) throws IOException;
 
-	/**
-	 * Suspend receiving until received message(s) are processed and more demand
-	 * is generated by the downstream Subscriber.
-	 * <p><strong>Note:</strong> if the underlying WebSocket API does not provide
-	 * flow control for receiving messages, this method should be a no-op
-	 * and {@link #canSuspendReceiving()} should return {@code false}.
-	 */
-	protected abstract void suspendReceiving();
+    // WebSocketHandler adapter delegate methods
 
-	/**
-	 * Resume receiving new message(s) after demand is generated by the
-	 * downstream Subscriber.
-	 * <p><strong>Note:</strong> if the underlying WebSocket API does not provide
-	 * flow control for receiving messages, this method should be a no-op
-	 * and {@link #canSuspendReceiving()} should return {@code false}.
-	 */
-	protected abstract void resumeReceiving();
+    /** Handle a message callback from the WebSocketHandler adapter. */
+    void handleMessage(Type type, WebSocketMessage message) {
+        this.receivePublisher.handleMessage(message);
+    }
 
-	/**
-	 * Send the given WebSocket message.
-	 * <p><strong>Note:</strong> Sub-classes are responsible for releasing the
-	 * payload data buffer, once fully written, if pooled buffers apply to the
-	 * underlying container.
-	 */
-	protected abstract boolean sendMessage(WebSocketMessage message) throws IOException;
+    /** Handle an error callback from the WebSocketHandler adapter. */
+    void handleError(Throwable ex) {
+        this.receivePublisher.onError(ex);
+        WebSocketSendProcessor sendProcessor = this.sendProcessor;
+        if (sendProcessor != null) {
+            sendProcessor.cancel();
+            sendProcessor.onError(ex);
+        }
+    }
 
+    /** Handle a close callback from the WebSocketHandler adapter. */
+    void handleClose(CloseStatus reason) {
+        this.receivePublisher.onAllDataRead();
+        WebSocketSendProcessor sendProcessor = this.sendProcessor;
+        if (sendProcessor != null) {
+            sendProcessor.cancel();
+            sendProcessor.onComplete();
+        }
+    }
 
-	// WebSocketHandler adapter delegate methods
+    // Subscriber<Void> implementation
 
-	/** Handle a message callback from the WebSocketHandler adapter. */
-	void handleMessage(Type type, WebSocketMessage message) {
-		this.receivePublisher.handleMessage(message);
-	}
+    @Override
+    public void onSubscribe(Subscription subscription) {
+        subscription.request(Long.MAX_VALUE);
+    }
 
-	/** Handle an error callback from the WebSocketHandler adapter. */
-	void handleError(Throwable ex) {
-		this.receivePublisher.onError(ex);
-		WebSocketSendProcessor sendProcessor = this.sendProcessor;
-		if (sendProcessor != null) {
-			sendProcessor.cancel();
-			sendProcessor.onError(ex);
-		}
-	}
+    @Override
+    public void onNext(Void aVoid) {
+        // no op
+    }
 
-	/** Handle a close callback from the WebSocketHandler adapter. */
-	void handleClose(CloseStatus reason) {
-		this.receivePublisher.onAllDataRead();
-		WebSocketSendProcessor sendProcessor = this.sendProcessor;
-		if (sendProcessor != null) {
-			sendProcessor.cancel();
-			sendProcessor.onComplete();
-		}
-	}
+    @Override
+    public void onError(Throwable ex) {
+        if (this.completionMono != null) {
+            this.completionMono.onError(ex);
+        }
+        int code = CloseStatus.SERVER_ERROR.getCode();
+        close(new CloseStatus(code, ex.getMessage()));
+    }
 
+    @Override
+    public void onComplete() {
+        if (this.completionMono != null) {
+            this.completionMono.onComplete();
+        }
+        close();
+    }
 
-	// Subscriber<Void> implementation
+    private final class WebSocketReceivePublisher
+            extends AbstractListenerReadPublisher<WebSocketMessage> {
 
-	@Override
-	public void onSubscribe(Subscription subscription) {
-		subscription.request(Long.MAX_VALUE);
-	}
+        private volatile Queue<Object> pendingMessages =
+                Queues.unbounded(Queues.SMALL_BUFFER_SIZE).get();
 
-	@Override
-	public void onNext(Void aVoid) {
-		// no op
-	}
+        WebSocketReceivePublisher() {
+            super(AbstractListenerWebSocketSession.this.getLogPrefix());
+        }
 
-	@Override
-	public void onError(Throwable ex) {
-		if (this.completionMono != null) {
-			this.completionMono.onError(ex);
-		}
-		int code = CloseStatus.SERVER_ERROR.getCode();
-		close(new CloseStatus(code, ex.getMessage()));
-	}
+        @Override
+        protected void checkOnDataAvailable() {
+            resumeReceiving();
+            int size = this.pendingMessages.size();
+            if (rsReadLogger.isTraceEnabled()) {
+                rsReadLogger.trace(getLogPrefix() + "checkOnDataAvailable (" + size + " pending)");
+            }
+            if (size > 0) {
+                onDataAvailable();
+            }
+        }
 
-	@Override
-	public void onComplete() {
-		if (this.completionMono != null) {
-			this.completionMono.onComplete();
-		}
-		close();
-	}
+        @Override
+        protected void readingPaused() {
+            suspendReceiving();
+        }
 
+        @Override
+        @Nullable
+        protected WebSocketMessage read() throws IOException {
+            return (WebSocketMessage) this.pendingMessages.poll();
+        }
 
-	private final class WebSocketReceivePublisher extends AbstractListenerReadPublisher<WebSocketMessage> {
+        void handleMessage(WebSocketMessage message) {
+            if (logger.isTraceEnabled()) {
+                logger.trace(getLogPrefix() + "Received " + message);
+            } else if (rsReadLogger.isTraceEnabled()) {
+                rsReadLogger.trace(getLogPrefix() + "Received " + message);
+            }
+            if (!this.pendingMessages.offer(message)) {
+                discardData();
+                throw new IllegalStateException(
+                        "Too many messages. Please ensure WebSocketSession.receive() is subscribed to.");
+            }
+            onDataAvailable();
+        }
 
-		private volatile Queue<Object> pendingMessages = Queues.unbounded(Queues.SMALL_BUFFER_SIZE).get();
+        @Override
+        protected void discardData() {
+            while (true) {
+                WebSocketMessage message = (WebSocketMessage) this.pendingMessages.poll();
+                if (message == null) {
+                    return;
+                }
+                message.release();
+            }
+        }
+    }
 
+    /** Processor to send web socket messages. */
+    protected final class WebSocketSendProcessor
+            extends AbstractListenerWriteProcessor<WebSocketMessage> {
 
-		WebSocketReceivePublisher() {
-			super(AbstractListenerWebSocketSession.this.getLogPrefix());
-		}
+        private volatile boolean isReady = true;
 
+        WebSocketSendProcessor() {
+            super(receivePublisher.getLogPrefix());
+        }
 
-		@Override
-		protected void checkOnDataAvailable() {
-			resumeReceiving();
-			int size = this.pendingMessages.size();
-			if (rsReadLogger.isTraceEnabled()) {
-				rsReadLogger.trace(getLogPrefix() + "checkOnDataAvailable (" + size + " pending)");
-			}
-			if (size > 0) {
-				onDataAvailable();
-			}
-		}
+        @Override
+        protected boolean write(WebSocketMessage message) throws IOException {
+            if (logger.isTraceEnabled()) {
+                logger.trace(getLogPrefix() + "Sending " + message);
+            } else if (rsWriteLogger.isTraceEnabled()) {
+                rsWriteLogger.trace(getLogPrefix() + "Sending " + message);
+            }
+            // In case of IOException, onError handling should call discardData(WebSocketMessage)..
+            return sendMessage(message);
+        }
 
-		@Override
-		protected void readingPaused() {
-			suspendReceiving();
-		}
+        @Override
+        protected boolean isDataEmpty(WebSocketMessage message) {
+            return (message.getPayload().readableByteCount() == 0);
+        }
 
-		@Override
-		@Nullable
-		protected WebSocketMessage read() throws IOException {
-			return (WebSocketMessage) this.pendingMessages.poll();
-		}
+        @Override
+        protected boolean isWritePossible() {
+            return (this.isReady);
+        }
 
-		void handleMessage(WebSocketMessage message) {
-			if (logger.isTraceEnabled()) {
-				logger.trace(getLogPrefix() + "Received " + message);
-			}
-			else if (rsReadLogger.isTraceEnabled()) {
-				rsReadLogger.trace(getLogPrefix() + "Received " + message);
-			}
-			if (!this.pendingMessages.offer(message)) {
-				discardData();
-				throw new IllegalStateException(
-						"Too many messages. Please ensure WebSocketSession.receive() is subscribed to.");
-			}
-			onDataAvailable();
-		}
+        /**
+         * Sub-classes can invoke this before sending a message (false) and after receiving the
+         * async send callback (true) effective translating async completion callback into simple
+         * flow control.
+         */
+        public void setReadyToSend(boolean ready) {
+            if (ready && rsWriteLogger.isTraceEnabled()) {
+                rsWriteLogger.trace(getLogPrefix() + "Ready to send");
+            }
+            this.isReady = ready;
+        }
 
-		@Override
-		protected void discardData() {
-			while (true) {
-				WebSocketMessage message = (WebSocketMessage) this.pendingMessages.poll();
-				if (message == null) {
-					return;
-				}
-				message.release();
-			}
-		}
-	}
-
-
-	/**
-	 * Processor to send web socket messages.
-	 */
-	protected final class WebSocketSendProcessor extends AbstractListenerWriteProcessor<WebSocketMessage> {
-
-		private volatile boolean isReady = true;
-
-
-		WebSocketSendProcessor() {
-			super(receivePublisher.getLogPrefix());
-		}
-
-
-		@Override
-		protected boolean write(WebSocketMessage message) throws IOException {
-			if (logger.isTraceEnabled()) {
-				logger.trace(getLogPrefix() + "Sending " + message);
-			}
-			else if (rsWriteLogger.isTraceEnabled()) {
-				rsWriteLogger.trace(getLogPrefix() + "Sending " + message);
-			}
-			// In case of IOException, onError handling should call discardData(WebSocketMessage)..
-			return sendMessage(message);
-		}
-
-		@Override
-		protected boolean isDataEmpty(WebSocketMessage message) {
-			return (message.getPayload().readableByteCount() == 0);
-		}
-
-		@Override
-		protected boolean isWritePossible() {
-			return (this.isReady);
-		}
-
-		/**
-		 * Sub-classes can invoke this before sending a message (false) and
-		 * after receiving the async send callback (true) effective translating
-		 * async completion callback into simple flow control.
-		 */
-		public void setReadyToSend(boolean ready) {
-			if (ready && rsWriteLogger.isTraceEnabled()) {
-				rsWriteLogger.trace(getLogPrefix() + "Ready to send");
-			}
-			this.isReady = ready;
-		}
-
-		@Override
-		protected void discardData(WebSocketMessage message) {
-			message.release();
-		}
-	}
-
+        @Override
+        protected void discardData(WebSocketMessage message) {
+            message.release();
+        }
+    }
 }

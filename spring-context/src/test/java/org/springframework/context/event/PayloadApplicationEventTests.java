@@ -28,42 +28,36 @@ import org.springframework.stereotype.Component;
 
 import static org.junit.Assert.*;
 
-/**
- * @author Juergen Hoeller
- */
+/** @author Juergen Hoeller */
 public class PayloadApplicationEventTests {
 
-	@Test
-	public void testEventClassWithInterface() {
-		ApplicationContext ac = new AnnotationConfigApplicationContext(AuditableListener.class);
-		AuditablePayloadEvent event = new AuditablePayloadEvent<>(this, "xyz");
-		ac.publishEvent(event);
-		assertTrue(ac.getBean(AuditableListener.class).events.contains(event));
-	}
+    @Test
+    public void testEventClassWithInterface() {
+        ApplicationContext ac = new AnnotationConfigApplicationContext(AuditableListener.class);
+        AuditablePayloadEvent event = new AuditablePayloadEvent<>(this, "xyz");
+        ac.publishEvent(event);
+        assertTrue(ac.getBean(AuditableListener.class).events.contains(event));
+    }
 
+    public interface Auditable {}
 
-	public interface Auditable {
-	}
+    @SuppressWarnings("serial")
+    public static class AuditablePayloadEvent<T> extends PayloadApplicationEvent<T>
+            implements Auditable {
 
+        public AuditablePayloadEvent(Object source, T payload) {
+            super(source, payload);
+        }
+    }
 
-	@SuppressWarnings("serial")
-	public static class AuditablePayloadEvent<T> extends PayloadApplicationEvent<T> implements Auditable {
+    @Component
+    public static class AuditableListener {
 
-		public AuditablePayloadEvent(Object source, T payload) {
-			super(source, payload);
-		}
-	}
+        public final List<Auditable> events = new ArrayList<>();
 
-
-	@Component
-	public static class AuditableListener {
-
-		public final List<Auditable> events = new ArrayList<>();
-
-		@EventListener
-		public void onEvent(Auditable event) {
-			events.add(event);
-		}
-	}
-
+        @EventListener
+        public void onEvent(Auditable event) {
+            events.add(event);
+        }
+    }
 }

@@ -35,52 +35,52 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 public class FormContentTests {
 
-	@Test // SPR-15753
-	public void formContentIsNotDuplicated() throws Exception {
+    @Test // SPR-15753
+    public void formContentIsNotDuplicated() throws Exception {
 
-		MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new Spr15753Controller())
-				.addFilter(new FormContentFilter())
-				.build();
+        MockMvc mockMvc =
+                MockMvcBuilders.standaloneSetup(new Spr15753Controller())
+                        .addFilter(new FormContentFilter())
+                        .build();
 
-		mockMvc.perform(put("/").content("d1=a&d2=s").contentType(MediaType.APPLICATION_FORM_URLENCODED))
-				.andExpect(content().string("d1:a, d2:s."));
-	}
+        mockMvc.perform(
+                        put("/").content("d1=a&d2=s")
+                                .contentType(MediaType.APPLICATION_FORM_URLENCODED))
+                .andExpect(content().string("d1:a, d2:s."));
+    }
 
+    @RestController
+    private static class Spr15753Controller {
 
-	@RestController
-	private static class Spr15753Controller {
+        @PutMapping
+        public String test(Data d) {
+            return String.format("d1:%s, d2:%s.", d.getD1(), d.getD2());
+        }
+    }
 
-		@PutMapping
-		public String test(Data d) {
-			return String.format("d1:%s, d2:%s.", d.getD1(), d.getD2());
-		}
-	}
+    @SuppressWarnings("unused")
+    private static class Data {
 
-	@SuppressWarnings("unused")
-	private static class Data {
+        private String d1;
 
-		private String d1;
+        private String d2;
 
-		private String d2;
+        public Data() {}
 
-		public Data() {
-		}
+        public String getD1() {
+            return d1;
+        }
 
-		public String getD1() {
-			return d1;
-		}
+        public void setD1(String d1) {
+            this.d1 = d1;
+        }
 
-		public void setD1(String d1) {
-			this.d1 = d1;
-		}
+        public String getD2() {
+            return d2;
+        }
 
-		public String getD2() {
-			return d2;
-		}
-
-		public void setD2(String d2) {
-			this.d2 = d2;
-		}
-	}
-
+        public void setD2(String d2) {
+            this.d2 = d2;
+        }
+    }
 }

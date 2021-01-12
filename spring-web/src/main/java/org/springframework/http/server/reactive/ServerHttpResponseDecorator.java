@@ -30,89 +30,84 @@ import org.springframework.util.Assert;
 import org.springframework.util.MultiValueMap;
 
 /**
- * Wraps another {@link ServerHttpResponse} and delegates all methods to it.
- * Sub-classes can override specific methods selectively.
+ * Wraps another {@link ServerHttpResponse} and delegates all methods to it. Sub-classes can
+ * override specific methods selectively.
  *
  * @author Rossen Stoyanchev
  * @since 5.0
  */
 public class ServerHttpResponseDecorator implements ServerHttpResponse {
 
-	private final ServerHttpResponse delegate;
+    private final ServerHttpResponse delegate;
 
+    public ServerHttpResponseDecorator(ServerHttpResponse delegate) {
+        Assert.notNull(delegate, "Delegate is required");
+        this.delegate = delegate;
+    }
 
-	public ServerHttpResponseDecorator(ServerHttpResponse delegate) {
-		Assert.notNull(delegate, "Delegate is required");
-		this.delegate = delegate;
-	}
+    public ServerHttpResponse getDelegate() {
+        return this.delegate;
+    }
 
+    // ServerHttpResponse delegation methods...
 
-	public ServerHttpResponse getDelegate() {
-		return this.delegate;
-	}
+    @Override
+    public boolean setStatusCode(@Nullable HttpStatus status) {
+        return getDelegate().setStatusCode(status);
+    }
 
+    @Override
+    public HttpStatus getStatusCode() {
+        return getDelegate().getStatusCode();
+    }
 
-	// ServerHttpResponse delegation methods...
+    @Override
+    public HttpHeaders getHeaders() {
+        return getDelegate().getHeaders();
+    }
 
-	@Override
-	public boolean setStatusCode(@Nullable HttpStatus status) {
-		return getDelegate().setStatusCode(status);
-	}
+    @Override
+    public MultiValueMap<String, ResponseCookie> getCookies() {
+        return getDelegate().getCookies();
+    }
 
-	@Override
-	public HttpStatus getStatusCode() {
-		return getDelegate().getStatusCode();
-	}
+    @Override
+    public void addCookie(ResponseCookie cookie) {
+        getDelegate().addCookie(cookie);
+    }
 
-	@Override
-	public HttpHeaders getHeaders() {
-		return getDelegate().getHeaders();
-	}
+    @Override
+    public DataBufferFactory bufferFactory() {
+        return getDelegate().bufferFactory();
+    }
 
-	@Override
-	public MultiValueMap<String, ResponseCookie> getCookies() {
-		return getDelegate().getCookies();
-	}
+    @Override
+    public void beforeCommit(Supplier<? extends Mono<Void>> action) {
+        getDelegate().beforeCommit(action);
+    }
 
-	@Override
-	public void addCookie(ResponseCookie cookie) {
-		getDelegate().addCookie(cookie);
-	}
+    @Override
+    public boolean isCommitted() {
+        return getDelegate().isCommitted();
+    }
 
-	@Override
-	public DataBufferFactory bufferFactory() {
-		return getDelegate().bufferFactory();
-	}
+    @Override
+    public Mono<Void> writeWith(Publisher<? extends DataBuffer> body) {
+        return getDelegate().writeWith(body);
+    }
 
-	@Override
-	public void beforeCommit(Supplier<? extends Mono<Void>> action) {
-		getDelegate().beforeCommit(action);
-	}
+    @Override
+    public Mono<Void> writeAndFlushWith(Publisher<? extends Publisher<? extends DataBuffer>> body) {
+        return getDelegate().writeAndFlushWith(body);
+    }
 
-	@Override
-	public boolean isCommitted() {
-		return getDelegate().isCommitted();
-	}
+    @Override
+    public Mono<Void> setComplete() {
+        return getDelegate().setComplete();
+    }
 
-	@Override
-	public Mono<Void> writeWith(Publisher<? extends DataBuffer> body) {
-		return getDelegate().writeWith(body);
-	}
-
-	@Override
-	public Mono<Void> writeAndFlushWith(Publisher<? extends Publisher<? extends DataBuffer>> body) {
-		return getDelegate().writeAndFlushWith(body);
-	}
-
-	@Override
-	public Mono<Void> setComplete() {
-		return getDelegate().setComplete();
-	}
-
-
-	@Override
-	public String toString() {
-		return getClass().getSimpleName() + " [delegate=" + getDelegate() + "]";
-	}
-
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " [delegate=" + getDelegate() + "]";
+    }
 }

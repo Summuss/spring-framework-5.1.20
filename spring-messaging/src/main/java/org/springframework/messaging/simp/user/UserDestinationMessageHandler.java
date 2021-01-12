@@ -41,264 +41,272 @@ import org.springframework.util.StringUtils;
 /**
  * {@code MessageHandler} with support for "user" destinations.
  *
- * <p>Listens for messages with "user" destinations, translates their destination
- * to actual target destinations unique to the active session(s) of a user, and
- * then sends the resolved messages to the broker channel to be delivered.
+ * <p>Listens for messages with "user" destinations, translates their destination to actual target
+ * destinations unique to the active session(s) of a user, and then sends the resolved messages to
+ * the broker channel to be delivered.
  *
  * @author Rossen Stoyanchev
  * @since 4.0
  */
 public class UserDestinationMessageHandler implements MessageHandler, SmartLifecycle {
 
-	private static final Log logger = SimpLogging.forLogName(UserDestinationMessageHandler.class);
+    private static final Log logger = SimpLogging.forLogName(UserDestinationMessageHandler.class);
 
+    private final SubscribableChannel clientInboundChannel;
 
-	private final SubscribableChannel clientInboundChannel;
+    private final SubscribableChannel brokerChannel;
 
-	private final SubscribableChannel brokerChannel;
+    private final UserDestinationResolver destinationResolver;
 
-	private final UserDestinationResolver destinationResolver;
+    private final MessageSendingOperations<String> messagingTemplate;
 
-	private final MessageSendingOperations<String> messagingTemplate;
+    @Nullable private BroadcastHandler broadcastHandler;
 
-	@Nullable
-	private BroadcastHandler broadcastHandler;
+    @Nullable private MessageHeaderInitializer headerInitializer;
 
-	@Nullable
-	private MessageHeaderInitializer headerInitializer;
+    private volatile boolean running = false;
 
-	private volatile boolean running = false;
+    private final Object lifecycleMonitor = new Object();
 
-	private final Object lifecycleMonitor = new Object();
+    /**
+     * Create an instance with the given client and broker channels subscribing to handle messages
+     * from each and then sending any resolved messages to the broker channel.
+     *
+     * @param clientInboundChannel messages received from clients.
+     * @param brokerChannel messages sent to the broker.
+     * @param resolver the resolver for "user" destinations.
+     */
+    public UserDestinationMessageHandler(
+            SubscribableChannel clientInboundChannel,
+            SubscribableChannel brokerChannel,
+            UserDestinationResolver resolver) {
 
+        Assert.notNull(clientInboundChannel, "'clientInChannel' must not be null");
+        Assert.notNull(brokerChannel, "'brokerChannel' must not be null");
+        Assert.notNull(resolver, "resolver must not be null");
 
-	/**
-	 * Create an instance with the given client and broker channels subscribing
-	 * to handle messages from each and then sending any resolved messages to the
-	 * broker channel.
-	 * @param clientInboundChannel messages received from clients.
-	 * @param brokerChannel messages sent to the broker.
-	 * @param resolver the resolver for "user" destinations.
-	 */
-	public UserDestinationMessageHandler(SubscribableChannel clientInboundChannel,
-			SubscribableChannel brokerChannel, UserDestinationResolver resolver) {
+        this.clientInboundChannel = clientInboundChannel;
+        this.brokerChannel = brokerChannel;
+        this.messagingTemplate = new SimpMessagingTemplate(brokerChannel);
+        this.destinationResolver = resolver;
+    }
 
-		Assert.notNull(clientInboundChannel, "'clientInChannel' must not be null");
-		Assert.notNull(brokerChannel, "'brokerChannel' must not be null");
-		Assert.notNull(resolver, "resolver must not be null");
+    /** Return the configured {@link UserDestinationResolver}. */
+    public UserDestinationResolver getUserDestinationResolver() {
+        return this.destinationResolver;
+    }
 
-		this.clientInboundChannel = clientInboundChannel;
-		this.brokerChannel = brokerChannel;
-		this.messagingTemplate = new SimpMessagingTemplate(brokerChannel);
-		this.destinationResolver = resolver;
-	}
+    /**
+     * Set a destination to broadcast messages to that remain unresolved because the user is not
+     * connected. In a multi-application server scenario this gives other application servers a
+     * chance to try.
+     *
+     * <p>By default this is not set.
+     *
+     * @param destination the target destination.
+     */
+    public void setBroadcastDestination(@Nullable String destination) {
+        this.broadcastHandler =
+                (StringUtils.hasText(destination)
+                        ? new BroadcastHandler(this.messagingTemplate, destination)
+                        : null);
+    }
 
+    /** Return the configured destination for unresolved messages. */
+    @Nullable
+    public String getBroadcastDestination() {
+        return (this.broadcastHandler != null
+                ? this.broadcastHandler.getBroadcastDestination()
+                : null);
+    }
 
-	/**
-	 * Return the configured {@link UserDestinationResolver}.
-	 */
-	public UserDestinationResolver getUserDestinationResolver() {
-		return this.destinationResolver;
-	}
+    /** Return the messaging template used to send resolved messages to the broker channel. */
+    public MessageSendingOperations<String> getBrokerMessagingTemplate() {
+        return this.messagingTemplate;
+    }
 
-	/**
-	 * Set a destination to broadcast messages to that remain unresolved because
-	 * the user is not connected. In a multi-application server scenario this
-	 * gives other application servers a chance to try.
-	 * <p>By default this is not set.
-	 * @param destination the target destination.
-	 */
-	public void setBroadcastDestination(@Nullable String destination) {
-		this.broadcastHandler = (StringUtils.hasText(destination) ?
-				new BroadcastHandler(this.messagingTemplate, destination) : null);
-	}
+    /**
+     * Configure a custom {@link MessageHeaderInitializer} to initialize the headers of resolved
+     * target messages.
+     *
+     * <p>By default this is not set.
+     */
+    public void setHeaderInitializer(@Nullable MessageHeaderInitializer headerInitializer) {
+        this.headerInitializer = headerInitializer;
+    }
 
-	/**
-	 * Return the configured destination for unresolved messages.
-	 */
-	@Nullable
-	public String getBroadcastDestination() {
-		return (this.broadcastHandler != null ? this.broadcastHandler.getBroadcastDestination() : null);
-	}
+    /** Return the configured header initializer. */
+    @Nullable
+    public MessageHeaderInitializer getHeaderInitializer() {
+        return this.headerInitializer;
+    }
 
-	/**
-	 * Return the messaging template used to send resolved messages to the
-	 * broker channel.
-	 */
-	public MessageSendingOperations<String> getBrokerMessagingTemplate() {
-		return this.messagingTemplate;
-	}
+    @Override
+    public final void start() {
+        synchronized (this.lifecycleMonitor) {
+            this.clientInboundChannel.subscribe(this);
+            this.brokerChannel.subscribe(this);
+            this.running = true;
+        }
+    }
 
-	/**
-	 * Configure a custom {@link MessageHeaderInitializer} to initialize the
-	 * headers of resolved target messages.
-	 * <p>By default this is not set.
-	 */
-	public void setHeaderInitializer(@Nullable MessageHeaderInitializer headerInitializer) {
-		this.headerInitializer = headerInitializer;
-	}
+    @Override
+    public final void stop() {
+        synchronized (this.lifecycleMonitor) {
+            this.running = false;
+            this.clientInboundChannel.unsubscribe(this);
+            this.brokerChannel.unsubscribe(this);
+        }
+    }
 
-	/**
-	 * Return the configured header initializer.
-	 */
-	@Nullable
-	public MessageHeaderInitializer getHeaderInitializer() {
-		return this.headerInitializer;
-	}
+    @Override
+    public final void stop(Runnable callback) {
+        synchronized (this.lifecycleMonitor) {
+            stop();
+            callback.run();
+        }
+    }
 
+    @Override
+    public final boolean isRunning() {
+        return this.running;
+    }
 
-	@Override
-	public final void start() {
-		synchronized (this.lifecycleMonitor) {
-			this.clientInboundChannel.subscribe(this);
-			this.brokerChannel.subscribe(this);
-			this.running = true;
-		}
-	}
+    @Override
+    public void handleMessage(Message<?> message) throws MessagingException {
+        Message<?> messageToUse = message;
+        if (this.broadcastHandler != null) {
+            messageToUse = this.broadcastHandler.preHandle(message);
+            if (messageToUse == null) {
+                return;
+            }
+        }
 
-	@Override
-	public final void stop() {
-		synchronized (this.lifecycleMonitor) {
-			this.running = false;
-			this.clientInboundChannel.unsubscribe(this);
-			this.brokerChannel.unsubscribe(this);
-		}
-	}
+        UserDestinationResult result = this.destinationResolver.resolveDestination(messageToUse);
+        if (result == null) {
+            return;
+        }
 
-	@Override
-	public final void stop(Runnable callback) {
-		synchronized (this.lifecycleMonitor) {
-			stop();
-			callback.run();
-		}
-	}
+        if (result.getTargetDestinations().isEmpty()) {
+            if (logger.isTraceEnabled()) {
+                logger.trace(
+                        "No active sessions for user destination: "
+                                + result.getSourceDestination());
+            }
+            if (this.broadcastHandler != null) {
+                this.broadcastHandler.handleUnresolved(messageToUse);
+            }
+            return;
+        }
 
-	@Override
-	public final boolean isRunning() {
-		return this.running;
-	}
+        SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.wrap(messageToUse);
+        initHeaders(accessor);
+        accessor.setNativeHeader(
+                SimpMessageHeaderAccessor.ORIGINAL_DESTINATION, result.getSubscribeDestination());
+        accessor.setLeaveMutable(true);
 
+        messageToUse =
+                MessageBuilder.createMessage(
+                        messageToUse.getPayload(), accessor.getMessageHeaders());
+        if (logger.isTraceEnabled()) {
+            logger.trace(
+                    "Translated "
+                            + result.getSourceDestination()
+                            + " -> "
+                            + result.getTargetDestinations());
+        }
+        for (String target : result.getTargetDestinations()) {
+            this.messagingTemplate.send(target, messageToUse);
+        }
+    }
 
-	@Override
-	public void handleMessage(Message<?> message) throws MessagingException {
-		Message<?> messageToUse = message;
-		if (this.broadcastHandler != null) {
-			messageToUse = this.broadcastHandler.preHandle(message);
-			if (messageToUse == null) {
-				return;
-			}
-		}
+    private void initHeaders(SimpMessageHeaderAccessor headerAccessor) {
+        if (getHeaderInitializer() != null) {
+            getHeaderInitializer().initHeaders(headerAccessor);
+        }
+    }
 
-		UserDestinationResult result = this.destinationResolver.resolveDestination(messageToUse);
-		if (result == null) {
-			return;
-		}
+    @Override
+    public String toString() {
+        return "UserDestinationMessageHandler[" + this.destinationResolver + "]";
+    }
 
-		if (result.getTargetDestinations().isEmpty()) {
-			if (logger.isTraceEnabled()) {
-				logger.trace("No active sessions for user destination: " + result.getSourceDestination());
-			}
-			if (this.broadcastHandler != null) {
-				this.broadcastHandler.handleUnresolved(messageToUse);
-			}
-			return;
-		}
+    /**
+     * A handler that broadcasts locally unresolved messages to the broker and also handles similar
+     * broadcasts received from the broker.
+     */
+    private static class BroadcastHandler {
 
-		SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.wrap(messageToUse);
-		initHeaders(accessor);
-		accessor.setNativeHeader(SimpMessageHeaderAccessor.ORIGINAL_DESTINATION, result.getSubscribeDestination());
-		accessor.setLeaveMutable(true);
+        private static final List<String> NO_COPY_LIST =
+                Arrays.asList("subscription", "message-id");
 
-		messageToUse = MessageBuilder.createMessage(messageToUse.getPayload(), accessor.getMessageHeaders());
-		if (logger.isTraceEnabled()) {
-			logger.trace("Translated " + result.getSourceDestination() + " -> " + result.getTargetDestinations());
-		}
-		for (String target : result.getTargetDestinations()) {
-			this.messagingTemplate.send(target, messageToUse);
-		}
-	}
+        private final MessageSendingOperations<String> messagingTemplate;
 
-	private void initHeaders(SimpMessageHeaderAccessor headerAccessor) {
-		if (getHeaderInitializer() != null) {
-			getHeaderInitializer().initHeaders(headerAccessor);
-		}
-	}
+        private final String broadcastDestination;
 
-	@Override
-	public String toString() {
-		return "UserDestinationMessageHandler[" + this.destinationResolver + "]";
-	}
+        public BroadcastHandler(MessageSendingOperations<String> template, String destination) {
+            this.messagingTemplate = template;
+            this.broadcastDestination = destination;
+        }
 
+        public String getBroadcastDestination() {
+            return this.broadcastDestination;
+        }
 
-	/**
-	 * A handler that broadcasts locally unresolved messages to the broker and
-	 * also handles similar broadcasts received from the broker.
-	 */
-	private static class BroadcastHandler {
+        @Nullable
+        public Message<?> preHandle(Message<?> message) throws MessagingException {
+            String destination = SimpMessageHeaderAccessor.getDestination(message.getHeaders());
+            if (!getBroadcastDestination().equals(destination)) {
+                return message;
+            }
+            SimpMessageHeaderAccessor accessor =
+                    SimpMessageHeaderAccessor.getAccessor(message, SimpMessageHeaderAccessor.class);
+            Assert.state(accessor != null, "No SimpMessageHeaderAccessor");
+            if (accessor.getSessionId() == null) {
+                // Our own broadcast
+                return null;
+            }
+            destination =
+                    accessor.getFirstNativeHeader(SimpMessageHeaderAccessor.ORIGINAL_DESTINATION);
+            if (logger.isTraceEnabled()) {
+                logger.trace("Checking unresolved user destination: " + destination);
+            }
+            SimpMessageHeaderAccessor newAccessor =
+                    SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);
+            for (String name : accessor.toNativeHeaderMap().keySet()) {
+                if (NO_COPY_LIST.contains(name)) {
+                    continue;
+                }
+                newAccessor.setNativeHeader(name, accessor.getFirstNativeHeader(name));
+            }
+            if (destination != null) {
+                newAccessor.setDestination(destination);
+            }
+            newAccessor.setHeader(
+                    SimpMessageHeaderAccessor.IGNORE_ERROR, true); // ensure send doesn't block
+            return MessageBuilder.createMessage(
+                    message.getPayload(), newAccessor.getMessageHeaders());
+        }
 
-		private static final List<String> NO_COPY_LIST = Arrays.asList("subscription", "message-id");
-
-		private final MessageSendingOperations<String> messagingTemplate;
-
-		private final String broadcastDestination;
-
-		public BroadcastHandler(MessageSendingOperations<String> template, String destination) {
-			this.messagingTemplate = template;
-			this.broadcastDestination = destination;
-		}
-
-		public String getBroadcastDestination() {
-			return this.broadcastDestination;
-		}
-
-		@Nullable
-		public Message<?> preHandle(Message<?> message) throws MessagingException {
-			String destination = SimpMessageHeaderAccessor.getDestination(message.getHeaders());
-			if (!getBroadcastDestination().equals(destination)) {
-				return message;
-			}
-			SimpMessageHeaderAccessor accessor =
-					SimpMessageHeaderAccessor.getAccessor(message, SimpMessageHeaderAccessor.class);
-			Assert.state(accessor != null, "No SimpMessageHeaderAccessor");
-			if (accessor.getSessionId() == null) {
-				// Our own broadcast
-				return null;
-			}
-			destination = accessor.getFirstNativeHeader(SimpMessageHeaderAccessor.ORIGINAL_DESTINATION);
-			if (logger.isTraceEnabled()) {
-				logger.trace("Checking unresolved user destination: " + destination);
-			}
-			SimpMessageHeaderAccessor newAccessor = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);
-			for (String name : accessor.toNativeHeaderMap().keySet()) {
-				if (NO_COPY_LIST.contains(name)) {
-					continue;
-				}
-				newAccessor.setNativeHeader(name, accessor.getFirstNativeHeader(name));
-			}
-			if (destination != null) {
-				newAccessor.setDestination(destination);
-			}
-			newAccessor.setHeader(SimpMessageHeaderAccessor.IGNORE_ERROR, true); // ensure send doesn't block
-			return MessageBuilder.createMessage(message.getPayload(), newAccessor.getMessageHeaders());
-		}
-
-		public void handleUnresolved(Message<?> message) {
-			MessageHeaders headers = message.getHeaders();
-			if (SimpMessageHeaderAccessor.getFirstNativeHeader(
-					SimpMessageHeaderAccessor.ORIGINAL_DESTINATION, headers) != null) {
-				// Re-broadcast
-				return;
-			}
-			SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.wrap(message);
-			String destination = accessor.getDestination();
-			accessor.setNativeHeader(SimpMessageHeaderAccessor.ORIGINAL_DESTINATION, destination);
-			accessor.setLeaveMutable(true);
-			message = MessageBuilder.createMessage(message.getPayload(), accessor.getMessageHeaders());
-			if (logger.isTraceEnabled()) {
-				logger.trace("Translated " + destination + " -> " + getBroadcastDestination());
-			}
-			this.messagingTemplate.send(getBroadcastDestination(), message);
-		}
-	}
-
+        public void handleUnresolved(Message<?> message) {
+            MessageHeaders headers = message.getHeaders();
+            if (SimpMessageHeaderAccessor.getFirstNativeHeader(
+                            SimpMessageHeaderAccessor.ORIGINAL_DESTINATION, headers)
+                    != null) {
+                // Re-broadcast
+                return;
+            }
+            SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.wrap(message);
+            String destination = accessor.getDestination();
+            accessor.setNativeHeader(SimpMessageHeaderAccessor.ORIGINAL_DESTINATION, destination);
+            accessor.setLeaveMutable(true);
+            message =
+                    MessageBuilder.createMessage(
+                            message.getPayload(), accessor.getMessageHeaders());
+            if (logger.isTraceEnabled()) {
+                logger.trace("Translated " + destination + " -> " + getBroadcastDestination());
+            }
+            this.messagingTemplate.send(getBroadcastDestination(), message);
+        }
+    }
 }

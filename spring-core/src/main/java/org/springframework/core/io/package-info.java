@@ -1,6 +1,4 @@
-/**
- * Generic abstraction for (file-based) resources, used throughout the framework.
- */
+/** Generic abstraction for (file-based) resources, used throughout the framework. */
 @NonNullApi
 @NonNullFields
 package org.springframework.core.io;

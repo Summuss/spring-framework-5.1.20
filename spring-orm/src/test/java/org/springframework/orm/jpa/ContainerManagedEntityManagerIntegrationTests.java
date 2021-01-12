@@ -40,144 +40,146 @@ import static org.junit.Assert.*;
  * @author Juergen Hoeller
  * @since 2.0
  */
-public class ContainerManagedEntityManagerIntegrationTests extends AbstractEntityManagerFactoryIntegrationTests {
+public class ContainerManagedEntityManagerIntegrationTests
+        extends AbstractEntityManagerFactoryIntegrationTests {
 
-	@Autowired
-	private AbstractEntityManagerFactoryBean entityManagerFactoryBean;
+    @Autowired private AbstractEntityManagerFactoryBean entityManagerFactoryBean;
 
+    @Test
+    public void testExceptionTranslationWithDialectFoundOnIntroducedEntityManagerInfo()
+            throws Exception {
+        doTestExceptionTranslationWithDialectFound(
+                ((EntityManagerFactoryInfo) entityManagerFactory).getJpaDialect());
+    }
 
-	@Test
-	public void testExceptionTranslationWithDialectFoundOnIntroducedEntityManagerInfo() throws Exception {
-		doTestExceptionTranslationWithDialectFound(((EntityManagerFactoryInfo) entityManagerFactory).getJpaDialect());
-	}
+    @Test
+    public void testExceptionTranslationWithDialectFoundOnEntityManagerFactoryBean()
+            throws Exception {
+        assertNotNull("Dialect must have been set", entityManagerFactoryBean.getJpaDialect());
+        doTestExceptionTranslationWithDialectFound(entityManagerFactoryBean);
+    }
 
-	@Test
-	public void testExceptionTranslationWithDialectFoundOnEntityManagerFactoryBean() throws Exception {
-		assertNotNull("Dialect must have been set", entityManagerFactoryBean.getJpaDialect());
-		doTestExceptionTranslationWithDialectFound(entityManagerFactoryBean);
-	}
+    protected void doTestExceptionTranslationWithDialectFound(PersistenceExceptionTranslator pet)
+            throws Exception {
+        RuntimeException in1 = new RuntimeException("in1");
+        PersistenceException in2 = new PersistenceException();
+        assertNull("No translation here", pet.translateExceptionIfPossible(in1));
+        DataAccessException dex = pet.translateExceptionIfPossible(in2);
+        assertNotNull(dex);
+        assertSame(in2, dex.getCause());
+    }
 
-	protected void doTestExceptionTranslationWithDialectFound(PersistenceExceptionTranslator pet) throws Exception {
-		RuntimeException in1 = new RuntimeException("in1");
-		PersistenceException in2 = new PersistenceException();
-		assertNull("No translation here", pet.translateExceptionIfPossible(in1));
-		DataAccessException dex = pet.translateExceptionIfPossible(in2);
-		assertNotNull(dex);
-		assertSame(in2, dex.getCause());
-	}
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testEntityManagerProxyIsProxy() {
+        EntityManager em = createContainerManagedEntityManager();
+        assertTrue(Proxy.isProxyClass(em.getClass()));
+        Query q = em.createQuery("select p from Person as p");
+        List<Person> people = q.getResultList();
+        assertTrue(people.isEmpty());
 
-	@Test
-	@SuppressWarnings("unchecked")
-	public void testEntityManagerProxyIsProxy() {
-		EntityManager em = createContainerManagedEntityManager();
-		assertTrue(Proxy.isProxyClass(em.getClass()));
-		Query q = em.createQuery("select p from Person as p");
-		List<Person> people = q.getResultList();
-		assertTrue(people.isEmpty());
+        assertTrue("Should be open to start with", em.isOpen());
+        try {
+            em.close();
+            fail("Close should not work on container managed EM");
+        } catch (IllegalStateException ex) {
+            // OK
+        }
+        assertTrue(em.isOpen());
+    }
 
-		assertTrue("Should be open to start with", em.isOpen());
-		try {
-			em.close();
-			fail("Close should not work on container managed EM");
-		}
-		catch (IllegalStateException ex) {
-			// OK
-		}
-		assertTrue(em.isOpen());
-	}
+    // This would be legal, at least if not actually _starting_ a tx
+    @Test
+    public void testEntityManagerProxyRejectsProgrammaticTxManagement() {
+        try {
+            createContainerManagedEntityManager().getTransaction();
+            fail("Should have thrown an IllegalStateException");
+        } catch (IllegalStateException ex) {
+            // expected
+        }
+    }
 
-	// This would be legal, at least if not actually _starting_ a tx
-	@Test
-	public void testEntityManagerProxyRejectsProgrammaticTxManagement() {
-		try {
-			createContainerManagedEntityManager().getTransaction();
-			fail("Should have thrown an IllegalStateException");
-		}
-		catch (IllegalStateException ex) {
-			// expected
-		}
-	}
+    /*
+     * See comments in spec on EntityManager.joinTransaction().
+     * We take the view that this is a valid no op.
+     */
+    @Test
+    public void testContainerEntityManagerProxyAllowsJoinTransactionInTransaction() {
+        createContainerManagedEntityManager().joinTransaction();
+    }
 
-	/*
-	 * See comments in spec on EntityManager.joinTransaction().
-	 * We take the view that this is a valid no op.
-	 */
-	@Test
-	public void testContainerEntityManagerProxyAllowsJoinTransactionInTransaction() {
-		createContainerManagedEntityManager().joinTransaction();
-	}
+    @Test
+    public void testContainerEntityManagerProxyRejectsJoinTransactionWithoutTransaction() {
+        endTransaction();
 
-	@Test
-	public void testContainerEntityManagerProxyRejectsJoinTransactionWithoutTransaction() {
-		endTransaction();
+        try {
+            createContainerManagedEntityManager().joinTransaction();
+            fail("Should have thrown a TransactionRequiredException");
+        } catch (TransactionRequiredException ex) {
+            // expected
+        }
+    }
 
-		try {
-			createContainerManagedEntityManager().joinTransaction();
-			fail("Should have thrown a TransactionRequiredException");
-		}
-		catch (TransactionRequiredException ex) {
-			// expected
-		}
-	}
+    @Test
+    public void testInstantiateAndSave() {
+        EntityManager em = createContainerManagedEntityManager();
+        doInstantiateAndSave(em);
+    }
 
-	@Test
-	public void testInstantiateAndSave() {
-		EntityManager em = createContainerManagedEntityManager();
-		doInstantiateAndSave(em);
-	}
+    protected void doInstantiateAndSave(EntityManager em) {
+        assertEquals(
+                "Should be no people from previous transactions",
+                0,
+                countRowsInTable(em, "person"));
+        Person p = new Person();
 
-	protected void doInstantiateAndSave(EntityManager em) {
-		assertEquals("Should be no people from previous transactions", 0, countRowsInTable(em, "person"));
-		Person p = new Person();
+        p.setFirstName("Tony");
+        p.setLastName("Blair");
+        em.persist(p);
 
-		p.setFirstName("Tony");
-		p.setLastName("Blair");
-		em.persist(p);
+        em.flush();
+        assertEquals("1 row must have been inserted", 1, countRowsInTable(em, "person"));
+    }
 
-		em.flush();
-		assertEquals("1 row must have been inserted", 1, countRowsInTable(em, "person"));
-	}
+    @Test
+    public void testReuseInNewTransaction() {
+        EntityManager em = createContainerManagedEntityManager();
+        doInstantiateAndSave(em);
+        endTransaction();
 
-	@Test
-	public void testReuseInNewTransaction() {
-		EntityManager em = createContainerManagedEntityManager();
-		doInstantiateAndSave(em);
-		endTransaction();
+        // assertFalse(em.getTransaction().isActive());
 
-		//assertFalse(em.getTransaction().isActive());
+        startNewTransaction();
+        // Call any method: should cause automatic tx invocation
+        assertFalse(em.contains(new Person()));
+        // assertTrue(em.getTransaction().isActive());
 
-		startNewTransaction();
-		// Call any method: should cause automatic tx invocation
-		assertFalse(em.contains(new Person()));
-		//assertTrue(em.getTransaction().isActive());
+        doInstantiateAndSave(em);
+        setComplete();
+        endTransaction(); // Should rollback
+        assertEquals("Tx must have committed back", 1, countRowsInTable(em, "person"));
 
-		doInstantiateAndSave(em);
-		setComplete();
-		endTransaction();	// Should rollback
-		assertEquals("Tx must have committed back", 1, countRowsInTable(em, "person"));
+        // Now clean up the database
+        deleteFromTables("person");
+    }
 
-		// Now clean up the database
-		deleteFromTables("person");
-	}
+    @Test
+    public void testRollbackOccurs() {
+        EntityManager em = createContainerManagedEntityManager();
+        doInstantiateAndSave(em);
+        endTransaction(); // Should rollback
+        assertEquals("Tx must have been rolled back", 0, countRowsInTable(em, "person"));
+    }
 
-	@Test
-	public void testRollbackOccurs() {
-		EntityManager em = createContainerManagedEntityManager();
-		doInstantiateAndSave(em);
-		endTransaction();	// Should rollback
-		assertEquals("Tx must have been rolled back", 0, countRowsInTable(em, "person"));
-	}
+    @Test
+    public void testCommitOccurs() {
+        EntityManager em = createContainerManagedEntityManager();
+        doInstantiateAndSave(em);
+        setComplete();
+        endTransaction(); // Should rollback
+        assertEquals("Tx must have committed back", 1, countRowsInTable(em, "person"));
 
-	@Test
-	public void testCommitOccurs() {
-		EntityManager em = createContainerManagedEntityManager();
-		doInstantiateAndSave(em);
-		setComplete();
-		endTransaction();	// Should rollback
-		assertEquals("Tx must have committed back", 1, countRowsInTable(em, "person"));
-
-		// Now clean up the database
-		deleteFromTables("person");
-	}
-
+        // Now clean up the database
+        deleteFromTables("person");
+    }
 }

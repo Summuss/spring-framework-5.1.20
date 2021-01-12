@@ -151,8 +151,8 @@ class SimpAnnotationMethodMessageHandlerKotlinTests {
     }
 
     class TestSimpAnnotationMethodMessageHandler(brokerTemplate: SimpMessageSendingOperations,
-                                                         clientInboundChannel: SubscribableChannel,
-                                                         clientOutboundChannel: MessageChannel) :
+                                                 clientInboundChannel: SubscribableChannel,
+                                                 clientOutboundChannel: MessageChannel) :
             SimpAnnotationMethodMessageHandler(clientInboundChannel, clientOutboundChannel, brokerTemplate) {
 
         fun registerHandler(handler: Any) {

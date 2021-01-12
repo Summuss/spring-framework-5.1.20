@@ -1,6 +1,4 @@
-/**
- * Type conversion system API.
- */
+/** Type conversion system API. */
 @NonNullApi
 @NonNullFields
 package org.springframework.core.convert;

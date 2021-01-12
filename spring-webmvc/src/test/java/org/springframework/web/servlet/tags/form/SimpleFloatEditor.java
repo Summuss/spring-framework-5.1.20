@@ -24,13 +24,13 @@ import java.beans.PropertyEditorSupport;
  */
 class SimpleFloatEditor extends PropertyEditorSupport {
 
-	@Override
-	public void setAsText(String text) throws IllegalArgumentException {
-		setValue(new Float(text));
-	}
+    @Override
+    public void setAsText(String text) throws IllegalArgumentException {
+        setValue(new Float(text));
+    }
 
-	@Override
-	public String getAsText() {
-		return getValue() + "f";
-	}
+    @Override
+    public String getAsText() {
+        return getValue() + "f";
+    }
 }

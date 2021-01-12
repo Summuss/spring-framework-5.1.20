@@ -1,6 +1,4 @@
-/**
- * SpEL's standard parser implementation.
- */
+/** SpEL's standard parser implementation. */
 @NonNullApi
 @NonNullFields
 package org.springframework.expression.spel.standard;

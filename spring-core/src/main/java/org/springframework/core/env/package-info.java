@@ -1,6 +1,6 @@
 /**
- * Spring's environment abstraction consisting of bean definition
- * profile and hierarchical property source support.
+ * Spring's environment abstraction consisting of bean definition profile and hierarchical property
+ * source support.
  */
 @NonNullApi
 @NonNullFields

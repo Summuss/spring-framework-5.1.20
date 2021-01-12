@@ -24,13 +24,13 @@ import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 /**
- * {@link java.beans.PropertyEditor} implementation for standard JDK
- * {@link java.util.ResourceBundle ResourceBundles}.
+ * {@link java.beans.PropertyEditor} implementation for standard JDK {@link java.util.ResourceBundle
+ * ResourceBundles}.
  *
  * <p>Only supports conversion <i>from</i> a String, but not <i>to</i> a String.
  *
- * Find below some examples of using this class in a (properly configured)
- * Spring container using XML-based metadata:
+ * <p>Find below some examples of using this class in a (properly configured) Spring container using
+ * XML-based metadata:
  *
  * <pre class="code"> &lt;bean id="errorDialog" class="..."&gt;
  *    &lt;!--
@@ -47,11 +47,13 @@ import org.springframework.util.StringUtils;
  *    &lt;property name="messages" value="com/messages/DialogMessages"/&gt;
  * &lt;/bean&gt;</pre>
  *
- * <p>A 'properly configured' Spring {@link org.springframework.context.ApplicationContext container}
- * might contain a {@link org.springframework.beans.factory.config.CustomEditorConfigurer}
- * definition such that the conversion can be effected transparently:
+ * <p>A 'properly configured' Spring {@link org.springframework.context.ApplicationContext
+ * container} might contain a {@link
+ * org.springframework.beans.factory.config.CustomEditorConfigurer} definition such that the
+ * conversion can be effected transparently:
  *
- * <pre class="code"> &lt;bean class="org.springframework.beans.factory.config.CustomEditorConfigurer"&gt;
+ * <pre class="code">
+ *  &lt;bean class="org.springframework.beans.factory.config.CustomEditorConfigurer"&gt;
  *    &lt;property name="customEditors"&gt;
  *        &lt;map&gt;
  *            &lt;entry key="java.util.ResourceBundle"&gt;
@@ -61,8 +63,8 @@ import org.springframework.util.StringUtils;
  *    &lt;/property&gt;
  * &lt;/bean&gt;</pre>
  *
- * <p>Please note that this {@link java.beans.PropertyEditor} is <b>not</b>
- * registered by default with any of the Spring infrastructure.
+ * <p>Please note that this {@link java.beans.PropertyEditor} is <b>not</b> registered by default
+ * with any of the Spring infrastructure.
  *
  * <p>Thanks to David Leal Valmana for the suggestion and initial prototype.
  *
@@ -72,32 +74,32 @@ import org.springframework.util.StringUtils;
  */
 public class ResourceBundleEditor extends PropertyEditorSupport {
 
-	/**
-	 * The separator used to distinguish between the base name and the locale
-	 * (if any) when {@link #setAsText(String) converting from a String}.
-	 */
-	public static final String BASE_NAME_SEPARATOR = "_";
+    /**
+     * The separator used to distinguish between the base name and the locale (if any) when {@link
+     * #setAsText(String) converting from a String}.
+     */
+    public static final String BASE_NAME_SEPARATOR = "_";
 
+    @Override
+    public void setAsText(String text) throws IllegalArgumentException {
+        Assert.hasText(text, "'text' must not be empty");
+        String name = text.trim();
 
-	@Override
-	public void setAsText(String text) throws IllegalArgumentException {
-		Assert.hasText(text, "'text' must not be empty");
-		String name = text.trim();
-
-		int separator = name.indexOf(BASE_NAME_SEPARATOR);
-		if (separator == -1) {
-			setValue(ResourceBundle.getBundle(name));
-		}
-		else {
-			// The name potentially contains locale information
-			String baseName = name.substring(0, separator);
-			if (!StringUtils.hasText(baseName)) {
-				throw new IllegalArgumentException("Invalid ResourceBundle name: '" + text + "'");
-			}
-			String localeString = name.substring(separator + 1);
-			Locale locale = StringUtils.parseLocaleString(localeString);
-			setValue(locale != null ? ResourceBundle.getBundle(baseName, locale) : ResourceBundle.getBundle(baseName));
-		}
-	}
-
+        int separator = name.indexOf(BASE_NAME_SEPARATOR);
+        if (separator == -1) {
+            setValue(ResourceBundle.getBundle(name));
+        } else {
+            // The name potentially contains locale information
+            String baseName = name.substring(0, separator);
+            if (!StringUtils.hasText(baseName)) {
+                throw new IllegalArgumentException("Invalid ResourceBundle name: '" + text + "'");
+            }
+            String localeString = name.substring(separator + 1);
+            Locale locale = StringUtils.parseLocaleString(localeString);
+            setValue(
+                    locale != null
+                            ? ResourceBundle.getBundle(baseName, locale)
+                            : ResourceBundle.getBundle(baseName));
+        }
+    }
 }

@@ -1,6 +1,4 @@
-/**
- * An API for defining Formatters to format field model values for display in a UI.
- */
+/** An API for defining Formatters to format field model values for display in a UI. */
 @NonNullApi
 @NonNullFields
 package org.springframework.format;

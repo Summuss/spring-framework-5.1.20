@@ -34,100 +34,93 @@ import org.springframework.util.Assert;
  */
 class DefaultRenderingBuilder implements Rendering.RedirectBuilder {
 
-	private final Object view;
+    private final Object view;
 
-	@Nullable
-	private Model model;
+    @Nullable private Model model;
 
-	@Nullable
-	private HttpStatus status;
+    @Nullable private HttpStatus status;
 
-	@Nullable
-	private HttpHeaders headers;
+    @Nullable private HttpHeaders headers;
 
+    DefaultRenderingBuilder(Object view) {
+        this.view = view;
+    }
 
-	DefaultRenderingBuilder(Object view) {
-		this.view = view;
-	}
+    @Override
+    public DefaultRenderingBuilder modelAttribute(String name, Object value) {
+        initModel().addAttribute(name, value);
+        return this;
+    }
 
+    @Override
+    public DefaultRenderingBuilder modelAttribute(Object value) {
+        initModel().addAttribute(value);
+        return this;
+    }
 
-	@Override
-	public DefaultRenderingBuilder modelAttribute(String name, Object value) {
-		initModel().addAttribute(name, value);
-		return this;
-	}
+    @Override
+    public DefaultRenderingBuilder modelAttributes(Object... values) {
+        initModel().addAllAttributes(Arrays.asList(values));
+        return this;
+    }
 
-	@Override
-	public DefaultRenderingBuilder modelAttribute(Object value) {
-		initModel().addAttribute(value);
-		return this;
-	}
+    @Override
+    public DefaultRenderingBuilder model(Map<String, ?> map) {
+        initModel().addAllAttributes(map);
+        return this;
+    }
 
-	@Override
-	public DefaultRenderingBuilder modelAttributes(Object... values) {
-		initModel().addAllAttributes(Arrays.asList(values));
-		return this;
-	}
+    private Model initModel() {
+        if (this.model == null) {
+            this.model = new ExtendedModelMap();
+        }
+        return this.model;
+    }
 
-	@Override
-	public DefaultRenderingBuilder model(Map<String, ?> map) {
-		initModel().addAllAttributes(map);
-		return this;
-	}
+    @Override
+    public DefaultRenderingBuilder status(HttpStatus status) {
+        this.status = status;
+        return this;
+    }
 
-	private Model initModel() {
-		if (this.model == null) {
-			this.model = new ExtendedModelMap();
-		}
-		return this.model;
-	}
+    @Override
+    public DefaultRenderingBuilder header(String headerName, String... headerValues) {
+        initHeaders().put(headerName, Arrays.asList(headerValues));
+        return this;
+    }
 
-	@Override
-	public DefaultRenderingBuilder status(HttpStatus status) {
-		this.status = status;
-		return this;
-	}
+    @Override
+    public DefaultRenderingBuilder headers(HttpHeaders headers) {
+        initHeaders().putAll(headers);
+        return this;
+    }
 
-	@Override
-	public DefaultRenderingBuilder header(String headerName, String... headerValues) {
-		initHeaders().put(headerName, Arrays.asList(headerValues));
-		return this;
-	}
+    private HttpHeaders initHeaders() {
+        if (this.headers == null) {
+            this.headers = new HttpHeaders();
+        }
+        return this.headers;
+    }
 
-	@Override
-	public DefaultRenderingBuilder headers(HttpHeaders headers) {
-		initHeaders().putAll(headers);
-		return this;
-	}
+    @Override
+    public Rendering.RedirectBuilder contextRelative(boolean contextRelative) {
+        getRedirectView().setContextRelative(contextRelative);
+        return this;
+    }
 
-	private HttpHeaders initHeaders() {
-		if (this.headers == null) {
-			this.headers = new HttpHeaders();
-		}
-		return this.headers;
-	}
+    @Override
+    public Rendering.RedirectBuilder propagateQuery(boolean propagate) {
+        getRedirectView().setPropagateQuery(propagate);
+        return this;
+    }
 
-	@Override
-	public Rendering.RedirectBuilder contextRelative(boolean contextRelative) {
-		getRedirectView().setContextRelative(contextRelative);
-		return this;
-	}
+    private RedirectView getRedirectView() {
+        Assert.isInstanceOf(RedirectView.class, this.view);
+        return (RedirectView) this.view;
+    }
 
-	@Override
-	public Rendering.RedirectBuilder propagateQuery(boolean propagate) {
-		getRedirectView().setPropagateQuery(propagate);
-		return this;
-	}
-
-	private RedirectView getRedirectView() {
-		Assert.isInstanceOf(RedirectView.class, this.view);
-		return (RedirectView) this.view;
-	}
-
-
-	@Override
-	public Rendering build() {
-		return new DefaultRendering(this.view, this.model, this.status, this.headers);
-	}
-
+    @Override
+    public Rendering build() {
+        return new DefaultRendering(this.view, this.model, this.status, this.headers);
+    }
 }

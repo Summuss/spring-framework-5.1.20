@@ -47,92 +47,83 @@ import org.springframework.web.socket.handler.ExceptionWebSocketHandlerDecorator
 @WebSocket
 public class JettyWebSocketHandlerAdapter {
 
-	private static final ByteBuffer EMPTY_PAYLOAD = ByteBuffer.wrap(new byte[0]);
+    private static final ByteBuffer EMPTY_PAYLOAD = ByteBuffer.wrap(new byte[0]);
 
-	private static final Log logger = LogFactory.getLog(JettyWebSocketHandlerAdapter.class);
+    private static final Log logger = LogFactory.getLog(JettyWebSocketHandlerAdapter.class);
 
+    private final WebSocketHandler webSocketHandler;
 
-	private final WebSocketHandler webSocketHandler;
+    private final JettyWebSocketSession wsSession;
 
-	private final JettyWebSocketSession wsSession;
+    public JettyWebSocketHandlerAdapter(
+            WebSocketHandler webSocketHandler, JettyWebSocketSession wsSession) {
+        Assert.notNull(webSocketHandler, "WebSocketHandler must not be null");
+        Assert.notNull(wsSession, "WebSocketSession must not be null");
+        this.webSocketHandler = webSocketHandler;
+        this.wsSession = wsSession;
+    }
 
+    @OnWebSocketConnect
+    public void onWebSocketConnect(Session session) {
+        try {
+            this.wsSession.initializeNativeSession(session);
+            this.webSocketHandler.afterConnectionEstablished(this.wsSession);
+        } catch (Throwable ex) {
+            ExceptionWebSocketHandlerDecorator.tryCloseWithError(this.wsSession, ex, logger);
+        }
+    }
 
-	public JettyWebSocketHandlerAdapter(WebSocketHandler webSocketHandler, JettyWebSocketSession wsSession) {
-		Assert.notNull(webSocketHandler, "WebSocketHandler must not be null");
-		Assert.notNull(wsSession, "WebSocketSession must not be null");
-		this.webSocketHandler = webSocketHandler;
-		this.wsSession = wsSession;
-	}
+    @OnWebSocketMessage
+    public void onWebSocketText(String payload) {
+        TextMessage message = new TextMessage(payload);
+        try {
+            this.webSocketHandler.handleMessage(this.wsSession, message);
+        } catch (Throwable ex) {
+            ExceptionWebSocketHandlerDecorator.tryCloseWithError(this.wsSession, ex, logger);
+        }
+    }
 
+    @OnWebSocketMessage
+    public void onWebSocketBinary(byte[] payload, int offset, int length) {
+        BinaryMessage message = new BinaryMessage(payload, offset, length, true);
+        try {
+            this.webSocketHandler.handleMessage(this.wsSession, message);
+        } catch (Throwable ex) {
+            ExceptionWebSocketHandlerDecorator.tryCloseWithError(this.wsSession, ex, logger);
+        }
+    }
 
-	@OnWebSocketConnect
-	public void onWebSocketConnect(Session session) {
-		try {
-			this.wsSession.initializeNativeSession(session);
-			this.webSocketHandler.afterConnectionEstablished(this.wsSession);
-		}
-		catch (Throwable ex) {
-			ExceptionWebSocketHandlerDecorator.tryCloseWithError(this.wsSession, ex, logger);
-		}
-	}
+    @OnWebSocketFrame
+    public void onWebSocketFrame(Frame frame) {
+        if (OpCode.PONG == frame.getOpCode()) {
+            ByteBuffer payload = frame.getPayload() != null ? frame.getPayload() : EMPTY_PAYLOAD;
+            PongMessage message = new PongMessage(payload);
+            try {
+                this.webSocketHandler.handleMessage(this.wsSession, message);
+            } catch (Throwable ex) {
+                ExceptionWebSocketHandlerDecorator.tryCloseWithError(this.wsSession, ex, logger);
+            }
+        }
+    }
 
-	@OnWebSocketMessage
-	public void onWebSocketText(String payload) {
-		TextMessage message = new TextMessage(payload);
-		try {
-			this.webSocketHandler.handleMessage(this.wsSession, message);
-		}
-		catch (Throwable ex) {
-			ExceptionWebSocketHandlerDecorator.tryCloseWithError(this.wsSession, ex, logger);
-		}
-	}
+    @OnWebSocketClose
+    public void onWebSocketClose(int statusCode, String reason) {
+        CloseStatus closeStatus = new CloseStatus(statusCode, reason);
+        try {
+            this.webSocketHandler.afterConnectionClosed(this.wsSession, closeStatus);
+        } catch (Throwable ex) {
+            if (logger.isWarnEnabled()) {
+                logger.warn("Unhandled exception after connection closed for " + this, ex);
+            }
+        }
+    }
 
-	@OnWebSocketMessage
-	public void onWebSocketBinary(byte[] payload, int offset, int length) {
-		BinaryMessage message = new BinaryMessage(payload, offset, length, true);
-		try {
-			this.webSocketHandler.handleMessage(this.wsSession, message);
-		}
-		catch (Throwable ex) {
-			ExceptionWebSocketHandlerDecorator.tryCloseWithError(this.wsSession, ex, logger);
-		}
-	}
-
-	@OnWebSocketFrame
-	public void onWebSocketFrame(Frame frame) {
-		if (OpCode.PONG == frame.getOpCode()) {
-			ByteBuffer payload = frame.getPayload() != null ? frame.getPayload() : EMPTY_PAYLOAD;
-			PongMessage message = new PongMessage(payload);
-			try {
-				this.webSocketHandler.handleMessage(this.wsSession, message);
-			}
-			catch (Throwable ex) {
-				ExceptionWebSocketHandlerDecorator.tryCloseWithError(this.wsSession, ex, logger);
-			}
-		}
-	}
-
-	@OnWebSocketClose
-	public void onWebSocketClose(int statusCode, String reason) {
-		CloseStatus closeStatus = new CloseStatus(statusCode, reason);
-		try {
-			this.webSocketHandler.afterConnectionClosed(this.wsSession, closeStatus);
-		}
-		catch (Throwable ex) {
-			if (logger.isWarnEnabled()) {
-				logger.warn("Unhandled exception after connection closed for " + this, ex);
-			}
-		}
-	}
-
-	@OnWebSocketError
-	public void onWebSocketError(Throwable cause) {
-		try {
-			this.webSocketHandler.handleTransportError(this.wsSession, cause);
-		}
-		catch (Throwable ex) {
-			ExceptionWebSocketHandlerDecorator.tryCloseWithError(this.wsSession, ex, logger);
-		}
-	}
-
+    @OnWebSocketError
+    public void onWebSocketError(Throwable cause) {
+        try {
+            this.webSocketHandler.handleTransportError(this.wsSession, cause);
+        } catch (Throwable ex) {
+            ExceptionWebSocketHandlerDecorator.tryCloseWithError(this.wsSession, ex, logger);
+        }
+    }
 }

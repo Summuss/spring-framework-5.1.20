@@ -31,35 +31,36 @@ import org.springframework.util.xml.DomUtils;
 
 public class ComponentBeanDefinitionParser extends AbstractBeanDefinitionParser {
 
-	@Override
-	protected AbstractBeanDefinition parseInternal(Element element, ParserContext parserContext) {
-		return parseComponentElement(element);
-	}
+    @Override
+    protected AbstractBeanDefinition parseInternal(Element element, ParserContext parserContext) {
+        return parseComponentElement(element);
+    }
 
-	private static AbstractBeanDefinition parseComponentElement(Element element) {
-		BeanDefinitionBuilder factory = BeanDefinitionBuilder.rootBeanDefinition(ComponentFactoryBean.class);
-		factory.addPropertyValue("parent", parseComponent(element));
+    private static AbstractBeanDefinition parseComponentElement(Element element) {
+        BeanDefinitionBuilder factory =
+                BeanDefinitionBuilder.rootBeanDefinition(ComponentFactoryBean.class);
+        factory.addPropertyValue("parent", parseComponent(element));
 
-		List<Element> childElements = DomUtils.getChildElementsByTagName(element, "component");
-		if (!CollectionUtils.isEmpty(childElements)) {
-			parseChildComponents(childElements, factory);
-		}
+        List<Element> childElements = DomUtils.getChildElementsByTagName(element, "component");
+        if (!CollectionUtils.isEmpty(childElements)) {
+            parseChildComponents(childElements, factory);
+        }
 
-		return factory.getBeanDefinition();
-	}
+        return factory.getBeanDefinition();
+    }
 
-	private static BeanDefinition parseComponent(Element element) {
-		BeanDefinitionBuilder component = BeanDefinitionBuilder.rootBeanDefinition(Component.class);
-		component.addPropertyValue("name", element.getAttribute("name"));
-		return component.getBeanDefinition();
-	}
+    private static BeanDefinition parseComponent(Element element) {
+        BeanDefinitionBuilder component = BeanDefinitionBuilder.rootBeanDefinition(Component.class);
+        component.addPropertyValue("name", element.getAttribute("name"));
+        return component.getBeanDefinition();
+    }
 
-	private static void parseChildComponents(List<Element> childElements, BeanDefinitionBuilder factory) {
-		ManagedList<BeanDefinition> children = new ManagedList<>(childElements.size());
-		for (Element element : childElements) {
-			children.add(parseComponentElement(element));
-		}
-		factory.addPropertyValue("children", children);
-	}
-
+    private static void parseChildComponents(
+            List<Element> childElements, BeanDefinitionBuilder factory) {
+        ManagedList<BeanDefinition> children = new ManagedList<>(childElements.size());
+        for (Element element : childElements) {
+            children.add(parseComponentElement(element));
+        }
+        factory.addPropertyValue("children", children);
+    }
 }

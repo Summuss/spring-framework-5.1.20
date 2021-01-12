@@ -26,8 +26,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 /**
- * Base class for {@link EmbeddedDatabaseConfigurer} implementations
- * providing common shutdown behavior through a "SHUTDOWN" statement.
+ * Base class for {@link EmbeddedDatabaseConfigurer} implementations providing common shutdown
+ * behavior through a "SHUTDOWN" statement.
  *
  * @author Oliver Gierke
  * @author Juergen Hoeller
@@ -35,36 +35,30 @@ import org.apache.commons.logging.LogFactory;
  */
 abstract class AbstractEmbeddedDatabaseConfigurer implements EmbeddedDatabaseConfigurer {
 
-	protected final Log logger = LogFactory.getLog(getClass());
+    protected final Log logger = LogFactory.getLog(getClass());
 
-
-	@Override
-	public void shutdown(DataSource dataSource, String databaseName) {
-		Connection con = null;
-		try {
-			con = dataSource.getConnection();
-			if (con != null) {
-				try (Statement stmt = con.createStatement()) {
-					stmt.execute("SHUTDOWN");
-				}
-			}
-		}
-		catch (SQLException ex) {
-			logger.info("Could not shut down embedded database", ex);
-		}
-		finally {
-			if (con != null) {
-				try {
-					con.close();
-				}
-				catch (SQLException ex) {
-					logger.debug("Could not close JDBC Connection on shutdown", ex);
-				}
-				catch (Throwable ex) {
-					logger.debug("Unexpected exception on closing JDBC Connection", ex);
-				}
-			}
-		}
-	}
-
+    @Override
+    public void shutdown(DataSource dataSource, String databaseName) {
+        Connection con = null;
+        try {
+            con = dataSource.getConnection();
+            if (con != null) {
+                try (Statement stmt = con.createStatement()) {
+                    stmt.execute("SHUTDOWN");
+                }
+            }
+        } catch (SQLException ex) {
+            logger.info("Could not shut down embedded database", ex);
+        } finally {
+            if (con != null) {
+                try {
+                    con.close();
+                } catch (SQLException ex) {
+                    logger.debug("Could not close JDBC Connection on shutdown", ex);
+                } catch (Throwable ex) {
+                    logger.debug("Unexpected exception on closing JDBC Connection", ex);
+                }
+            }
+        }
+    }
 }

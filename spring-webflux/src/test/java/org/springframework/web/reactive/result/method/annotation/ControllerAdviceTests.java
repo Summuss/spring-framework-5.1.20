@@ -49,188 +49,186 @@ import static org.mockito.Mockito.mock;
 
 /**
  * {@code @ControllerAdvice} related tests for {@link RequestMappingHandlerAdapter}.
+ *
  * @author Rossen Stoyanchev
  */
 public class ControllerAdviceTests {
 
-	private final MockServerWebExchange exchange =
-			MockServerWebExchange.from(MockServerHttpRequest.get("/"));
+    private final MockServerWebExchange exchange =
+            MockServerWebExchange.from(MockServerHttpRequest.get("/"));
 
+    @Test
+    public void resolveExceptionGlobalHandler() throws Exception {
+        testException(
+                new IllegalAccessException(), "SecondControllerAdvice: IllegalAccessException");
+    }
 
-	@Test
-	public void resolveExceptionGlobalHandler() throws Exception {
-		testException(new IllegalAccessException(), "SecondControllerAdvice: IllegalAccessException");
-	}
+    @Test
+    public void resolveExceptionGlobalHandlerOrdered() throws Exception {
+        testException(new IllegalStateException(), "OneControllerAdvice: IllegalStateException");
+    }
 
-	@Test
-	public void resolveExceptionGlobalHandlerOrdered() throws Exception {
-		testException(new IllegalStateException(), "OneControllerAdvice: IllegalStateException");
-	}
+    @Test // SPR-12605
+    public void resolveExceptionWithHandlerMethodArg() throws Exception {
+        testException(new ArrayIndexOutOfBoundsException(), "HandlerMethod: handle");
+    }
 
-	@Test // SPR-12605
-	public void resolveExceptionWithHandlerMethodArg() throws Exception {
-		testException(new ArrayIndexOutOfBoundsException(), "HandlerMethod: handle");
-	}
+    @Test
+    public void resolveExceptionWithAssertionError() throws Exception {
+        AssertionError error = new AssertionError("argh");
+        testException(error, error.toString());
+    }
 
-	@Test
-	public void resolveExceptionWithAssertionError() throws Exception {
-		AssertionError error = new AssertionError("argh");
-		testException(error, error.toString());
-	}
+    @Test
+    public void resolveExceptionWithAssertionErrorAsRootCause() throws Exception {
+        AssertionError cause = new AssertionError("argh");
+        FatalBeanException exception = new FatalBeanException("wrapped", cause);
+        testException(exception, cause.toString());
+    }
 
-	@Test
-	public void resolveExceptionWithAssertionErrorAsRootCause() throws Exception {
-		AssertionError cause = new AssertionError("argh");
-		FatalBeanException exception = new FatalBeanException("wrapped", cause);
-		testException(exception, cause.toString());
-	}
+    private void testException(Throwable exception, String expected) throws Exception {
+        ApplicationContext context = new AnnotationConfigApplicationContext(TestConfig.class);
+        RequestMappingHandlerAdapter adapter = createAdapter(context);
 
-	private void testException(Throwable exception, String expected) throws Exception {
-		ApplicationContext context = new AnnotationConfigApplicationContext(TestConfig.class);
-		RequestMappingHandlerAdapter adapter = createAdapter(context);
+        TestController controller = context.getBean(TestController.class);
+        controller.setException(exception);
 
-		TestController controller = context.getBean(TestController.class);
-		controller.setException(exception);
+        Object actual = handle(adapter, controller, "handle").getReturnValue();
+        assertEquals(expected, actual);
+    }
 
-		Object actual = handle(adapter, controller, "handle").getReturnValue();
-		assertEquals(expected, actual);
-	}
+    @Test
+    public void modelAttributeAdvice() throws Exception {
+        ApplicationContext context = new AnnotationConfigApplicationContext(TestConfig.class);
+        RequestMappingHandlerAdapter adapter = createAdapter(context);
+        TestController controller = context.getBean(TestController.class);
 
-	@Test
-	public void modelAttributeAdvice() throws Exception {
-		ApplicationContext context = new AnnotationConfigApplicationContext(TestConfig.class);
-		RequestMappingHandlerAdapter adapter = createAdapter(context);
-		TestController controller = context.getBean(TestController.class);
+        Model model = handle(adapter, controller, "handle").getModel();
 
-		Model model = handle(adapter, controller, "handle").getModel();
+        assertEquals(2, model.asMap().size());
+        assertEquals("lAttr1", model.asMap().get("attr1"));
+        assertEquals("gAttr2", model.asMap().get("attr2"));
+    }
 
-		assertEquals(2, model.asMap().size());
-		assertEquals("lAttr1", model.asMap().get("attr1"));
-		assertEquals("gAttr2", model.asMap().get("attr2"));
-	}
+    @Test
+    public void initBinderAdvice() throws Exception {
+        ApplicationContext context = new AnnotationConfigApplicationContext(TestConfig.class);
+        RequestMappingHandlerAdapter adapter = createAdapter(context);
+        TestController controller = context.getBean(TestController.class);
 
-	@Test
-	public void initBinderAdvice() throws Exception {
-		ApplicationContext context = new AnnotationConfigApplicationContext(TestConfig.class);
-		RequestMappingHandlerAdapter adapter = createAdapter(context);
-		TestController controller = context.getBean(TestController.class);
+        Validator validator = mock(Validator.class);
+        controller.setValidator(validator);
 
-		Validator validator = mock(Validator.class);
-		controller.setValidator(validator);
+        BindingContext bindingContext = handle(adapter, controller, "handle").getBindingContext();
 
-		BindingContext bindingContext = handle(adapter, controller, "handle").getBindingContext();
+        WebExchangeDataBinder binder = bindingContext.createDataBinder(this.exchange, "name");
+        assertEquals(Collections.singletonList(validator), binder.getValidators());
+    }
 
-		WebExchangeDataBinder binder = bindingContext.createDataBinder(this.exchange, "name");
-		assertEquals(Collections.singletonList(validator), binder.getValidators());
-	}
+    private RequestMappingHandlerAdapter createAdapter(ApplicationContext context)
+            throws Exception {
+        RequestMappingHandlerAdapter adapter = new RequestMappingHandlerAdapter();
+        adapter.setApplicationContext(context);
+        adapter.afterPropertiesSet();
+        return adapter;
+    }
 
+    private HandlerResult handle(
+            RequestMappingHandlerAdapter adapter, Object controller, String methodName)
+            throws Exception {
 
-	private RequestMappingHandlerAdapter createAdapter(ApplicationContext context) throws Exception {
-		RequestMappingHandlerAdapter adapter = new RequestMappingHandlerAdapter();
-		adapter.setApplicationContext(context);
-		adapter.afterPropertiesSet();
-		return adapter;
-	}
+        Method method = controller.getClass().getMethod(methodName);
+        HandlerMethod handlerMethod = new HandlerMethod(controller, method);
+        return adapter.handle(this.exchange, handlerMethod).block(Duration.ZERO);
+    }
 
-	private HandlerResult handle(RequestMappingHandlerAdapter adapter,
-			Object controller, String methodName) throws Exception {
+    @Configuration
+    static class TestConfig {
 
-		Method method = controller.getClass().getMethod(methodName);
-		HandlerMethod handlerMethod = new HandlerMethod(controller, method);
-		return adapter.handle(this.exchange, handlerMethod).block(Duration.ZERO);
-	}
+        @Bean
+        public TestController testController() {
+            return new TestController();
+        }
 
+        @Bean
+        public OneControllerAdvice testExceptionResolver() {
+            return new OneControllerAdvice();
+        }
 
-	@Configuration
-	static class TestConfig {
+        @Bean
+        public SecondControllerAdvice anotherTestExceptionResolver() {
+            return new SecondControllerAdvice();
+        }
+    }
 
-		@Bean
-		public TestController testController() {
-			return new TestController();
-		}
+    @Controller
+    static class TestController {
 
-		@Bean
-		public OneControllerAdvice testExceptionResolver() {
-			return new OneControllerAdvice();
-		}
+        private Validator validator;
 
-		@Bean
-		public SecondControllerAdvice anotherTestExceptionResolver() {
-			return new SecondControllerAdvice();
-		}
-	}
+        private Throwable exception;
 
-	@Controller
-	static class TestController {
+        void setValidator(Validator validator) {
+            this.validator = validator;
+        }
 
-		private Validator validator;
+        void setException(Throwable exception) {
+            this.exception = exception;
+        }
 
-		private Throwable exception;
+        @InitBinder
+        public void initDataBinder(WebDataBinder dataBinder) {
+            if (this.validator != null) {
+                dataBinder.addValidators(this.validator);
+            }
+        }
 
+        @ModelAttribute
+        public void addAttributes(Model model) {
+            model.addAttribute("attr1", "lAttr1");
+        }
 
-		void setValidator(Validator validator) {
-			this.validator = validator;
-		}
+        @GetMapping
+        public void handle() throws Throwable {
+            if (this.exception != null) {
+                throw this.exception;
+            }
+        }
+    }
 
-		void setException(Throwable exception) {
-			this.exception = exception;
-		}
+    @ControllerAdvice
+    @Order(1)
+    static class OneControllerAdvice {
 
+        @ModelAttribute
+        public void addAttributes(Model model) {
+            model.addAttribute("attr1", "gAttr1");
+            model.addAttribute("attr2", "gAttr2");
+        }
 
-		@InitBinder
-		public void initDataBinder(WebDataBinder dataBinder) {
-			if (this.validator != null) {
-				dataBinder.addValidators(this.validator);
-			}
-		}
+        @ExceptionHandler
+        public String handleException(IllegalStateException ex) {
+            return "OneControllerAdvice: " + ClassUtils.getShortName(ex.getClass());
+        }
 
-		@ModelAttribute
-		public void addAttributes(Model model) {
-			model.addAttribute("attr1", "lAttr1");
-		}
+        @ExceptionHandler(ArrayIndexOutOfBoundsException.class)
+        public String handleWithHandlerMethod(HandlerMethod handlerMethod) {
+            return "HandlerMethod: " + handlerMethod.getMethod().getName();
+        }
 
-		@GetMapping
-		public void handle() throws Throwable {
-			if (this.exception != null) {
-				throw this.exception;
-			}
-		}
-	}
+        @ExceptionHandler(AssertionError.class)
+        public String handleAssertionError(Error err) {
+            return err.toString();
+        }
+    }
 
-	@ControllerAdvice
-	@Order(1)
-	static class OneControllerAdvice {
+    @ControllerAdvice
+    @Order(2)
+    static class SecondControllerAdvice {
 
-		@ModelAttribute
-		public void addAttributes(Model model) {
-			model.addAttribute("attr1", "gAttr1");
-			model.addAttribute("attr2", "gAttr2");
-		}
-
-		@ExceptionHandler
-		public String handleException(IllegalStateException ex) {
-			return "OneControllerAdvice: " + ClassUtils.getShortName(ex.getClass());
-		}
-
-		@ExceptionHandler(ArrayIndexOutOfBoundsException.class)
-		public String handleWithHandlerMethod(HandlerMethod handlerMethod) {
-			return "HandlerMethod: " + handlerMethod.getMethod().getName();
-		}
-
-		@ExceptionHandler(AssertionError.class)
-		public String handleAssertionError(Error err) {
-			return err.toString();
-		}
-	}
-
-	@ControllerAdvice
-	@Order(2)
-	static class SecondControllerAdvice {
-
-		@ExceptionHandler({IllegalStateException.class, IllegalAccessException.class})
-		public String handleException(Exception ex) {
-			return "SecondControllerAdvice: " + ClassUtils.getShortName(ex.getClass());
-		}
-	}
-
+        @ExceptionHandler({IllegalStateException.class, IllegalAccessException.class})
+        public String handleException(Exception ex) {
+            return "SecondControllerAdvice: " + ClassUtils.getShortName(ex.getClass());
+        }
+    }
 }

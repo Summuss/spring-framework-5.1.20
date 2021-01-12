@@ -38,29 +38,30 @@ import static org.junit.Assert.*;
  */
 public class TilesConfigurerTests {
 
-	@Test
-	public void simpleBootstrap() {
-		MockServletContext servletContext = new MockServletContext();
+    @Test
+    public void simpleBootstrap() {
+        MockServletContext servletContext = new MockServletContext();
 
-		TilesConfigurer tc = new TilesConfigurer();
-		tc.setDefinitions("/org/springframework/web/servlet/view/tiles3/tiles-definitions.xml");
-		tc.setCheckRefresh(true);
-		tc.setServletContext(servletContext);
-		tc.afterPropertiesSet();
+        TilesConfigurer tc = new TilesConfigurer();
+        tc.setDefinitions("/org/springframework/web/servlet/view/tiles3/tiles-definitions.xml");
+        tc.setCheckRefresh(true);
+        tc.setServletContext(servletContext);
+        tc.afterPropertiesSet();
 
-		ApplicationContext tilesContext = ServletUtil.getApplicationContext(servletContext);
+        ApplicationContext tilesContext = ServletUtil.getApplicationContext(servletContext);
 
-		BasicTilesContainer container = (BasicTilesContainer) TilesAccess.getContainer(tilesContext);
-		Request requestContext = new ServletRequest(container.getApplicationContext(),
-				new MockHttpServletRequest(), new MockHttpServletResponse());
-		assertNotNull(container.getDefinitionsFactory().getDefinition("test", requestContext));
+        BasicTilesContainer container =
+                (BasicTilesContainer) TilesAccess.getContainer(tilesContext);
+        Request requestContext =
+                new ServletRequest(
+                        container.getApplicationContext(),
+                        new MockHttpServletRequest(),
+                        new MockHttpServletResponse());
+        assertNotNull(container.getDefinitionsFactory().getDefinition("test", requestContext));
 
-		tc.destroy();
-	}
+        tc.destroy();
+    }
 
-
-	@Configuration
-	public static class AppConfig {
-	}
-
+    @Configuration
+    public static class AppConfig {}
 }

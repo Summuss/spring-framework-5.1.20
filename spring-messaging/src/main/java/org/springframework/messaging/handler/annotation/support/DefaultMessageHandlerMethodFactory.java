@@ -34,19 +34,17 @@ import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 import org.springframework.validation.Validator;
 
 /**
- * The default {@link MessageHandlerMethodFactory} implementation creating an
- * {@link InvocableHandlerMethod} with the necessary
- * {@link HandlerMethodArgumentResolver} instances to detect and process
- * most of the use cases defined by
- * {@link org.springframework.messaging.handler.annotation.MessageMapping MessageMapping}.
+ * The default {@link MessageHandlerMethodFactory} implementation creating an {@link
+ * InvocableHandlerMethod} with the necessary {@link HandlerMethodArgumentResolver} instances to
+ * detect and process most of the use cases defined by {@link
+ * org.springframework.messaging.handler.annotation.MessageMapping MessageMapping}.
  *
- * <p>Extra method argument resolvers can be added to customize the method
- * signature that can be handled.
+ * <p>Extra method argument resolvers can be added to customize the method signature that can be
+ * handled.
  *
- * <p>By default, the validation process redirects to a no-op implementation, see
- * {@link #setValidator(Validator)} to customize it. The {@link ConversionService}
- * can be customized in a similar manner to tune how the message payload
- * can be converted
+ * <p>By default, the validation process redirects to a no-op implementation, see {@link
+ * #setValidator(Validator)} to customize it. The {@link ConversionService} can be customized in a
+ * similar manner to tune how the message payload can be converted
  *
  * @author Stephane Nicoll
  * @author Juergen Hoeller
@@ -56,117 +54,120 @@ import org.springframework.validation.Validator;
  * @see #setCustomArgumentResolvers
  */
 public class DefaultMessageHandlerMethodFactory
-		implements MessageHandlerMethodFactory, BeanFactoryAware, InitializingBean {
+        implements MessageHandlerMethodFactory, BeanFactoryAware, InitializingBean {
 
-	private ConversionService conversionService = new DefaultFormattingConversionService();
+    private ConversionService conversionService = new DefaultFormattingConversionService();
 
-	private MessageConverter messageConverter;
+    private MessageConverter messageConverter;
 
-	private Validator validator;
+    private Validator validator;
 
-	private List<HandlerMethodArgumentResolver> customArgumentResolvers;
+    private List<HandlerMethodArgumentResolver> customArgumentResolvers;
 
-	private final HandlerMethodArgumentResolverComposite argumentResolvers =
-			new HandlerMethodArgumentResolverComposite();
+    private final HandlerMethodArgumentResolverComposite argumentResolvers =
+            new HandlerMethodArgumentResolverComposite();
 
-	private BeanFactory beanFactory;
+    private BeanFactory beanFactory;
 
+    /**
+     * Set the {@link ConversionService} to use to convert the original message payload or headers.
+     *
+     * @see HeaderMethodArgumentResolver
+     * @see GenericMessageConverter
+     */
+    public void setConversionService(ConversionService conversionService) {
+        this.conversionService = conversionService;
+    }
 
-	/**
-	 * Set the {@link ConversionService} to use to convert the original
-	 * message payload or headers.
-	 * @see HeaderMethodArgumentResolver
-	 * @see GenericMessageConverter
-	 */
-	public void setConversionService(ConversionService conversionService) {
-		this.conversionService = conversionService;
-	}
+    /**
+     * Set the {@link MessageConverter} to use. By default a {@link GenericMessageConverter} is
+     * used.
+     *
+     * @see GenericMessageConverter
+     */
+    public void setMessageConverter(MessageConverter messageConverter) {
+        this.messageConverter = messageConverter;
+    }
 
-	/**
-	 * Set the {@link MessageConverter} to use. By default a {@link GenericMessageConverter}
-	 * is used.
-	 * @see GenericMessageConverter
-	 */
-	public void setMessageConverter(MessageConverter messageConverter) {
-		this.messageConverter = messageConverter;
-	}
+    /**
+     * Set the Validator instance used for validating {@code @Payload} arguments.
+     *
+     * @see org.springframework.validation.annotation.Validated
+     * @see org.springframework.messaging.handler.annotation.support.PayloadArgumentResolver
+     */
+    public void setValidator(Validator validator) {
+        this.validator = validator;
+    }
 
-	/**
-	 * Set the Validator instance used for validating {@code @Payload} arguments.
-	 * @see org.springframework.validation.annotation.Validated
-	 * @see org.springframework.messaging.handler.annotation.support.PayloadArgumentResolver
-	 */
-	public void setValidator(Validator validator) {
-		this.validator = validator;
-	}
+    /**
+     * Set the list of custom {@code HandlerMethodArgumentResolver}s that will be used after
+     * resolvers for supported argument type.
+     *
+     * @param customArgumentResolvers the list of resolvers (never {@code null})
+     */
+    public void setCustomArgumentResolvers(
+            List<HandlerMethodArgumentResolver> customArgumentResolvers) {
+        this.customArgumentResolvers = customArgumentResolvers;
+    }
 
-	/**
-	 * Set the list of custom {@code HandlerMethodArgumentResolver}s that will be used
-	 * after resolvers for supported argument type.
-	 * @param customArgumentResolvers the list of resolvers (never {@code null})
-	 */
-	public void setCustomArgumentResolvers(List<HandlerMethodArgumentResolver> customArgumentResolvers) {
-		this.customArgumentResolvers = customArgumentResolvers;
-	}
+    /**
+     * Configure the complete list of supported argument types effectively overriding the ones
+     * configured by default. This is an advanced option. For most use cases it should be sufficient
+     * to use {@link #setCustomArgumentResolvers(java.util.List)}.
+     */
+    public void setArgumentResolvers(List<HandlerMethodArgumentResolver> argumentResolvers) {
+        if (argumentResolvers == null) {
+            this.argumentResolvers.clear();
+            return;
+        }
+        this.argumentResolvers.addResolvers(argumentResolvers);
+    }
 
-	/**
-	 * Configure the complete list of supported argument types effectively overriding
-	 * the ones configured by default. This is an advanced option. For most use cases
-	 * it should be sufficient to use {@link #setCustomArgumentResolvers(java.util.List)}.
-	 */
-	public void setArgumentResolvers(List<HandlerMethodArgumentResolver> argumentResolvers) {
-		if (argumentResolvers == null) {
-			this.argumentResolvers.clear();
-			return;
-		}
-		this.argumentResolvers.addResolvers(argumentResolvers);
-	}
+    /**
+     * A {@link BeanFactory} only needs to be available for placeholder resolution in handler method
+     * arguments; it's optional otherwise.
+     */
+    @Override
+    public void setBeanFactory(BeanFactory beanFactory) {
+        this.beanFactory = beanFactory;
+    }
 
-	/**
-	 * A {@link BeanFactory} only needs to be available for placeholder resolution
-	 * in handler method arguments; it's optional otherwise.
-	 */
-	@Override
-	public void setBeanFactory(BeanFactory beanFactory) {
-		this.beanFactory = beanFactory;
-	}
+    @Override
+    public void afterPropertiesSet() {
+        if (this.messageConverter == null) {
+            this.messageConverter = new GenericMessageConverter(this.conversionService);
+        }
+        if (this.argumentResolvers.getResolvers().isEmpty()) {
+            this.argumentResolvers.addResolvers(initArgumentResolvers());
+        }
+    }
 
-	@Override
-	public void afterPropertiesSet() {
-		if (this.messageConverter == null) {
-			this.messageConverter = new GenericMessageConverter(this.conversionService);
-		}
-		if (this.argumentResolvers.getResolvers().isEmpty()) {
-			this.argumentResolvers.addResolvers(initArgumentResolvers());
-		}
-	}
+    @Override
+    public InvocableHandlerMethod createInvocableHandlerMethod(Object bean, Method method) {
+        InvocableHandlerMethod handlerMethod = new InvocableHandlerMethod(bean, method);
+        handlerMethod.setMessageMethodArgumentResolvers(this.argumentResolvers);
+        return handlerMethod;
+    }
 
+    protected List<HandlerMethodArgumentResolver> initArgumentResolvers() {
+        List<HandlerMethodArgumentResolver> resolvers = new ArrayList<>();
+        ConfigurableBeanFactory cbf =
+                (this.beanFactory instanceof ConfigurableBeanFactory
+                        ? (ConfigurableBeanFactory) this.beanFactory
+                        : null);
 
-	@Override
-	public InvocableHandlerMethod createInvocableHandlerMethod(Object bean, Method method) {
-		InvocableHandlerMethod handlerMethod = new InvocableHandlerMethod(bean, method);
-		handlerMethod.setMessageMethodArgumentResolvers(this.argumentResolvers);
-		return handlerMethod;
-	}
+        // Annotation-based argument resolution
+        resolvers.add(new HeaderMethodArgumentResolver(this.conversionService, cbf));
+        resolvers.add(new HeadersMethodArgumentResolver());
 
-	protected List<HandlerMethodArgumentResolver> initArgumentResolvers() {
-		List<HandlerMethodArgumentResolver> resolvers = new ArrayList<>();
-		ConfigurableBeanFactory cbf = (this.beanFactory instanceof ConfigurableBeanFactory ?
-				(ConfigurableBeanFactory) this.beanFactory : null);
+        // Type-based argument resolution
+        resolvers.add(new MessageMethodArgumentResolver(this.messageConverter));
 
-		// Annotation-based argument resolution
-		resolvers.add(new HeaderMethodArgumentResolver(this.conversionService, cbf));
-		resolvers.add(new HeadersMethodArgumentResolver());
+        if (this.customArgumentResolvers != null) {
+            resolvers.addAll(this.customArgumentResolvers);
+        }
+        resolvers.add(new PayloadArgumentResolver(this.messageConverter, this.validator));
 
-		// Type-based argument resolution
-		resolvers.add(new MessageMethodArgumentResolver(this.messageConverter));
-
-		if (this.customArgumentResolvers != null) {
-			resolvers.addAll(this.customArgumentResolvers);
-		}
-		resolvers.add(new PayloadArgumentResolver(this.messageConverter, this.validator));
-
-		return resolvers;
-	}
-
+        return resolvers;
+    }
 }

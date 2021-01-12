@@ -25,13 +25,10 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 
-/**
- * @author Juergen Hoeller
- */
+/** @author Juergen Hoeller */
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Repository
 @Primary
 @Lazy
-public @interface MyRepository {
-}
+public @interface MyRepository {}

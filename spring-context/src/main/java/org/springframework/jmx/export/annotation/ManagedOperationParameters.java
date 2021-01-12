@@ -23,8 +23,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Method-level annotation used to provide metadata about operation parameters,
- * corresponding to an array of {@code ManagedOperationParameter} attributes.
+ * Method-level annotation used to provide metadata about operation parameters, corresponding to an
+ * array of {@code ManagedOperationParameter} attributes.
  *
  * @author Rob Harrop
  * @since 1.2
@@ -35,6 +35,5 @@ import java.lang.annotation.Target;
 @Documented
 public @interface ManagedOperationParameters {
 
-	ManagedOperationParameter[] value() default {};
-
+    ManagedOperationParameter[] value() default {};
 }

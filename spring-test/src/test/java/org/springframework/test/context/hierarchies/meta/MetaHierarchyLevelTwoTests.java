@@ -36,34 +36,29 @@ import static org.junit.Assert.*;
 @ActiveProfiles("prod")
 public class MetaHierarchyLevelTwoTests extends MetaHierarchyLevelOneTests {
 
-	@Configuration
-	@Profile("prod")
-	static class Config {
+    @Configuration
+    @Profile("prod")
+    static class Config {
 
-		@Bean
-		public String bar() {
-			return "Prod Bar";
-		}
-	}
+        @Bean
+        public String bar() {
+            return "Prod Bar";
+        }
+    }
 
+    @Autowired protected ApplicationContext context;
 
-	@Autowired
-	protected ApplicationContext context;
+    @Autowired private String bar;
 
-	@Autowired
-	private String bar;
+    @Test
+    public void bar() {
+        assertEquals("Prod Bar", bar);
+    }
 
-
-	@Test
-	public void bar() {
-		assertEquals("Prod Bar", bar);
-	}
-
-	@Test
-	public void contextHierarchy() {
-		assertNotNull("child ApplicationContext", context);
-		assertNotNull("parent ApplicationContext", context.getParent());
-		assertNull("grandparent ApplicationContext", context.getParent().getParent());
-	}
-
+    @Test
+    public void contextHierarchy() {
+        assertNotNull("child ApplicationContext", context);
+        assertNotNull("parent ApplicationContext", context.getParent());
+        assertNull("grandparent ApplicationContext", context.getParent().getParent());
+    }
 }

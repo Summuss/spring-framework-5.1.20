@@ -29,19 +29,16 @@ import org.junit.After;
  */
 public abstract class AbstractLeakCheckingTestCase {
 
-	/**
-	 * The data buffer factory.
-	 */
-	@SuppressWarnings("ProtectedField")
-	protected final LeakAwareDataBufferFactory bufferFactory = new LeakAwareDataBufferFactory();
+    /** The data buffer factory. */
+    @SuppressWarnings("ProtectedField")
+    protected final LeakAwareDataBufferFactory bufferFactory = new LeakAwareDataBufferFactory();
 
-	/**
-	 * Checks whether any of the data buffers created by {@link #bufferFactory} have not been
-	 * released, throwing an assertion error if so.
-	 */
-	@After
-	public final void checkForLeaks() {
-		this.bufferFactory.checkForLeaks();
-	}
-
+    /**
+     * Checks whether any of the data buffers created by {@link #bufferFactory} have not been
+     * released, throwing an assertion error if so.
+     */
+    @After
+    public final void checkForLeaks() {
+        this.bufferFactory.checkForLeaks();
+    }
 }

@@ -29,20 +29,20 @@ import org.mockito.junit.MockitoJUnitRunner
 @RunWith(MockitoJUnitRunner::class)
 class StatusResultMatchersExtensionsTests {
 
-	@Mock(answer = Answers.RETURNS_MOCKS)
-	lateinit var matchers: StatusResultMatchers
+    @Mock(answer = Answers.RETURNS_MOCKS)
+    lateinit var matchers: StatusResultMatchers
 
-	@Test
-	fun `StatusResultMatchers#is with Matcher parameter is called as expected when using isEqualTo extension`() {
-		val matcher = mock<Matcher<Int>>()
-		matchers.isEqualTo(matcher)
-		verify(matchers, times(1)).`is`(matcher)
-	}
+    @Test
+    fun `StatusResultMatchers#is with Matcher parameter is called as expected when using isEqualTo extension`() {
+        val matcher = mock<Matcher<Int>>()
+        matchers.isEqualTo(matcher)
+        verify(matchers, times(1)).`is`(matcher)
+    }
 
-	@Test
-	fun `StatusResultMatchers#is with int parameter is called as expected when using isEqualTo extension`() {
-		matchers.isEqualTo(200)
-		verify(matchers, times(1)).`is`(200)
-	}
+    @Test
+    fun `StatusResultMatchers#is with int parameter is called as expected when using isEqualTo extension`() {
+        matchers.isEqualTo(200)
+        verify(matchers, times(1)).`is`(200)
+    }
 
 }

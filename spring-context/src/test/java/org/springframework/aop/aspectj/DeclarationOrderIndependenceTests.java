@@ -33,148 +33,140 @@ import static org.junit.Assert.*;
  */
 public class DeclarationOrderIndependenceTests {
 
-	private TopsyTurvyAspect aspect;
+    private TopsyTurvyAspect aspect;
 
-	private TopsyTurvyTarget target;
+    private TopsyTurvyTarget target;
 
+    @Before
+    public void setup() {
+        ClassPathXmlApplicationContext ctx =
+                new ClassPathXmlApplicationContext(getClass().getSimpleName() + ".xml", getClass());
+        aspect = (TopsyTurvyAspect) ctx.getBean("topsyTurvyAspect");
+        target = (TopsyTurvyTarget) ctx.getBean("topsyTurvyTarget");
+    }
 
-	@Before
-	public void setup() {
-		ClassPathXmlApplicationContext ctx =
-				new ClassPathXmlApplicationContext(getClass().getSimpleName() + ".xml", getClass());
-		aspect = (TopsyTurvyAspect) ctx.getBean("topsyTurvyAspect");
-		target = (TopsyTurvyTarget) ctx.getBean("topsyTurvyTarget");
-	}
+    @Test
+    public void testTargetIsSerializable() {
+        assertTrue("target bean is serializable", this.target instanceof Serializable);
+    }
 
+    @Test
+    public void testTargetIsBeanNameAware() {
+        assertTrue("target bean is bean name aware", this.target instanceof BeanNameAware);
+    }
 
-	@Test
-	public void testTargetIsSerializable() {
-		assertTrue("target bean is serializable",this.target instanceof Serializable);
-	}
+    @Test
+    public void testBeforeAdviceFiringOk() {
+        AspectCollaborator collab = new AspectCollaborator();
+        this.aspect.setCollaborator(collab);
+        this.target.doSomething();
+        assertTrue("before advice fired", collab.beforeFired);
+    }
 
-	@Test
-	public void testTargetIsBeanNameAware() {
-		assertTrue("target bean is bean name aware",this.target instanceof BeanNameAware);
-	}
+    @Test
+    public void testAroundAdviceFiringOk() {
+        AspectCollaborator collab = new AspectCollaborator();
+        this.aspect.setCollaborator(collab);
+        this.target.getX();
+        assertTrue("around advice fired", collab.aroundFired);
+    }
 
-	@Test
-	public void testBeforeAdviceFiringOk() {
-		AspectCollaborator collab = new AspectCollaborator();
-		this.aspect.setCollaborator(collab);
-		this.target.doSomething();
-		assertTrue("before advice fired",collab.beforeFired);
-	}
+    @Test
+    public void testAfterReturningFiringOk() {
+        AspectCollaborator collab = new AspectCollaborator();
+        this.aspect.setCollaborator(collab);
+        this.target.getX();
+        assertTrue("after returning advice fired", collab.afterReturningFired);
+    }
 
-	@Test
-	public void testAroundAdviceFiringOk() {
-		AspectCollaborator collab = new AspectCollaborator();
-		this.aspect.setCollaborator(collab);
-		this.target.getX();
-		assertTrue("around advice fired",collab.aroundFired);
-	}
+    /** public visibility is required */
+    public static class BeanNameAwareMixin implements BeanNameAware {
 
-	@Test
-	public void testAfterReturningFiringOk() {
-		AspectCollaborator collab = new AspectCollaborator();
-		this.aspect.setCollaborator(collab);
-		this.target.getX();
-		assertTrue("after returning advice fired",collab.afterReturningFired);
-	}
+        @SuppressWarnings("unused")
+        private String beanName;
 
+        @Override
+        public void setBeanName(String name) {
+            this.beanName = name;
+        }
+    }
 
-	/** public visibility is required */
-	public static class BeanNameAwareMixin implements BeanNameAware {
-
-		@SuppressWarnings("unused")
-		private String beanName;
-
-		@Override
-		public void setBeanName(String name) {
-			this.beanName = name;
-		}
-
-	}
-
-	/** public visibility is required */
-	@SuppressWarnings("serial")
-	public static class SerializableMixin implements Serializable {
-	}
-
+    /** public visibility is required */
+    @SuppressWarnings("serial")
+    public static class SerializableMixin implements Serializable {}
 }
-
 
 class TopsyTurvyAspect {
 
-	interface Collaborator {
-		void beforeAdviceFired();
-		void afterReturningAdviceFired();
-		void aroundAdviceFired();
-	}
+    interface Collaborator {
+        void beforeAdviceFired();
 
-	private Collaborator collaborator;
+        void afterReturningAdviceFired();
 
-	public void setCollaborator(Collaborator collaborator) {
-		this.collaborator = collaborator;
-	}
+        void aroundAdviceFired();
+    }
 
-	public void before() {
-		this.collaborator.beforeAdviceFired();
-	}
+    private Collaborator collaborator;
 
-	public void afterReturning() {
-		this.collaborator.afterReturningAdviceFired();
-	}
+    public void setCollaborator(Collaborator collaborator) {
+        this.collaborator = collaborator;
+    }
 
-	public Object around(ProceedingJoinPoint pjp) throws Throwable {
-		Object ret = pjp.proceed();
-		this.collaborator.aroundAdviceFired();
-		return ret;
-	}
+    public void before() {
+        this.collaborator.beforeAdviceFired();
+    }
+
+    public void afterReturning() {
+        this.collaborator.afterReturningAdviceFired();
+    }
+
+    public Object around(ProceedingJoinPoint pjp) throws Throwable {
+        Object ret = pjp.proceed();
+        this.collaborator.aroundAdviceFired();
+        return ret;
+    }
 }
-
 
 interface TopsyTurvyTarget {
 
-	void doSomething();
+    void doSomething();
 
-	int getX();
+    int getX();
 }
-
 
 class TopsyTurvyTargetImpl implements TopsyTurvyTarget {
 
-	private int x = 5;
+    private int x = 5;
 
-	@Override
-	public void doSomething() {
-		this.x = 10;
-	}
+    @Override
+    public void doSomething() {
+        this.x = 10;
+    }
 
-	@Override
-	public int getX() {
-		return x;
-	}
+    @Override
+    public int getX() {
+        return x;
+    }
 }
-
 
 class AspectCollaborator implements TopsyTurvyAspect.Collaborator {
 
-	public boolean afterReturningFired = false;
-	public boolean aroundFired = false;
-	public boolean beforeFired = false;
+    public boolean afterReturningFired = false;
+    public boolean aroundFired = false;
+    public boolean beforeFired = false;
 
-	@Override
-	public void afterReturningAdviceFired() {
-		this.afterReturningFired = true;
-	}
+    @Override
+    public void afterReturningAdviceFired() {
+        this.afterReturningFired = true;
+    }
 
-	@Override
-	public void aroundAdviceFired() {
-		this.aroundFired = true;
-	}
+    @Override
+    public void aroundAdviceFired() {
+        this.aroundFired = true;
+    }
 
-	@Override
-	public void beforeAdviceFired() {
-		this.beforeFired = true;
-	}
+    @Override
+    public void beforeAdviceFired() {
+        this.beforeFired = true;
+    }
 }

@@ -22,10 +22,9 @@ import org.springframework.test.context.transaction.TransactionalTestExecutionLi
 import org.springframework.test.context.transaction.ejb.dao.RequiredEjbTxTestEntityDao;
 
 /**
- * Concrete subclass of {@link AbstractEjbTxDaoTests} which uses the
- * {@link RequiredEjbTxTestEntityDao} and sets the default rollback semantics
- * for the {@link TransactionalTestExecutionListener} to {@code false} (i.e.,
- * <em>commit</em>).
+ * Concrete subclass of {@link AbstractEjbTxDaoTests} which uses the {@link
+ * RequiredEjbTxTestEntityDao} and sets the default rollback semantics for the {@link
+ * TransactionalTestExecutionListener} to {@code false} (i.e., <em>commit</em>).
  *
  * @author Sam Brannen
  * @since 4.0.1
@@ -34,6 +33,6 @@ import org.springframework.test.context.transaction.ejb.dao.RequiredEjbTxTestEnt
 @Commit
 public class CommitForRequiredEjbTxDaoTests extends AbstractEjbTxDaoTests {
 
-	/* test methods in superclass */
+    /* test methods in superclass */
 
 }

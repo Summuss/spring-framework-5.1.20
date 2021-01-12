@@ -27,14 +27,14 @@ import org.springframework.tests.sample.beans.Pet
  */
 beans {
 
-	foo String, 'Foo'
-	bar String, 'Bar'
+    foo String, 'Foo'
+    bar String, 'Bar'
 
-	employee(Employee) {
-		name = "Dilbert"
-		age = 42
-		company = "???"
-	}
+    employee(Employee) {
+        name = "Dilbert"
+        age = 42
+        company = "???"
+    }
 
-	pet(Pet, 'Dogbert')
+    pet(Pet, 'Dogbert')
 }

@@ -31,28 +31,26 @@ import static org.junit.Assert.*;
  */
 public class AspectJAutoProxyCreatorAndLazyInitTargetSourceTests {
 
-	@Test
-	public void testAdrian() {
-		ClassPathXmlApplicationContext ctx =
-			new ClassPathXmlApplicationContext(getClass().getSimpleName() + "-context.xml", getClass());
+    @Test
+    public void testAdrian() {
+        ClassPathXmlApplicationContext ctx =
+                new ClassPathXmlApplicationContext(
+                        getClass().getSimpleName() + "-context.xml", getClass());
 
-		ITestBean adrian = (ITestBean) ctx.getBean("adrian");
-		assertEquals(0, LazyTestBean.instantiations);
-		assertNotNull(adrian);
-		adrian.getAge();
-		assertEquals(68, adrian.getAge());
-		assertEquals(1, LazyTestBean.instantiations);
-	}
-
+        ITestBean adrian = (ITestBean) ctx.getBean("adrian");
+        assertEquals(0, LazyTestBean.instantiations);
+        assertNotNull(adrian);
+        adrian.getAge();
+        assertEquals(68, adrian.getAge());
+        assertEquals(1, LazyTestBean.instantiations);
+    }
 }
-
 
 class LazyTestBean extends TestBean {
 
-	public static int instantiations;
+    public static int instantiations;
 
-	public LazyTestBean() {
-		++instantiations;
-	}
-
+    public LazyTestBean() {
+        ++instantiations;
+    }
 }

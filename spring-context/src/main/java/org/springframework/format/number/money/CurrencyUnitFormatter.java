@@ -24,22 +24,20 @@ import javax.money.Monetary;
 import org.springframework.format.Formatter;
 
 /**
- * Formatter for JSR-354 {@link javax.money.CurrencyUnit} values,
- * from and to currency code Strings.
+ * Formatter for JSR-354 {@link javax.money.CurrencyUnit} values, from and to currency code Strings.
  *
  * @author Juergen Hoeller
  * @since 4.2
  */
 public class CurrencyUnitFormatter implements Formatter<CurrencyUnit> {
 
-	@Override
-	public String print(CurrencyUnit object, Locale locale) {
-		return object.getCurrencyCode();
-	}
+    @Override
+    public String print(CurrencyUnit object, Locale locale) {
+        return object.getCurrencyCode();
+    }
 
-	@Override
-	public CurrencyUnit parse(String text, Locale locale) {
-		return Monetary.getCurrency(text);
-	}
-
+    @Override
+    public CurrencyUnit parse(String text, Locale locale) {
+        return Monetary.getCurrency(text);
+    }
 }

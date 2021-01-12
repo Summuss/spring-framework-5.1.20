@@ -45,176 +45,169 @@ import org.springframework.util.backoff.FixedBackOff;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
-/**
- * @author Stephane Nicoll
- */
+/** @author Stephane Nicoll */
 public class JmsListenerContainerFactoryTests {
 
-	private final ConnectionFactory connectionFactory = new StubConnectionFactory();
+    private final ConnectionFactory connectionFactory = new StubConnectionFactory();
 
-	private final DestinationResolver destinationResolver = new DynamicDestinationResolver();
+    private final DestinationResolver destinationResolver = new DynamicDestinationResolver();
 
-	private final MessageConverter messageConverter = new SimpleMessageConverter();
+    private final MessageConverter messageConverter = new SimpleMessageConverter();
 
-	private final TransactionManager transactionManager = mock(TransactionManager.class);
+    private final TransactionManager transactionManager = mock(TransactionManager.class);
 
+    @Rule public final ExpectedException thrown = ExpectedException.none();
 
-	@Rule
-	public final ExpectedException thrown = ExpectedException.none();
+    @Test
+    public void createSimpleContainer() {
+        SimpleJmsListenerContainerFactory factory = new SimpleJmsListenerContainerFactory();
+        setDefaultJmsConfig(factory);
+        SimpleJmsListenerEndpoint endpoint = new SimpleJmsListenerEndpoint();
 
+        MessageListener messageListener = new MessageListenerAdapter();
+        endpoint.setMessageListener(messageListener);
+        endpoint.setDestination("myQueue");
 
-	@Test
-	public void createSimpleContainer() {
-		SimpleJmsListenerContainerFactory factory = new SimpleJmsListenerContainerFactory();
-		setDefaultJmsConfig(factory);
-		SimpleJmsListenerEndpoint endpoint = new SimpleJmsListenerEndpoint();
+        SimpleMessageListenerContainer container = factory.createListenerContainer(endpoint);
 
-		MessageListener messageListener = new MessageListenerAdapter();
-		endpoint.setMessageListener(messageListener);
-		endpoint.setDestination("myQueue");
+        assertDefaultJmsConfig(container);
+        assertEquals(messageListener, container.getMessageListener());
+        assertEquals("myQueue", container.getDestinationName());
+    }
 
-		SimpleMessageListenerContainer container = factory.createListenerContainer(endpoint);
+    @Test
+    public void createJmsContainerFullConfig() {
+        DefaultJmsListenerContainerFactory factory = new DefaultJmsListenerContainerFactory();
+        setDefaultJmsConfig(factory);
+        factory.setCacheLevel(DefaultMessageListenerContainer.CACHE_CONSUMER);
+        factory.setConcurrency("3-10");
+        factory.setMaxMessagesPerTask(5);
 
-		assertDefaultJmsConfig(container);
-		assertEquals(messageListener, container.getMessageListener());
-		assertEquals("myQueue", container.getDestinationName());
-	}
+        SimpleJmsListenerEndpoint endpoint = new SimpleJmsListenerEndpoint();
+        MessageListener messageListener = new MessageListenerAdapter();
+        endpoint.setMessageListener(messageListener);
+        endpoint.setDestination("myQueue");
+        DefaultMessageListenerContainer container = factory.createListenerContainer(endpoint);
 
-	@Test
-	public void createJmsContainerFullConfig() {
-		DefaultJmsListenerContainerFactory factory = new DefaultJmsListenerContainerFactory();
-		setDefaultJmsConfig(factory);
-		factory.setCacheLevel(DefaultMessageListenerContainer.CACHE_CONSUMER);
-		factory.setConcurrency("3-10");
-		factory.setMaxMessagesPerTask(5);
+        assertDefaultJmsConfig(container);
+        assertEquals(DefaultMessageListenerContainer.CACHE_CONSUMER, container.getCacheLevel());
+        assertEquals(3, container.getConcurrentConsumers());
+        assertEquals(10, container.getMaxConcurrentConsumers());
+        assertEquals(5, container.getMaxMessagesPerTask());
 
-		SimpleJmsListenerEndpoint endpoint = new SimpleJmsListenerEndpoint();
-		MessageListener messageListener = new MessageListenerAdapter();
-		endpoint.setMessageListener(messageListener);
-		endpoint.setDestination("myQueue");
-		DefaultMessageListenerContainer container = factory.createListenerContainer(endpoint);
+        assertEquals(messageListener, container.getMessageListener());
+        assertEquals("myQueue", container.getDestinationName());
+    }
 
-		assertDefaultJmsConfig(container);
-		assertEquals(DefaultMessageListenerContainer.CACHE_CONSUMER, container.getCacheLevel());
-		assertEquals(3, container.getConcurrentConsumers());
-		assertEquals(10, container.getMaxConcurrentConsumers());
-		assertEquals(5, container.getMaxMessagesPerTask());
+    @Test
+    public void createJcaContainerFullConfig() {
+        DefaultJcaListenerContainerFactory factory = new DefaultJcaListenerContainerFactory();
+        setDefaultJcaConfig(factory);
+        factory.setConcurrency("10");
 
-		assertEquals(messageListener, container.getMessageListener());
-		assertEquals("myQueue", container.getDestinationName());
-	}
+        SimpleJmsListenerEndpoint endpoint = new SimpleJmsListenerEndpoint();
+        MessageListener messageListener = new MessageListenerAdapter();
+        endpoint.setMessageListener(messageListener);
+        endpoint.setDestination("myQueue");
+        JmsMessageEndpointManager container = factory.createListenerContainer(endpoint);
 
-	@Test
-	public void createJcaContainerFullConfig() {
-		DefaultJcaListenerContainerFactory factory = new DefaultJcaListenerContainerFactory();
-		setDefaultJcaConfig(factory);
-		factory.setConcurrency("10");
+        assertDefaultJcaConfig(container);
+        assertEquals(10, container.getActivationSpecConfig().getMaxConcurrency());
+        assertEquals(messageListener, container.getMessageListener());
+        assertEquals("myQueue", container.getActivationSpecConfig().getDestinationName());
+    }
 
-		SimpleJmsListenerEndpoint endpoint = new SimpleJmsListenerEndpoint();
-		MessageListener messageListener = new MessageListenerAdapter();
-		endpoint.setMessageListener(messageListener);
-		endpoint.setDestination("myQueue");
-		JmsMessageEndpointManager container = factory.createListenerContainer(endpoint);
+    @Test
+    public void jcaExclusiveProperties() {
+        DefaultJcaListenerContainerFactory factory = new DefaultJcaListenerContainerFactory();
+        factory.setDestinationResolver(this.destinationResolver);
+        factory.setActivationSpecFactory(new StubJmsActivationSpecFactory());
 
-		assertDefaultJcaConfig(container);
-		assertEquals(10, container.getActivationSpecConfig().getMaxConcurrency());
-		assertEquals(messageListener, container.getMessageListener());
-		assertEquals("myQueue", container.getActivationSpecConfig().getDestinationName());
-	}
+        SimpleJmsListenerEndpoint endpoint = new SimpleJmsListenerEndpoint();
+        endpoint.setMessageListener(new MessageListenerAdapter());
+        this.thrown.expect(IllegalStateException.class);
+        factory.createListenerContainer(endpoint);
+    }
 
-	@Test
-	public void jcaExclusiveProperties() {
-		DefaultJcaListenerContainerFactory factory = new DefaultJcaListenerContainerFactory();
-		factory.setDestinationResolver(this.destinationResolver);
-		factory.setActivationSpecFactory(new StubJmsActivationSpecFactory());
+    @Test
+    public void backOffOverridesRecoveryInterval() {
+        DefaultJmsListenerContainerFactory factory = new DefaultJmsListenerContainerFactory();
+        BackOff backOff = new FixedBackOff();
+        factory.setBackOff(backOff);
+        factory.setRecoveryInterval(2000L);
 
-		SimpleJmsListenerEndpoint endpoint = new SimpleJmsListenerEndpoint();
-		endpoint.setMessageListener(new MessageListenerAdapter());
-		this.thrown.expect(IllegalStateException.class);
-		factory.createListenerContainer(endpoint);
-	}
+        SimpleJmsListenerEndpoint endpoint = new SimpleJmsListenerEndpoint();
+        MessageListener messageListener = new MessageListenerAdapter();
+        endpoint.setMessageListener(messageListener);
+        endpoint.setDestination("myQueue");
+        DefaultMessageListenerContainer container = factory.createListenerContainer(endpoint);
 
-	@Test
-	public void backOffOverridesRecoveryInterval() {
-		DefaultJmsListenerContainerFactory factory = new DefaultJmsListenerContainerFactory();
-		BackOff backOff = new FixedBackOff();
-		factory.setBackOff(backOff);
-		factory.setRecoveryInterval(2000L);
+        assertSame(backOff, new DirectFieldAccessor(container).getPropertyValue("backOff"));
+    }
 
-		SimpleJmsListenerEndpoint endpoint = new SimpleJmsListenerEndpoint();
-		MessageListener messageListener = new MessageListenerAdapter();
-		endpoint.setMessageListener(messageListener);
-		endpoint.setDestination("myQueue");
-		DefaultMessageListenerContainer container = factory.createListenerContainer(endpoint);
+    @Test
+    public void endpointConcurrencyTakesPrecedence() {
+        DefaultJmsListenerContainerFactory factory = new DefaultJmsListenerContainerFactory();
+        factory.setConcurrency("2-10");
 
-		assertSame(backOff, new DirectFieldAccessor(container).getPropertyValue("backOff"));
-	}
+        SimpleJmsListenerEndpoint endpoint = new SimpleJmsListenerEndpoint();
+        MessageListener messageListener = new MessageListenerAdapter();
+        endpoint.setMessageListener(messageListener);
+        endpoint.setDestination("myQueue");
+        endpoint.setConcurrency("4-6");
+        DefaultMessageListenerContainer container = factory.createListenerContainer(endpoint);
+        assertEquals(4, container.getConcurrentConsumers());
+        assertEquals(6, container.getMaxConcurrentConsumers());
+    }
 
-	@Test
-	public void endpointConcurrencyTakesPrecedence() {
-		DefaultJmsListenerContainerFactory factory = new DefaultJmsListenerContainerFactory();
-		factory.setConcurrency("2-10");
+    private void setDefaultJmsConfig(AbstractJmsListenerContainerFactory<?> factory) {
+        factory.setConnectionFactory(this.connectionFactory);
+        factory.setDestinationResolver(this.destinationResolver);
+        factory.setMessageConverter(this.messageConverter);
+        factory.setSessionTransacted(true);
+        factory.setSessionAcknowledgeMode(Session.DUPS_OK_ACKNOWLEDGE);
+        factory.setPubSubDomain(true);
+        factory.setReplyPubSubDomain(true);
+        factory.setReplyQosSettings(new QosSettings(1, 7, 5000));
+        factory.setSubscriptionDurable(true);
+        factory.setClientId("client-1234");
+        factory.setAutoStartup(false);
+    }
 
-		SimpleJmsListenerEndpoint endpoint = new SimpleJmsListenerEndpoint();
-		MessageListener messageListener = new MessageListenerAdapter();
-		endpoint.setMessageListener(messageListener);
-		endpoint.setDestination("myQueue");
-		endpoint.setConcurrency("4-6");
-		DefaultMessageListenerContainer container = factory.createListenerContainer(endpoint);
-		assertEquals(4, container.getConcurrentConsumers());
-		assertEquals(6, container.getMaxConcurrentConsumers());
-	}
+    private void assertDefaultJmsConfig(AbstractMessageListenerContainer container) {
+        assertEquals(this.connectionFactory, container.getConnectionFactory());
+        assertEquals(this.destinationResolver, container.getDestinationResolver());
+        assertEquals(this.messageConverter, container.getMessageConverter());
+        assertEquals(true, container.isSessionTransacted());
+        assertEquals(Session.DUPS_OK_ACKNOWLEDGE, container.getSessionAcknowledgeMode());
+        assertEquals(true, container.isPubSubDomain());
+        assertEquals(true, container.isReplyPubSubDomain());
+        assertEquals(new QosSettings(1, 7, 5000), container.getReplyQosSettings());
+        assertEquals(true, container.isSubscriptionDurable());
+        assertEquals("client-1234", container.getClientId());
+        assertEquals(false, container.isAutoStartup());
+    }
 
+    private void setDefaultJcaConfig(DefaultJcaListenerContainerFactory factory) {
+        factory.setDestinationResolver(this.destinationResolver);
+        factory.setTransactionManager(this.transactionManager);
+        factory.setMessageConverter(this.messageConverter);
+        factory.setAcknowledgeMode(Session.DUPS_OK_ACKNOWLEDGE);
+        factory.setPubSubDomain(true);
+        factory.setReplyQosSettings(new QosSettings(1, 7, 5000));
+        factory.setSubscriptionDurable(true);
+        factory.setClientId("client-1234");
+    }
 
-	private void setDefaultJmsConfig(AbstractJmsListenerContainerFactory<?> factory) {
-		factory.setConnectionFactory(this.connectionFactory);
-		factory.setDestinationResolver(this.destinationResolver);
-		factory.setMessageConverter(this.messageConverter);
-		factory.setSessionTransacted(true);
-		factory.setSessionAcknowledgeMode(Session.DUPS_OK_ACKNOWLEDGE);
-		factory.setPubSubDomain(true);
-		factory.setReplyPubSubDomain(true);
-		factory.setReplyQosSettings(new QosSettings(1, 7, 5000));
-		factory.setSubscriptionDurable(true);
-		factory.setClientId("client-1234");
-		factory.setAutoStartup(false);
-	}
-
-	private void assertDefaultJmsConfig(AbstractMessageListenerContainer container) {
-		assertEquals(this.connectionFactory, container.getConnectionFactory());
-		assertEquals(this.destinationResolver, container.getDestinationResolver());
-		assertEquals(this.messageConverter, container.getMessageConverter());
-		assertEquals(true, container.isSessionTransacted());
-		assertEquals(Session.DUPS_OK_ACKNOWLEDGE, container.getSessionAcknowledgeMode());
-		assertEquals(true, container.isPubSubDomain());
-		assertEquals(true, container.isReplyPubSubDomain());
-		assertEquals(new QosSettings(1, 7, 5000), container.getReplyQosSettings());
-		assertEquals(true, container.isSubscriptionDurable());
-		assertEquals("client-1234", container.getClientId());
-		assertEquals(false, container.isAutoStartup());
-	}
-
-	private void setDefaultJcaConfig(DefaultJcaListenerContainerFactory factory) {
-		factory.setDestinationResolver(this.destinationResolver);
-		factory.setTransactionManager(this.transactionManager);
-		factory.setMessageConverter(this.messageConverter);
-		factory.setAcknowledgeMode(Session.DUPS_OK_ACKNOWLEDGE);
-		factory.setPubSubDomain(true);
-		factory.setReplyQosSettings(new QosSettings(1, 7, 5000));
-		factory.setSubscriptionDurable(true);
-		factory.setClientId("client-1234");
-	}
-
-	private void assertDefaultJcaConfig(JmsMessageEndpointManager container) {
-		assertEquals(this.messageConverter, container.getMessageConverter());
-		assertEquals(this.destinationResolver, container.getDestinationResolver());
-		JmsActivationSpecConfig config = container.getActivationSpecConfig();
-		assertNotNull(config);
-		assertEquals(Session.DUPS_OK_ACKNOWLEDGE, config.getAcknowledgeMode());
-		assertEquals(true, config.isPubSubDomain());
-		assertEquals(new QosSettings(1, 7, 5000), container.getReplyQosSettings());
-		assertEquals(true, config.isSubscriptionDurable());
-		assertEquals("client-1234", config.getClientId());
-	}
-
+    private void assertDefaultJcaConfig(JmsMessageEndpointManager container) {
+        assertEquals(this.messageConverter, container.getMessageConverter());
+        assertEquals(this.destinationResolver, container.getDestinationResolver());
+        JmsActivationSpecConfig config = container.getActivationSpecConfig();
+        assertNotNull(config);
+        assertEquals(Session.DUPS_OK_ACKNOWLEDGE, config.getAcknowledgeMode());
+        assertEquals(true, config.isPubSubDomain());
+        assertEquals(new QosSettings(1, 7, 5000), container.getReplyQosSettings());
+        assertEquals(true, config.isSubscriptionDurable());
+        assertEquals("client-1234", config.getClientId());
+    }
 }

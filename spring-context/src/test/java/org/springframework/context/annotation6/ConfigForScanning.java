@@ -6,8 +6,8 @@ import org.springframework.tests.sample.beans.TestBean;
 
 @Configuration
 public class ConfigForScanning {
-	@Bean
-	public TestBean testBean() {
-		return new TestBean();
-	}
+    @Bean
+    public TestBean testBean() {
+        return new TestBean();
+    }
 }

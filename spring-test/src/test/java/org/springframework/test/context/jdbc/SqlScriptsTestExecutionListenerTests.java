@@ -41,123 +41,117 @@ import static org.mockito.BDDMockito.*;
  */
 public class SqlScriptsTestExecutionListenerTests {
 
-	private final SqlScriptsTestExecutionListener listener = new SqlScriptsTestExecutionListener();
+    private final SqlScriptsTestExecutionListener listener = new SqlScriptsTestExecutionListener();
 
-	private final TestContext testContext = mock(TestContext.class);
+    private final TestContext testContext = mock(TestContext.class);
 
-	@Rule
-	public final ExpectedException exception = ExpectedException.none();
+    @Rule public final ExpectedException exception = ExpectedException.none();
 
+    @Test
+    public void missingValueAndScriptsAndStatementsAtClassLevel() throws Exception {
+        Class<?> clazz = MissingValueAndScriptsAndStatementsAtClassLevel.class;
+        BDDMockito.<Class<?>>given(testContext.getTestClass()).willReturn(clazz);
+        given(testContext.getTestMethod()).willReturn(clazz.getDeclaredMethod("foo"));
 
-	@Test
-	public void missingValueAndScriptsAndStatementsAtClassLevel() throws Exception {
-		Class<?> clazz = MissingValueAndScriptsAndStatementsAtClassLevel.class;
-		BDDMockito.<Class<?>> given(testContext.getTestClass()).willReturn(clazz);
-		given(testContext.getTestMethod()).willReturn(clazz.getDeclaredMethod("foo"));
+        assertExceptionContains(clazz.getSimpleName() + ".sql");
+    }
 
-		assertExceptionContains(clazz.getSimpleName() + ".sql");
-	}
+    @Test
+    public void missingValueAndScriptsAndStatementsAtMethodLevel() throws Exception {
+        Class<?> clazz = MissingValueAndScriptsAndStatementsAtMethodLevel.class;
+        BDDMockito.<Class<?>>given(testContext.getTestClass()).willReturn(clazz);
+        given(testContext.getTestMethod()).willReturn(clazz.getDeclaredMethod("foo"));
 
-	@Test
-	public void missingValueAndScriptsAndStatementsAtMethodLevel() throws Exception {
-		Class<?> clazz = MissingValueAndScriptsAndStatementsAtMethodLevel.class;
-		BDDMockito.<Class<?>> given(testContext.getTestClass()).willReturn(clazz);
-		given(testContext.getTestMethod()).willReturn(clazz.getDeclaredMethod("foo"));
+        assertExceptionContains(clazz.getSimpleName() + ".foo" + ".sql");
+    }
 
-		assertExceptionContains(clazz.getSimpleName() + ".foo" + ".sql");
-	}
+    @Test
+    public void valueAndScriptsDeclared() throws Exception {
+        Class<?> clazz = ValueAndScriptsDeclared.class;
+        BDDMockito.<Class<?>>given(testContext.getTestClass()).willReturn(clazz);
+        given(testContext.getTestMethod()).willReturn(clazz.getDeclaredMethod("foo"));
 
-	@Test
-	public void valueAndScriptsDeclared() throws Exception {
-		Class<?> clazz = ValueAndScriptsDeclared.class;
-		BDDMockito.<Class<?>> given(testContext.getTestClass()).willReturn(clazz);
-		given(testContext.getTestMethod()).willReturn(clazz.getDeclaredMethod("foo"));
+        exception.expect(AnnotationConfigurationException.class);
+        exception.expectMessage(
+                either(containsString("attribute 'value' and its alias 'scripts'"))
+                        .or(containsString("attribute 'scripts' and its alias 'value'")));
+        exception.expectMessage(
+                either(containsString("values of [{foo}] and [{bar}]"))
+                        .or(containsString("values of [{bar}] and [{foo}]")));
+        exception.expectMessage(containsString("but only one is permitted"));
+        listener.beforeTestMethod(testContext);
+    }
 
-		exception.expect(AnnotationConfigurationException.class);
-		exception.expectMessage(either(
-				containsString("attribute 'value' and its alias 'scripts'")).or(
-				containsString("attribute 'scripts' and its alias 'value'")));
-		exception.expectMessage(either(containsString("values of [{foo}] and [{bar}]")).or(
-				containsString("values of [{bar}] and [{foo}]")));
-		exception.expectMessage(containsString("but only one is permitted"));
-		listener.beforeTestMethod(testContext);
-	}
+    @Test
+    public void isolatedTxModeDeclaredWithoutTxMgr() throws Exception {
+        ApplicationContext ctx = mock(ApplicationContext.class);
+        given(ctx.getResource(anyString())).willReturn(mock(Resource.class));
+        given(ctx.getAutowireCapableBeanFactory())
+                .willReturn(mock(AutowireCapableBeanFactory.class));
 
-	@Test
-	public void isolatedTxModeDeclaredWithoutTxMgr() throws Exception {
-		ApplicationContext ctx = mock(ApplicationContext.class);
-		given(ctx.getResource(anyString())).willReturn(mock(Resource.class));
-		given(ctx.getAutowireCapableBeanFactory()).willReturn(mock(AutowireCapableBeanFactory.class));
+        Class<?> clazz = IsolatedWithoutTxMgr.class;
+        BDDMockito.<Class<?>>given(testContext.getTestClass()).willReturn(clazz);
+        given(testContext.getTestMethod()).willReturn(clazz.getDeclaredMethod("foo"));
+        given(testContext.getApplicationContext()).willReturn(ctx);
 
-		Class<?> clazz = IsolatedWithoutTxMgr.class;
-		BDDMockito.<Class<?>> given(testContext.getTestClass()).willReturn(clazz);
-		given(testContext.getTestMethod()).willReturn(clazz.getDeclaredMethod("foo"));
-		given(testContext.getApplicationContext()).willReturn(ctx);
+        assertExceptionContains(
+                "cannot execute SQL scripts using Transaction Mode [ISOLATED] without a PlatformTransactionManager");
+    }
 
-		assertExceptionContains("cannot execute SQL scripts using Transaction Mode [ISOLATED] without a PlatformTransactionManager");
-	}
+    @Test
+    public void missingDataSourceAndTxMgr() throws Exception {
+        ApplicationContext ctx = mock(ApplicationContext.class);
+        given(ctx.getResource(anyString())).willReturn(mock(Resource.class));
+        given(ctx.getAutowireCapableBeanFactory())
+                .willReturn(mock(AutowireCapableBeanFactory.class));
 
-	@Test
-	public void missingDataSourceAndTxMgr() throws Exception {
-		ApplicationContext ctx = mock(ApplicationContext.class);
-		given(ctx.getResource(anyString())).willReturn(mock(Resource.class));
-		given(ctx.getAutowireCapableBeanFactory()).willReturn(mock(AutowireCapableBeanFactory.class));
+        Class<?> clazz = MissingDataSourceAndTxMgr.class;
+        BDDMockito.<Class<?>>given(testContext.getTestClass()).willReturn(clazz);
+        given(testContext.getTestMethod()).willReturn(clazz.getDeclaredMethod("foo"));
+        given(testContext.getApplicationContext()).willReturn(ctx);
 
-		Class<?> clazz = MissingDataSourceAndTxMgr.class;
-		BDDMockito.<Class<?>> given(testContext.getTestClass()).willReturn(clazz);
-		given(testContext.getTestMethod()).willReturn(clazz.getDeclaredMethod("foo"));
-		given(testContext.getApplicationContext()).willReturn(ctx);
+        assertExceptionContains("supply at least a DataSource or PlatformTransactionManager");
+    }
 
-		assertExceptionContains("supply at least a DataSource or PlatformTransactionManager");
-	}
+    private void assertExceptionContains(String msg) throws Exception {
+        try {
+            listener.beforeTestMethod(testContext);
+            fail("Should have thrown an IllegalStateException.");
+        } catch (IllegalStateException e) {
+            // System.err.println(e.getMessage());
+            assertTrue("Exception message should contain: " + msg, e.getMessage().contains(msg));
+        }
+    }
 
-	private void assertExceptionContains(String msg) throws Exception {
-		try {
-			listener.beforeTestMethod(testContext);
-			fail("Should have thrown an IllegalStateException.");
-		}
-		catch (IllegalStateException e) {
-			// System.err.println(e.getMessage());
-			assertTrue("Exception message should contain: " + msg, e.getMessage().contains(msg));
-		}
-	}
+    // -------------------------------------------------------------------------
 
+    @Sql
+    static class MissingValueAndScriptsAndStatementsAtClassLevel {
 
-	// -------------------------------------------------------------------------
+        public void foo() {}
+    }
 
-	@Sql
-	static class MissingValueAndScriptsAndStatementsAtClassLevel {
+    static class MissingValueAndScriptsAndStatementsAtMethodLevel {
 
-		public void foo() {
-		}
-	}
+        @Sql
+        public void foo() {}
+    }
 
-	static class MissingValueAndScriptsAndStatementsAtMethodLevel {
+    static class ValueAndScriptsDeclared {
 
-		@Sql
-		public void foo() {
-		}
-	}
+        @Sql(value = "foo", scripts = "bar")
+        public void foo() {}
+    }
 
-	static class ValueAndScriptsDeclared {
+    static class IsolatedWithoutTxMgr {
 
-		@Sql(value = "foo", scripts = "bar")
-		public void foo() {
-		}
-	}
+        @Sql(scripts = "foo.sql", config = @SqlConfig(transactionMode = TransactionMode.ISOLATED))
+        public void foo() {}
+    }
 
-	static class IsolatedWithoutTxMgr {
+    static class MissingDataSourceAndTxMgr {
 
-		@Sql(scripts = "foo.sql", config = @SqlConfig(transactionMode = TransactionMode.ISOLATED))
-		public void foo() {
-		}
-	}
-
-	static class MissingDataSourceAndTxMgr {
-
-		@Sql("foo.sql")
-		public void foo() {
-		}
-	}
-
+        @Sql("foo.sql")
+        public void foo() {}
+    }
 }

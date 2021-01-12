@@ -28,8 +28,8 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * {@link org.springframework.cache.Cache} implementation on top of a
- * {@link Cache javax.cache.Cache} instance.
+ * {@link org.springframework.cache.Cache} implementation on top of a {@link Cache
+ * javax.cache.Cache} instance.
  *
  * <p>Note: This class has been updated for JCache 1.0, as of Spring 4.0.
  *
@@ -40,102 +40,104 @@ import org.springframework.util.Assert;
  */
 public class JCacheCache extends AbstractValueAdaptingCache {
 
-	private final Cache<Object, Object> cache;
+    private final Cache<Object, Object> cache;
 
+    /**
+     * Create a {@code JCacheCache} instance.
+     *
+     * @param jcache backing JCache Cache instance
+     */
+    public JCacheCache(Cache<Object, Object> jcache) {
+        this(jcache, true);
+    }
 
-	/**
-	 * Create a {@code JCacheCache} instance.
-	 * @param jcache backing JCache Cache instance
-	 */
-	public JCacheCache(Cache<Object, Object> jcache) {
-		this(jcache, true);
-	}
+    /**
+     * Create a {@code JCacheCache} instance.
+     *
+     * @param jcache backing JCache Cache instance
+     * @param allowNullValues whether to accept and convert null values for this cache
+     */
+    public JCacheCache(Cache<Object, Object> jcache, boolean allowNullValues) {
+        super(allowNullValues);
+        Assert.notNull(jcache, "Cache must not be null");
+        this.cache = jcache;
+    }
 
-	/**
-	 * Create a {@code JCacheCache} instance.
-	 * @param jcache backing JCache Cache instance
-	 * @param allowNullValues whether to accept and convert null values for this cache
-	 */
-	public JCacheCache(Cache<Object, Object> jcache, boolean allowNullValues) {
-		super(allowNullValues);
-		Assert.notNull(jcache, "Cache must not be null");
-		this.cache = jcache;
-	}
+    @Override
+    public final String getName() {
+        return this.cache.getName();
+    }
 
+    @Override
+    public final Cache<Object, Object> getNativeCache() {
+        return this.cache;
+    }
 
-	@Override
-	public final String getName() {
-		return this.cache.getName();
-	}
+    @Override
+    @Nullable
+    protected Object lookup(Object key) {
+        return this.cache.get(key);
+    }
 
-	@Override
-	public final Cache<Object, Object> getNativeCache() {
-		return this.cache;
-	}
+    @Override
+    @Nullable
+    public <T> T get(Object key, Callable<T> valueLoader) {
+        try {
+            return this.cache.invoke(key, new ValueLoaderEntryProcessor<T>(), valueLoader);
+        } catch (EntryProcessorException ex) {
+            throw new ValueRetrievalException(key, valueLoader, ex.getCause());
+        }
+    }
 
-	@Override
-	@Nullable
-	protected Object lookup(Object key) {
-		return this.cache.get(key);
-	}
+    @Override
+    public void put(Object key, @Nullable Object value) {
+        this.cache.put(key, toStoreValue(value));
+    }
 
-	@Override
-	@Nullable
-	public <T> T get(Object key, Callable<T> valueLoader) {
-		try {
-			return this.cache.invoke(key, new ValueLoaderEntryProcessor<T>(), valueLoader);
-		}
-		catch (EntryProcessorException ex) {
-			throw new ValueRetrievalException(key, valueLoader, ex.getCause());
-		}
-	}
+    @Override
+    @Nullable
+    public ValueWrapper putIfAbsent(Object key, @Nullable Object value) {
+        boolean set = this.cache.putIfAbsent(key, toStoreValue(value));
+        return (set ? null : get(key));
+    }
 
-	@Override
-	public void put(Object key, @Nullable Object value) {
-		this.cache.put(key, toStoreValue(value));
-	}
+    @Override
+    public void evict(Object key) {
+        this.cache.remove(key);
+    }
 
-	@Override
-	@Nullable
-	public ValueWrapper putIfAbsent(Object key, @Nullable Object value) {
-		boolean set = this.cache.putIfAbsent(key, toStoreValue(value));
-		return (set ? null : get(key));
-	}
+    @Override
+    public void clear() {
+        this.cache.removeAll();
+    }
 
-	@Override
-	public void evict(Object key) {
-		this.cache.remove(key);
-	}
+    private class ValueLoaderEntryProcessor<T> implements EntryProcessor<Object, Object, T> {
 
-	@Override
-	public void clear() {
-		this.cache.removeAll();
-	}
-
-
-	private class ValueLoaderEntryProcessor<T> implements EntryProcessor<Object, Object, T> {
-
-		@SuppressWarnings("unchecked")
-		@Override
-		@Nullable
-		public T process(MutableEntry<Object, Object> entry, Object... arguments) throws EntryProcessorException {
-			Callable<T> valueLoader = (Callable<T>) arguments[0];
-			if (entry.exists()) {
-				return (T) fromStoreValue(entry.getValue());
-			}
-			else {
-				T value;
-				try {
-					value = valueLoader.call();
-				}
-				catch (Exception ex) {
-					throw new EntryProcessorException("Value loader '" + valueLoader + "' failed " +
-							"to compute value for key '" + entry.getKey() + "'", ex);
-				}
-				entry.setValue(toStoreValue(value));
-				return value;
-			}
-		}
-	}
-
+        @SuppressWarnings("unchecked")
+        @Override
+        @Nullable
+        public T process(MutableEntry<Object, Object> entry, Object... arguments)
+                throws EntryProcessorException {
+            Callable<T> valueLoader = (Callable<T>) arguments[0];
+            if (entry.exists()) {
+                return (T) fromStoreValue(entry.getValue());
+            } else {
+                T value;
+                try {
+                    value = valueLoader.call();
+                } catch (Exception ex) {
+                    throw new EntryProcessorException(
+                            "Value loader '"
+                                    + valueLoader
+                                    + "' failed "
+                                    + "to compute value for key '"
+                                    + entry.getKey()
+                                    + "'",
+                            ex);
+                }
+                entry.setValue(toStoreValue(value));
+                return value;
+            }
+        }
+    }
 }

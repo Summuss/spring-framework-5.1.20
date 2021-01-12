@@ -26,8 +26,7 @@ import org.springframework.context.annotation.Configuration;
 import static org.junit.Assert.assertEquals;
 
 /**
- * JUnit 4 based integration test which verifies that {@link @ContextConfiguration}
- * is optional.
+ * JUnit 4 based integration test which verifies that {@link @ContextConfiguration} is optional.
  *
  * @author Phillip Webb
  * @author Sam Brannen
@@ -36,23 +35,19 @@ import static org.junit.Assert.assertEquals;
 @RunWith(SpringRunner.class)
 public class OptionalContextConfigurationSpringRunnerTests {
 
-	@Autowired
-	String foo;
+    @Autowired String foo;
 
+    @Test
+    public void contextConfigurationAnnotationIsOptional() {
+        assertEquals("foo", foo);
+    }
 
-	@Test
-	public void contextConfigurationAnnotationIsOptional() {
-		assertEquals("foo", foo);
-	}
+    @Configuration
+    static class Config {
 
-
-	@Configuration
-	static class Config {
-
-		@Bean
-		String foo() {
-			return "foo";
-		}
-	}
-
+        @Bean
+        String foo() {
+            return "foo";
+        }
+    }
 }

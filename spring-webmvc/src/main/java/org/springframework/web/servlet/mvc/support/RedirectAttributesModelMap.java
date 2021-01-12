@@ -24,10 +24,9 @@ import org.springframework.ui.ModelMap;
 import org.springframework.validation.DataBinder;
 
 /**
- * A {@link ModelMap} implementation of {@link RedirectAttributes} that formats
- * values as Strings using a {@link DataBinder}. Also provides a place to store
- * flash attributes so they can survive a redirect without the need to be
- * embedded in the redirect URL.
+ * A {@link ModelMap} implementation of {@link RedirectAttributes} that formats values as Strings
+ * using a {@link DataBinder}. Also provides a place to store flash attributes so they can survive a
+ * redirect without the need to be embedded in the redirect URL.
  *
  * @author Rossen Stoyanchev
  * @since 3.1
@@ -35,138 +34,145 @@ import org.springframework.validation.DataBinder;
 @SuppressWarnings("serial")
 public class RedirectAttributesModelMap extends ModelMap implements RedirectAttributes {
 
-	@Nullable
-	private final DataBinder dataBinder;
+    @Nullable private final DataBinder dataBinder;
 
-	private final ModelMap flashAttributes = new ModelMap();
+    private final ModelMap flashAttributes = new ModelMap();
 
+    /**
+     * Default constructor without a DataBinder. Attribute values are converted to String via {@link
+     * #toString()}.
+     */
+    public RedirectAttributesModelMap() {
+        this(null);
+    }
 
-	/**
-	 * Default constructor without a DataBinder.
-	 * Attribute values are converted to String via {@link #toString()}.
-	 */
-	public RedirectAttributesModelMap() {
-		this(null);
-	}
+    /**
+     * Constructor with a DataBinder.
+     *
+     * @param dataBinder used to format attribute values as Strings
+     */
+    public RedirectAttributesModelMap(@Nullable DataBinder dataBinder) {
+        this.dataBinder = dataBinder;
+    }
 
-	/**
-	 * Constructor with a DataBinder.
-	 * @param dataBinder used to format attribute values as Strings
-	 */
-	public RedirectAttributesModelMap(@Nullable DataBinder dataBinder) {
-		this.dataBinder = dataBinder;
-	}
+    /** Return the attributes candidate for flash storage or an empty Map. */
+    @Override
+    public Map<String, ?> getFlashAttributes() {
+        return this.flashAttributes;
+    }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Formats the attribute value as a String before adding it.
+     */
+    @Override
+    public RedirectAttributesModelMap addAttribute(
+            String attributeName, @Nullable Object attributeValue) {
+        super.addAttribute(attributeName, formatValue(attributeValue));
+        return this;
+    }
 
-	/**
-	 * Return the attributes candidate for flash storage or an empty Map.
-	 */
-	@Override
-	public Map<String, ?> getFlashAttributes() {
-		return this.flashAttributes;
-	}
+    @Nullable
+    private String formatValue(@Nullable Object value) {
+        if (value == null) {
+            return null;
+        }
+        return (this.dataBinder != null
+                ? this.dataBinder.convertIfNecessary(value, String.class)
+                : value.toString());
+    }
 
-	/**
-	 * {@inheritDoc}
-	 * <p>Formats the attribute value as a String before adding it.
-	 */
-	@Override
-	public RedirectAttributesModelMap addAttribute(String attributeName, @Nullable Object attributeValue) {
-		super.addAttribute(attributeName, formatValue(attributeValue));
-		return this;
-	}
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Formats the attribute value as a String before adding it.
+     */
+    @Override
+    public RedirectAttributesModelMap addAttribute(Object attributeValue) {
+        super.addAttribute(attributeValue);
+        return this;
+    }
 
-	@Nullable
-	private String formatValue(@Nullable Object value) {
-		if (value == null) {
-			return null;
-		}
-		return (this.dataBinder != null ? this.dataBinder.convertIfNecessary(value, String.class) : value.toString());
-	}
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Each attribute value is formatted as a String before being added.
+     */
+    @Override
+    public RedirectAttributesModelMap addAllAttributes(@Nullable Collection<?> attributeValues) {
+        super.addAllAttributes(attributeValues);
+        return this;
+    }
 
-	/**
-	 * {@inheritDoc}
-	 * <p>Formats the attribute value as a String before adding it.
-	 */
-	@Override
-	public RedirectAttributesModelMap addAttribute(Object attributeValue) {
-		super.addAttribute(attributeValue);
-		return this;
-	}
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Each attribute value is formatted as a String before being added.
+     */
+    @Override
+    public RedirectAttributesModelMap addAllAttributes(@Nullable Map<String, ?> attributes) {
+        if (attributes != null) {
+            attributes.forEach(this::addAttribute);
+        }
+        return this;
+    }
 
-	/**
-	 * {@inheritDoc}
-	 * <p>Each attribute value is formatted as a String before being added.
-	 */
-	@Override
-	public RedirectAttributesModelMap addAllAttributes(@Nullable Collection<?> attributeValues) {
-		super.addAllAttributes(attributeValues);
-		return this;
-	}
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Each attribute value is formatted as a String before being merged.
+     */
+    @Override
+    public RedirectAttributesModelMap mergeAttributes(@Nullable Map<String, ?> attributes) {
+        if (attributes != null) {
+            attributes.forEach(
+                    (key, attribute) -> {
+                        if (!containsKey(key)) {
+                            addAttribute(key, attribute);
+                        }
+                    });
+        }
+        return this;
+    }
 
-	/**
-	 * {@inheritDoc}
-	 * <p>Each attribute value is formatted as a String before being added.
-	 */
-	@Override
-	public RedirectAttributesModelMap addAllAttributes(@Nullable Map<String, ?> attributes) {
-		if (attributes != null) {
-			attributes.forEach(this::addAttribute);
-		}
-		return this;
-	}
+    @Override
+    public Map<String, Object> asMap() {
+        return this;
+    }
 
-	/**
-	 * {@inheritDoc}
-	 * <p>Each attribute value is formatted as a String before being merged.
-	 */
-	@Override
-	public RedirectAttributesModelMap mergeAttributes(@Nullable Map<String, ?> attributes) {
-		if (attributes != null) {
-			attributes.forEach((key, attribute) -> {
-				if (!containsKey(key)) {
-					addAttribute(key, attribute);
-				}
-			});
-		}
-		return this;
-	}
+    /**
+     * {@inheritDoc}
+     *
+     * <p>The value is formatted as a String before being added.
+     */
+    @Override
+    public Object put(String key, @Nullable Object value) {
+        return super.put(key, formatValue(value));
+    }
 
-	@Override
-	public Map<String, Object> asMap() {
-		return this;
-	}
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Each value is formatted as a String before being added.
+     */
+    @Override
+    public void putAll(@Nullable Map<? extends String, ? extends Object> map) {
+        if (map != null) {
+            map.forEach((key, value) -> put(key, formatValue(value)));
+        }
+    }
 
-	/**
-	 * {@inheritDoc}
-	 * <p>The value is formatted as a String before being added.
-	 */
-	@Override
-	public Object put(String key, @Nullable Object value) {
-		return super.put(key, formatValue(value));
-	}
+    @Override
+    public RedirectAttributes addFlashAttribute(
+            String attributeName, @Nullable Object attributeValue) {
+        this.flashAttributes.addAttribute(attributeName, attributeValue);
+        return this;
+    }
 
-	/**
-	 * {@inheritDoc}
-	 * <p>Each value is formatted as a String before being added.
-	 */
-	@Override
-	public void putAll(@Nullable Map<? extends String, ? extends Object> map) {
-		if (map != null) {
-			map.forEach((key, value) -> put(key, formatValue(value)));
-		}
-	}
-
-	@Override
-	public RedirectAttributes addFlashAttribute(String attributeName, @Nullable Object attributeValue) {
-		this.flashAttributes.addAttribute(attributeName, attributeValue);
-		return this;
-	}
-
-	@Override
-	public RedirectAttributes addFlashAttribute(Object attributeValue) {
-		this.flashAttributes.addAttribute(attributeValue);
-		return this;
-	}
-
+    @Override
+    public RedirectAttributes addFlashAttribute(Object attributeValue) {
+        this.flashAttributes.addAttribute(attributeValue);
+        return this;
+    }
 }

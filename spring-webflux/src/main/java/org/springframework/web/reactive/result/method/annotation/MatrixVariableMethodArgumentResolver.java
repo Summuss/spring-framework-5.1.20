@@ -38,10 +38,10 @@ import org.springframework.web.server.ServerWebInputException;
 /**
  * Resolves arguments annotated with {@link MatrixVariable @MatrixVariable}.
  *
- * <p>If the method parameter is of type {@link Map} it will by resolved by
- * {@link MatrixVariableMapMethodArgumentResolver} instead unless the annotation
- * specifies a name in which case it is considered to be a single attribute of
- * type map (vs multiple attributes collected in a map).
+ * <p>If the method parameter is of type {@link Map} it will by resolved by {@link
+ * MatrixVariableMapMethodArgumentResolver} instead unless the annotation specifies a name in which
+ * case it is considered to be a single attribute of type map (vs multiple attributes collected in a
+ * map).
  *
  * @author Rossen Stoyanchev
  * @since 5.0.1
@@ -49,88 +49,95 @@ import org.springframework.web.server.ServerWebInputException;
  */
 public class MatrixVariableMethodArgumentResolver extends AbstractNamedValueSyncArgumentResolver {
 
-	public MatrixVariableMethodArgumentResolver(
-			@Nullable ConfigurableBeanFactory factory, ReactiveAdapterRegistry registry) {
+    public MatrixVariableMethodArgumentResolver(
+            @Nullable ConfigurableBeanFactory factory, ReactiveAdapterRegistry registry) {
 
-		super(factory, registry);
-	}
+        super(factory, registry);
+    }
 
+    @Override
+    public boolean supportsParameter(MethodParameter parameter) {
+        return checkAnnotatedParamNoReactiveWrapper(
+                parameter,
+                MatrixVariable.class,
+                (ann, type) ->
+                        !Map.class.isAssignableFrom(type) || StringUtils.hasText(ann.name()));
+    }
 
-	@Override
-	public boolean supportsParameter(MethodParameter parameter) {
-		return checkAnnotatedParamNoReactiveWrapper(parameter, MatrixVariable.class,
-				(ann, type) -> !Map.class.isAssignableFrom(type) || StringUtils.hasText(ann.name()));
-	}
+    @Override
+    protected NamedValueInfo createNamedValueInfo(MethodParameter parameter) {
+        MatrixVariable ann = parameter.getParameterAnnotation(MatrixVariable.class);
+        Assert.state(ann != null, "No MatrixVariable annotation");
+        return new MatrixVariableNamedValueInfo(ann);
+    }
 
+    @Nullable
+    @Override
+    protected Object resolveNamedValue(
+            String name, MethodParameter param, ServerWebExchange exchange) {
+        Map<String, MultiValueMap<String, String>> pathParameters =
+                exchange.getAttribute(HandlerMapping.MATRIX_VARIABLES_ATTRIBUTE);
+        if (CollectionUtils.isEmpty(pathParameters)) {
+            return null;
+        }
 
-	@Override
-	protected NamedValueInfo createNamedValueInfo(MethodParameter parameter) {
-		MatrixVariable ann = parameter.getParameterAnnotation(MatrixVariable.class);
-		Assert.state(ann != null, "No MatrixVariable annotation");
-		return new MatrixVariableNamedValueInfo(ann);
-	}
+        MatrixVariable ann = param.getParameterAnnotation(MatrixVariable.class);
+        Assert.state(ann != null, "No MatrixVariable annotation");
+        String pathVar = ann.pathVar();
+        List<String> paramValues = null;
 
-	@Nullable
-	@Override
-	protected Object resolveNamedValue(String name, MethodParameter param, ServerWebExchange exchange) {
-		Map<String, MultiValueMap<String, String>> pathParameters =
-				exchange.getAttribute(HandlerMapping.MATRIX_VARIABLES_ATTRIBUTE);
-		if (CollectionUtils.isEmpty(pathParameters)) {
-			return null;
-		}
+        if (!pathVar.equals(ValueConstants.DEFAULT_NONE)) {
+            if (pathParameters.containsKey(pathVar)) {
+                paramValues = pathParameters.get(pathVar).get(name);
+            }
+        } else {
+            boolean found = false;
+            paramValues = new ArrayList<>();
+            for (MultiValueMap<String, String> params : pathParameters.values()) {
+                if (params.containsKey(name)) {
+                    if (found) {
+                        String paramType = param.getNestedParameterType().getName();
+                        throw new ServerErrorException(
+                                "Found more than one match for URI path parameter '"
+                                        + name
+                                        + "' for parameter type ["
+                                        + paramType
+                                        + "]. Use 'pathVar' attribute to disambiguate.",
+                                param,
+                                null);
+                    }
+                    paramValues.addAll(params.get(name));
+                    found = true;
+                }
+            }
+        }
 
-		MatrixVariable ann = param.getParameterAnnotation(MatrixVariable.class);
-		Assert.state(ann != null, "No MatrixVariable annotation");
-		String pathVar = ann.pathVar();
-		List<String> paramValues = null;
+        if (CollectionUtils.isEmpty(paramValues)) {
+            return null;
+        } else if (paramValues.size() == 1) {
+            return paramValues.get(0);
+        } else {
+            return paramValues;
+        }
+    }
 
-		if (!pathVar.equals(ValueConstants.DEFAULT_NONE)) {
-			if (pathParameters.containsKey(pathVar)) {
-				paramValues = pathParameters.get(pathVar).get(name);
-			}
-		}
-		else {
-			boolean found = false;
-			paramValues = new ArrayList<>();
-			for (MultiValueMap<String, String> params : pathParameters.values()) {
-				if (params.containsKey(name)) {
-					if (found) {
-						String paramType = param.getNestedParameterType().getName();
-						throw new ServerErrorException(
-								"Found more than one match for URI path parameter '" + name +
-								"' for parameter type [" + paramType + "]. Use 'pathVar' attribute to disambiguate.",
-								param, null);
-					}
-					paramValues.addAll(params.get(name));
-					found = true;
-				}
-			}
-		}
+    @Override
+    protected void handleMissingValue(String name, MethodParameter parameter)
+            throws ServerWebInputException {
+        String paramInfo = parameter.getNestedParameterType().getSimpleName();
+        throw new ServerWebInputException(
+                "Missing matrix variable '"
+                        + name
+                        + "' "
+                        + "for method parameter of type "
+                        + paramInfo,
+                parameter);
+    }
 
-		if (CollectionUtils.isEmpty(paramValues)) {
-			return null;
-		}
-		else if (paramValues.size() == 1) {
-			return paramValues.get(0);
-		}
-		else {
-			return paramValues;
-		}
-	}
+    private static final class MatrixVariableNamedValueInfo extends NamedValueInfo {
 
-	@Override
-	protected void handleMissingValue(String name, MethodParameter parameter) throws ServerWebInputException {
-		String paramInfo = parameter.getNestedParameterType().getSimpleName();
-		throw new ServerWebInputException("Missing matrix variable '" + name + "' " +
-				"for method parameter of type " + paramInfo, parameter);
-	}
-
-
-	private static final class MatrixVariableNamedValueInfo extends NamedValueInfo {
-
-		private MatrixVariableNamedValueInfo(MatrixVariable annotation) {
-			super(annotation.name(), annotation.required(), annotation.defaultValue());
-		}
-	}
-
+        private MatrixVariableNamedValueInfo(MatrixVariable annotation) {
+            super(annotation.name(), annotation.required(), annotation.defaultValue());
+        }
+    }
 }

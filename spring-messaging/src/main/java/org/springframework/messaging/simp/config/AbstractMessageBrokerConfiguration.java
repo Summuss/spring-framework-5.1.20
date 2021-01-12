@@ -63,25 +63,25 @@ import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
 
 /**
- * Provides essential configuration for handling messages with simple messaging
- * protocols such as STOMP.
+ * Provides essential configuration for handling messages with simple messaging protocols such as
+ * STOMP.
  *
- * <p>{@link #clientInboundChannel()} and {@link #clientOutboundChannel()} deliver
- * messages to and from remote clients to several message handlers such as the
- * following.
+ * <p>{@link #clientInboundChannel()} and {@link #clientOutboundChannel()} deliver messages to and
+ * from remote clients to several message handlers such as the following.
+ *
  * <ul>
- * <li>{@link #simpAnnotationMethodMessageHandler()}</li>
- * <li>{@link #simpleBrokerMessageHandler()}</li>
- * <li>{@link #stompBrokerRelayMessageHandler()}</li>
- * <li>{@link #userDestinationMessageHandler()}</li>
+ *   <li>{@link #simpAnnotationMethodMessageHandler()}
+ *   <li>{@link #simpleBrokerMessageHandler()}
+ *   <li>{@link #stompBrokerRelayMessageHandler()}
+ *   <li>{@link #userDestinationMessageHandler()}
  * </ul>
  *
- * <p>{@link #brokerChannel()} delivers messages from within the application to the
- * the respective message handlers. {@link #brokerMessagingTemplate()} can be injected
- * into any application component to send messages.
+ * <p>{@link #brokerChannel()} delivers messages from within the application to the the respective
+ * message handlers. {@link #brokerMessagingTemplate()} can be injected into any application
+ * component to send messages.
  *
- * <p>Subclasses are responsible for the parts of the configuration that feed messages
- * to and from the client inbound/outbound channels (e.g. STOMP over WebSocket).
+ * <p>Subclasses are responsible for the parts of the configuration that feed messages to and from
+ * the client inbound/outbound channels (e.g. STOMP over WebSocket).
  *
  * @author Rossen Stoyanchev
  * @author Brian Clozel
@@ -89,418 +89,426 @@ import org.springframework.validation.Validator;
  */
 public abstract class AbstractMessageBrokerConfiguration implements ApplicationContextAware {
 
-	private static final String MVC_VALIDATOR_NAME = "mvcValidator";
+    private static final String MVC_VALIDATOR_NAME = "mvcValidator";
 
-	private static final boolean jackson2Present = ClassUtils.isPresent(
-			"com.fasterxml.jackson.databind.ObjectMapper", AbstractMessageBrokerConfiguration.class.getClassLoader());
+    private static final boolean jackson2Present =
+            ClassUtils.isPresent(
+                    "com.fasterxml.jackson.databind.ObjectMapper",
+                    AbstractMessageBrokerConfiguration.class.getClassLoader());
 
+    @Nullable private ApplicationContext applicationContext;
 
-	@Nullable
-	private ApplicationContext applicationContext;
+    @Nullable private ChannelRegistration clientInboundChannelRegistration;
 
-	@Nullable
-	private ChannelRegistration clientInboundChannelRegistration;
+    @Nullable private ChannelRegistration clientOutboundChannelRegistration;
 
-	@Nullable
-	private ChannelRegistration clientOutboundChannelRegistration;
+    @Nullable private MessageBrokerRegistry brokerRegistry;
 
-	@Nullable
-	private MessageBrokerRegistry brokerRegistry;
+    /** Protected constructor. */
+    protected AbstractMessageBrokerConfiguration() {}
 
+    @Override
+    public void setApplicationContext(@Nullable ApplicationContext applicationContext) {
+        this.applicationContext = applicationContext;
+    }
 
-	/**
-	 * Protected constructor.
-	 */
-	protected AbstractMessageBrokerConfiguration() {
-	}
+    @Nullable
+    public ApplicationContext getApplicationContext() {
+        return this.applicationContext;
+    }
 
+    @Bean
+    public AbstractSubscribableChannel clientInboundChannel() {
+        ExecutorSubscribableChannel channel =
+                new ExecutorSubscribableChannel(clientInboundChannelExecutor());
+        channel.setLogger(SimpLogging.forLog(channel.getLogger()));
+        ChannelRegistration reg = getClientInboundChannelRegistration();
+        if (reg.hasInterceptors()) {
+            channel.setInterceptors(reg.getInterceptors());
+        }
+        return channel;
+    }
 
-	@Override
-	public void setApplicationContext(@Nullable ApplicationContext applicationContext) {
-		this.applicationContext = applicationContext;
-	}
+    @Bean
+    public ThreadPoolTaskExecutor clientInboundChannelExecutor() {
+        TaskExecutorRegistration reg = getClientInboundChannelRegistration().taskExecutor();
+        ThreadPoolTaskExecutor executor = reg.getTaskExecutor();
+        executor.setThreadNamePrefix("clientInboundChannel-");
+        return executor;
+    }
 
-	@Nullable
-	public ApplicationContext getApplicationContext() {
-		return this.applicationContext;
-	}
+    protected final ChannelRegistration getClientInboundChannelRegistration() {
+        if (this.clientInboundChannelRegistration == null) {
+            ChannelRegistration registration = new ChannelRegistration();
+            configureClientInboundChannel(registration);
+            registration.interceptors(new ImmutableMessageChannelInterceptor());
+            this.clientInboundChannelRegistration = registration;
+        }
+        return this.clientInboundChannelRegistration;
+    }
 
+    /**
+     * A hook for subclasses to customize the message channel for inbound messages from WebSocket
+     * clients.
+     */
+    protected void configureClientInboundChannel(ChannelRegistration registration) {}
 
-	@Bean
-	public AbstractSubscribableChannel clientInboundChannel() {
-		ExecutorSubscribableChannel channel = new ExecutorSubscribableChannel(clientInboundChannelExecutor());
-		channel.setLogger(SimpLogging.forLog(channel.getLogger()));
-		ChannelRegistration reg = getClientInboundChannelRegistration();
-		if (reg.hasInterceptors()) {
-			channel.setInterceptors(reg.getInterceptors());
-		}
-		return channel;
-	}
+    @Bean
+    public AbstractSubscribableChannel clientOutboundChannel() {
+        ExecutorSubscribableChannel channel =
+                new ExecutorSubscribableChannel(clientOutboundChannelExecutor());
+        channel.setLogger(SimpLogging.forLog(channel.getLogger()));
+        ChannelRegistration reg = getClientOutboundChannelRegistration();
+        if (reg.hasInterceptors()) {
+            channel.setInterceptors(reg.getInterceptors());
+        }
+        return channel;
+    }
 
-	@Bean
-	public ThreadPoolTaskExecutor clientInboundChannelExecutor() {
-		TaskExecutorRegistration reg = getClientInboundChannelRegistration().taskExecutor();
-		ThreadPoolTaskExecutor executor = reg.getTaskExecutor();
-		executor.setThreadNamePrefix("clientInboundChannel-");
-		return executor;
-	}
+    @Bean
+    public ThreadPoolTaskExecutor clientOutboundChannelExecutor() {
+        TaskExecutorRegistration reg = getClientOutboundChannelRegistration().taskExecutor();
+        ThreadPoolTaskExecutor executor = reg.getTaskExecutor();
+        executor.setThreadNamePrefix("clientOutboundChannel-");
+        return executor;
+    }
 
-	protected final ChannelRegistration getClientInboundChannelRegistration() {
-		if (this.clientInboundChannelRegistration == null) {
-			ChannelRegistration registration = new ChannelRegistration();
-			configureClientInboundChannel(registration);
-			registration.interceptors(new ImmutableMessageChannelInterceptor());
-			this.clientInboundChannelRegistration = registration;
-		}
-		return this.clientInboundChannelRegistration;
-	}
+    protected final ChannelRegistration getClientOutboundChannelRegistration() {
+        if (this.clientOutboundChannelRegistration == null) {
+            ChannelRegistration registration = new ChannelRegistration();
+            configureClientOutboundChannel(registration);
+            registration.interceptors(new ImmutableMessageChannelInterceptor());
+            this.clientOutboundChannelRegistration = registration;
+        }
+        return this.clientOutboundChannelRegistration;
+    }
 
-	/**
-	 * A hook for subclasses to customize the message channel for inbound messages
-	 * from WebSocket clients.
-	 */
-	protected void configureClientInboundChannel(ChannelRegistration registration) {
-	}
+    /**
+     * A hook for subclasses to customize the message channel for messages from the application or
+     * message broker to WebSocket clients.
+     */
+    protected void configureClientOutboundChannel(ChannelRegistration registration) {}
 
-	@Bean
-	public AbstractSubscribableChannel clientOutboundChannel() {
-		ExecutorSubscribableChannel channel = new ExecutorSubscribableChannel(clientOutboundChannelExecutor());
-		channel.setLogger(SimpLogging.forLog(channel.getLogger()));
-		ChannelRegistration reg = getClientOutboundChannelRegistration();
-		if (reg.hasInterceptors()) {
-			channel.setInterceptors(reg.getInterceptors());
-		}
-		return channel;
-	}
+    @Bean
+    public AbstractSubscribableChannel brokerChannel() {
+        ChannelRegistration reg = getBrokerRegistry().getBrokerChannelRegistration();
+        ExecutorSubscribableChannel channel =
+                (reg.hasTaskExecutor()
+                        ? new ExecutorSubscribableChannel(brokerChannelExecutor())
+                        : new ExecutorSubscribableChannel());
+        reg.interceptors(new ImmutableMessageChannelInterceptor());
+        channel.setLogger(SimpLogging.forLog(channel.getLogger()));
+        channel.setInterceptors(reg.getInterceptors());
+        return channel;
+    }
 
-	@Bean
-	public ThreadPoolTaskExecutor clientOutboundChannelExecutor() {
-		TaskExecutorRegistration reg = getClientOutboundChannelRegistration().taskExecutor();
-		ThreadPoolTaskExecutor executor = reg.getTaskExecutor();
-		executor.setThreadNamePrefix("clientOutboundChannel-");
-		return executor;
-	}
+    @Bean
+    public ThreadPoolTaskExecutor brokerChannelExecutor() {
+        ChannelRegistration reg = getBrokerRegistry().getBrokerChannelRegistration();
+        ThreadPoolTaskExecutor executor;
+        if (reg.hasTaskExecutor()) {
+            executor = reg.taskExecutor().getTaskExecutor();
+        } else {
+            // Should never be used
+            executor = new ThreadPoolTaskExecutor();
+            executor.setCorePoolSize(0);
+            executor.setMaxPoolSize(1);
+            executor.setQueueCapacity(0);
+        }
+        executor.setThreadNamePrefix("brokerChannel-");
+        return executor;
+    }
 
-	protected final ChannelRegistration getClientOutboundChannelRegistration() {
-		if (this.clientOutboundChannelRegistration == null) {
-			ChannelRegistration registration = new ChannelRegistration();
-			configureClientOutboundChannel(registration);
-			registration.interceptors(new ImmutableMessageChannelInterceptor());
-			this.clientOutboundChannelRegistration = registration;
-		}
-		return this.clientOutboundChannelRegistration;
-	}
+    /**
+     * An accessor for the {@link MessageBrokerRegistry} that ensures its one-time creation and
+     * initialization through {@link #configureMessageBroker(MessageBrokerRegistry)}.
+     */
+    protected final MessageBrokerRegistry getBrokerRegistry() {
+        if (this.brokerRegistry == null) {
+            MessageBrokerRegistry registry =
+                    new MessageBrokerRegistry(clientInboundChannel(), clientOutboundChannel());
+            configureMessageBroker(registry);
+            this.brokerRegistry = registry;
+        }
+        return this.brokerRegistry;
+    }
 
-	/**
-	 * A hook for subclasses to customize the message channel for messages from
-	 * the application or message broker to WebSocket clients.
-	 */
-	protected void configureClientOutboundChannel(ChannelRegistration registration) {
-	}
+    /**
+     * A hook for subclasses to customize message broker configuration through the provided {@link
+     * MessageBrokerRegistry} instance.
+     */
+    protected void configureMessageBroker(MessageBrokerRegistry registry) {}
 
-	@Bean
-	public AbstractSubscribableChannel brokerChannel() {
-		ChannelRegistration reg = getBrokerRegistry().getBrokerChannelRegistration();
-		ExecutorSubscribableChannel channel = (reg.hasTaskExecutor() ?
-				new ExecutorSubscribableChannel(brokerChannelExecutor()) : new ExecutorSubscribableChannel());
-		reg.interceptors(new ImmutableMessageChannelInterceptor());
-		channel.setLogger(SimpLogging.forLog(channel.getLogger()));
-		channel.setInterceptors(reg.getInterceptors());
-		return channel;
-	}
+    /**
+     * Provide access to the configured PatchMatcher for access from other configuration classes.
+     */
+    @Nullable
+    public final PathMatcher getPathMatcher() {
+        return getBrokerRegistry().getPathMatcher();
+    }
 
-	@Bean
-	public ThreadPoolTaskExecutor brokerChannelExecutor() {
-		ChannelRegistration reg = getBrokerRegistry().getBrokerChannelRegistration();
-		ThreadPoolTaskExecutor executor;
-		if (reg.hasTaskExecutor()) {
-			executor = reg.taskExecutor().getTaskExecutor();
-		}
-		else {
-			// Should never be used
-			executor = new ThreadPoolTaskExecutor();
-			executor.setCorePoolSize(0);
-			executor.setMaxPoolSize(1);
-			executor.setQueueCapacity(0);
-		}
-		executor.setThreadNamePrefix("brokerChannel-");
-		return executor;
-	}
+    @Bean
+    public SimpAnnotationMethodMessageHandler simpAnnotationMethodMessageHandler() {
+        SimpAnnotationMethodMessageHandler handler = createAnnotationMethodMessageHandler();
+        handler.setDestinationPrefixes(getBrokerRegistry().getApplicationDestinationPrefixes());
+        handler.setMessageConverter(brokerMessageConverter());
+        handler.setValidator(simpValidator());
 
-	/**
-	 * An accessor for the {@link MessageBrokerRegistry} that ensures its one-time creation
-	 * and initialization through {@link #configureMessageBroker(MessageBrokerRegistry)}.
-	 */
-	protected final MessageBrokerRegistry getBrokerRegistry() {
-		if (this.brokerRegistry == null) {
-			MessageBrokerRegistry registry = new MessageBrokerRegistry(clientInboundChannel(), clientOutboundChannel());
-			configureMessageBroker(registry);
-			this.brokerRegistry = registry;
-		}
-		return this.brokerRegistry;
-	}
+        List<HandlerMethodArgumentResolver> argumentResolvers = new ArrayList<>();
+        addArgumentResolvers(argumentResolvers);
+        handler.setCustomArgumentResolvers(argumentResolvers);
 
-	/**
-	 * A hook for subclasses to customize message broker configuration through the
-	 * provided {@link MessageBrokerRegistry} instance.
-	 */
-	protected void configureMessageBroker(MessageBrokerRegistry registry) {
-	}
+        List<HandlerMethodReturnValueHandler> returnValueHandlers = new ArrayList<>();
+        addReturnValueHandlers(returnValueHandlers);
+        handler.setCustomReturnValueHandlers(returnValueHandlers);
 
-	/**
-	 * Provide access to the configured PatchMatcher for access from other
-	 * configuration classes.
-	 */
-	@Nullable
-	public final PathMatcher getPathMatcher() {
-		return getBrokerRegistry().getPathMatcher();
-	}
+        PathMatcher pathMatcher = getBrokerRegistry().getPathMatcher();
+        if (pathMatcher != null) {
+            handler.setPathMatcher(pathMatcher);
+        }
+        return handler;
+    }
 
-	@Bean
-	public SimpAnnotationMethodMessageHandler simpAnnotationMethodMessageHandler() {
-		SimpAnnotationMethodMessageHandler handler = createAnnotationMethodMessageHandler();
-		handler.setDestinationPrefixes(getBrokerRegistry().getApplicationDestinationPrefixes());
-		handler.setMessageConverter(brokerMessageConverter());
-		handler.setValidator(simpValidator());
+    /**
+     * Protected method for plugging in a custom subclass of {@link
+     * org.springframework.messaging.simp.annotation.support.SimpAnnotationMethodMessageHandler
+     * SimpAnnotationMethodMessageHandler}.
+     *
+     * @since 4.2
+     */
+    protected SimpAnnotationMethodMessageHandler createAnnotationMethodMessageHandler() {
+        return new SimpAnnotationMethodMessageHandler(
+                clientInboundChannel(), clientOutboundChannel(), brokerMessagingTemplate());
+    }
 
-		List<HandlerMethodArgumentResolver> argumentResolvers = new ArrayList<>();
-		addArgumentResolvers(argumentResolvers);
-		handler.setCustomArgumentResolvers(argumentResolvers);
+    protected void addArgumentResolvers(List<HandlerMethodArgumentResolver> argumentResolvers) {}
 
-		List<HandlerMethodReturnValueHandler> returnValueHandlers = new ArrayList<>();
-		addReturnValueHandlers(returnValueHandlers);
-		handler.setCustomReturnValueHandlers(returnValueHandlers);
+    protected void addReturnValueHandlers(
+            List<HandlerMethodReturnValueHandler> returnValueHandlers) {}
 
-		PathMatcher pathMatcher = getBrokerRegistry().getPathMatcher();
-		if (pathMatcher != null) {
-			handler.setPathMatcher(pathMatcher);
-		}
-		return handler;
-	}
+    @Bean
+    @Nullable
+    public AbstractBrokerMessageHandler simpleBrokerMessageHandler() {
+        SimpleBrokerMessageHandler handler = getBrokerRegistry().getSimpleBroker(brokerChannel());
+        if (handler == null) {
+            return null;
+        }
+        updateUserDestinationResolver(handler);
+        return handler;
+    }
 
-	/**
-	 * Protected method for plugging in a custom subclass of
-	 * {@link org.springframework.messaging.simp.annotation.support.SimpAnnotationMethodMessageHandler
-	 * SimpAnnotationMethodMessageHandler}.
-	 * @since 4.2
-	 */
-	protected SimpAnnotationMethodMessageHandler createAnnotationMethodMessageHandler() {
-		return new SimpAnnotationMethodMessageHandler(clientInboundChannel(),
-				clientOutboundChannel(), brokerMessagingTemplate());
-	}
+    private void updateUserDestinationResolver(AbstractBrokerMessageHandler handler) {
+        Collection<String> prefixes = handler.getDestinationPrefixes();
+        if (!prefixes.isEmpty() && !prefixes.iterator().next().startsWith("/")) {
+            ((DefaultUserDestinationResolver) userDestinationResolver())
+                    .setRemoveLeadingSlash(true);
+        }
+    }
 
-	protected void addArgumentResolvers(List<HandlerMethodArgumentResolver> argumentResolvers) {
-	}
+    @Bean
+    @Nullable
+    public AbstractBrokerMessageHandler stompBrokerRelayMessageHandler() {
+        StompBrokerRelayMessageHandler handler =
+                getBrokerRegistry().getStompBrokerRelay(brokerChannel());
+        if (handler == null) {
+            return null;
+        }
+        Map<String, MessageHandler> subscriptions = new HashMap<>(4);
+        String destination = getBrokerRegistry().getUserDestinationBroadcast();
+        if (destination != null) {
+            subscriptions.put(destination, userDestinationMessageHandler());
+        }
+        destination = getBrokerRegistry().getUserRegistryBroadcast();
+        if (destination != null) {
+            subscriptions.put(destination, userRegistryMessageHandler());
+        }
+        handler.setSystemSubscriptions(subscriptions);
+        updateUserDestinationResolver(handler);
+        return handler;
+    }
 
-	protected void addReturnValueHandlers(List<HandlerMethodReturnValueHandler> returnValueHandlers) {
-	}
+    @Bean
+    public UserDestinationMessageHandler userDestinationMessageHandler() {
+        UserDestinationMessageHandler handler =
+                new UserDestinationMessageHandler(
+                        clientInboundChannel(), brokerChannel(), userDestinationResolver());
+        String destination = getBrokerRegistry().getUserDestinationBroadcast();
+        if (destination != null) {
+            handler.setBroadcastDestination(destination);
+        }
+        return handler;
+    }
 
-	@Bean
-	@Nullable
-	public AbstractBrokerMessageHandler simpleBrokerMessageHandler() {
-		SimpleBrokerMessageHandler handler = getBrokerRegistry().getSimpleBroker(brokerChannel());
-		if (handler == null) {
-			return null;
-		}
-		updateUserDestinationResolver(handler);
-		return handler;
-	}
+    @Bean
+    @Nullable
+    public MessageHandler userRegistryMessageHandler() {
+        if (getBrokerRegistry().getUserRegistryBroadcast() == null) {
+            return null;
+        }
+        SimpUserRegistry userRegistry = userRegistry();
+        Assert.isInstanceOf(
+                MultiServerUserRegistry.class, userRegistry, "MultiServerUserRegistry required");
+        return new UserRegistryMessageHandler(
+                (MultiServerUserRegistry) userRegistry,
+                brokerMessagingTemplate(),
+                getBrokerRegistry().getUserRegistryBroadcast(),
+                messageBrokerTaskScheduler());
+    }
 
-	private void updateUserDestinationResolver(AbstractBrokerMessageHandler handler) {
-		Collection<String> prefixes = handler.getDestinationPrefixes();
-		if (!prefixes.isEmpty() && !prefixes.iterator().next().startsWith("/")) {
-			((DefaultUserDestinationResolver) userDestinationResolver()).setRemoveLeadingSlash(true);
-		}
-	}
+    // Expose alias for 4.1 compatibility
+    @Bean(name = {"messageBrokerTaskScheduler", "messageBrokerSockJsTaskScheduler"})
+    public ThreadPoolTaskScheduler messageBrokerTaskScheduler() {
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setThreadNamePrefix("MessageBroker-");
+        scheduler.setPoolSize(Runtime.getRuntime().availableProcessors());
+        scheduler.setRemoveOnCancelPolicy(true);
+        return scheduler;
+    }
 
-	@Bean
-	@Nullable
-	public AbstractBrokerMessageHandler stompBrokerRelayMessageHandler() {
-		StompBrokerRelayMessageHandler handler = getBrokerRegistry().getStompBrokerRelay(brokerChannel());
-		if (handler == null) {
-			return null;
-		}
-		Map<String, MessageHandler> subscriptions = new HashMap<>(4);
-		String destination = getBrokerRegistry().getUserDestinationBroadcast();
-		if (destination != null) {
-			subscriptions.put(destination, userDestinationMessageHandler());
-		}
-		destination = getBrokerRegistry().getUserRegistryBroadcast();
-		if (destination != null) {
-			subscriptions.put(destination, userRegistryMessageHandler());
-		}
-		handler.setSystemSubscriptions(subscriptions);
-		updateUserDestinationResolver(handler);
-		return handler;
-	}
+    @Bean
+    public SimpMessagingTemplate brokerMessagingTemplate() {
+        SimpMessagingTemplate template = new SimpMessagingTemplate(brokerChannel());
+        String prefix = getBrokerRegistry().getUserDestinationPrefix();
+        if (prefix != null) {
+            template.setUserDestinationPrefix(prefix);
+        }
+        template.setMessageConverter(brokerMessageConverter());
+        return template;
+    }
 
-	@Bean
-	public UserDestinationMessageHandler userDestinationMessageHandler() {
-		UserDestinationMessageHandler handler = new UserDestinationMessageHandler(clientInboundChannel(),
-				brokerChannel(), userDestinationResolver());
-		String destination = getBrokerRegistry().getUserDestinationBroadcast();
-		if (destination != null) {
-			handler.setBroadcastDestination(destination);
-		}
-		return handler;
-	}
+    @Bean
+    public CompositeMessageConverter brokerMessageConverter() {
+        List<MessageConverter> converters = new ArrayList<>();
+        boolean registerDefaults = configureMessageConverters(converters);
+        if (registerDefaults) {
+            converters.add(new StringMessageConverter());
+            converters.add(new ByteArrayMessageConverter());
+            if (jackson2Present) {
+                converters.add(createJacksonConverter());
+            }
+        }
+        return new CompositeMessageConverter(converters);
+    }
 
-	@Bean
-	@Nullable
-	public MessageHandler userRegistryMessageHandler() {
-		if (getBrokerRegistry().getUserRegistryBroadcast() == null) {
-			return null;
-		}
-		SimpUserRegistry userRegistry = userRegistry();
-		Assert.isInstanceOf(MultiServerUserRegistry.class, userRegistry, "MultiServerUserRegistry required");
-		return new UserRegistryMessageHandler((MultiServerUserRegistry) userRegistry,
-				brokerMessagingTemplate(), getBrokerRegistry().getUserRegistryBroadcast(),
-				messageBrokerTaskScheduler());
-	}
+    protected MappingJackson2MessageConverter createJacksonConverter() {
+        DefaultContentTypeResolver resolver = new DefaultContentTypeResolver();
+        resolver.setDefaultMimeType(MimeTypeUtils.APPLICATION_JSON);
+        MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
+        converter.setContentTypeResolver(resolver);
+        return converter;
+    }
 
-	// Expose alias for 4.1 compatibility
-	@Bean(name = {"messageBrokerTaskScheduler", "messageBrokerSockJsTaskScheduler"})
-	public ThreadPoolTaskScheduler messageBrokerTaskScheduler() {
-		ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
-		scheduler.setThreadNamePrefix("MessageBroker-");
-		scheduler.setPoolSize(Runtime.getRuntime().availableProcessors());
-		scheduler.setRemoveOnCancelPolicy(true);
-		return scheduler;
-	}
+    /**
+     * Override this method to add custom message converters.
+     *
+     * @param messageConverters the list to add converters to, initially empty
+     * @return {@code true} if default message converters should be added to list, {@code false} if
+     *     no more converters should be added
+     */
+    protected boolean configureMessageConverters(List<MessageConverter> messageConverters) {
+        return true;
+    }
 
-	@Bean
-	public SimpMessagingTemplate brokerMessagingTemplate() {
-		SimpMessagingTemplate template = new SimpMessagingTemplate(brokerChannel());
-		String prefix = getBrokerRegistry().getUserDestinationPrefix();
-		if (prefix != null) {
-			template.setUserDestinationPrefix(prefix);
-		}
-		template.setMessageConverter(brokerMessageConverter());
-		return template;
-	}
+    @Bean
+    public UserDestinationResolver userDestinationResolver() {
+        DefaultUserDestinationResolver resolver =
+                new DefaultUserDestinationResolver(userRegistry());
+        String prefix = getBrokerRegistry().getUserDestinationPrefix();
+        if (prefix != null) {
+            resolver.setUserDestinationPrefix(prefix);
+        }
+        return resolver;
+    }
 
-	@Bean
-	public CompositeMessageConverter brokerMessageConverter() {
-		List<MessageConverter> converters = new ArrayList<>();
-		boolean registerDefaults = configureMessageConverters(converters);
-		if (registerDefaults) {
-			converters.add(new StringMessageConverter());
-			converters.add(new ByteArrayMessageConverter());
-			if (jackson2Present) {
-				converters.add(createJacksonConverter());
-			}
-		}
-		return new CompositeMessageConverter(converters);
-	}
+    @Bean
+    @SuppressWarnings("deprecation")
+    public SimpUserRegistry userRegistry() {
+        SimpUserRegistry registry = createLocalUserRegistry();
+        if (registry == null) {
+            registry = createLocalUserRegistry(getBrokerRegistry().getUserRegistryOrder());
+        }
+        boolean broadcast = getBrokerRegistry().getUserRegistryBroadcast() != null;
+        return (broadcast ? new MultiServerUserRegistry(registry) : registry);
+    }
 
-	protected MappingJackson2MessageConverter createJacksonConverter() {
-		DefaultContentTypeResolver resolver = new DefaultContentTypeResolver();
-		resolver.setDefaultMimeType(MimeTypeUtils.APPLICATION_JSON);
-		MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
-		converter.setContentTypeResolver(resolver);
-		return converter;
-	}
+    /**
+     * Create the user registry that provides access to local users.
+     *
+     * @deprecated as of 5.1 in favor of {@link #createLocalUserRegistry(Integer)}
+     */
+    @Deprecated
+    @Nullable
+    protected SimpUserRegistry createLocalUserRegistry() {
+        return null;
+    }
 
-	/**
-	 * Override this method to add custom message converters.
-	 * @param messageConverters the list to add converters to, initially empty
-	 * @return {@code true} if default message converters should be added to list,
-	 * {@code false} if no more converters should be added
-	 */
-	protected boolean configureMessageConverters(List<MessageConverter> messageConverters) {
-		return true;
-	}
+    /**
+     * Create the user registry that provides access to local users.
+     *
+     * @param order the order to use as a {@link SmartApplicationListener}.
+     * @since 5.1
+     */
+    protected abstract SimpUserRegistry createLocalUserRegistry(@Nullable Integer order);
 
-	@Bean
-	public UserDestinationResolver userDestinationResolver() {
-		DefaultUserDestinationResolver resolver = new DefaultUserDestinationResolver(userRegistry());
-		String prefix = getBrokerRegistry().getUserDestinationPrefix();
-		if (prefix != null) {
-			resolver.setUserDestinationPrefix(prefix);
-		}
-		return resolver;
-	}
+    /**
+     * Return an {@link org.springframework.validation.Validator} instance for validating
+     * {@code @Payload} method arguments.
+     *
+     * <p>In order, this method tries to get a Validator instance:
+     *
+     * <ul>
+     *   <li>delegating to getValidator() first
+     *   <li>if none returned, getting an existing instance with its well-known name "mvcValidator",
+     *       created by an MVC configuration
+     *   <li>if none returned, checking the classpath for the presence of a JSR-303 implementation
+     *       before creating a {@code OptionalValidatorFactoryBean}
+     *   <li>returning a no-op Validator instance
+     * </ul>
+     */
+    protected Validator simpValidator() {
+        Validator validator = getValidator();
+        if (validator == null) {
+            if (this.applicationContext != null
+                    && this.applicationContext.containsBean(MVC_VALIDATOR_NAME)) {
+                validator = this.applicationContext.getBean(MVC_VALIDATOR_NAME, Validator.class);
+            } else if (ClassUtils.isPresent(
+                    "javax.validation.Validator", getClass().getClassLoader())) {
+                Class<?> clazz;
+                try {
+                    String className =
+                            "org.springframework.validation.beanvalidation.OptionalValidatorFactoryBean";
+                    clazz =
+                            ClassUtils.forName(
+                                    className,
+                                    AbstractMessageBrokerConfiguration.class.getClassLoader());
+                } catch (Throwable ex) {
+                    throw new BeanInitializationException(
+                            "Could not find default validator class", ex);
+                }
+                validator = (Validator) BeanUtils.instantiateClass(clazz);
+            } else {
+                validator =
+                        new Validator() {
+                            @Override
+                            public boolean supports(Class<?> clazz) {
+                                return false;
+                            }
 
-	@Bean
-	@SuppressWarnings("deprecation")
-	public SimpUserRegistry userRegistry() {
-		SimpUserRegistry registry = createLocalUserRegistry();
-		if (registry == null) {
-			registry = createLocalUserRegistry(getBrokerRegistry().getUserRegistryOrder());
-		}
-		boolean broadcast = getBrokerRegistry().getUserRegistryBroadcast() != null;
-		return (broadcast ? new MultiServerUserRegistry(registry) : registry);
-	}
+                            @Override
+                            public void validate(@Nullable Object target, Errors errors) {}
+                        };
+            }
+        }
+        return validator;
+    }
 
-	/**
-	 * Create the user registry that provides access to local users.
-	 * @deprecated as of 5.1 in favor of {@link #createLocalUserRegistry(Integer)}
-	 */
-	@Deprecated
-	@Nullable
-	protected SimpUserRegistry createLocalUserRegistry() {
-		return null;
-	}
-
-	/**
-	 * Create the user registry that provides access to local users.
-	 * @param order the order to use as a {@link SmartApplicationListener}.
-	 * @since 5.1
-	 */
-	protected abstract SimpUserRegistry createLocalUserRegistry(@Nullable Integer order);
-
-	/**
-	 * Return an {@link org.springframework.validation.Validator} instance for
-	 * validating {@code @Payload} method arguments.
-	 * <p>In order, this method tries to get a Validator instance:
-	 * <ul>
-	 * <li>delegating to getValidator() first</li>
-	 * <li>if none returned, getting an existing instance with its well-known name "mvcValidator",
-	 * created by an MVC configuration</li>
-	 * <li>if none returned, checking the classpath for the presence of a JSR-303 implementation
-	 * before creating a {@code OptionalValidatorFactoryBean}</li>
-	 * <li>returning a no-op Validator instance</li>
-	 * </ul>
-	 */
-	protected Validator simpValidator() {
-		Validator validator = getValidator();
-		if (validator == null) {
-			if (this.applicationContext != null && this.applicationContext.containsBean(MVC_VALIDATOR_NAME)) {
-				validator = this.applicationContext.getBean(MVC_VALIDATOR_NAME, Validator.class);
-			}
-			else if (ClassUtils.isPresent("javax.validation.Validator", getClass().getClassLoader())) {
-				Class<?> clazz;
-				try {
-					String className = "org.springframework.validation.beanvalidation.OptionalValidatorFactoryBean";
-					clazz = ClassUtils.forName(className, AbstractMessageBrokerConfiguration.class.getClassLoader());
-				}
-				catch (Throwable ex) {
-					throw new BeanInitializationException("Could not find default validator class", ex);
-				}
-				validator = (Validator) BeanUtils.instantiateClass(clazz);
-			}
-			else {
-				validator = new Validator() {
-					@Override
-					public boolean supports(Class<?> clazz) {
-						return false;
-					}
-					@Override
-					public void validate(@Nullable Object target, Errors errors) {
-					}
-				};
-			}
-		}
-		return validator;
-	}
-
-	/**
-	 * Override this method to provide a custom {@link Validator}.
-	 * @since 4.0.1
-	 */
-	@Nullable
-	public Validator getValidator() {
-		return null;
-	}
-
+    /**
+     * Override this method to provide a custom {@link Validator}.
+     *
+     * @since 4.0.1
+     */
+    @Nullable
+    public Validator getValidator() {
+        return null;
+    }
 }

@@ -37,59 +37,54 @@ import static org.junit.Assert.*;
  */
 public class ErrorsMethodArgumentResolverTests {
 
-	private final ErrorsMethodArgumentResolver resolver = new ErrorsMethodArgumentResolver();
+    private final ErrorsMethodArgumentResolver resolver = new ErrorsMethodArgumentResolver();
 
-	private BindingResult bindingResult;
+    private BindingResult bindingResult;
 
-	private MethodParameter paramErrors;
+    private MethodParameter paramErrors;
 
-	private NativeWebRequest webRequest;
+    private NativeWebRequest webRequest;
 
+    @Before
+    public void setup() throws Exception {
+        paramErrors = new MethodParameter(getClass().getDeclaredMethod("handle", Errors.class), 0);
+        bindingResult = new WebDataBinder(new Object(), "attr").getBindingResult();
+        webRequest = new ServletWebRequest(new MockHttpServletRequest());
+    }
 
-	@Before
-	public void setup() throws Exception {
-		paramErrors = new MethodParameter(getClass().getDeclaredMethod("handle", Errors.class), 0);
-		bindingResult = new WebDataBinder(new Object(), "attr").getBindingResult();
-		webRequest = new ServletWebRequest(new MockHttpServletRequest());
-	}
+    @Test
+    public void supports() {
+        resolver.supportsParameter(paramErrors);
+    }
 
+    @Test
+    public void bindingResult() throws Exception {
+        ModelAndViewContainer mavContainer = new ModelAndViewContainer();
+        mavContainer.addAttribute("ignore1", "value1");
+        mavContainer.addAttribute("ignore2", "value2");
+        mavContainer.addAttribute("ignore3", "value3");
+        mavContainer.addAttribute("ignore4", "value4");
+        mavContainer.addAttribute("ignore5", "value5");
+        mavContainer.addAllAttributes(bindingResult.getModel());
 
-	@Test
-	public void supports() {
-		resolver.supportsParameter(paramErrors);
-	}
+        Object actual = resolver.resolveArgument(paramErrors, mavContainer, webRequest, null);
+        assertSame(actual, bindingResult);
+    }
 
-	@Test
-	public void bindingResult() throws Exception {
-		ModelAndViewContainer mavContainer = new ModelAndViewContainer();
-		mavContainer.addAttribute("ignore1", "value1");
-		mavContainer.addAttribute("ignore2", "value2");
-		mavContainer.addAttribute("ignore3", "value3");
-		mavContainer.addAttribute("ignore4", "value4");
-		mavContainer.addAttribute("ignore5", "value5");
-		mavContainer.addAllAttributes(bindingResult.getModel());
+    @Test(expected = IllegalStateException.class)
+    public void bindingResultNotFound() throws Exception {
+        ModelAndViewContainer mavContainer = new ModelAndViewContainer();
+        mavContainer.addAllAttributes(bindingResult.getModel());
+        mavContainer.addAttribute("ignore1", "value1");
 
-		Object actual = resolver.resolveArgument(paramErrors, mavContainer, webRequest, null);
-		assertSame(actual, bindingResult);
-	}
+        resolver.resolveArgument(paramErrors, mavContainer, webRequest, null);
+    }
 
-	@Test(expected = IllegalStateException.class)
-	public void bindingResultNotFound() throws Exception {
-		ModelAndViewContainer mavContainer = new ModelAndViewContainer();
-		mavContainer.addAllAttributes(bindingResult.getModel());
-		mavContainer.addAttribute("ignore1", "value1");
+    @Test(expected = IllegalStateException.class)
+    public void noBindingResult() throws Exception {
+        resolver.resolveArgument(paramErrors, new ModelAndViewContainer(), webRequest, null);
+    }
 
-		resolver.resolveArgument(paramErrors, mavContainer, webRequest, null);
-	}
-
-	@Test(expected = IllegalStateException.class)
-	public void noBindingResult() throws Exception {
-		resolver.resolveArgument(paramErrors, new ModelAndViewContainer(), webRequest, null);
-	}
-
-
-	@SuppressWarnings("unused")
-	private void handle(Errors errors) {
-	}
-
+    @SuppressWarnings("unused")
+    private void handle(Errors errors) {}
 }

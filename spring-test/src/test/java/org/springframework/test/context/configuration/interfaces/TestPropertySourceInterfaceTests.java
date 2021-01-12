@@ -34,24 +34,20 @@ import static org.junit.Assert.*;
 @RunWith(SpringRunner.class)
 public class TestPropertySourceInterfaceTests implements TestPropertySourceTestInterface {
 
-	@Autowired
-	Environment env;
+    @Autowired Environment env;
 
+    @Test
+    public void propertiesAreAvailableInEnvironment() {
+        assertThat(property("foo"), is("bar"));
+        assertThat(property("enigma"), is("42"));
+    }
 
-	@Test
-	public void propertiesAreAvailableInEnvironment() {
-		assertThat(property("foo"), is("bar"));
-		assertThat(property("enigma"), is("42"));
-	}
+    private String property(String key) {
+        return env.getProperty(key);
+    }
 
-	private String property(String key) {
-		return env.getProperty(key);
-	}
-
-
-	@Configuration
-	static class Config {
-		/* no user beans required for these tests */
-	}
-
+    @Configuration
+    static class Config {
+        /* no user beans required for these tests */
+    }
 }

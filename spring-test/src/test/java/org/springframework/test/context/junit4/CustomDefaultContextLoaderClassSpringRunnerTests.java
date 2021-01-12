@@ -30,41 +30,39 @@ import org.springframework.tests.sample.beans.Pet;
 import static org.junit.Assert.*;
 
 /**
- * Integration tests which verify that a subclass of {@link DefaultTestContextBootstrapper}
- * can specify a custom <em>default ContextLoader class</em> that overrides the standard
- * default class name.
+ * Integration tests which verify that a subclass of {@link DefaultTestContextBootstrapper} can
+ * specify a custom <em>default ContextLoader class</em> that overrides the standard default class
+ * name.
  *
  * @author Sam Brannen
  * @since 3.0
  */
 @RunWith(SpringRunner.class)
-@BootstrapWith(CustomDefaultContextLoaderClassSpringRunnerTests.PropertiesBasedTestContextBootstrapper.class)
+@BootstrapWith(
+        CustomDefaultContextLoaderClassSpringRunnerTests.PropertiesBasedTestContextBootstrapper
+                .class)
 @ContextConfiguration("PropertiesBasedSpringJUnit4ClassRunnerAppCtxTests-context.properties")
 public class CustomDefaultContextLoaderClassSpringRunnerTests {
 
-	@Autowired
-	private Pet cat;
+    @Autowired private Pet cat;
 
-	@Autowired
-	private String testString;
+    @Autowired private String testString;
 
+    @Test
+    public void verifyAnnotationAutowiredFields() {
+        assertNotNull("The cat field should have been autowired.", this.cat);
+        assertEquals("Garfield", this.cat.getName());
 
-	@Test
-	public void verifyAnnotationAutowiredFields() {
-		assertNotNull("The cat field should have been autowired.", this.cat);
-		assertEquals("Garfield", this.cat.getName());
+        assertNotNull("The testString field should have been autowired.", this.testString);
+        assertEquals("Test String", this.testString);
+    }
 
-		assertNotNull("The testString field should have been autowired.", this.testString);
-		assertEquals("Test String", this.testString);
-	}
+    public static class PropertiesBasedTestContextBootstrapper
+            extends DefaultTestContextBootstrapper {
 
-
-	public static class PropertiesBasedTestContextBootstrapper extends DefaultTestContextBootstrapper {
-
-		@Override
-		protected Class<? extends ContextLoader> getDefaultContextLoaderClass(Class<?> testClass) {
-			return GenericPropertiesContextLoader.class;
-		}
-	}
-
+        @Override
+        protected Class<? extends ContextLoader> getDefaultContextLoaderClass(Class<?> testClass) {
+            return GenericPropertiesContextLoader.class;
+        }
+    }
 }

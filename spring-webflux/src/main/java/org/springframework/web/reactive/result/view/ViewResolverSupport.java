@@ -34,71 +34,63 @@ import org.springframework.util.Assert;
  */
 public abstract class ViewResolverSupport implements Ordered {
 
-	/**
-	 * The default {@link MediaType content-type} for views.
-	 */
-	public static final MediaType DEFAULT_CONTENT_TYPE = MediaType.parseMediaType("text/html;charset=UTF-8");
+    /** The default {@link MediaType content-type} for views. */
+    public static final MediaType DEFAULT_CONTENT_TYPE =
+            MediaType.parseMediaType("text/html;charset=UTF-8");
 
+    private List<MediaType> mediaTypes = new ArrayList<>(4);
 
-	private List<MediaType> mediaTypes = new ArrayList<>(4);
+    private Charset defaultCharset = StandardCharsets.UTF_8;
 
-	private Charset defaultCharset = StandardCharsets.UTF_8;
+    private int order = Ordered.LOWEST_PRECEDENCE;
 
-	private int order = Ordered.LOWEST_PRECEDENCE;
+    public ViewResolverSupport() {
+        this.mediaTypes.add(DEFAULT_CONTENT_TYPE);
+    }
 
+    /** Set the supported media types for this view. Default is "text/html;charset=UTF-8". */
+    public void setSupportedMediaTypes(List<MediaType> supportedMediaTypes) {
+        Assert.notEmpty(supportedMediaTypes, "MediaType List must not be empty");
+        this.mediaTypes.clear();
+        this.mediaTypes.addAll(supportedMediaTypes);
+    }
 
-	public ViewResolverSupport() {
-		this.mediaTypes.add(DEFAULT_CONTENT_TYPE);
-	}
+    /** Return the configured media types supported by this view. */
+    public List<MediaType> getSupportedMediaTypes() {
+        return this.mediaTypes;
+    }
 
+    /**
+     * Set the default charset for this view, used when the {@linkplain
+     * #setSupportedMediaTypes(List) content type} does not contain one. Default is {@linkplain
+     * StandardCharsets#UTF_8 UTF 8}.
+     */
+    public void setDefaultCharset(Charset defaultCharset) {
+        Assert.notNull(defaultCharset, "Default Charset must not be null");
+        this.defaultCharset = defaultCharset;
+    }
 
-	/**
-	 * Set the supported media types for this view.
-	 * Default is "text/html;charset=UTF-8".
-	 */
-	public void setSupportedMediaTypes(List<MediaType> supportedMediaTypes) {
-		Assert.notEmpty(supportedMediaTypes, "MediaType List must not be empty");
-		this.mediaTypes.clear();
-		this.mediaTypes.addAll(supportedMediaTypes);
-	}
+    /**
+     * Return the default charset, used when the {@linkplain #setSupportedMediaTypes(List) content
+     * type} does not contain one.
+     */
+    public Charset getDefaultCharset() {
+        return this.defaultCharset;
+    }
 
-	/**
-	 * Return the configured media types supported by this view.
-	 */
-	public List<MediaType> getSupportedMediaTypes() {
-		return this.mediaTypes;
-	}
+    /**
+     * Specify the order value for this ViewResolver bean.
+     *
+     * <p>The default value is {@code Ordered.LOWEST_PRECEDENCE}, meaning non-ordered.
+     *
+     * @see org.springframework.core.Ordered#getOrder()
+     */
+    public void setOrder(int order) {
+        this.order = order;
+    }
 
-	/**
-	 * Set the default charset for this view, used when the
-	 * {@linkplain #setSupportedMediaTypes(List) content type} does not contain one.
-	 * Default is {@linkplain StandardCharsets#UTF_8 UTF 8}.
-	 */
-	public void setDefaultCharset(Charset defaultCharset) {
-		Assert.notNull(defaultCharset, "Default Charset must not be null");
-		this.defaultCharset = defaultCharset;
-	}
-
-	/**
-	 * Return the default charset, used when the
-	 * {@linkplain #setSupportedMediaTypes(List) content type} does not contain one.
-	 */
-	public Charset getDefaultCharset() {
-		return this.defaultCharset;
-	}
-
-	/**
-	 * Specify the order value for this ViewResolver bean.
-	 * <p>The default value is {@code Ordered.LOWEST_PRECEDENCE}, meaning non-ordered.
-	 * @see org.springframework.core.Ordered#getOrder()
-	 */
-	public void setOrder(int order) {
-		this.order = order;
-	}
-
-	@Override
-	public int getOrder() {
-		return this.order;
-	}
-
+    @Override
+    public int getOrder() {
+        return this.order;
+    }
 }

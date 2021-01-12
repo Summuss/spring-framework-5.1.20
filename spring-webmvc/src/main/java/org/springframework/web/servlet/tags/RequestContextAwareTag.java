@@ -32,15 +32,12 @@ import org.springframework.web.servlet.support.RequestContext;
 /**
  * Superclass for all tags that require a {@link RequestContext}.
  *
- * <p>The {@code RequestContext} instance provides easy access
- * to current state like the
- * {@link org.springframework.web.context.WebApplicationContext},
- * the {@link java.util.Locale}, the
- * {@link org.springframework.ui.context.Theme}, etc.
+ * <p>The {@code RequestContext} instance provides easy access to current state like the {@link
+ * org.springframework.web.context.WebApplicationContext}, the {@link java.util.Locale}, the {@link
+ * org.springframework.ui.context.Theme}, etc.
  *
- * <p>Mainly intended for
- * {@link org.springframework.web.servlet.DispatcherServlet} requests;
- * will use fallbacks when used outside {@code DispatcherServlet}.
+ * <p>Mainly intended for {@link org.springframework.web.servlet.DispatcherServlet} requests; will
+ * use fallbacks when used outside {@code DispatcherServlet}.
  *
  * @author Rod Johnson
  * @author Juergen Hoeller
@@ -50,74 +47,67 @@ import org.springframework.web.servlet.support.RequestContext;
 @SuppressWarnings("serial")
 public abstract class RequestContextAwareTag extends TagSupport implements TryCatchFinally {
 
-	/**
-	 * {@link javax.servlet.jsp.PageContext} attribute for the
-	 * page-level {@link RequestContext} instance.
-	 */
-	public static final String REQUEST_CONTEXT_PAGE_ATTRIBUTE =
-			"org.springframework.web.servlet.tags.REQUEST_CONTEXT";
+    /**
+     * {@link javax.servlet.jsp.PageContext} attribute for the page-level {@link RequestContext}
+     * instance.
+     */
+    public static final String REQUEST_CONTEXT_PAGE_ATTRIBUTE =
+            "org.springframework.web.servlet.tags.REQUEST_CONTEXT";
 
+    /** Logger available to subclasses. */
+    protected final Log logger = LogFactory.getLog(getClass());
 
-	/** Logger available to subclasses. */
-	protected final Log logger = LogFactory.getLog(getClass());
+    @Nullable private RequestContext requestContext;
 
+    /**
+     * Create and expose the current RequestContext. Delegates to {@link #doStartTagInternal()} for
+     * actual work.
+     *
+     * @see #REQUEST_CONTEXT_PAGE_ATTRIBUTE
+     * @see org.springframework.web.servlet.support.JspAwareRequestContext
+     */
+    @Override
+    public final int doStartTag() throws JspException {
+        try {
+            this.requestContext =
+                    (RequestContext) this.pageContext.getAttribute(REQUEST_CONTEXT_PAGE_ATTRIBUTE);
+            if (this.requestContext == null) {
+                this.requestContext = new JspAwareRequestContext(this.pageContext);
+                this.pageContext.setAttribute(REQUEST_CONTEXT_PAGE_ATTRIBUTE, this.requestContext);
+            }
+            return doStartTagInternal();
+        } catch (JspException | RuntimeException ex) {
+            logger.error(ex.getMessage(), ex);
+            throw ex;
+        } catch (Exception ex) {
+            logger.error(ex.getMessage(), ex);
+            throw new JspTagException(ex.getMessage());
+        }
+    }
 
-	@Nullable
-	private RequestContext requestContext;
+    /** Return the current RequestContext. */
+    protected final RequestContext getRequestContext() {
+        Assert.state(this.requestContext != null, "No current RequestContext");
+        return this.requestContext;
+    }
 
+    /**
+     * Called by doStartTag to perform the actual work.
+     *
+     * @return same as TagSupport.doStartTag
+     * @throws Exception any exception, any checked one other than a JspException gets wrapped in a
+     *     JspException by doStartTag
+     * @see javax.servlet.jsp.tagext.TagSupport#doStartTag
+     */
+    protected abstract int doStartTagInternal() throws Exception;
 
-	/**
-	 * Create and expose the current RequestContext.
-	 * Delegates to {@link #doStartTagInternal()} for actual work.
-	 * @see #REQUEST_CONTEXT_PAGE_ATTRIBUTE
-	 * @see org.springframework.web.servlet.support.JspAwareRequestContext
-	 */
-	@Override
-	public final int doStartTag() throws JspException {
-		try {
-			this.requestContext = (RequestContext) this.pageContext.getAttribute(REQUEST_CONTEXT_PAGE_ATTRIBUTE);
-			if (this.requestContext == null) {
-				this.requestContext = new JspAwareRequestContext(this.pageContext);
-				this.pageContext.setAttribute(REQUEST_CONTEXT_PAGE_ATTRIBUTE, this.requestContext);
-			}
-			return doStartTagInternal();
-		}
-		catch (JspException | RuntimeException ex) {
-			logger.error(ex.getMessage(), ex);
-			throw ex;
-		}
-		catch (Exception ex) {
-			logger.error(ex.getMessage(), ex);
-			throw new JspTagException(ex.getMessage());
-		}
-	}
+    @Override
+    public void doCatch(Throwable throwable) throws Throwable {
+        throw throwable;
+    }
 
-	/**
-	 * Return the current RequestContext.
-	 */
-	protected final RequestContext getRequestContext() {
-		Assert.state(this.requestContext != null, "No current RequestContext");
-		return this.requestContext;
-	}
-
-	/**
-	 * Called by doStartTag to perform the actual work.
-	 * @return same as TagSupport.doStartTag
-	 * @throws Exception any exception, any checked one other than
-	 * a JspException gets wrapped in a JspException by doStartTag
-	 * @see javax.servlet.jsp.tagext.TagSupport#doStartTag
-	 */
-	protected abstract int doStartTagInternal() throws Exception;
-
-
-	@Override
-	public void doCatch(Throwable throwable) throws Throwable {
-		throw throwable;
-	}
-
-	@Override
-	public void doFinally() {
-		this.requestContext = null;
-	}
-
+    @Override
+    public void doFinally() {
+        this.requestContext = null;
+    }
 }

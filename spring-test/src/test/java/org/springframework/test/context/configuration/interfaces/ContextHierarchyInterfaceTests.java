@@ -32,27 +32,21 @@ import static org.junit.Assert.*;
 @RunWith(SpringRunner.class)
 public class ContextHierarchyInterfaceTests implements ContextHierarchyTestInterface {
 
-	@Autowired
-	String foo;
+    @Autowired String foo;
 
-	@Autowired
-	String bar;
+    @Autowired String bar;
 
-	@Autowired
-	String baz;
+    @Autowired String baz;
 
-	@Autowired
-	ApplicationContext context;
+    @Autowired ApplicationContext context;
 
-
-	@Test
-	public void loadContextHierarchy() {
-		assertNotNull("child ApplicationContext", context);
-		assertNotNull("parent ApplicationContext", context.getParent());
-		assertNull("grandparent ApplicationContext", context.getParent().getParent());
-		assertEquals("foo", foo);
-		assertEquals("bar", bar);
-		assertEquals("baz-child", baz);
-	}
-
+    @Test
+    public void loadContextHierarchy() {
+        assertNotNull("child ApplicationContext", context);
+        assertNotNull("parent ApplicationContext", context.getParent());
+        assertNull("grandparent ApplicationContext", context.getParent().getParent());
+        assertEquals("foo", foo);
+        assertEquals("bar", bar);
+        assertEquals("baz-child", baz);
+    }
 }

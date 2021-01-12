@@ -34,179 +34,170 @@ import static org.mockito.BDDMockito.*;
  * @author Rod Johnson
  * @author Juergen Hoeller
  * @author Chris Beams
-*/
+ */
 public class LocalSlsbInvokerInterceptorTests {
 
-	/**
-	 * Test that it performs the correct lookup.
-	 */
-	@Test
-	public void testPerformsLookup() throws Exception {
-		LocalInterfaceWithBusinessMethods ejb = mock(LocalInterfaceWithBusinessMethods.class);
+    /** Test that it performs the correct lookup. */
+    @Test
+    public void testPerformsLookup() throws Exception {
+        LocalInterfaceWithBusinessMethods ejb = mock(LocalInterfaceWithBusinessMethods.class);
 
-		String jndiName= "foobar";
-		Context mockContext = mockContext(jndiName, ejb);
+        String jndiName = "foobar";
+        Context mockContext = mockContext(jndiName, ejb);
 
-		configuredInterceptor(mockContext, jndiName);
+        configuredInterceptor(mockContext, jndiName);
 
-		verify(mockContext).close();
-	}
+        verify(mockContext).close();
+    }
 
-	@Test
-	public void testLookupFailure() throws Exception {
-		final NamingException nex = new NamingException();
-		final String jndiName= "foobar";
-		JndiTemplate jt = new JndiTemplate() {
-			@Override
-			public Object lookup(String name) throws NamingException {
-				assertTrue(jndiName.equals(name));
-				throw nex;
-			}
-		};
+    @Test
+    public void testLookupFailure() throws Exception {
+        final NamingException nex = new NamingException();
+        final String jndiName = "foobar";
+        JndiTemplate jt =
+                new JndiTemplate() {
+                    @Override
+                    public Object lookup(String name) throws NamingException {
+                        assertTrue(jndiName.equals(name));
+                        throw nex;
+                    }
+                };
 
-		LocalSlsbInvokerInterceptor si = new LocalSlsbInvokerInterceptor();
-		si.setJndiName("foobar");
-		// default resourceRef=false should cause this to fail, as java:/comp/env will not
-		// automatically be added
-		si.setJndiTemplate(jt);
-		try {
-			si.afterPropertiesSet();
-			fail("Should have failed with naming exception");
-		}
-		catch (NamingException ex) {
-			assertTrue(ex == nex);
-		}
-	}
+        LocalSlsbInvokerInterceptor si = new LocalSlsbInvokerInterceptor();
+        si.setJndiName("foobar");
+        // default resourceRef=false should cause this to fail, as java:/comp/env will not
+        // automatically be added
+        si.setJndiTemplate(jt);
+        try {
+            si.afterPropertiesSet();
+            fail("Should have failed with naming exception");
+        } catch (NamingException ex) {
+            assertTrue(ex == nex);
+        }
+    }
 
-	@Test
-	public void testInvokesMethodOnEjbInstance() throws Exception {
-		Object retVal = new Object();
-		LocalInterfaceWithBusinessMethods ejb = mock(LocalInterfaceWithBusinessMethods.class);
-		given(ejb.targetMethod()).willReturn(retVal);
+    @Test
+    public void testInvokesMethodOnEjbInstance() throws Exception {
+        Object retVal = new Object();
+        LocalInterfaceWithBusinessMethods ejb = mock(LocalInterfaceWithBusinessMethods.class);
+        given(ejb.targetMethod()).willReturn(retVal);
 
-		String jndiName= "foobar";
-		Context mockContext = mockContext(jndiName, ejb);
+        String jndiName = "foobar";
+        Context mockContext = mockContext(jndiName, ejb);
 
-		LocalSlsbInvokerInterceptor si = configuredInterceptor(mockContext, jndiName);
+        LocalSlsbInvokerInterceptor si = configuredInterceptor(mockContext, jndiName);
 
-		ProxyFactory pf = new ProxyFactory(new Class<?>[] { BusinessMethods.class });
-		pf.addAdvice(si);
-		BusinessMethods target = (BusinessMethods) pf.getProxy();
+        ProxyFactory pf = new ProxyFactory(new Class<?>[] {BusinessMethods.class});
+        pf.addAdvice(si);
+        BusinessMethods target = (BusinessMethods) pf.getProxy();
 
-		assertTrue(target.targetMethod() == retVal);
+        assertTrue(target.targetMethod() == retVal);
 
-		verify(mockContext).close();
-		verify(ejb).remove();
-	}
+        verify(mockContext).close();
+        verify(ejb).remove();
+    }
 
-	@Test
-	public void testInvokesMethodOnEjbInstanceWithSeparateBusinessMethods() throws Exception {
-		Object retVal = new Object();
-		LocalInterface ejb = mock(LocalInterface.class);
-		given(ejb.targetMethod()).willReturn(retVal);
+    @Test
+    public void testInvokesMethodOnEjbInstanceWithSeparateBusinessMethods() throws Exception {
+        Object retVal = new Object();
+        LocalInterface ejb = mock(LocalInterface.class);
+        given(ejb.targetMethod()).willReturn(retVal);
 
-		String jndiName= "foobar";
-		Context mockContext = mockContext(jndiName, ejb);
+        String jndiName = "foobar";
+        Context mockContext = mockContext(jndiName, ejb);
 
-		LocalSlsbInvokerInterceptor si = configuredInterceptor(mockContext, jndiName);
+        LocalSlsbInvokerInterceptor si = configuredInterceptor(mockContext, jndiName);
 
-		ProxyFactory pf = new ProxyFactory(new Class<?>[] { BusinessMethods.class });
-		pf.addAdvice(si);
-		BusinessMethods target = (BusinessMethods) pf.getProxy();
+        ProxyFactory pf = new ProxyFactory(new Class<?>[] {BusinessMethods.class});
+        pf.addAdvice(si);
+        BusinessMethods target = (BusinessMethods) pf.getProxy();
 
-		assertTrue(target.targetMethod() == retVal);
+        assertTrue(target.targetMethod() == retVal);
 
-		verify(mockContext).close();
-		verify(ejb).remove();
-	}
+        verify(mockContext).close();
+        verify(ejb).remove();
+    }
 
-	private void testException(Exception expected) throws Exception {
-		LocalInterfaceWithBusinessMethods ejb = mock(LocalInterfaceWithBusinessMethods.class);
-		given(ejb.targetMethod()).willThrow(expected);
+    private void testException(Exception expected) throws Exception {
+        LocalInterfaceWithBusinessMethods ejb = mock(LocalInterfaceWithBusinessMethods.class);
+        given(ejb.targetMethod()).willThrow(expected);
 
-		String jndiName= "foobar";
-		Context mockContext = mockContext(jndiName, ejb);
+        String jndiName = "foobar";
+        Context mockContext = mockContext(jndiName, ejb);
 
-		LocalSlsbInvokerInterceptor si = configuredInterceptor(mockContext, jndiName);
+        LocalSlsbInvokerInterceptor si = configuredInterceptor(mockContext, jndiName);
 
-		ProxyFactory pf = new ProxyFactory(new Class<?>[] { LocalInterfaceWithBusinessMethods.class });
-		pf.addAdvice(si);
-		LocalInterfaceWithBusinessMethods target = (LocalInterfaceWithBusinessMethods) pf.getProxy();
+        ProxyFactory pf =
+                new ProxyFactory(new Class<?>[] {LocalInterfaceWithBusinessMethods.class});
+        pf.addAdvice(si);
+        LocalInterfaceWithBusinessMethods target =
+                (LocalInterfaceWithBusinessMethods) pf.getProxy();
 
-		try {
-			target.targetMethod();
-			fail("Should have thrown exception");
-		}
-		catch (Exception thrown) {
-			assertTrue(thrown == expected);
-		}
+        try {
+            target.targetMethod();
+            fail("Should have thrown exception");
+        } catch (Exception thrown) {
+            assertTrue(thrown == expected);
+        }
 
-		verify(mockContext).close();
-	}
+        verify(mockContext).close();
+    }
 
-	@Test
-	public void testApplicationException() throws Exception {
-		testException(new ApplicationException());
-	}
+    @Test
+    public void testApplicationException() throws Exception {
+        testException(new ApplicationException());
+    }
 
-	protected Context mockContext(final String jndiName, final Object ejbInstance)
-			throws Exception {
-		SlsbHome mockHome = mock(SlsbHome.class);
-		given(mockHome.create()).willReturn((LocalInterface)ejbInstance);
-		Context mockCtx = mock(Context.class);
-		given(mockCtx.lookup("java:comp/env/" + jndiName)).willReturn(mockHome);
-		return mockCtx;
-	}
+    protected Context mockContext(final String jndiName, final Object ejbInstance)
+            throws Exception {
+        SlsbHome mockHome = mock(SlsbHome.class);
+        given(mockHome.create()).willReturn((LocalInterface) ejbInstance);
+        Context mockCtx = mock(Context.class);
+        given(mockCtx.lookup("java:comp/env/" + jndiName)).willReturn(mockHome);
+        return mockCtx;
+    }
 
-	protected LocalSlsbInvokerInterceptor configuredInterceptor(final Context mockCtx, final String jndiName)
-			throws Exception {
+    protected LocalSlsbInvokerInterceptor configuredInterceptor(
+            final Context mockCtx, final String jndiName) throws Exception {
 
-		LocalSlsbInvokerInterceptor si = new LocalSlsbInvokerInterceptor();
-		si.setJndiTemplate(new JndiTemplate() {
-			@Override
-			protected Context createInitialContext() throws NamingException {
-				return mockCtx;
-			}
-		});
-		si.setJndiName(jndiName);
-		si.setResourceRef(true);
-		si.afterPropertiesSet();
+        LocalSlsbInvokerInterceptor si = new LocalSlsbInvokerInterceptor();
+        si.setJndiTemplate(
+                new JndiTemplate() {
+                    @Override
+                    protected Context createInitialContext() throws NamingException {
+                        return mockCtx;
+                    }
+                });
+        si.setJndiName(jndiName);
+        si.setResourceRef(true);
+        si.afterPropertiesSet();
 
-		return si;
-	}
+        return si;
+    }
 
+    /** Needed so that we can mock the create() method. */
+    private interface SlsbHome extends EJBLocalHome {
 
-	/**
-	 * Needed so that we can mock the create() method.
-	 */
-	private interface SlsbHome extends EJBLocalHome {
+        LocalInterface create() throws CreateException;
+    }
 
-		LocalInterface create() throws CreateException;
-	}
+    private interface BusinessMethods {
 
+        Object targetMethod() throws ApplicationException;
+    }
 
-	private interface BusinessMethods {
+    private interface LocalInterface extends EJBLocalObject {
 
-		Object targetMethod() throws ApplicationException;
-	}
+        Object targetMethod() throws ApplicationException;
+    }
 
+    private interface LocalInterfaceWithBusinessMethods extends LocalInterface, BusinessMethods {}
 
-	private interface LocalInterface extends EJBLocalObject {
+    @SuppressWarnings("serial")
+    private class ApplicationException extends Exception {
 
-		Object targetMethod() throws ApplicationException;
-	}
-
-
-	private interface LocalInterfaceWithBusinessMethods extends LocalInterface, BusinessMethods {
-	}
-
-
-	@SuppressWarnings("serial")
-	private class ApplicationException extends Exception {
-
-		public ApplicationException() {
-			super("appException");
-		}
-	}
-
+        public ApplicationException() {
+            super("appException");
+        }
+    }
 }

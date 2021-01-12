@@ -42,119 +42,117 @@ import static org.mockito.Mockito.*;
  */
 public class BrokerMessageHandlerTests {
 
-	private TestBrokerMessageHandler handler;
+    private TestBrokerMessageHandler handler;
 
+    @Before
+    public void setup() {
+        MockitoAnnotations.initMocks(this);
+        this.handler = new TestBrokerMessageHandler();
+    }
 
-	@Before
-	public void setup() {
-		MockitoAnnotations.initMocks(this);
-		this.handler = new TestBrokerMessageHandler();
-	}
+    @Test
+    public void startShouldUpdateIsRunning() {
+        assertFalse(this.handler.isRunning());
+        this.handler.start();
+        assertTrue(this.handler.isRunning());
+    }
 
+    @Test
+    public void stopShouldUpdateIsRunning() {
 
-	@Test
-	public void startShouldUpdateIsRunning() {
-		assertFalse(this.handler.isRunning());
-		this.handler.start();
-		assertTrue(this.handler.isRunning());
-	}
+        this.handler.start();
+        assertTrue(this.handler.isRunning());
 
-	@Test
-	public void stopShouldUpdateIsRunning() {
+        this.handler.stop();
+        assertFalse(this.handler.isRunning());
+    }
 
-		this.handler.start();
-		assertTrue(this.handler.isRunning());
+    @Test
+    public void startAndStopShouldNotPublishBrokerAvailabilityEvents() {
+        this.handler.start();
+        this.handler.stop();
+        assertEquals(Collections.emptyList(), this.handler.availabilityEvents);
+    }
 
-		this.handler.stop();
-		assertFalse(this.handler.isRunning());
-	}
+    @Test
+    public void handleMessageWhenBrokerNotRunning() {
+        this.handler.handleMessage(new GenericMessage<Object>("payload"));
+        assertEquals(Collections.emptyList(), this.handler.messages);
+    }
 
-	@Test
-	public void startAndStopShouldNotPublishBrokerAvailabilityEvents() {
-		this.handler.start();
-		this.handler.stop();
-		assertEquals(Collections.emptyList(), this.handler.availabilityEvents);
-	}
+    @Test
+    public void publishBrokerAvailableEvent() {
 
-	@Test
-	public void handleMessageWhenBrokerNotRunning() {
-		this.handler.handleMessage(new GenericMessage<Object>("payload"));
-		assertEquals(Collections.emptyList(), this.handler.messages);
-	}
+        assertFalse(this.handler.isBrokerAvailable());
+        assertEquals(Collections.emptyList(), this.handler.availabilityEvents);
 
-	@Test
-	public void publishBrokerAvailableEvent() {
+        this.handler.publishBrokerAvailableEvent();
 
-		assertFalse(this.handler.isBrokerAvailable());
-		assertEquals(Collections.emptyList(), this.handler.availabilityEvents);
+        assertTrue(this.handler.isBrokerAvailable());
+        assertEquals(Arrays.asList(true), this.handler.availabilityEvents);
+    }
 
-		this.handler.publishBrokerAvailableEvent();
+    @Test
+    public void publishBrokerAvailableEventWhenAlreadyAvailable() {
 
-		assertTrue(this.handler.isBrokerAvailable());
-		assertEquals(Arrays.asList(true), this.handler.availabilityEvents);
-	}
+        this.handler.publishBrokerAvailableEvent();
+        this.handler.publishBrokerAvailableEvent();
 
-	@Test
-	public void publishBrokerAvailableEventWhenAlreadyAvailable() {
+        assertEquals(Arrays.asList(true), this.handler.availabilityEvents);
+    }
 
-		this.handler.publishBrokerAvailableEvent();
-		this.handler.publishBrokerAvailableEvent();
+    @Test
+    public void publishBrokerUnavailableEvent() {
 
-		assertEquals(Arrays.asList(true), this.handler.availabilityEvents);
-	}
+        this.handler.publishBrokerAvailableEvent();
+        assertTrue(this.handler.isBrokerAvailable());
 
-	@Test
-	public void publishBrokerUnavailableEvent() {
+        this.handler.publishBrokerUnavailableEvent();
+        assertFalse(this.handler.isBrokerAvailable());
 
-		this.handler.publishBrokerAvailableEvent();
-		assertTrue(this.handler.isBrokerAvailable());
+        assertEquals(Arrays.asList(true, false), this.handler.availabilityEvents);
+    }
 
-		this.handler.publishBrokerUnavailableEvent();
-		assertFalse(this.handler.isBrokerAvailable());
+    @Test
+    public void publishBrokerUnavailableEventWhenAlreadyUnavailable() {
 
-		assertEquals(Arrays.asList(true, false), this.handler.availabilityEvents);
-	}
+        this.handler.publishBrokerAvailableEvent();
+        this.handler.publishBrokerUnavailableEvent();
+        this.handler.publishBrokerUnavailableEvent();
 
-	@Test
-	public void publishBrokerUnavailableEventWhenAlreadyUnavailable() {
+        assertEquals(Arrays.asList(true, false), this.handler.availabilityEvents);
+    }
 
-		this.handler.publishBrokerAvailableEvent();
-		this.handler.publishBrokerUnavailableEvent();
-		this.handler.publishBrokerUnavailableEvent();
+    private static class TestBrokerMessageHandler extends AbstractBrokerMessageHandler
+            implements ApplicationEventPublisher {
 
-		assertEquals(Arrays.asList(true, false), this.handler.availabilityEvents);
-	}
+        private final List<Message<?>> messages = new ArrayList<>();
 
+        private final List<Boolean> availabilityEvents = new ArrayList<>();
 
-	private static class TestBrokerMessageHandler extends AbstractBrokerMessageHandler
-			implements ApplicationEventPublisher {
+        private TestBrokerMessageHandler() {
+            super(
+                    mock(SubscribableChannel.class),
+                    mock(MessageChannel.class),
+                    mock(SubscribableChannel.class));
+            setApplicationEventPublisher(this);
+        }
 
-		private final List<Message<?>> messages = new ArrayList<>();
+        @Override
+        protected void handleMessageInternal(Message<?> message) {
+            this.messages.add(message);
+        }
 
-		private final List<Boolean> availabilityEvents = new ArrayList<>();
+        @Override
+        public void publishEvent(ApplicationEvent event) {
+            publishEvent((Object) event);
+        }
 
-
-		private TestBrokerMessageHandler() {
-			super(mock(SubscribableChannel.class), mock(MessageChannel.class), mock(SubscribableChannel.class));
-			setApplicationEventPublisher(this);
-		}
-
-		@Override
-		protected void handleMessageInternal(Message<?> message) {
-			this.messages.add(message);
-		}
-
-		@Override
-		public void publishEvent(ApplicationEvent event) {
-			publishEvent((Object) event);
-		}
-
-		@Override
-		public void publishEvent(Object event) {
-			if (event instanceof BrokerAvailabilityEvent) {
-				this.availabilityEvents.add(((BrokerAvailabilityEvent) event).isBrokerAvailable());
-			}
-		}
-	}
-
+        @Override
+        public void publishEvent(Object event) {
+            if (event instanceof BrokerAvailabilityEvent) {
+                this.availabilityEvents.add(((BrokerAvailabilityEvent) event).isBrokerAvailable());
+            }
+        }
+    }
 }

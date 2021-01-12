@@ -5,13 +5,14 @@
  *  x, y, z... 
  */
 
-INSERT INTO users(first_name, last_name) VALUES('Juergen', 'Hoeller');
+INSERT INTO users(first_name, last_name)
+VALUES ('Juergen', 'Hoeller');
 -- This is also a comment.
 /* 
  * Let's add another comment
  * that covers multiple lines
- */INSERT INTO
-users(first_name, last_name)
-VALUES( 'Sam'     -- first_name
-      , 'Brannen' -- last_name
-);--
+ */
+INSERT INTO users(first_name, last_name)
+VALUES ( 'Sam' -- first_name
+       , 'Brannen' -- last_name
+       );--

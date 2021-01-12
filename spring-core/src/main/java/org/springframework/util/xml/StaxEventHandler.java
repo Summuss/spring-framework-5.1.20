@@ -35,162 +35,163 @@ import org.xml.sax.ext.LexicalHandler;
 import org.springframework.lang.Nullable;
 
 /**
- * SAX {@link org.xml.sax.ContentHandler} and {@link LexicalHandler}
- * that writes to a {@link javax.xml.stream.util.XMLEventConsumer}.
+ * SAX {@link org.xml.sax.ContentHandler} and {@link LexicalHandler} that writes to a {@link
+ * javax.xml.stream.util.XMLEventConsumer}.
  *
  * @author Arjen Poutsma
  * @since 4.0.3
  */
 class StaxEventHandler extends AbstractStaxHandler {
 
-	private final XMLEventFactory eventFactory;
+    private final XMLEventFactory eventFactory;
 
-	private final XMLEventWriter eventWriter;
+    private final XMLEventWriter eventWriter;
 
+    /**
+     * Construct a new instance of the {@code StaxEventContentHandler} that writes to the given
+     * {@code XMLEventWriter}. A default {@code XMLEventFactory} will be created.
+     *
+     * @param eventWriter the writer to write events to
+     */
+    public StaxEventHandler(XMLEventWriter eventWriter) {
+        this.eventFactory = XMLEventFactory.newInstance();
+        this.eventWriter = eventWriter;
+    }
 
-	/**
-	 * Construct a new instance of the {@code StaxEventContentHandler} that writes to the
-	 * given {@code XMLEventWriter}. A default {@code XMLEventFactory} will be created.
-	 * @param eventWriter the writer to write events to
-	 */
-	public StaxEventHandler(XMLEventWriter eventWriter) {
-		this.eventFactory = XMLEventFactory.newInstance();
-		this.eventWriter = eventWriter;
-	}
+    /**
+     * Construct a new instance of the {@code StaxEventContentHandler} that uses the given event
+     * factory to create events and writes to the given {@code XMLEventConsumer}.
+     *
+     * @param eventWriter the writer to write events to
+     * @param factory the factory used to create events
+     */
+    public StaxEventHandler(XMLEventWriter eventWriter, XMLEventFactory factory) {
+        this.eventFactory = factory;
+        this.eventWriter = eventWriter;
+    }
 
-	/**
-	 * Construct a new instance of the {@code StaxEventContentHandler} that uses the given
-	 * event factory to create events and writes to the given {@code XMLEventConsumer}.
-	 * @param eventWriter the writer to write events to
-	 * @param factory the factory used to create events
-	 */
-	public StaxEventHandler(XMLEventWriter eventWriter, XMLEventFactory factory) {
-		this.eventFactory = factory;
-		this.eventWriter = eventWriter;
-	}
+    @Override
+    public void setDocumentLocator(@Nullable Locator locator) {
+        if (locator != null) {
+            this.eventFactory.setLocation(new LocatorLocationAdapter(locator));
+        }
+    }
 
+    @Override
+    protected void startDocumentInternal() throws XMLStreamException {
+        this.eventWriter.add(this.eventFactory.createStartDocument());
+    }
 
-	@Override
-	public void setDocumentLocator(@Nullable Locator locator) {
-		if (locator != null) {
-			this.eventFactory.setLocation(new LocatorLocationAdapter(locator));
-		}
-	}
+    @Override
+    protected void endDocumentInternal() throws XMLStreamException {
+        this.eventWriter.add(this.eventFactory.createEndDocument());
+    }
 
-	@Override
-	protected void startDocumentInternal() throws XMLStreamException {
-		this.eventWriter.add(this.eventFactory.createStartDocument());
-	}
+    @Override
+    protected void startElementInternal(
+            QName name, Attributes atts, Map<String, String> namespaceMapping)
+            throws XMLStreamException {
 
-	@Override
-	protected void endDocumentInternal() throws XMLStreamException {
-		this.eventWriter.add(this.eventFactory.createEndDocument());
-	}
+        List<Attribute> attributes = getAttributes(atts);
+        List<Namespace> namespaces = getNamespaces(namespaceMapping);
+        this.eventWriter.add(
+                this.eventFactory.createStartElement(
+                        name, attributes.iterator(), namespaces.iterator()));
+    }
 
-	@Override
-	protected void startElementInternal(QName name, Attributes atts,
-			Map<String, String> namespaceMapping) throws XMLStreamException {
+    private List<Namespace> getNamespaces(Map<String, String> namespaceMappings) {
+        List<Namespace> result = new ArrayList<>(namespaceMappings.size());
+        namespaceMappings.forEach(
+                (prefix, namespaceUri) ->
+                        result.add(this.eventFactory.createNamespace(prefix, namespaceUri)));
+        return result;
+    }
 
-		List<Attribute> attributes = getAttributes(atts);
-		List<Namespace> namespaces = getNamespaces(namespaceMapping);
-		this.eventWriter.add(
-				this.eventFactory.createStartElement(name, attributes.iterator(), namespaces.iterator()));
+    private List<Attribute> getAttributes(Attributes attributes) {
+        int attrLength = attributes.getLength();
+        List<Attribute> result = new ArrayList<>(attrLength);
+        for (int i = 0; i < attrLength; i++) {
+            QName attrName = toQName(attributes.getURI(i), attributes.getQName(i));
+            if (!isNamespaceDeclaration(attrName)) {
+                result.add(this.eventFactory.createAttribute(attrName, attributes.getValue(i)));
+            }
+        }
+        return result;
+    }
 
-	}
+    @Override
+    protected void endElementInternal(QName name, Map<String, String> namespaceMapping)
+            throws XMLStreamException {
+        List<Namespace> namespaces = getNamespaces(namespaceMapping);
+        this.eventWriter.add(this.eventFactory.createEndElement(name, namespaces.iterator()));
+    }
 
-	private List<Namespace> getNamespaces(Map<String, String> namespaceMappings) {
-		List<Namespace> result = new ArrayList<>(namespaceMappings.size());
-		namespaceMappings.forEach((prefix, namespaceUri) ->
-				result.add(this.eventFactory.createNamespace(prefix, namespaceUri)));
-		return result;
-	}
+    @Override
+    protected void charactersInternal(String data) throws XMLStreamException {
+        this.eventWriter.add(this.eventFactory.createCharacters(data));
+    }
 
-	private List<Attribute> getAttributes(Attributes attributes) {
-		int attrLength = attributes.getLength();
-		List<Attribute> result = new ArrayList<>(attrLength);
-		for (int i = 0; i < attrLength; i++) {
-			QName attrName = toQName(attributes.getURI(i), attributes.getQName(i));
-			if (!isNamespaceDeclaration(attrName)) {
-				result.add(this.eventFactory.createAttribute(attrName, attributes.getValue(i)));
-			}
-		}
-		return result;
-	}
+    @Override
+    protected void cDataInternal(String data) throws XMLStreamException {
+        this.eventWriter.add(this.eventFactory.createCData(data));
+    }
 
-	@Override
-	protected void endElementInternal(QName name, Map<String, String> namespaceMapping) throws XMLStreamException {
-		List<Namespace> namespaces = getNamespaces(namespaceMapping);
-		this.eventWriter.add(this.eventFactory.createEndElement(name, namespaces.iterator()));
-	}
+    @Override
+    protected void ignorableWhitespaceInternal(String data) throws XMLStreamException {
+        this.eventWriter.add(this.eventFactory.createIgnorableSpace(data));
+    }
 
-	@Override
-	protected void charactersInternal(String data) throws XMLStreamException {
-		this.eventWriter.add(this.eventFactory.createCharacters(data));
-	}
+    @Override
+    protected void processingInstructionInternal(String target, String data)
+            throws XMLStreamException {
+        this.eventWriter.add(this.eventFactory.createProcessingInstruction(target, data));
+    }
 
-	@Override
-	protected void cDataInternal(String data) throws XMLStreamException {
-		this.eventWriter.add(this.eventFactory.createCData(data));
-	}
+    @Override
+    protected void dtdInternal(String dtd) throws XMLStreamException {
+        this.eventWriter.add(this.eventFactory.createDTD(dtd));
+    }
 
-	@Override
-	protected void ignorableWhitespaceInternal(String data) throws XMLStreamException {
-		this.eventWriter.add(this.eventFactory.createIgnorableSpace(data));
-	}
+    @Override
+    protected void commentInternal(String comment) throws XMLStreamException {
+        this.eventWriter.add(this.eventFactory.createComment(comment));
+    }
 
-	@Override
-	protected void processingInstructionInternal(String target, String data) throws XMLStreamException {
-		this.eventWriter.add(this.eventFactory.createProcessingInstruction(target, data));
-	}
+    // Ignored
+    @Override
+    protected void skippedEntityInternal(String name) {}
 
-	@Override
-	protected void dtdInternal(String dtd) throws XMLStreamException {
-		this.eventWriter.add(this.eventFactory.createDTD(dtd));
-	}
+    private static final class LocatorLocationAdapter implements Location {
 
-	@Override
-	protected void commentInternal(String comment) throws XMLStreamException {
-		this.eventWriter.add(this.eventFactory.createComment(comment));
-	}
+        private final Locator locator;
 
-	// Ignored
-	@Override
-	protected void skippedEntityInternal(String name) {
-	}
+        public LocatorLocationAdapter(Locator locator) {
+            this.locator = locator;
+        }
 
+        @Override
+        public int getLineNumber() {
+            return this.locator.getLineNumber();
+        }
 
-	private static final class LocatorLocationAdapter implements Location {
+        @Override
+        public int getColumnNumber() {
+            return this.locator.getColumnNumber();
+        }
 
-		private final Locator locator;
+        @Override
+        public int getCharacterOffset() {
+            return -1;
+        }
 
-		public LocatorLocationAdapter(Locator locator) {
-			this.locator = locator;
-		}
+        @Override
+        public String getPublicId() {
+            return this.locator.getPublicId();
+        }
 
-		@Override
-		public int getLineNumber() {
-			return this.locator.getLineNumber();
-		}
-
-		@Override
-		public int getColumnNumber() {
-			return this.locator.getColumnNumber();
-		}
-
-		@Override
-		public int getCharacterOffset() {
-			return -1;
-		}
-
-		@Override
-		public String getPublicId() {
-			return this.locator.getPublicId();
-		}
-
-		@Override
-		public String getSystemId() {
-			return this.locator.getSystemId();
-		}
-	}
-
+        @Override
+        public String getSystemId() {
+            return this.locator.getSystemId();
+        }
+    }
 }

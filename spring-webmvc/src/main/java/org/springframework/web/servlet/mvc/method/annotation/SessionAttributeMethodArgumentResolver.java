@@ -34,30 +34,34 @@ import org.springframework.web.method.annotation.AbstractNamedValueMethodArgumen
  * @author Rossen Stoyanchev
  * @since 4.3
  */
-public class SessionAttributeMethodArgumentResolver extends AbstractNamedValueMethodArgumentResolver {
+public class SessionAttributeMethodArgumentResolver
+        extends AbstractNamedValueMethodArgumentResolver {
 
-	@Override
-	public boolean supportsParameter(MethodParameter parameter) {
-		return parameter.hasParameterAnnotation(SessionAttribute.class);
-	}
+    @Override
+    public boolean supportsParameter(MethodParameter parameter) {
+        return parameter.hasParameterAnnotation(SessionAttribute.class);
+    }
 
-	@Override
-	protected NamedValueInfo createNamedValueInfo(MethodParameter parameter) {
-		SessionAttribute ann = parameter.getParameterAnnotation(SessionAttribute.class);
-		Assert.state(ann != null, "No SessionAttribute annotation");
-		return new NamedValueInfo(ann.name(), ann.required(), ValueConstants.DEFAULT_NONE);
-	}
+    @Override
+    protected NamedValueInfo createNamedValueInfo(MethodParameter parameter) {
+        SessionAttribute ann = parameter.getParameterAnnotation(SessionAttribute.class);
+        Assert.state(ann != null, "No SessionAttribute annotation");
+        return new NamedValueInfo(ann.name(), ann.required(), ValueConstants.DEFAULT_NONE);
+    }
 
-	@Override
-	@Nullable
-	protected Object resolveName(String name, MethodParameter parameter, NativeWebRequest request) {
-		return request.getAttribute(name, RequestAttributes.SCOPE_SESSION);
-	}
+    @Override
+    @Nullable
+    protected Object resolveName(String name, MethodParameter parameter, NativeWebRequest request) {
+        return request.getAttribute(name, RequestAttributes.SCOPE_SESSION);
+    }
 
-	@Override
-	protected void handleMissingValue(String name, MethodParameter parameter) throws ServletException {
-		throw new ServletRequestBindingException("Missing session attribute '" + name +
-				"' of type " + parameter.getNestedParameterType().getSimpleName());
-	}
-
+    @Override
+    protected void handleMissingValue(String name, MethodParameter parameter)
+            throws ServletException {
+        throw new ServletRequestBindingException(
+                "Missing session attribute '"
+                        + name
+                        + "' of type "
+                        + parameter.getNestedParameterType().getSimpleName());
+    }
 }

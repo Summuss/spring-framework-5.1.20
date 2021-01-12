@@ -36,166 +36,185 @@ import org.springframework.lang.Nullable;
 
 import static org.junit.Assert.*;
 
-/**
- * @author Dave Syer
- */
+/** @author Dave Syer */
 public class TrickyAspectJPointcutExpressionTests {
 
-	@Test
-	public void testManualProxyJavaWithUnconditionalPointcut() throws Exception {
-		TestService target = new TestServiceImpl();
-		LogUserAdvice logAdvice = new LogUserAdvice();
-		testAdvice(new DefaultPointcutAdvisor(logAdvice), logAdvice, target, "TestServiceImpl");
-	}
+    @Test
+    public void testManualProxyJavaWithUnconditionalPointcut() throws Exception {
+        TestService target = new TestServiceImpl();
+        LogUserAdvice logAdvice = new LogUserAdvice();
+        testAdvice(new DefaultPointcutAdvisor(logAdvice), logAdvice, target, "TestServiceImpl");
+    }
 
-	@Test
-	public void testManualProxyJavaWithStaticPointcut() throws Exception {
-		TestService target = new TestServiceImpl();
-		LogUserAdvice logAdvice = new LogUserAdvice();
-		AspectJExpressionPointcut pointcut = new AspectJExpressionPointcut();
-		pointcut.setExpression(String.format("execution(* %s.TestService.*(..))", getClass().getName()));
-		testAdvice(new DefaultPointcutAdvisor(pointcut, logAdvice), logAdvice, target, "TestServiceImpl");
-	}
+    @Test
+    public void testManualProxyJavaWithStaticPointcut() throws Exception {
+        TestService target = new TestServiceImpl();
+        LogUserAdvice logAdvice = new LogUserAdvice();
+        AspectJExpressionPointcut pointcut = new AspectJExpressionPointcut();
+        pointcut.setExpression(
+                String.format("execution(* %s.TestService.*(..))", getClass().getName()));
+        testAdvice(
+                new DefaultPointcutAdvisor(pointcut, logAdvice),
+                logAdvice,
+                target,
+                "TestServiceImpl");
+    }
 
-	@Test
-	public void testManualProxyJavaWithDynamicPointcut() throws Exception {
-		TestService target = new TestServiceImpl();
-		LogUserAdvice logAdvice = new LogUserAdvice();
-		AspectJExpressionPointcut pointcut = new AspectJExpressionPointcut();
-		pointcut.setExpression(String.format("@within(%s.Log)", getClass().getName()));
-		testAdvice(new DefaultPointcutAdvisor(pointcut, logAdvice), logAdvice, target, "TestServiceImpl");
-	}
+    @Test
+    public void testManualProxyJavaWithDynamicPointcut() throws Exception {
+        TestService target = new TestServiceImpl();
+        LogUserAdvice logAdvice = new LogUserAdvice();
+        AspectJExpressionPointcut pointcut = new AspectJExpressionPointcut();
+        pointcut.setExpression(String.format("@within(%s.Log)", getClass().getName()));
+        testAdvice(
+                new DefaultPointcutAdvisor(pointcut, logAdvice),
+                logAdvice,
+                target,
+                "TestServiceImpl");
+    }
 
-	@Test
-	public void testManualProxyJavaWithDynamicPointcutAndProxyTargetClass() throws Exception {
-		TestService target = new TestServiceImpl();
-		LogUserAdvice logAdvice = new LogUserAdvice();
-		AspectJExpressionPointcut pointcut = new AspectJExpressionPointcut();
-		pointcut.setExpression(String.format("@within(%s.Log)", getClass().getName()));
-		testAdvice(new DefaultPointcutAdvisor(pointcut, logAdvice), logAdvice, target, "TestServiceImpl", true);
-	}
+    @Test
+    public void testManualProxyJavaWithDynamicPointcutAndProxyTargetClass() throws Exception {
+        TestService target = new TestServiceImpl();
+        LogUserAdvice logAdvice = new LogUserAdvice();
+        AspectJExpressionPointcut pointcut = new AspectJExpressionPointcut();
+        pointcut.setExpression(String.format("@within(%s.Log)", getClass().getName()));
+        testAdvice(
+                new DefaultPointcutAdvisor(pointcut, logAdvice),
+                logAdvice,
+                target,
+                "TestServiceImpl",
+                true);
+    }
 
-	@Test
-	public void testManualProxyJavaWithStaticPointcutAndTwoClassLoaders() throws Exception {
+    @Test
+    public void testManualProxyJavaWithStaticPointcutAndTwoClassLoaders() throws Exception {
 
-		LogUserAdvice logAdvice = new LogUserAdvice();
-		AspectJExpressionPointcut pointcut = new AspectJExpressionPointcut();
-		pointcut.setExpression(String.format("execution(* %s.TestService.*(..))", getClass().getName()));
+        LogUserAdvice logAdvice = new LogUserAdvice();
+        AspectJExpressionPointcut pointcut = new AspectJExpressionPointcut();
+        pointcut.setExpression(
+                String.format("execution(* %s.TestService.*(..))", getClass().getName()));
 
-		// Test with default class loader first...
-		testAdvice(new DefaultPointcutAdvisor(pointcut, logAdvice), logAdvice, new TestServiceImpl(), "TestServiceImpl");
+        // Test with default class loader first...
+        testAdvice(
+                new DefaultPointcutAdvisor(pointcut, logAdvice),
+                logAdvice,
+                new TestServiceImpl(),
+                "TestServiceImpl");
 
-		// Then try again with a different class loader on the target...
-		SimpleThrowawayClassLoader loader = new SimpleThrowawayClassLoader(new TestServiceImpl().getClass().getClassLoader());
-		// Make sure the interface is loaded from the  parent class loader
-		loader.excludeClass(TestService.class.getName());
-		loader.excludeClass(TestException.class.getName());
-		TestService other = (TestService) loader.loadClass(TestServiceImpl.class.getName()).newInstance();
-		testAdvice(new DefaultPointcutAdvisor(pointcut, logAdvice), logAdvice, other, "TestServiceImpl");
+        // Then try again with a different class loader on the target...
+        SimpleThrowawayClassLoader loader =
+                new SimpleThrowawayClassLoader(new TestServiceImpl().getClass().getClassLoader());
+        // Make sure the interface is loaded from the  parent class loader
+        loader.excludeClass(TestService.class.getName());
+        loader.excludeClass(TestException.class.getName());
+        TestService other =
+                (TestService) loader.loadClass(TestServiceImpl.class.getName()).newInstance();
+        testAdvice(
+                new DefaultPointcutAdvisor(pointcut, logAdvice),
+                logAdvice,
+                other,
+                "TestServiceImpl");
+    }
 
-	}
+    private void testAdvice(
+            Advisor advisor, LogUserAdvice logAdvice, TestService target, String message)
+            throws Exception {
+        testAdvice(advisor, logAdvice, target, message, false);
+    }
 
-	private void testAdvice(Advisor advisor, LogUserAdvice logAdvice, TestService target, String message)
-			throws Exception {
-		testAdvice(advisor, logAdvice, target, message, false);
-	}
+    private void testAdvice(
+            Advisor advisor,
+            LogUserAdvice logAdvice,
+            TestService target,
+            String message,
+            boolean proxyTargetClass)
+            throws Exception {
 
-	private void testAdvice(Advisor advisor, LogUserAdvice logAdvice, TestService target, String message,
-			boolean proxyTargetClass) throws Exception {
+        logAdvice.reset();
 
-		logAdvice.reset();
+        ProxyFactory factory = new ProxyFactory(target);
+        factory.setProxyTargetClass(proxyTargetClass);
+        factory.addAdvisor(advisor);
+        TestService bean = (TestService) factory.getProxy();
 
-		ProxyFactory factory = new ProxyFactory(target);
-		factory.setProxyTargetClass(proxyTargetClass);
-		factory.addAdvisor(advisor);
-		TestService bean = (TestService) factory.getProxy();
+        assertEquals(0, logAdvice.getCountThrows());
+        try {
+            bean.sayHello();
+            fail("Expected exception");
+        } catch (TestException ex) {
+            assertEquals(message, ex.getMessage());
+        }
+        assertEquals(1, logAdvice.getCountThrows());
+    }
 
-		assertEquals(0, logAdvice.getCountThrows());
-		try {
-			bean.sayHello();
-			fail("Expected exception");
-		}
-		catch (TestException ex) {
-			assertEquals(message, ex.getMessage());
-		}
-		assertEquals(1, logAdvice.getCountThrows());
-	}
+    public static class SimpleThrowawayClassLoader extends OverridingClassLoader {
 
+        /**
+         * Create a new SimpleThrowawayClassLoader for the given class loader.
+         *
+         * @param parent the ClassLoader to build a throwaway ClassLoader for
+         */
+        public SimpleThrowawayClassLoader(ClassLoader parent) {
+            super(parent);
+        }
+    }
 
-	public static class SimpleThrowawayClassLoader extends OverridingClassLoader {
+    @SuppressWarnings("serial")
+    public static class TestException extends RuntimeException {
 
-		/**
-		 * Create a new SimpleThrowawayClassLoader for the given class loader.
-		 * @param parent the ClassLoader to build a throwaway ClassLoader for
-		 */
-		public SimpleThrowawayClassLoader(ClassLoader parent) {
-			super(parent);
-		}
+        public TestException(String string) {
+            super(string);
+        }
+    }
 
-	}
+    @Target({ElementType.METHOD, ElementType.TYPE})
+    @Retention(RetentionPolicy.RUNTIME)
+    @Documented
+    @Inherited
+    public static @interface Log {}
 
+    public static interface TestService {
 
-	@SuppressWarnings("serial")
-	public static class TestException extends RuntimeException {
+        public String sayHello();
+    }
 
-		public TestException(String string) {
-			super(string);
-		}
-	}
+    @Log
+    public static class TestServiceImpl implements TestService {
 
+        @Override
+        public String sayHello() {
+            throw new TestException("TestServiceImpl");
+        }
+    }
 
-	@Target({ ElementType.METHOD, ElementType.TYPE })
-	@Retention(RetentionPolicy.RUNTIME)
-	@Documented
-	@Inherited
-	public static @interface Log {
-	}
+    public class LogUserAdvice implements MethodBeforeAdvice, ThrowsAdvice {
 
+        private int countBefore = 0;
 
-	public static interface TestService {
+        private int countThrows = 0;
 
-		public String sayHello();
-	}
+        @Override
+        public void before(Method method, Object[] objects, @Nullable Object o) throws Throwable {
+            countBefore++;
+        }
 
+        public void afterThrowing(Exception ex) throws Throwable {
+            countThrows++;
+            throw ex;
+        }
 
-	@Log
-	public static class TestServiceImpl implements TestService {
+        public int getCountBefore() {
+            return countBefore;
+        }
 
-		@Override
-		public String sayHello() {
-			throw new TestException("TestServiceImpl");
-		}
-	}
+        public int getCountThrows() {
+            return countThrows;
+        }
 
-
-	public class LogUserAdvice implements MethodBeforeAdvice, ThrowsAdvice {
-
-		private int countBefore = 0;
-
-		private int countThrows = 0;
-
-		@Override
-		public void before(Method method, Object[] objects, @Nullable Object o) throws Throwable {
-			countBefore++;
-		}
-
-		public void afterThrowing(Exception ex) throws Throwable {
-			countThrows++;
-			throw ex;
-		}
-
-		public int getCountBefore() {
-			return countBefore;
-		}
-
-		public int getCountThrows() {
-			return countThrows;
-		}
-
-		public void reset() {
-			countThrows = 0;
-			countBefore = 0;
-		}
-	}
-
+        public void reset() {
+            countThrows = 0;
+            countBefore = 0;
+        }
+    }
 }

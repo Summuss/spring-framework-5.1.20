@@ -1,6 +1,4 @@
-/**
- * Support for styling values as Strings, with ToStringCreator as central class.
- */
+/** Support for styling values as Strings, with ToStringCreator as central class. */
 @NonNullApi
 @NonNullFields
 package org.springframework.core.style;

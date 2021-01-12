@@ -26,60 +26,52 @@ import org.springframework.util.Assert;
  *
  * @author Juergen Hoeller
  * @since 2.0
- * @deprecated as of 5.1, in favor of EE 7's
- * {@link org.springframework.scheduling.concurrent.DefaultManagedTaskExecutor}
+ * @deprecated as of 5.1, in favor of EE 7's {@link
+ *     org.springframework.scheduling.concurrent.DefaultManagedTaskExecutor}
  */
 @Deprecated
 public class DelegatingWork implements Work {
 
-	private final Runnable delegate;
+    private final Runnable delegate;
 
+    /**
+     * Create a new DelegatingWork.
+     *
+     * @param delegate the Runnable implementation to delegate to (may be a SchedulingAwareRunnable
+     *     for extended support)
+     * @see org.springframework.scheduling.SchedulingAwareRunnable
+     * @see #isDaemon()
+     */
+    public DelegatingWork(Runnable delegate) {
+        Assert.notNull(delegate, "Delegate must not be null");
+        this.delegate = delegate;
+    }
 
-	/**
-	 * Create a new DelegatingWork.
-	 * @param delegate the Runnable implementation to delegate to
-	 * (may be a SchedulingAwareRunnable for extended support)
-	 * @see org.springframework.scheduling.SchedulingAwareRunnable
-	 * @see #isDaemon()
-	 */
-	public DelegatingWork(Runnable delegate) {
-		Assert.notNull(delegate, "Delegate must not be null");
-		this.delegate = delegate;
-	}
+    /** Return the wrapped Runnable implementation. */
+    public final Runnable getDelegate() {
+        return this.delegate;
+    }
 
-	/**
-	 * Return the wrapped Runnable implementation.
-	 */
-	public final Runnable getDelegate() {
-		return this.delegate;
-	}
+    /** Delegates execution to the underlying Runnable. */
+    @Override
+    public void run() {
+        this.delegate.run();
+    }
 
+    /**
+     * This implementation delegates to {@link
+     * org.springframework.scheduling.SchedulingAwareRunnable#isLongLived()}, if available.
+     */
+    @Override
+    public boolean isDaemon() {
+        return (this.delegate instanceof SchedulingAwareRunnable
+                && ((SchedulingAwareRunnable) this.delegate).isLongLived());
+    }
 
-	/**
-	 * Delegates execution to the underlying Runnable.
-	 */
-	@Override
-	public void run() {
-		this.delegate.run();
-	}
-
-	/**
-	 * This implementation delegates to
-	 * {@link org.springframework.scheduling.SchedulingAwareRunnable#isLongLived()},
-	 * if available.
-	 */
-	@Override
-	public boolean isDaemon() {
-		return (this.delegate instanceof SchedulingAwareRunnable &&
-				((SchedulingAwareRunnable) this.delegate).isLongLived());
-	}
-
-	/**
-	 * This implementation is empty, since we expect the Runnable
-	 * to terminate based on some specific shutdown signal.
-	 */
-	@Override
-	public void release() {
-	}
-
+    /**
+     * This implementation is empty, since we expect the Runnable to terminate based on some
+     * specific shutdown signal.
+     */
+    @Override
+    public void release() {}
 }

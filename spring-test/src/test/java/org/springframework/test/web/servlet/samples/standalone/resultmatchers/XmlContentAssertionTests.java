@@ -50,73 +50,81 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.*;
  */
 public class XmlContentAssertionTests {
 
-	private static final String PEOPLE_XML =
-		"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
-		"<people><composers>" +
-		"<composer><name>Johann Sebastian Bach</name><someBoolean>false</someBoolean><someDouble>21.0</someDouble></composer>" +
-		"<composer><name>Johannes Brahms</name><someBoolean>false</someBoolean><someDouble>0.0025</someDouble></composer>" +
-		"<composer><name>Edvard Grieg</name><someBoolean>false</someBoolean><someDouble>1.6035</someDouble></composer>" +
-		"<composer><name>Robert Schumann</name><someBoolean>false</someBoolean><someDouble>NaN</someDouble></composer>" +
-		"</composers></people>";
+    private static final String PEOPLE_XML =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+                    + "<people><composers>"
+                    + "<composer><name>Johann Sebastian Bach</name><someBoolean>false</someBoolean><someDouble>21.0</someDouble></composer>"
+                    + "<composer><name>Johannes Brahms</name><someBoolean>false</someBoolean><someDouble>0.0025</someDouble></composer>"
+                    + "<composer><name>Edvard Grieg</name><someBoolean>false</someBoolean><someDouble>1.6035</someDouble></composer>"
+                    + "<composer><name>Robert Schumann</name><someBoolean>false</someBoolean><someDouble>NaN</someDouble></composer>"
+                    + "</composers></people>";
 
-	private MockMvc mockMvc;
+    private MockMvc mockMvc;
 
+    @Before
+    public void setup() {
+        this.mockMvc =
+                standaloneSetup(new MusicController())
+                        .defaultRequest(
+                                get("/").accept(
+                                                MediaType.APPLICATION_XML,
+                                                MediaType.parseMediaType(
+                                                        "application/xml;charset=UTF-8")))
+                        .alwaysExpect(status().isOk())
+                        .alwaysExpect(
+                                content()
+                                        .contentType(
+                                                MediaType.parseMediaType(
+                                                        "application/xml;charset=UTF-8")))
+                        .build();
+    }
 
-	@Before
-	public void setup() {
-		this.mockMvc = standaloneSetup(new MusicController())
-				.defaultRequest(get("/").accept(MediaType.APPLICATION_XML, MediaType.parseMediaType("application/xml;charset=UTF-8")))
-				.alwaysExpect(status().isOk())
-				.alwaysExpect(content().contentType(MediaType.parseMediaType("application/xml;charset=UTF-8")))
-				.build();
-	}
+    @Test
+    public void testXmlEqualTo() throws Exception {
+        this.mockMvc.perform(get("/music/people")).andExpect(content().xml(PEOPLE_XML));
+    }
 
-	@Test
-	public void testXmlEqualTo() throws Exception {
-		this.mockMvc.perform(get("/music/people")).andExpect(content().xml(PEOPLE_XML));
-	}
+    @Test
+    public void testNodeHamcrestMatcher() throws Exception {
+        this.mockMvc
+                .perform(get("/music/people"))
+                .andExpect(content().node(hasXPath("/people/composers/composer[1]")));
+    }
 
-	@Test
-	public void testNodeHamcrestMatcher() throws Exception {
-		this.mockMvc.perform(get("/music/people"))
-			.andExpect(content().node(hasXPath("/people/composers/composer[1]")));
-	}
+    @Controller
+    private static class MusicController {
 
+        @RequestMapping(value = "/music/people")
+        public @ResponseBody PeopleWrapper getPeople() {
 
-	@Controller
-	private static class MusicController {
+            List<Person> composers =
+                    Arrays.asList(
+                            new Person("Johann Sebastian Bach").setSomeDouble(21),
+                            new Person("Johannes Brahms").setSomeDouble(.0025),
+                            new Person("Edvard Grieg").setSomeDouble(1.6035),
+                            new Person("Robert Schumann").setSomeDouble(Double.NaN));
 
-		@RequestMapping(value="/music/people")
-		public @ResponseBody PeopleWrapper getPeople() {
+            return new PeopleWrapper(composers);
+        }
+    }
 
-			List<Person> composers = Arrays.asList(
-					new Person("Johann Sebastian Bach").setSomeDouble(21),
-					new Person("Johannes Brahms").setSomeDouble(.0025),
-					new Person("Edvard Grieg").setSomeDouble(1.6035),
-					new Person("Robert Schumann").setSomeDouble(Double.NaN));
+    @SuppressWarnings("unused")
+    @XmlRootElement(name = "people")
+    @XmlAccessorType(XmlAccessType.FIELD)
+    private static class PeopleWrapper {
 
-			return new PeopleWrapper(composers);
-		}
-	}
+        @XmlElementWrapper(name = "composers")
+        @XmlElement(name = "composer")
+        private List<Person> composers;
 
-	@SuppressWarnings("unused")
-	@XmlRootElement(name="people")
-	@XmlAccessorType(XmlAccessType.FIELD)
-	private static class PeopleWrapper {
+        public PeopleWrapper() {}
 
-		@XmlElementWrapper(name="composers")
-		@XmlElement(name="composer")
-		private List<Person> composers;
+        public PeopleWrapper(List<Person> composers) {
+            this.composers = composers;
+        }
 
-		public PeopleWrapper() {
-		}
-
-		public PeopleWrapper(List<Person> composers) {
-			this.composers = composers;
-		}
-
-		public List<Person> getComposers() {
-			return this.composers;
-		}
-	}
+        public List<Person> getComposers() {
+            return this.composers;
+        }
+    }
 }

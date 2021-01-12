@@ -24,5 +24,4 @@ import javax.annotation.ManagedBean;
  * @author Stephane Nicoll
  */
 @ManagedBean
-public class SampleManagedBean {
-}
+public class SampleManagedBean {}

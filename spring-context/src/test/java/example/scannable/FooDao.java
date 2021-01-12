@@ -16,11 +16,8 @@
 
 package example.scannable;
 
-/**
- * @author Mark Fisher
- */
+/** @author Mark Fisher */
 public interface FooDao {
 
-	String findFoo(int id);
-
+    String findFoo(int id);
 }

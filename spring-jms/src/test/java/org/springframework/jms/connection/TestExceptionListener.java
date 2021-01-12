@@ -19,20 +19,17 @@ package org.springframework.jms.connection;
 import javax.jms.ExceptionListener;
 import javax.jms.JMSException;
 
-/**
- * @author Juergen Hoeller
- */
+/** @author Juergen Hoeller */
 public class TestExceptionListener implements ExceptionListener {
 
-	private int count = 0;
+    private int count = 0;
 
-	@Override
-	public void onException(JMSException ex) {
-		this.count++;
-	}
+    @Override
+    public void onException(JMSException ex) {
+        this.count++;
+    }
 
-	public int getCount() {
-		return count;
-	}
-
+    public int getCount() {
+        return count;
+    }
 }

@@ -27,9 +27,9 @@ import org.springframework.core.annotation.AliasFor;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface A {
 
-	@AliasFor("value")
-	B other() default @B;
+    @AliasFor("value")
+    B other() default @B;
 
-	@AliasFor("other")
-	B value() default @B;
+    @AliasFor("other")
+    B value() default @B;
 }

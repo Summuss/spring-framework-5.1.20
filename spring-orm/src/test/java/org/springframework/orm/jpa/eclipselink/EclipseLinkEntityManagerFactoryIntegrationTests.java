@@ -29,19 +29,23 @@ import static org.junit.Assert.*;
  *
  * @author Juergen Hoeller
  */
-public class EclipseLinkEntityManagerFactoryIntegrationTests extends AbstractContainerEntityManagerFactoryIntegrationTests {
+public class EclipseLinkEntityManagerFactoryIntegrationTests
+        extends AbstractContainerEntityManagerFactoryIntegrationTests {
 
-	@Test
-	public void testCanCastNativeEntityManagerFactoryToEclipseLinkEntityManagerFactoryImpl() {
-		EntityManagerFactoryInfo emfi = (EntityManagerFactoryInfo) entityManagerFactory;
-		assertTrue(emfi.getNativeEntityManagerFactory().getClass().getName().endsWith("EntityManagerFactoryImpl"));
-	}
+    @Test
+    public void testCanCastNativeEntityManagerFactoryToEclipseLinkEntityManagerFactoryImpl() {
+        EntityManagerFactoryInfo emfi = (EntityManagerFactoryInfo) entityManagerFactory;
+        assertTrue(
+                emfi.getNativeEntityManagerFactory()
+                        .getClass()
+                        .getName()
+                        .endsWith("EntityManagerFactoryImpl"));
+    }
 
-	@Test
-	public void testCanCastSharedEntityManagerProxyToEclipseLinkEntityManager() {
-		assertTrue(sharedEntityManager instanceof JpaEntityManager);
-		JpaEntityManager eclipselinkEntityManager = (JpaEntityManager) sharedEntityManager;
-		assertNotNull(eclipselinkEntityManager.getActiveSession());
-	}
-
+    @Test
+    public void testCanCastSharedEntityManagerProxyToEclipseLinkEntityManager() {
+        assertTrue(sharedEntityManager instanceof JpaEntityManager);
+        JpaEntityManager eclipselinkEntityManager = (JpaEntityManager) sharedEntityManager;
+        assertNotNull(eclipselinkEntityManager.getActiveSession());
+    }
 }

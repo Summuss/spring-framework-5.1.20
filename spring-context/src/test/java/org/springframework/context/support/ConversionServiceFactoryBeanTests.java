@@ -43,105 +43,110 @@ import static org.junit.Assert.*;
  */
 public class ConversionServiceFactoryBeanTests {
 
-	@Test
-	public void createDefaultConversionService() {
-		ConversionServiceFactoryBean factory = new ConversionServiceFactoryBean();
-		factory.afterPropertiesSet();
-		ConversionService service = factory.getObject();
-		assertTrue(service.canConvert(String.class, Integer.class));
-	}
+    @Test
+    public void createDefaultConversionService() {
+        ConversionServiceFactoryBean factory = new ConversionServiceFactoryBean();
+        factory.afterPropertiesSet();
+        ConversionService service = factory.getObject();
+        assertTrue(service.canConvert(String.class, Integer.class));
+    }
 
-	@Test
-	public void createDefaultConversionServiceWithSupplements() {
-		ConversionServiceFactoryBean factory = new ConversionServiceFactoryBean();
-		Set<Object> converters = new HashSet<>();
-		converters.add(new Converter<String, Foo>() {
-			@Override
-			public Foo convert(String source) {
-				return new Foo();
-			}
-		});
-		converters.add(new ConverterFactory<String, Bar>() {
-			@Override
-			public <T extends Bar> Converter<String, T> getConverter(Class<T> targetType) {
-				return new Converter<String, T> () {
-					@SuppressWarnings("unchecked")
-					@Override
-					public T convert(String source) {
-						return (T) new Bar();
-					}
-				};
-			}
-		});
-		converters.add(new GenericConverter() {
-			@Override
-			public Set<ConvertiblePair> getConvertibleTypes() {
-				return Collections.singleton(new ConvertiblePair(String.class, Baz.class));
-			}
-			@Override
-			@Nullable
-			public Object convert(@Nullable Object source, TypeDescriptor sourceType, TypeDescriptor targetType) {
-				return new Baz();
-			}
-		});
-		factory.setConverters(converters);
-		factory.afterPropertiesSet();
-		ConversionService service = factory.getObject();
-		assertTrue(service.canConvert(String.class, Integer.class));
-		assertTrue(service.canConvert(String.class, Foo.class));
-		assertTrue(service.canConvert(String.class, Bar.class));
-		assertTrue(service.canConvert(String.class, Baz.class));
-	}
+    @Test
+    public void createDefaultConversionServiceWithSupplements() {
+        ConversionServiceFactoryBean factory = new ConversionServiceFactoryBean();
+        Set<Object> converters = new HashSet<>();
+        converters.add(
+                new Converter<String, Foo>() {
+                    @Override
+                    public Foo convert(String source) {
+                        return new Foo();
+                    }
+                });
+        converters.add(
+                new ConverterFactory<String, Bar>() {
+                    @Override
+                    public <T extends Bar> Converter<String, T> getConverter(Class<T> targetType) {
+                        return new Converter<String, T>() {
+                            @SuppressWarnings("unchecked")
+                            @Override
+                            public T convert(String source) {
+                                return (T) new Bar();
+                            }
+                        };
+                    }
+                });
+        converters.add(
+                new GenericConverter() {
+                    @Override
+                    public Set<ConvertiblePair> getConvertibleTypes() {
+                        return Collections.singleton(new ConvertiblePair(String.class, Baz.class));
+                    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void createDefaultConversionServiceWithInvalidSupplements() {
-		ConversionServiceFactoryBean factory = new ConversionServiceFactoryBean();
-		Set<Object> converters = new HashSet<>();
-		converters.add("bogus");
-		factory.setConverters(converters);
-		factory.afterPropertiesSet();
-	}
+                    @Override
+                    @Nullable
+                    public Object convert(
+                            @Nullable Object source,
+                            TypeDescriptor sourceType,
+                            TypeDescriptor targetType) {
+                        return new Baz();
+                    }
+                });
+        factory.setConverters(converters);
+        factory.afterPropertiesSet();
+        ConversionService service = factory.getObject();
+        assertTrue(service.canConvert(String.class, Integer.class));
+        assertTrue(service.canConvert(String.class, Foo.class));
+        assertTrue(service.canConvert(String.class, Bar.class));
+        assertTrue(service.canConvert(String.class, Baz.class));
+    }
 
-	@Test
-	public void conversionServiceInApplicationContext() {
-		doTestConversionServiceInApplicationContext("conversionService.xml", ClassPathResource.class);
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void createDefaultConversionServiceWithInvalidSupplements() {
+        ConversionServiceFactoryBean factory = new ConversionServiceFactoryBean();
+        Set<Object> converters = new HashSet<>();
+        converters.add("bogus");
+        factory.setConverters(converters);
+        factory.afterPropertiesSet();
+    }
 
-	@Test
-	public void conversionServiceInApplicationContextWithResourceOverriding() {
-		doTestConversionServiceInApplicationContext("conversionServiceWithResourceOverriding.xml", FileSystemResource.class);
-	}
+    @Test
+    public void conversionServiceInApplicationContext() {
+        doTestConversionServiceInApplicationContext(
+                "conversionService.xml", ClassPathResource.class);
+    }
 
-	private void doTestConversionServiceInApplicationContext(String fileName, Class<?> resourceClass) {
-		ApplicationContext ctx = new ClassPathXmlApplicationContext(fileName, getClass());
-		ResourceTestBean tb = ctx.getBean("resourceTestBean", ResourceTestBean.class);
-		assertTrue(resourceClass.isInstance(tb.getResource()));
-		assertTrue(tb.getResourceArray().length > 0);
-		assertTrue(resourceClass.isInstance(tb.getResourceArray()[0]));
-		assertTrue(tb.getResourceMap().size() == 1);
-		assertTrue(resourceClass.isInstance(tb.getResourceMap().get("key1")));
-		assertTrue(tb.getResourceArrayMap().size() == 1);
-		assertTrue(tb.getResourceArrayMap().get("key1").length > 0);
-		assertTrue(resourceClass.isInstance(tb.getResourceArrayMap().get("key1")[0]));
-	}
+    @Test
+    public void conversionServiceInApplicationContextWithResourceOverriding() {
+        doTestConversionServiceInApplicationContext(
+                "conversionServiceWithResourceOverriding.xml", FileSystemResource.class);
+    }
 
+    private void doTestConversionServiceInApplicationContext(
+            String fileName, Class<?> resourceClass) {
+        ApplicationContext ctx = new ClassPathXmlApplicationContext(fileName, getClass());
+        ResourceTestBean tb = ctx.getBean("resourceTestBean", ResourceTestBean.class);
+        assertTrue(resourceClass.isInstance(tb.getResource()));
+        assertTrue(tb.getResourceArray().length > 0);
+        assertTrue(resourceClass.isInstance(tb.getResourceArray()[0]));
+        assertTrue(tb.getResourceMap().size() == 1);
+        assertTrue(resourceClass.isInstance(tb.getResourceMap().get("key1")));
+        assertTrue(tb.getResourceArrayMap().size() == 1);
+        assertTrue(tb.getResourceArrayMap().get("key1").length > 0);
+        assertTrue(resourceClass.isInstance(tb.getResourceArrayMap().get("key1")[0]));
+    }
 
-	public static class Foo {
-	}
+    public static class Foo {}
 
-	public static class Bar {
-	}
+    public static class Bar {}
 
-	public static class Baz {
-	}
+    public static class Baz {}
 
-	public static class ComplexConstructorArgument {
+    public static class ComplexConstructorArgument {
 
-		public ComplexConstructorArgument(Map<String, Class<?>> map) {
-			assertTrue(!map.isEmpty());
-			assertThat(map.keySet().iterator().next(), instanceOf(String.class));
-			assertThat(map.values().iterator().next(), instanceOf(Class.class));
-		}
-	}
-
+        public ComplexConstructorArgument(Map<String, Class<?>> map) {
+            assertTrue(!map.isEmpty());
+            assertThat(map.keySet().iterator().next(), instanceOf(String.class));
+            assertThat(map.values().iterator().next(), instanceOf(Class.class));
+        }
+    }
 }

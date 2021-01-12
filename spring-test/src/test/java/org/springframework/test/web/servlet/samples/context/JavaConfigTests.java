@@ -66,121 +66,126 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @RunWith(SpringJUnit4ClassRunner.class)
 @WebAppConfiguration("classpath:META-INF/web-resources")
 @ContextHierarchy({
-	@ContextConfiguration(classes = RootConfig.class),
-	@ContextConfiguration(classes = WebConfig.class)
+    @ContextConfiguration(classes = RootConfig.class),
+    @ContextConfiguration(classes = WebConfig.class)
 })
 public class JavaConfigTests {
 
-	@Autowired
-	private WebApplicationContext wac;
+    @Autowired private WebApplicationContext wac;
 
-	@Autowired
-	private PersonDao personDao;
+    @Autowired private PersonDao personDao;
 
-	@Autowired
-	private PersonController personController;
+    @Autowired private PersonController personController;
 
-	private MockMvc mockMvc;
+    private MockMvc mockMvc;
 
+    @Before
+    public void setup() {
+        this.mockMvc = MockMvcBuilders.webAppContextSetup(this.wac).build();
+        verifyRootWacSupport();
+        given(this.personDao.getPerson(5L)).willReturn(new Person("Joe"));
+    }
 
-	@Before
-	public void setup() {
-		this.mockMvc = MockMvcBuilders.webAppContextSetup(this.wac).build();
-		verifyRootWacSupport();
-		given(this.personDao.getPerson(5L)).willReturn(new Person("Joe"));
-	}
+    @Test
+    public void person() throws Exception {
+        this.mockMvc
+                .perform(get("/person/5").accept(MediaType.APPLICATION_JSON))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(
+                        content()
+                                .string(
+                                        "{\"name\":\"Joe\",\"someDouble\":0.0,\"someBoolean\":false}"));
+    }
 
-	@Test
-	public void person() throws Exception {
-		this.mockMvc.perform(get("/person/5").accept(MediaType.APPLICATION_JSON))
-			.andDo(print())
-			.andExpect(status().isOk())
-			.andExpect(content().string("{\"name\":\"Joe\",\"someDouble\":0.0,\"someBoolean\":false}"));
-	}
+    @Test
+    public void tilesDefinitions() throws Exception {
+        this.mockMvc
+                .perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl("/WEB-INF/layouts/standardLayout.jsp"));
+    }
 
-	@Test
-	public void tilesDefinitions() throws Exception {
-		this.mockMvc.perform(get("/"))
-			.andExpect(status().isOk())
-			.andExpect(forwardedUrl("/WEB-INF/layouts/standardLayout.jsp"));
-	}
+    /**
+     * Verify that the breaking change introduced in <a
+     * href="https://jira.spring.io/browse/SPR-12553">SPR-12553</a> has been reverted.
+     *
+     * <p>This code has been copied from {@link
+     * org.springframework.test.context.hierarchies.web.ControllerIntegrationTests}.
+     *
+     * @see
+     *     org.springframework.test.context.hierarchies.web.ControllerIntegrationTests#verifyRootWacSupport()
+     */
+    private void verifyRootWacSupport() {
+        assertNotNull(personDao);
+        assertNotNull(personController);
 
-	/**
-	 * Verify that the breaking change introduced in <a
-	 * href="https://jira.spring.io/browse/SPR-12553">SPR-12553</a> has been reverted.
-	 *
-	 * <p>This code has been copied from
-	 * {@link org.springframework.test.context.hierarchies.web.ControllerIntegrationTests}.
-	 *
-	 * @see org.springframework.test.context.hierarchies.web.ControllerIntegrationTests#verifyRootWacSupport()
-	 */
-	private void verifyRootWacSupport() {
-		assertNotNull(personDao);
-		assertNotNull(personController);
+        ApplicationContext parent = wac.getParent();
+        assertNotNull(parent);
+        assertTrue(parent instanceof WebApplicationContext);
+        WebApplicationContext root = (WebApplicationContext) parent;
 
-		ApplicationContext parent = wac.getParent();
-		assertNotNull(parent);
-		assertTrue(parent instanceof WebApplicationContext);
-		WebApplicationContext root = (WebApplicationContext) parent;
+        ServletContext childServletContext = wac.getServletContext();
+        assertNotNull(childServletContext);
+        ServletContext rootServletContext = root.getServletContext();
+        assertNotNull(rootServletContext);
+        assertSame(childServletContext, rootServletContext);
 
-		ServletContext childServletContext = wac.getServletContext();
-		assertNotNull(childServletContext);
-		ServletContext rootServletContext = root.getServletContext();
-		assertNotNull(rootServletContext);
-		assertSame(childServletContext, rootServletContext);
+        assertSame(
+                root,
+                rootServletContext.getAttribute(
+                        WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE));
+        assertSame(
+                root,
+                childServletContext.getAttribute(
+                        WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE));
+    }
 
-		assertSame(root, rootServletContext.getAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE));
-		assertSame(root, childServletContext.getAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE));
-	}
+    @Configuration
+    static class RootConfig {
 
+        @Bean
+        public PersonDao personDao() {
+            return Mockito.mock(PersonDao.class);
+        }
+    }
 
-	@Configuration
-	static class RootConfig {
+    @Configuration
+    @EnableWebMvc
+    static class WebConfig implements WebMvcConfigurer {
 
-		@Bean
-		public PersonDao personDao() {
-			return Mockito.mock(PersonDao.class);
-		}
-	}
+        @Autowired private RootConfig rootConfig;
 
-	@Configuration
-	@EnableWebMvc
-	static class WebConfig implements WebMvcConfigurer {
+        @Bean
+        public PersonController personController() {
+            return new PersonController(this.rootConfig.personDao());
+        }
 
-		@Autowired
-		private RootConfig rootConfig;
+        @Override
+        public void addResourceHandlers(ResourceHandlerRegistry registry) {
+            registry.addResourceHandler("/resources/**").addResourceLocations("/resources/");
+        }
 
-		@Bean
-		public PersonController personController() {
-			return new PersonController(this.rootConfig.personDao());
-		}
+        @Override
+        public void addViewControllers(ViewControllerRegistry registry) {
+            registry.addViewController("/").setViewName("home");
+        }
 
-		@Override
-		public void addResourceHandlers(ResourceHandlerRegistry registry) {
-			registry.addResourceHandler("/resources/**").addResourceLocations("/resources/");
-		}
+        @Override
+        public void configureDefaultServletHandling(DefaultServletHandlerConfigurer configurer) {
+            configurer.enable();
+        }
 
-		@Override
-		public void addViewControllers(ViewControllerRegistry registry) {
-			registry.addViewController("/").setViewName("home");
-		}
+        @Override
+        public void configureViewResolvers(ViewResolverRegistry registry) {
+            registry.tiles();
+        }
 
-		@Override
-		public void configureDefaultServletHandling(DefaultServletHandlerConfigurer configurer) {
-			configurer.enable();
-		}
-
-		@Override
-		public void configureViewResolvers(ViewResolverRegistry registry) {
-			registry.tiles();
-		}
-
-		@Bean
-		public TilesConfigurer tilesConfigurer() {
-			TilesConfigurer configurer = new TilesConfigurer();
-			configurer.setDefinitions("/WEB-INF/**/tiles.xml");
-			return configurer;
-		}
-	}
-
+        @Bean
+        public TilesConfigurer tilesConfigurer() {
+            TilesConfigurer configurer = new TilesConfigurer();
+            configurer.setDefinitions("/WEB-INF/**/tiles.xml");
+            return configurer;
+        }
+    }
 }

@@ -25,8 +25,8 @@ import org.springframework.util.StringUtils;
 /**
  * Converts from a String to a {@link java.util.Locale}.
  *
- * <p>Accepts the classic {@link Locale} String format ({@link Locale#toString()})
- * as well as BCP 47 language tags ({@link Locale#forLanguageTag} on Java 7+).
+ * <p>Accepts the classic {@link Locale} String format ({@link Locale#toString()}) as well as BCP 47
+ * language tags ({@link Locale#forLanguageTag} on Java 7+).
  *
  * @author Keith Donald
  * @author Juergen Hoeller
@@ -35,10 +35,9 @@ import org.springframework.util.StringUtils;
  */
 final class StringToLocaleConverter implements Converter<String, Locale> {
 
-	@Override
-	@Nullable
-	public Locale convert(String source) {
-		return StringUtils.parseLocale(source);
-	}
-
+    @Override
+    @Nullable
+    public Locale convert(String source) {
+        return StringUtils.parseLocale(source);
+    }
 }

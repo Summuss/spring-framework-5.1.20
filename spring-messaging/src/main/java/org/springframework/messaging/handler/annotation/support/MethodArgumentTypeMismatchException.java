@@ -29,8 +29,8 @@ import org.springframework.messaging.handler.invocation.MethodArgumentResolution
 @SuppressWarnings("serial")
 public class MethodArgumentTypeMismatchException extends MethodArgumentResolutionException {
 
-	public MethodArgumentTypeMismatchException(Message<?> message, MethodParameter parameter, String description) {
-		super(message, parameter, description);
-	}
-
+    public MethodArgumentTypeMismatchException(
+            Message<?> message, MethodParameter parameter, String description) {
+        super(message, parameter, description);
+    }
 }

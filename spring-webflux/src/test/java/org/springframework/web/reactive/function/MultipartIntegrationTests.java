@@ -41,90 +41,90 @@ import static org.junit.Assert.*;
 import static org.springframework.web.reactive.function.server.RequestPredicates.*;
 import static org.springframework.web.reactive.function.server.RouterFunctions.*;
 
-/**
- * @author Sebastien Deleuze
- */
+/** @author Sebastien Deleuze */
 public class MultipartIntegrationTests extends AbstractRouterFunctionIntegrationTests {
 
-	private final WebClient webClient = WebClient.create();
+    private final WebClient webClient = WebClient.create();
 
+    @Test
+    public void multipartData() {
+        Mono<ClientResponse> result =
+                webClient
+                        .post()
+                        .uri("http://localhost:" + this.port + "/multipartData")
+                        .syncBody(generateBody())
+                        .exchange();
 
-	@Test
-	public void multipartData() {
-		Mono<ClientResponse> result = webClient
-				.post()
-				.uri("http://localhost:" + this.port + "/multipartData")
-				.syncBody(generateBody())
-				.exchange();
+        StepVerifier.create(result)
+                .consumeNextWith(response -> assertEquals(HttpStatus.OK, response.statusCode()))
+                .verifyComplete();
+    }
 
-		StepVerifier
-				.create(result)
-				.consumeNextWith(response -> assertEquals(HttpStatus.OK, response.statusCode()))
-				.verifyComplete();
-	}
+    @Test
+    public void parts() {
+        Mono<ClientResponse> result =
+                webClient
+                        .post()
+                        .uri("http://localhost:" + this.port + "/parts")
+                        .syncBody(generateBody())
+                        .exchange();
 
-	@Test
-	public void parts() {
-		Mono<ClientResponse> result = webClient
-				.post()
-				.uri("http://localhost:" + this.port + "/parts")
-				.syncBody(generateBody())
-				.exchange();
+        StepVerifier.create(result)
+                .consumeNextWith(response -> assertEquals(HttpStatus.OK, response.statusCode()))
+                .verifyComplete();
+    }
 
-		StepVerifier
-				.create(result)
-				.consumeNextWith(response -> assertEquals(HttpStatus.OK, response.statusCode()))
-				.verifyComplete();
-	}
+    private MultiValueMap<String, HttpEntity<?>> generateBody() {
+        MultipartBodyBuilder builder = new MultipartBodyBuilder();
+        builder.part(
+                "fooPart",
+                new ClassPathResource("org/springframework/http/codec/multipart/foo.txt"));
+        builder.part("barPart", "bar");
+        return builder.build();
+    }
 
-	private MultiValueMap<String, HttpEntity<?>> generateBody() {
-		MultipartBodyBuilder builder = new MultipartBodyBuilder();
-		builder.part("fooPart", new ClassPathResource("org/springframework/http/codec/multipart/foo.txt"));
-		builder.part("barPart", "bar");
-		return builder.build();
-	}
+    @Override
+    protected RouterFunction<ServerResponse> routerFunction() {
+        MultipartHandler multipartHandler = new MultipartHandler();
+        return route(POST("/multipartData"), multipartHandler::multipartData)
+                .andRoute(POST("/parts"), multipartHandler::parts);
+    }
 
-	@Override
-	protected RouterFunction<ServerResponse> routerFunction() {
-		MultipartHandler multipartHandler = new MultipartHandler();
-		return route(POST("/multipartData"), multipartHandler::multipartData)
-				.andRoute(POST("/parts"), multipartHandler::parts);
-	}
+    private static class MultipartHandler {
 
+        public Mono<ServerResponse> multipartData(ServerRequest request) {
+            return request.body(BodyExtractors.toMultipartData())
+                    .flatMap(
+                            map -> {
+                                Map<String, Part> parts = map.toSingleValueMap();
+                                try {
+                                    assertEquals(2, parts.size());
+                                    assertEquals(
+                                            "foo.txt",
+                                            ((FilePart) parts.get("fooPart")).filename());
+                                    assertEquals(
+                                            "bar", ((FormFieldPart) parts.get("barPart")).value());
+                                } catch (Exception e) {
+                                    return Mono.error(e);
+                                }
+                                return ServerResponse.ok().build();
+                            });
+        }
 
-	private static class MultipartHandler {
-
-		public Mono<ServerResponse> multipartData(ServerRequest request) {
-			return request
-					.body(BodyExtractors.toMultipartData())
-					.flatMap(map -> {
-						Map<String, Part> parts = map.toSingleValueMap();
-						try {
-							assertEquals(2, parts.size());
-							assertEquals("foo.txt", ((FilePart) parts.get("fooPart")).filename());
-							assertEquals("bar", ((FormFieldPart) parts.get("barPart")).value());
-						}
-						catch(Exception e) {
-							return Mono.error(e);
-						}
-						return ServerResponse.ok().build();
-					});
-		}
-
-		public Mono<ServerResponse> parts(ServerRequest request) {
-			return request.body(BodyExtractors.toParts()).collectList()
-					.flatMap(parts -> {
-						try {
-							assertEquals(2, parts.size());
-							assertEquals("foo.txt", ((FilePart) parts.get(0)).filename());
-							assertEquals("bar", ((FormFieldPart) parts.get(1)).value());
-						}
-						catch(Exception e) {
-							return Mono.error(e);
-						}
-						return ServerResponse.ok().build();
-					});
-		}
-	}
-
+        public Mono<ServerResponse> parts(ServerRequest request) {
+            return request.body(BodyExtractors.toParts())
+                    .collectList()
+                    .flatMap(
+                            parts -> {
+                                try {
+                                    assertEquals(2, parts.size());
+                                    assertEquals("foo.txt", ((FilePart) parts.get(0)).filename());
+                                    assertEquals("bar", ((FormFieldPart) parts.get(1)).value());
+                                } catch (Exception e) {
+                                    return Mono.error(e);
+                                }
+                                return ServerResponse.ok().build();
+                            });
+        }
+    }
 }

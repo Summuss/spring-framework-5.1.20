@@ -28,36 +28,35 @@ import javax.resource.cci.ConnectionFactory;
 import org.springframework.lang.Nullable;
 
 /**
- * Proxy for a target CCI {@link javax.resource.cci.ConnectionFactory}, adding
- * awareness of Spring-managed transactions. Similar to a transactional JNDI
- * ConnectionFactory as provided by a Java EE server.
+ * Proxy for a target CCI {@link javax.resource.cci.ConnectionFactory}, adding awareness of
+ * Spring-managed transactions. Similar to a transactional JNDI ConnectionFactory as provided by a
+ * Java EE server.
  *
- * <p>Data access code that should remain unaware of Spring's data access support
- * can work with this proxy to seamlessly participate in Spring-managed transactions.
- * Note that the transaction manager, for example the {@link CciLocalTransactionManager},
- * still needs to work with underlying ConnectionFactory, <i>not</i> with this proxy.
+ * <p>Data access code that should remain unaware of Spring's data access support can work with this
+ * proxy to seamlessly participate in Spring-managed transactions. Note that the transaction
+ * manager, for example the {@link CciLocalTransactionManager}, still needs to work with underlying
+ * ConnectionFactory, <i>not</i> with this proxy.
  *
- * <p><b>Make sure that TransactionAwareConnectionFactoryProxy is the outermost
- * ConnectionFactory of a chain of ConnectionFactory proxies/adapters.</b>
- * TransactionAwareConnectionFactoryProxy can delegate either directly to the
- * target connection pool or to some intermediate proxy/adapter like
+ * <p><b>Make sure that TransactionAwareConnectionFactoryProxy is the outermost ConnectionFactory of
+ * a chain of ConnectionFactory proxies/adapters.</b> TransactionAwareConnectionFactoryProxy can
+ * delegate either directly to the target connection pool or to some intermediate proxy/adapter like
  * {@link ConnectionSpecConnectionFactoryAdapter}.
  *
- * <p>Delegates to {@link ConnectionFactoryUtils} for automatically participating in
- * thread-bound transactions, for example managed by {@link CciLocalTransactionManager}.
- * {@code getConnection} calls and {@code close} calls on returned Connections
- * will behave properly within a transaction, i.e. always operate on the transactional
- * Connection. If not within a transaction, normal ConnectionFactory behavior applies.
+ * <p>Delegates to {@link ConnectionFactoryUtils} for automatically participating in thread-bound
+ * transactions, for example managed by {@link CciLocalTransactionManager}. {@code getConnection}
+ * calls and {@code close} calls on returned Connections will behave properly within a transaction,
+ * i.e. always operate on the transactional Connection. If not within a transaction, normal
+ * ConnectionFactory behavior applies.
  *
- * <p>This proxy allows data access code to work with the plain JCA CCI API and still
- * participate in Spring-managed transactions, similar to CCI code in a Java EE/JTA
- * environment. However, if possible, use Spring's ConnectionFactoryUtils, CciTemplate or
- * CCI operation objects to get transaction participation even without a proxy for
- * the target ConnectionFactory, avoiding the need to define such a proxy in the first place.
+ * <p>This proxy allows data access code to work with the plain JCA CCI API and still participate in
+ * Spring-managed transactions, similar to CCI code in a Java EE/JTA environment. However, if
+ * possible, use Spring's ConnectionFactoryUtils, CciTemplate or CCI operation objects to get
+ * transaction participation even without a proxy for the target ConnectionFactory, avoiding the
+ * need to define such a proxy in the first place.
  *
- * <p><b>NOTE:</b> This ConnectionFactory proxy needs to return wrapped Connections
- * in order to handle close calls properly. Therefore, the returned Connections cannot
- * be cast to a native CCI Connection type or to a connection pool implementation type.
+ * <p><b>NOTE:</b> This ConnectionFactory proxy needs to return wrapped Connections in order to
+ * handle close calls properly. Therefore, the returned Connections cannot be cast to a native CCI
+ * Connection type or to a connection pool implementation type.
  *
  * @author Juergen Hoeller
  * @since 1.2
@@ -69,101 +68,100 @@ import org.springframework.lang.Nullable;
 @SuppressWarnings("serial")
 public class TransactionAwareConnectionFactoryProxy extends DelegatingConnectionFactory {
 
-	/**
-	 * Create a new TransactionAwareConnectionFactoryProxy.
-	 * @see #setTargetConnectionFactory
-	 */
-	public TransactionAwareConnectionFactoryProxy() {
-	}
+    /**
+     * Create a new TransactionAwareConnectionFactoryProxy.
+     *
+     * @see #setTargetConnectionFactory
+     */
+    public TransactionAwareConnectionFactoryProxy() {}
 
-	/**
-	 * Create a new TransactionAwareConnectionFactoryProxy.
-	 * @param targetConnectionFactory the target ConnectionFactory
-	 */
-	public TransactionAwareConnectionFactoryProxy(ConnectionFactory targetConnectionFactory) {
-		setTargetConnectionFactory(targetConnectionFactory);
-		afterPropertiesSet();
-	}
+    /**
+     * Create a new TransactionAwareConnectionFactoryProxy.
+     *
+     * @param targetConnectionFactory the target ConnectionFactory
+     */
+    public TransactionAwareConnectionFactoryProxy(ConnectionFactory targetConnectionFactory) {
+        setTargetConnectionFactory(targetConnectionFactory);
+        afterPropertiesSet();
+    }
 
+    /**
+     * Delegate to ConnectionFactoryUtils for automatically participating in Spring-managed
+     * transactions. Throws the original ResourceException, if any.
+     *
+     * @return a transactional Connection if any, a new one else
+     * @see org.springframework.jca.cci.connection.ConnectionFactoryUtils#doGetConnection
+     */
+    @Override
+    public Connection getConnection() throws ResourceException {
+        ConnectionFactory targetConnectionFactory = obtainTargetConnectionFactory();
+        Connection con = ConnectionFactoryUtils.doGetConnection(targetConnectionFactory);
+        return getTransactionAwareConnectionProxy(con, targetConnectionFactory);
+    }
 
-	/**
-	 * Delegate to ConnectionFactoryUtils for automatically participating in Spring-managed
-	 * transactions. Throws the original ResourceException, if any.
-	 * @return a transactional Connection if any, a new one else
-	 * @see org.springframework.jca.cci.connection.ConnectionFactoryUtils#doGetConnection
-	 */
-	@Override
-	public Connection getConnection() throws ResourceException {
-		ConnectionFactory targetConnectionFactory = obtainTargetConnectionFactory();
-		Connection con = ConnectionFactoryUtils.doGetConnection(targetConnectionFactory);
-		return getTransactionAwareConnectionProxy(con, targetConnectionFactory);
-	}
+    /**
+     * Wrap the given Connection with a proxy that delegates every method call to it but delegates
+     * {@code close} calls to ConnectionFactoryUtils.
+     *
+     * @param target the original Connection to wrap
+     * @param cf the ConnectionFactory that the Connection came from
+     * @return the wrapped Connection
+     * @see javax.resource.cci.Connection#close()
+     * @see ConnectionFactoryUtils#doReleaseConnection
+     */
+    protected Connection getTransactionAwareConnectionProxy(
+            Connection target, ConnectionFactory cf) {
+        return (Connection)
+                Proxy.newProxyInstance(
+                        Connection.class.getClassLoader(),
+                        new Class<?>[] {Connection.class},
+                        new TransactionAwareInvocationHandler(target, cf));
+    }
 
-	/**
-	 * Wrap the given Connection with a proxy that delegates every method call to it
-	 * but delegates {@code close} calls to ConnectionFactoryUtils.
-	 * @param target the original Connection to wrap
-	 * @param cf the ConnectionFactory that the Connection came from
-	 * @return the wrapped Connection
-	 * @see javax.resource.cci.Connection#close()
-	 * @see ConnectionFactoryUtils#doReleaseConnection
-	 */
-	protected Connection getTransactionAwareConnectionProxy(Connection target, ConnectionFactory cf) {
-		return (Connection) Proxy.newProxyInstance(
-				Connection.class.getClassLoader(),
-				new Class<?>[] {Connection.class},
-				new TransactionAwareInvocationHandler(target, cf));
-	}
+    /**
+     * Invocation handler that delegates close calls on CCI Connections to ConnectionFactoryUtils
+     * for being aware of thread-bound transactions.
+     */
+    private static class TransactionAwareInvocationHandler implements InvocationHandler {
 
+        private final Connection target;
 
-	/**
-	 * Invocation handler that delegates close calls on CCI Connections
-	 * to ConnectionFactoryUtils for being aware of thread-bound transactions.
-	 */
-	private static class TransactionAwareInvocationHandler implements InvocationHandler {
+        private final ConnectionFactory connectionFactory;
 
-		private final Connection target;
+        public TransactionAwareInvocationHandler(Connection target, ConnectionFactory cf) {
+            this.target = target;
+            this.connectionFactory = cf;
+        }
 
-		private final ConnectionFactory connectionFactory;
+        @Override
+        @Nullable
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            // Invocation on Connection interface coming in...
 
-		public TransactionAwareInvocationHandler(Connection target, ConnectionFactory cf) {
-			this.target = target;
-			this.connectionFactory = cf;
-		}
+            if (method.getName().equals("equals")) {
+                // Only consider equal when proxies are identical.
+                return (proxy == args[0]);
+            } else if (method.getName().equals("hashCode")) {
+                // Use hashCode of Connection proxy.
+                return System.identityHashCode(proxy);
+            } else if (method.getName().equals("getLocalTransaction")) {
+                if (ConnectionFactoryUtils.isConnectionTransactional(
+                        this.target, this.connectionFactory)) {
+                    throw new javax.resource.spi.IllegalStateException(
+                            "Local transaction handling not allowed within a managed transaction");
+                }
+            } else if (method.getName().equals("close")) {
+                // Handle close method: only close if not within a transaction.
+                ConnectionFactoryUtils.doReleaseConnection(this.target, this.connectionFactory);
+                return null;
+            }
 
-		@Override
-		@Nullable
-		public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-			// Invocation on Connection interface coming in...
-
-			if (method.getName().equals("equals")) {
-				// Only consider equal when proxies are identical.
-				return (proxy == args[0]);
-			}
-			else if (method.getName().equals("hashCode")) {
-				// Use hashCode of Connection proxy.
-				return System.identityHashCode(proxy);
-			}
-			else if (method.getName().equals("getLocalTransaction")) {
-				if (ConnectionFactoryUtils.isConnectionTransactional(this.target, this.connectionFactory)) {
-					throw new javax.resource.spi.IllegalStateException(
-							"Local transaction handling not allowed within a managed transaction");
-				}
-			}
-			else if (method.getName().equals("close")) {
-				// Handle close method: only close if not within a transaction.
-				ConnectionFactoryUtils.doReleaseConnection(this.target, this.connectionFactory);
-				return null;
-			}
-
-			// Invoke method on target Connection.
-			try {
-				return method.invoke(this.target, args);
-			}
-			catch (InvocationTargetException ex) {
-				throw ex.getTargetException();
-			}
-		}
-	}
-
+            // Invoke method on target Connection.
+            try {
+                return method.invoke(this.target, args);
+            } catch (InvocationTargetException ex) {
+                throw ex.getTargetException();
+            }
+        }
+    }
 }

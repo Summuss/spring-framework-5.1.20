@@ -35,39 +35,39 @@ import static org.junit.Assert.*;
  */
 public class AtAspectJAfterThrowingTests {
 
-	@Test
-	public void testAccessThrowable() throws Exception {
-		ClassPathXmlApplicationContext ctx =
-			new ClassPathXmlApplicationContext(getClass().getSimpleName() + "-context.xml", getClass());
+    @Test
+    public void testAccessThrowable() throws Exception {
+        ClassPathXmlApplicationContext ctx =
+                new ClassPathXmlApplicationContext(
+                        getClass().getSimpleName() + "-context.xml", getClass());
 
-		ITestBean bean = (ITestBean) ctx.getBean("testBean");
-		ExceptionHandlingAspect aspect = (ExceptionHandlingAspect) ctx.getBean("aspect");
+        ITestBean bean = (ITestBean) ctx.getBean("testBean");
+        ExceptionHandlingAspect aspect = (ExceptionHandlingAspect) ctx.getBean("aspect");
 
-		assertTrue(AopUtils.isAopProxy(bean));
-		try {
-			bean.unreliableFileOperation();
-		}
-		catch (IOException e) {
-			//
-		}
+        assertTrue(AopUtils.isAopProxy(bean));
+        try {
+            bean.unreliableFileOperation();
+        } catch (IOException e) {
+            //
+        }
 
-		assertEquals(1, aspect.handled);
-		assertNotNull(aspect.lastException);
-	}
+        assertEquals(1, aspect.handled);
+        assertNotNull(aspect.lastException);
+    }
 }
-
 
 @Aspect
 class ExceptionHandlingAspect {
 
-	public int handled;
+    public int handled;
 
-	public IOException lastException;
+    public IOException lastException;
 
-	@AfterThrowing(pointcut = "within(org.springframework.tests.sample.beans.ITestBean+)", throwing = "ex")
-	public void handleIOException(IOException ex) {
-		handled++;
-		lastException = ex;
-	}
-
+    @AfterThrowing(
+            pointcut = "within(org.springframework.tests.sample.beans.ITestBean+)",
+            throwing = "ex")
+    public void handleIOException(IOException ex) {
+        handled++;
+        lastException = ex;
+    }
 }

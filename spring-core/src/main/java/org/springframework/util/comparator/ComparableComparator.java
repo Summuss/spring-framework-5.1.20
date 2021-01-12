@@ -19,9 +19,8 @@ package org.springframework.util.comparator;
 import java.util.Comparator;
 
 /**
- * Comparator that adapts Comparables to the Comparator interface.
- * Mainly for internal use in other Comparators, when supposed
- * to work on Comparables.
+ * Comparator that adapts Comparables to the Comparator interface. Mainly for internal use in other
+ * Comparators, when supposed to work on Comparables.
  *
  * @author Keith Donald
  * @since 1.2.2
@@ -30,17 +29,16 @@ import java.util.Comparator;
  */
 public class ComparableComparator<T extends Comparable<T>> implements Comparator<T> {
 
-	/**
-	 * A shared instance of this default comparator.
-	 * @see Comparators#comparable()
-	 */
-	@SuppressWarnings("rawtypes")
-	public static final ComparableComparator INSTANCE = new ComparableComparator();
+    /**
+     * A shared instance of this default comparator.
+     *
+     * @see Comparators#comparable()
+     */
+    @SuppressWarnings("rawtypes")
+    public static final ComparableComparator INSTANCE = new ComparableComparator();
 
-
-	@Override
-	public int compare(T o1, T o2) {
-		return o1.compareTo(o2);
-	}
-
+    @Override
+    public int compare(T o1, T o2) {
+        return o1.compareTo(o2);
+    }
 }

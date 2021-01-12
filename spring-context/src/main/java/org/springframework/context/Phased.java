@@ -17,8 +17,7 @@
 package org.springframework.context;
 
 /**
- * Interface for objects that may participate in a phased
- * process such as lifecycle management.
+ * Interface for objects that may participate in a phased process such as lifecycle management.
  *
  * @author Mark Fisher
  * @since 3.0
@@ -26,9 +25,6 @@ package org.springframework.context;
  */
 public interface Phased {
 
-	/**
-	 * Return the phase value of this object.
-	 */
-	int getPhase();
-
+    /** Return the phase value of this object. */
+    int getPhase();
 }

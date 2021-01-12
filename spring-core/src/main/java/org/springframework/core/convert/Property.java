@@ -32,13 +32,13 @@ import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
 /**
- * A description of a JavaBeans Property that allows us to avoid a dependency on
- * {@code java.beans.PropertyDescriptor}. The {@code java.beans} package
- * is not available in a number of environments (e.g. Android, Java ME), so this is
- * desirable for portability of Spring's core conversion facility.
+ * A description of a JavaBeans Property that allows us to avoid a dependency on {@code
+ * java.beans.PropertyDescriptor}. The {@code java.beans} package is not available in a number of
+ * environments (e.g. Android, Java ME), so this is desirable for portability of Spring's core
+ * conversion facility.
  *
- * <p>Used to build a {@link TypeDescriptor} from a property location. The built
- * {@code TypeDescriptor} can then be used to convert from/to the property type.
+ * <p>Used to build a {@link TypeDescriptor} from a property location. The built {@code
+ * TypeDescriptor} can then be used to convert from/to the property type.
  *
  * @author Keith Donald
  * @author Phillip Webb
@@ -48,238 +48,223 @@ import org.springframework.util.StringUtils;
  */
 public final class Property {
 
-	private static Map<Property, Annotation[]> annotationCache = new ConcurrentReferenceHashMap<>();
+    private static Map<Property, Annotation[]> annotationCache = new ConcurrentReferenceHashMap<>();
 
-	private final Class<?> objectType;
+    private final Class<?> objectType;
 
-	@Nullable
-	private final Method readMethod;
+    @Nullable private final Method readMethod;
 
-	@Nullable
-	private final Method writeMethod;
+    @Nullable private final Method writeMethod;
 
-	private final String name;
+    private final String name;
 
-	private final MethodParameter methodParameter;
+    private final MethodParameter methodParameter;
 
-	@Nullable
-	private Annotation[] annotations;
+    @Nullable private Annotation[] annotations;
 
+    public Property(
+            Class<?> objectType, @Nullable Method readMethod, @Nullable Method writeMethod) {
+        this(objectType, readMethod, writeMethod, null);
+    }
 
-	public Property(Class<?> objectType, @Nullable Method readMethod, @Nullable Method writeMethod) {
-		this(objectType, readMethod, writeMethod, null);
-	}
+    public Property(
+            Class<?> objectType,
+            @Nullable Method readMethod,
+            @Nullable Method writeMethod,
+            @Nullable String name) {
 
-	public Property(
-			Class<?> objectType, @Nullable Method readMethod, @Nullable Method writeMethod, @Nullable String name) {
+        this.objectType = objectType;
+        this.readMethod = readMethod;
+        this.writeMethod = writeMethod;
+        this.methodParameter = resolveMethodParameter();
+        this.name = (name != null ? name : resolveName());
+    }
 
-		this.objectType = objectType;
-		this.readMethod = readMethod;
-		this.writeMethod = writeMethod;
-		this.methodParameter = resolveMethodParameter();
-		this.name = (name != null ? name : resolveName());
-	}
+    /**
+     * The object declaring this property, either directly or in a superclass the object extends.
+     */
+    public Class<?> getObjectType() {
+        return this.objectType;
+    }
 
+    /** The name of the property: e.g. 'foo' */
+    public String getName() {
+        return this.name;
+    }
 
-	/**
-	 * The object declaring this property, either directly or in a superclass the object extends.
-	 */
-	public Class<?> getObjectType() {
-		return this.objectType;
-	}
+    /** The property type: e.g. {@code java.lang.String} */
+    public Class<?> getType() {
+        return this.methodParameter.getParameterType();
+    }
 
-	/**
-	 * The name of the property: e.g. 'foo'
-	 */
-	public String getName() {
-		return this.name;
-	}
+    /** The property getter method: e.g. {@code getFoo()} */
+    @Nullable
+    public Method getReadMethod() {
+        return this.readMethod;
+    }
 
-	/**
-	 * The property type: e.g. {@code java.lang.String}
-	 */
-	public Class<?> getType() {
-		return this.methodParameter.getParameterType();
-	}
+    /** The property setter method: e.g. {@code setFoo(String)} */
+    @Nullable
+    public Method getWriteMethod() {
+        return this.writeMethod;
+    }
 
-	/**
-	 * The property getter method: e.g. {@code getFoo()}
-	 */
-	@Nullable
-	public Method getReadMethod() {
-		return this.readMethod;
-	}
+    // package private
 
-	/**
-	 * The property setter method: e.g. {@code setFoo(String)}
-	 */
-	@Nullable
-	public Method getWriteMethod() {
-		return this.writeMethod;
-	}
+    MethodParameter getMethodParameter() {
+        return this.methodParameter;
+    }
 
+    Annotation[] getAnnotations() {
+        if (this.annotations == null) {
+            this.annotations = resolveAnnotations();
+        }
+        return this.annotations;
+    }
 
-	// package private
+    // internal helpers
 
-	MethodParameter getMethodParameter() {
-		return this.methodParameter;
-	}
+    private String resolveName() {
+        if (this.readMethod != null) {
+            int index = this.readMethod.getName().indexOf("get");
+            if (index != -1) {
+                index += 3;
+            } else {
+                index = this.readMethod.getName().indexOf("is");
+                if (index == -1) {
+                    throw new IllegalArgumentException("Not a getter method");
+                }
+                index += 2;
+            }
+            return StringUtils.uncapitalize(this.readMethod.getName().substring(index));
+        } else if (this.writeMethod != null) {
+            int index = this.writeMethod.getName().indexOf("set");
+            if (index == -1) {
+                throw new IllegalArgumentException("Not a setter method");
+            }
+            index += 3;
+            return StringUtils.uncapitalize(this.writeMethod.getName().substring(index));
+        } else {
+            throw new IllegalStateException("Property is neither readable nor writeable");
+        }
+    }
 
-	Annotation[] getAnnotations() {
-		if (this.annotations == null) {
-			this.annotations = resolveAnnotations();
-		}
-		return this.annotations;
-	}
+    private MethodParameter resolveMethodParameter() {
+        MethodParameter read = resolveReadMethodParameter();
+        MethodParameter write = resolveWriteMethodParameter();
+        if (write == null) {
+            if (read == null) {
+                throw new IllegalStateException("Property is neither readable nor writeable");
+            }
+            return read;
+        }
+        if (read != null) {
+            Class<?> readType = read.getParameterType();
+            Class<?> writeType = write.getParameterType();
+            if (!writeType.equals(readType) && writeType.isAssignableFrom(readType)) {
+                return read;
+            }
+        }
+        return write;
+    }
 
+    @Nullable
+    private MethodParameter resolveReadMethodParameter() {
+        if (getReadMethod() == null) {
+            return null;
+        }
+        return resolveParameterType(new MethodParameter(getReadMethod(), -1));
+    }
 
-	// internal helpers
+    @Nullable
+    private MethodParameter resolveWriteMethodParameter() {
+        if (getWriteMethod() == null) {
+            return null;
+        }
+        return resolveParameterType(new MethodParameter(getWriteMethod(), 0));
+    }
 
-	private String resolveName() {
-		if (this.readMethod != null) {
-			int index = this.readMethod.getName().indexOf("get");
-			if (index != -1) {
-				index += 3;
-			}
-			else {
-				index = this.readMethod.getName().indexOf("is");
-				if (index == -1) {
-					throw new IllegalArgumentException("Not a getter method");
-				}
-				index += 2;
-			}
-			return StringUtils.uncapitalize(this.readMethod.getName().substring(index));
-		}
-		else if (this.writeMethod != null) {
-			int index = this.writeMethod.getName().indexOf("set");
-			if (index == -1) {
-				throw new IllegalArgumentException("Not a setter method");
-			}
-			index += 3;
-			return StringUtils.uncapitalize(this.writeMethod.getName().substring(index));
-		}
-		else {
-			throw new IllegalStateException("Property is neither readable nor writeable");
-		}
-	}
+    private MethodParameter resolveParameterType(MethodParameter parameter) {
+        // needed to resolve generic property types that parameterized by sub-classes e.g. T
+        // getFoo();
+        GenericTypeResolver.resolveParameterType(parameter, getObjectType());
+        return parameter;
+    }
 
-	private MethodParameter resolveMethodParameter() {
-		MethodParameter read = resolveReadMethodParameter();
-		MethodParameter write = resolveWriteMethodParameter();
-		if (write == null) {
-			if (read == null) {
-				throw new IllegalStateException("Property is neither readable nor writeable");
-			}
-			return read;
-		}
-		if (read != null) {
-			Class<?> readType = read.getParameterType();
-			Class<?> writeType = write.getParameterType();
-			if (!writeType.equals(readType) && writeType.isAssignableFrom(readType)) {
-				return read;
-			}
-		}
-		return write;
-	}
+    private Annotation[] resolveAnnotations() {
+        Annotation[] annotations = annotationCache.get(this);
+        if (annotations == null) {
+            Map<Class<? extends Annotation>, Annotation> annotationMap = new LinkedHashMap<>();
+            addAnnotationsToMap(annotationMap, getReadMethod());
+            addAnnotationsToMap(annotationMap, getWriteMethod());
+            addAnnotationsToMap(annotationMap, getField());
+            annotations = annotationMap.values().toArray(new Annotation[0]);
+            annotationCache.put(this, annotations);
+        }
+        return annotations;
+    }
 
-	@Nullable
-	private MethodParameter resolveReadMethodParameter() {
-		if (getReadMethod() == null) {
-			return null;
-		}
-		return resolveParameterType(new MethodParameter(getReadMethod(), -1));
-	}
+    private void addAnnotationsToMap(
+            Map<Class<? extends Annotation>, Annotation> annotationMap,
+            @Nullable AnnotatedElement object) {
 
-	@Nullable
-	private MethodParameter resolveWriteMethodParameter() {
-		if (getWriteMethod() == null) {
-			return null;
-		}
-		return resolveParameterType(new MethodParameter(getWriteMethod(), 0));
-	}
+        if (object != null) {
+            for (Annotation annotation : object.getAnnotations()) {
+                annotationMap.put(annotation.annotationType(), annotation);
+            }
+        }
+    }
 
-	private MethodParameter resolveParameterType(MethodParameter parameter) {
-		// needed to resolve generic property types that parameterized by sub-classes e.g. T getFoo();
-		GenericTypeResolver.resolveParameterType(parameter, getObjectType());
-		return parameter;
-	}
+    @Nullable
+    private Field getField() {
+        String name = getName();
+        if (!StringUtils.hasLength(name)) {
+            return null;
+        }
+        Field field = null;
+        Class<?> declaringClass = declaringClass();
+        if (declaringClass != null) {
+            field = ReflectionUtils.findField(declaringClass, name);
+            if (field == null) {
+                // Same lenient fallback checking as in CachedIntrospectionResults...
+                field = ReflectionUtils.findField(declaringClass, StringUtils.uncapitalize(name));
+                if (field == null) {
+                    field = ReflectionUtils.findField(declaringClass, StringUtils.capitalize(name));
+                }
+            }
+        }
+        return field;
+    }
 
-	private Annotation[] resolveAnnotations() {
-		Annotation[] annotations = annotationCache.get(this);
-		if (annotations == null) {
-			Map<Class<? extends Annotation>, Annotation> annotationMap = new LinkedHashMap<>();
-			addAnnotationsToMap(annotationMap, getReadMethod());
-			addAnnotationsToMap(annotationMap, getWriteMethod());
-			addAnnotationsToMap(annotationMap, getField());
-			annotations = annotationMap.values().toArray(new Annotation[0]);
-			annotationCache.put(this, annotations);
-		}
-		return annotations;
-	}
+    @Nullable
+    private Class<?> declaringClass() {
+        if (getReadMethod() != null) {
+            return getReadMethod().getDeclaringClass();
+        } else if (getWriteMethod() != null) {
+            return getWriteMethod().getDeclaringClass();
+        } else {
+            return null;
+        }
+    }
 
-	private void addAnnotationsToMap(
-			Map<Class<? extends Annotation>, Annotation> annotationMap, @Nullable AnnotatedElement object) {
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof Property)) {
+            return false;
+        }
+        Property otherProperty = (Property) other;
+        return (ObjectUtils.nullSafeEquals(this.objectType, otherProperty.objectType)
+                && ObjectUtils.nullSafeEquals(this.name, otherProperty.name)
+                && ObjectUtils.nullSafeEquals(this.readMethod, otherProperty.readMethod)
+                && ObjectUtils.nullSafeEquals(this.writeMethod, otherProperty.writeMethod));
+    }
 
-		if (object != null) {
-			for (Annotation annotation : object.getAnnotations()) {
-				annotationMap.put(annotation.annotationType(), annotation);
-			}
-		}
-	}
-
-	@Nullable
-	private Field getField() {
-		String name = getName();
-		if (!StringUtils.hasLength(name)) {
-			return null;
-		}
-		Field field = null;
-		Class<?> declaringClass = declaringClass();
-		if (declaringClass != null) {
-			field = ReflectionUtils.findField(declaringClass, name);
-			if (field == null) {
-				// Same lenient fallback checking as in CachedIntrospectionResults...
-				field = ReflectionUtils.findField(declaringClass, StringUtils.uncapitalize(name));
-				if (field == null) {
-					field = ReflectionUtils.findField(declaringClass, StringUtils.capitalize(name));
-				}
-			}
-		}
-		return field;
-	}
-
-	@Nullable
-	private Class<?> declaringClass() {
-		if (getReadMethod() != null) {
-			return getReadMethod().getDeclaringClass();
-		}
-		else if (getWriteMethod() != null) {
-			return getWriteMethod().getDeclaringClass();
-		}
-		else {
-			return null;
-		}
-	}
-
-
-	@Override
-	public boolean equals(Object other) {
-		if (this == other) {
-			return true;
-		}
-		if (!(other instanceof Property)) {
-			return false;
-		}
-		Property otherProperty = (Property) other;
-		return (ObjectUtils.nullSafeEquals(this.objectType, otherProperty.objectType) &&
-				ObjectUtils.nullSafeEquals(this.name, otherProperty.name) &&
-				ObjectUtils.nullSafeEquals(this.readMethod, otherProperty.readMethod) &&
-				ObjectUtils.nullSafeEquals(this.writeMethod, otherProperty.writeMethod));
-	}
-
-	@Override
-	public int hashCode() {
-		return (ObjectUtils.nullSafeHashCode(this.objectType) * 31 + ObjectUtils.nullSafeHashCode(this.name));
-	}
-
+    @Override
+    public int hashCode() {
+        return (ObjectUtils.nullSafeHashCode(this.objectType) * 31
+                + ObjectUtils.nullSafeHashCode(this.name));
+    }
 }

@@ -22,8 +22,8 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Contains the result from parsing a "user" destination from a source message
- * and translating it to target destinations (one per active user session).
+ * Contains the result from parsing a "user" destination from a source message and translating it to
+ * target destinations (one per active user session).
  *
  * @author Rossen Stoyanchev
  * @since 4.0.2
@@ -31,76 +31,84 @@ import org.springframework.util.Assert;
  */
 public class UserDestinationResult {
 
-	private final String sourceDestination;
+    private final String sourceDestination;
 
-	private final Set<String> targetDestinations;
+    private final Set<String> targetDestinations;
 
-	private final String subscribeDestination;
+    private final String subscribeDestination;
 
-	@Nullable
-	private final String user;
+    @Nullable private final String user;
 
+    public UserDestinationResult(
+            String sourceDestination,
+            Set<String> targetDestinations,
+            String subscribeDestination,
+            @Nullable String user) {
 
-	public UserDestinationResult(String sourceDestination, Set<String> targetDestinations,
-			String subscribeDestination, @Nullable String user) {
+        Assert.notNull(sourceDestination, "'sourceDestination' must not be null");
+        Assert.notNull(targetDestinations, "'targetDestinations' must not be null");
+        Assert.notNull(subscribeDestination, "'subscribeDestination' must not be null");
 
-		Assert.notNull(sourceDestination, "'sourceDestination' must not be null");
-		Assert.notNull(targetDestinations, "'targetDestinations' must not be null");
-		Assert.notNull(subscribeDestination, "'subscribeDestination' must not be null");
+        this.sourceDestination = sourceDestination;
+        this.targetDestinations = targetDestinations;
+        this.subscribeDestination = subscribeDestination;
+        this.user = user;
+    }
 
-		this.sourceDestination = sourceDestination;
-		this.targetDestinations = targetDestinations;
-		this.subscribeDestination = subscribeDestination;
-		this.user = user;
-	}
+    /**
+     * The "user" destination from the source message. This may look like
+     * "/user/queue/position-updates" when subscribing or "/user/{username}/queue/position-updates"
+     * when sending a message.
+     *
+     * @return the "user" destination, never {@code null}.
+     */
+    public String getSourceDestination() {
+        return this.sourceDestination;
+    }
 
+    /**
+     * The target destinations that the source destination was translated to, one per active user
+     * session, e.g. "/queue/position-updates-useri9oqdfzo".
+     *
+     * @return the target destinations, never {@code null} but possibly an empty set if there are no
+     *     active sessions for the user.
+     */
+    public Set<String> getTargetDestinations() {
+        return this.targetDestinations;
+    }
 
-	/**
-	 * The "user" destination from the source message. This may look like
-	 * "/user/queue/position-updates" when subscribing or
-	 * "/user/{username}/queue/position-updates" when sending a message.
-	 * @return the "user" destination, never {@code null}.
-	 */
-	public String getSourceDestination() {
-		return this.sourceDestination;
-	}
+    /**
+     * The user destination in the form expected when a client subscribes, e.g.
+     * "/user/queue/position-updates".
+     *
+     * @return the subscribe form of the "user" destination, never {@code null}.
+     */
+    public String getSubscribeDestination() {
+        return this.subscribeDestination;
+    }
 
-	/**
-	 * The target destinations that the source destination was translated to,
-	 * one per active user session, e.g. "/queue/position-updates-useri9oqdfzo".
-	 * @return the target destinations, never {@code null} but possibly an empty
-	 * set if there are no active sessions for the user.
-	 */
-	public Set<String> getTargetDestinations() {
-		return this.targetDestinations;
-	}
+    /**
+     * The user for this user destination.
+     *
+     * @return the user name or {@code null} if we have a session id only such as when the user is
+     *     not authenticated; in such cases it is possible to use sessionId in place of a user name
+     *     thus removing the need for a user-to-session lookup via {@link SimpUserRegistry}.
+     */
+    @Nullable
+    public String getUser() {
+        return this.user;
+    }
 
-	/**
-	 * The user destination in the form expected when a client subscribes, e.g.
-	 * "/user/queue/position-updates".
-	 * @return the subscribe form of the "user" destination, never {@code null}.
-	 */
-	public String getSubscribeDestination() {
-		return this.subscribeDestination;
-	}
-
-	/**
-	 * The user for this user destination.
-	 * @return the user name or {@code null} if we have a session id only such as
-	 * when the user is not authenticated; in such cases it is possible to use
-	 * sessionId in place of a user name thus removing the need for a user-to-session
-	 * lookup via {@link SimpUserRegistry}.
-	 */
-	@Nullable
-	public String getUser() {
-		return this.user;
-	}
-
-
-	@Override
-	public String toString() {
-		return "UserDestinationResult [source=" + this.sourceDestination + ", target=" + this.targetDestinations +
-				", subscribeDestination=" + this.subscribeDestination + ", user=" + this.user + "]";
-	}
-
+    @Override
+    public String toString() {
+        return "UserDestinationResult [source="
+                + this.sourceDestination
+                + ", target="
+                + this.targetDestinations
+                + ", subscribeDestination="
+                + this.subscribeDestination
+                + ", user="
+                + this.user
+                + "]";
+    }
 }

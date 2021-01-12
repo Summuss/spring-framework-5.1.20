@@ -23,17 +23,12 @@ import java.lang.annotation.Target;
 
 import org.springframework.stereotype.Component;
 
-/**
- * @author Juergen Hoeller
- */
+/** @author Juergen Hoeller */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Component
 public @interface CustomAspectStereotype {
 
-	/**
-	 * Not a plain String value - needs to be ignored during name detection.
-	 */
-	String[] value() default {};
-
+    /** Not a plain String value - needs to be ignored during name detection. */
+    String[] value() default {};
 }

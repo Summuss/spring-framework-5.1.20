@@ -36,60 +36,60 @@ import static org.springframework.tests.TestResourceUtils.*;
  */
 public class CustomAutowireConfigurerTests {
 
-	@Test
-	public void testCustomResolver() {
-		DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
-		new XmlBeanDefinitionReader(bf).loadBeanDefinitions(
-				qualifiedResource(CustomAutowireConfigurerTests.class, "context.xml"));
+    @Test
+    public void testCustomResolver() {
+        DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
+        new XmlBeanDefinitionReader(bf)
+                .loadBeanDefinitions(
+                        qualifiedResource(CustomAutowireConfigurerTests.class, "context.xml"));
 
-		CustomAutowireConfigurer cac = new CustomAutowireConfigurer();
-		CustomResolver customResolver = new CustomResolver();
-		bf.setAutowireCandidateResolver(customResolver);
-		cac.postProcessBeanFactory(bf);
-		TestBean testBean = (TestBean) bf.getBean("testBean");
-		assertEquals("#1!", testBean.getName());
-	}
+        CustomAutowireConfigurer cac = new CustomAutowireConfigurer();
+        CustomResolver customResolver = new CustomResolver();
+        bf.setAutowireCandidateResolver(customResolver);
+        cac.postProcessBeanFactory(bf);
+        TestBean testBean = (TestBean) bf.getBean("testBean");
+        assertEquals("#1!", testBean.getName());
+    }
 
+    public static class TestBean {
 
-	public static class TestBean {
+        private String name;
 
-		private String name;
+        public TestBean(String name) {
+            this.name = name;
+        }
 
-		public TestBean(String name) {
-			this.name = name;
-		}
+        public String getName() {
+            return this.name;
+        }
+    }
 
-		public String getName() {
-			return this.name;
-		}
-	}
+    public static class CustomResolver implements AutowireCandidateResolver {
 
+        @Override
+        public boolean isAutowireCandidate(
+                BeanDefinitionHolder bdHolder, DependencyDescriptor descriptor) {
+            if (!bdHolder.getBeanDefinition().isAutowireCandidate()) {
+                return false;
+            }
+            if (!bdHolder.getBeanName().matches("[a-z-]+")) {
+                return false;
+            }
+            if (bdHolder.getBeanDefinition().getAttribute("priority").equals("1")) {
+                return true;
+            }
+            return false;
+        }
 
-	public static class CustomResolver implements AutowireCandidateResolver {
+        @Override
+        public Object getSuggestedValue(DependencyDescriptor descriptor) {
+            return null;
+        }
 
-		@Override
-		public boolean isAutowireCandidate(BeanDefinitionHolder bdHolder, DependencyDescriptor descriptor) {
-			if (!bdHolder.getBeanDefinition().isAutowireCandidate()) {
-				return false;
-			}
-			if (!bdHolder.getBeanName().matches("[a-z-]+")) {
-				return false;
-			}
-			if (bdHolder.getBeanDefinition().getAttribute("priority").equals("1")) {
-				return true;
-			}
-			return false;
-		}
-
-		@Override
-		public Object getSuggestedValue(DependencyDescriptor descriptor) {
-			return null;
-		}
-
-		@Override
-		public Object getLazyResolutionProxyIfNecessary(DependencyDescriptor descriptor, String beanName) {
-			return null;
-		}
-	}
-
+        @Override
+        public Object getLazyResolutionProxyIfNecessary(
+                DependencyDescriptor descriptor, String beanName) {
+            return null;
+        }
+    }
 }

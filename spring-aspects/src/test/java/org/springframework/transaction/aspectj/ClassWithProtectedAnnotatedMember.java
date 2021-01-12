@@ -23,10 +23,10 @@ import org.springframework.transaction.annotation.Transactional;
  */
 public class ClassWithProtectedAnnotatedMember {
 
-	public void doSomething() {
-		doInTransaction();
-	}
+    public void doSomething() {
+        doInTransaction();
+    }
 
-	@Transactional
-	protected void doInTransaction() {}
+    @Transactional
+    protected void doInTransaction() {}
 }

@@ -32,93 +32,89 @@ import static org.junit.Assert.*;
  */
 public class LifecycleEventTests {
 
-	@Test
-	public void contextStartedEvent() {
-		StaticApplicationContext context = new StaticApplicationContext();
-		context.registerSingleton("lifecycle", LifecycleTestBean.class);
-		context.registerSingleton("listener", LifecycleListener.class);
-		context.refresh();
-		LifecycleTestBean lifecycleBean = (LifecycleTestBean) context.getBean("lifecycle");
-		LifecycleListener listener = (LifecycleListener) context.getBean("listener");
-		assertFalse(lifecycleBean.isRunning());
-		assertEquals(0, listener.getStartedCount());
-		context.start();
-		assertTrue(lifecycleBean.isRunning());
-		assertEquals(1, listener.getStartedCount());
-		assertSame(context, listener.getApplicationContext());
-	}
+    @Test
+    public void contextStartedEvent() {
+        StaticApplicationContext context = new StaticApplicationContext();
+        context.registerSingleton("lifecycle", LifecycleTestBean.class);
+        context.registerSingleton("listener", LifecycleListener.class);
+        context.refresh();
+        LifecycleTestBean lifecycleBean = (LifecycleTestBean) context.getBean("lifecycle");
+        LifecycleListener listener = (LifecycleListener) context.getBean("listener");
+        assertFalse(lifecycleBean.isRunning());
+        assertEquals(0, listener.getStartedCount());
+        context.start();
+        assertTrue(lifecycleBean.isRunning());
+        assertEquals(1, listener.getStartedCount());
+        assertSame(context, listener.getApplicationContext());
+    }
 
-	@Test
-	public void contextStoppedEvent() {
-		StaticApplicationContext context = new StaticApplicationContext();
-		context.registerSingleton("lifecycle", LifecycleTestBean.class);
-		context.registerSingleton("listener", LifecycleListener.class);
-		context.refresh();
-		LifecycleTestBean lifecycleBean = (LifecycleTestBean) context.getBean("lifecycle");
-		LifecycleListener listener = (LifecycleListener) context.getBean("listener");
-		assertFalse(lifecycleBean.isRunning());
-		context.start();
-		assertTrue(lifecycleBean.isRunning());
-		assertEquals(0, listener.getStoppedCount());
-		context.stop();
-		assertFalse(lifecycleBean.isRunning());
-		assertEquals(1, listener.getStoppedCount());
-		assertSame(context, listener.getApplicationContext());
-	}
+    @Test
+    public void contextStoppedEvent() {
+        StaticApplicationContext context = new StaticApplicationContext();
+        context.registerSingleton("lifecycle", LifecycleTestBean.class);
+        context.registerSingleton("listener", LifecycleListener.class);
+        context.refresh();
+        LifecycleTestBean lifecycleBean = (LifecycleTestBean) context.getBean("lifecycle");
+        LifecycleListener listener = (LifecycleListener) context.getBean("listener");
+        assertFalse(lifecycleBean.isRunning());
+        context.start();
+        assertTrue(lifecycleBean.isRunning());
+        assertEquals(0, listener.getStoppedCount());
+        context.stop();
+        assertFalse(lifecycleBean.isRunning());
+        assertEquals(1, listener.getStoppedCount());
+        assertSame(context, listener.getApplicationContext());
+    }
 
+    private static class LifecycleListener implements ApplicationListener<ApplicationEvent> {
 
-	private static class LifecycleListener implements ApplicationListener<ApplicationEvent> {
+        private ApplicationContext context;
 
-		private ApplicationContext context;
+        private int startedCount;
 
-		private int startedCount;
+        private int stoppedCount;
 
-		private int stoppedCount;
+        @Override
+        public void onApplicationEvent(ApplicationEvent event) {
+            if (event instanceof ContextStartedEvent) {
+                this.context = ((ContextStartedEvent) event).getApplicationContext();
+                this.startedCount++;
+            } else if (event instanceof ContextStoppedEvent) {
+                this.context = ((ContextStoppedEvent) event).getApplicationContext();
+                this.stoppedCount++;
+            }
+        }
 
-		@Override
-		public void onApplicationEvent(ApplicationEvent event) {
-			if (event instanceof ContextStartedEvent) {
-				this.context = ((ContextStartedEvent) event).getApplicationContext();
-				this.startedCount++;
-			}
-			else if (event instanceof ContextStoppedEvent) {
-				this.context = ((ContextStoppedEvent) event).getApplicationContext();
-				this.stoppedCount++;
-			}
-		}
+        public ApplicationContext getApplicationContext() {
+            return this.context;
+        }
 
-		public ApplicationContext getApplicationContext() {
-			return this.context;
-		}
+        public int getStartedCount() {
+            return this.startedCount;
+        }
 
-		public int getStartedCount() {
-			return this.startedCount;
-		}
+        public int getStoppedCount() {
+            return this.stoppedCount;
+        }
+    }
 
-		public int getStoppedCount() {
-			return this.stoppedCount;
-		}
-	}
+    private static class LifecycleTestBean implements Lifecycle {
 
+        private boolean running;
 
-	private static class LifecycleTestBean implements Lifecycle {
+        @Override
+        public boolean isRunning() {
+            return this.running;
+        }
 
-		private boolean running;
+        @Override
+        public void start() {
+            this.running = true;
+        }
 
-		@Override
-		public boolean isRunning() {
-			return this.running;
-		}
-
-		@Override
-		public void start() {
-			this.running = true;
-		}
-
-		@Override
-		public void stop() {
-			this.running = false;
-		}
-	}
-
+        @Override
+        public void stop() {
+            this.running = false;
+        }
+    }
 }

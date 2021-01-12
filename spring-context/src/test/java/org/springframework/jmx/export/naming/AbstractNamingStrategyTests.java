@@ -22,24 +22,21 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-/**
- * @author Rob Harrop
- */
+/** @author Rob Harrop */
 public abstract class AbstractNamingStrategyTests {
 
-	@Test
-	public void naming() throws Exception {
-		ObjectNamingStrategy strat = getStrategy();
-		ObjectName objectName = strat.getObjectName(getManagedResource(), getKey());
-		assertEquals(objectName.getCanonicalName(), getCorrectObjectName());
-	}
+    @Test
+    public void naming() throws Exception {
+        ObjectNamingStrategy strat = getStrategy();
+        ObjectName objectName = strat.getObjectName(getManagedResource(), getKey());
+        assertEquals(objectName.getCanonicalName(), getCorrectObjectName());
+    }
 
-	protected abstract ObjectNamingStrategy getStrategy() throws Exception;
+    protected abstract ObjectNamingStrategy getStrategy() throws Exception;
 
-	protected abstract Object getManagedResource() throws Exception;
+    protected abstract Object getManagedResource() throws Exception;
 
-	protected abstract String getKey();
+    protected abstract String getKey();
 
-	protected abstract String getCorrectObjectName();
-
+    protected abstract String getCorrectObjectName();
 }

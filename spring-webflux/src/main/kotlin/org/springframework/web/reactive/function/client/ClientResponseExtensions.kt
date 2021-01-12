@@ -30,7 +30,7 @@ import reactor.core.publisher.Mono
  * @since 5.0
  */
 inline fun <reified T : Any> ClientResponse.bodyToMono(): Mono<T> =
-		bodyToMono(object : ParameterizedTypeReference<T>() {})
+        bodyToMono(object : ParameterizedTypeReference<T>() {})
 
 /**
  * Extension for [ClientResponse.bodyToFlux] providing a `bodyToFlux<Foo>()` variant
@@ -41,7 +41,7 @@ inline fun <reified T : Any> ClientResponse.bodyToMono(): Mono<T> =
  * @since 5.0
  */
 inline fun <reified T : Any> ClientResponse.bodyToFlux(): Flux<T> =
-		bodyToFlux(object : ParameterizedTypeReference<T>() {})
+        bodyToFlux(object : ParameterizedTypeReference<T>() {})
 
 /**
  * Extension for [ClientResponse.toEntity] providing a `toEntity<Foo>()` variant
@@ -52,7 +52,7 @@ inline fun <reified T : Any> ClientResponse.bodyToFlux(): Flux<T> =
  * @since 5.0
  */
 inline fun <reified T : Any> ClientResponse.toEntity(): Mono<ResponseEntity<T>> =
-		toEntity(object : ParameterizedTypeReference<T>() {})
+        toEntity(object : ParameterizedTypeReference<T>() {})
 
 /**
  * Extension for [ClientResponse.toEntityList] providing a `bodyToEntityList<Foo>()` variant
@@ -63,4 +63,4 @@ inline fun <reified T : Any> ClientResponse.toEntity(): Mono<ResponseEntity<T>> 
  * @since 5.0
  */
 inline fun <reified T : Any> ClientResponse.toEntityList(): Mono<ResponseEntity<List<T>>> =
-		toEntityList(object : ParameterizedTypeReference<T>() {})
+        toEntityList(object : ParameterizedTypeReference<T>() {})

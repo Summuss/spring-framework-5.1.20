@@ -26,16 +26,16 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Extension of the {@link org.springframework.beans.factory.support.GenericBeanDefinition}
- * class, based on an ASM ClassReader, with support for annotation metadata exposed
- * through the {@link AnnotatedBeanDefinition} interface.
+ * Extension of the {@link org.springframework.beans.factory.support.GenericBeanDefinition} class,
+ * based on an ASM ClassReader, with support for annotation metadata exposed through the {@link
+ * AnnotatedBeanDefinition} interface.
  *
- * <p>This class does <i>not</i> load the bean {@code Class} early.
- * It rather retrieves all relevant metadata from the ".class" file itself,
- * parsed with the ASM ClassReader. It is functionally equivalent to
- * {@link AnnotatedGenericBeanDefinition#AnnotatedGenericBeanDefinition(AnnotationMetadata)}
- * but distinguishes by type beans that have been <em>scanned</em> vs those that have
- * been otherwise registered or detected by other means.
+ * <p>This class does <i>not</i> load the bean {@code Class} early. It rather retrieves all relevant
+ * metadata from the ".class" file itself, parsed with the ASM ClassReader. It is functionally
+ * equivalent to {@link
+ * AnnotatedGenericBeanDefinition#AnnotatedGenericBeanDefinition(AnnotationMetadata)} but
+ * distinguishes by type beans that have been <em>scanned</em> vs those that have been otherwise
+ * registered or detected by other means.
  *
  * @author Juergen Hoeller
  * @author Chris Beams
@@ -46,33 +46,32 @@ import org.springframework.util.Assert;
  * @see AnnotatedGenericBeanDefinition
  */
 @SuppressWarnings("serial")
-public class ScannedGenericBeanDefinition extends GenericBeanDefinition implements AnnotatedBeanDefinition {
+public class ScannedGenericBeanDefinition extends GenericBeanDefinition
+        implements AnnotatedBeanDefinition {
 
-	private final AnnotationMetadata metadata;
+    private final AnnotationMetadata metadata;
 
+    /**
+     * Create a new ScannedGenericBeanDefinition for the class that the given MetadataReader
+     * describes.
+     *
+     * @param metadataReader the MetadataReader for the scanned target class
+     */
+    public ScannedGenericBeanDefinition(MetadataReader metadataReader) {
+        Assert.notNull(metadataReader, "MetadataReader must not be null");
+        this.metadata = metadataReader.getAnnotationMetadata();
+        setBeanClassName(this.metadata.getClassName());
+        setResource(metadataReader.getResource());
+    }
 
-	/**
-	 * Create a new ScannedGenericBeanDefinition for the class that the
-	 * given MetadataReader describes.
-	 * @param metadataReader the MetadataReader for the scanned target class
-	 */
-	public ScannedGenericBeanDefinition(MetadataReader metadataReader) {
-		Assert.notNull(metadataReader, "MetadataReader must not be null");
-		this.metadata = metadataReader.getAnnotationMetadata();
-		setBeanClassName(this.metadata.getClassName());
-		setResource(metadataReader.getResource());
-	}
+    @Override
+    public final AnnotationMetadata getMetadata() {
+        return this.metadata;
+    }
 
-
-	@Override
-	public final AnnotationMetadata getMetadata() {
-		return this.metadata;
-	}
-
-	@Override
-	@Nullable
-	public MethodMetadata getFactoryMethodMetadata() {
-		return null;
-	}
-
+    @Override
+    @Nullable
+    public MethodMetadata getFactoryMethodMetadata() {
+        return null;
+    }
 }

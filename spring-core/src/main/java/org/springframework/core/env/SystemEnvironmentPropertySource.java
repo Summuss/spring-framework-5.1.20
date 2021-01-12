@@ -22,27 +22,29 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Specialization of {@link MapPropertySource} designed for use with
- * {@linkplain AbstractEnvironment#getSystemEnvironment() system environment variables}.
- * Compensates for constraints in Bash and other shells that do not allow for variables
- * containing the period character and/or hyphen character; also allows for uppercase
- * variations on property names for more idiomatic shell use.
+ * Specialization of {@link MapPropertySource} designed for use with {@linkplain
+ * AbstractEnvironment#getSystemEnvironment() system environment variables}. Compensates for
+ * constraints in Bash and other shells that do not allow for variables containing the period
+ * character and/or hyphen character; also allows for uppercase variations on property names for
+ * more idiomatic shell use.
  *
- * <p>For example, a call to {@code getProperty("foo.bar")} will attempt to find a value
- * for the original property or any 'equivalent' property, returning the first found:
+ * <p>For example, a call to {@code getProperty("foo.bar")} will attempt to find a value for the
+ * original property or any 'equivalent' property, returning the first found:
+ *
  * <ul>
- * <li>{@code foo.bar} - the original name</li>
- * <li>{@code foo_bar} - with underscores for periods (if any)</li>
- * <li>{@code FOO.BAR} - original, with upper case</li>
- * <li>{@code FOO_BAR} - with underscores and upper case</li>
+ *   <li>{@code foo.bar} - the original name
+ *   <li>{@code foo_bar} - with underscores for periods (if any)
+ *   <li>{@code FOO.BAR} - original, with upper case
+ *   <li>{@code FOO_BAR} - with underscores and upper case
  * </ul>
+ *
  * Any hyphen variant of the above would work as well, or even mix dot/hyphen variants.
  *
- * <p>The same applies for calls to {@link #containsProperty(String)}, which returns
- * {@code true} if any of the above properties are present, otherwise {@code false}.
+ * <p>The same applies for calls to {@link #containsProperty(String)}, which returns {@code true} if
+ * any of the above properties are present, otherwise {@code false}.
  *
- * <p>This feature is particularly useful when specifying active or default profiles as
- * environment variables. The following is not allowable under Bash:
+ * <p>This feature is particularly useful when specifying active or default profiles as environment
+ * variables. The following is not allowable under Bash:
  *
  * <pre class="code">spring.profiles.active=p1 java -classpath ... MyApp</pre>
  *
@@ -50,11 +52,11 @@ import org.springframework.util.Assert;
  *
  * <pre class="code">SPRING_PROFILES_ACTIVE=p1 java -classpath ... MyApp</pre>
  *
- * <p>Enable debug- or trace-level logging for this class (or package) for messages
- * explaining when these 'property name resolutions' occur.
+ * <p>Enable debug- or trace-level logging for this class (or package) for messages explaining when
+ * these 'property name resolutions' occur.
  *
- * <p>This property source is included by default in {@link StandardEnvironment}
- * and all its subclasses.
+ * <p>This property source is included by default in {@link StandardEnvironment} and all its
+ * subclasses.
  *
  * @author Chris Beams
  * @author Juergen Hoeller
@@ -65,91 +67,97 @@ import org.springframework.util.Assert;
  */
 public class SystemEnvironmentPropertySource extends MapPropertySource {
 
-	/**
-	 * Create a new {@code SystemEnvironmentPropertySource} with the given name and
-	 * delegating to the given {@code MapPropertySource}.
-	 */
-	public SystemEnvironmentPropertySource(String name, Map<String, Object> source) {
-		super(name, source);
-	}
+    /**
+     * Create a new {@code SystemEnvironmentPropertySource} with the given name and delegating to
+     * the given {@code MapPropertySource}.
+     */
+    public SystemEnvironmentPropertySource(String name, Map<String, Object> source) {
+        super(name, source);
+    }
 
+    /**
+     * Return {@code true} if a property with the given name or any underscore/uppercase variant
+     * thereof exists in this property source.
+     */
+    @Override
+    public boolean containsProperty(String name) {
+        return (getProperty(name) != null);
+    }
 
-	/**
-	 * Return {@code true} if a property with the given name or any underscore/uppercase variant
-	 * thereof exists in this property source.
-	 */
-	@Override
-	public boolean containsProperty(String name) {
-		return (getProperty(name) != null);
-	}
+    /**
+     * This implementation returns {@code true} if a property with the given name or any
+     * underscore/uppercase variant thereof exists in this property source.
+     */
+    @Override
+    @Nullable
+    public Object getProperty(String name) {
+        String actualName = resolvePropertyName(name);
+        if (logger.isDebugEnabled() && !name.equals(actualName)) {
+            logger.debug(
+                    "PropertySource '"
+                            + getName()
+                            + "' does not contain property '"
+                            + name
+                            + "', but found equivalent '"
+                            + actualName
+                            + "'");
+        }
+        return super.getProperty(actualName);
+    }
 
-	/**
-	 * This implementation returns {@code true} if a property with the given name or
-	 * any underscore/uppercase variant thereof exists in this property source.
-	 */
-	@Override
-	@Nullable
-	public Object getProperty(String name) {
-		String actualName = resolvePropertyName(name);
-		if (logger.isDebugEnabled() && !name.equals(actualName)) {
-			logger.debug("PropertySource '" + getName() + "' does not contain property '" + name +
-					"', but found equivalent '" + actualName + "'");
-		}
-		return super.getProperty(actualName);
-	}
+    /**
+     * Check to see if this property source contains a property with the given name, or any
+     * underscore / uppercase variation thereof. Return the resolved name if one is found or
+     * otherwise the original name. Never returns {@code null}.
+     */
+    protected final String resolvePropertyName(String name) {
+        Assert.notNull(name, "Property name must not be null");
+        String resolvedName = checkPropertyName(name);
+        if (resolvedName != null) {
+            return resolvedName;
+        }
+        String uppercasedName = name.toUpperCase();
+        if (!name.equals(uppercasedName)) {
+            resolvedName = checkPropertyName(uppercasedName);
+            if (resolvedName != null) {
+                return resolvedName;
+            }
+        }
+        return name;
+    }
 
-	/**
-	 * Check to see if this property source contains a property with the given name, or
-	 * any underscore / uppercase variation thereof. Return the resolved name if one is
-	 * found or otherwise the original name. Never returns {@code null}.
-	 */
-	protected final String resolvePropertyName(String name) {
-		Assert.notNull(name, "Property name must not be null");
-		String resolvedName = checkPropertyName(name);
-		if (resolvedName != null) {
-			return resolvedName;
-		}
-		String uppercasedName = name.toUpperCase();
-		if (!name.equals(uppercasedName)) {
-			resolvedName = checkPropertyName(uppercasedName);
-			if (resolvedName != null) {
-				return resolvedName;
-			}
-		}
-		return name;
-	}
+    @Nullable
+    private String checkPropertyName(String name) {
+        // Check name as-is
+        if (containsKey(name)) {
+            return name;
+        }
+        // Check name with just dots replaced
+        String noDotName = name.replace('.', '_');
+        if (!name.equals(noDotName) && containsKey(noDotName)) {
+            return noDotName;
+        }
+        // Check name with just hyphens replaced
+        String noHyphenName = name.replace('-', '_');
+        if (!name.equals(noHyphenName) && containsKey(noHyphenName)) {
+            return noHyphenName;
+        }
+        // Check name with dots and hyphens replaced
+        String noDotNoHyphenName = noDotName.replace('-', '_');
+        if (!noDotName.equals(noDotNoHyphenName) && containsKey(noDotNoHyphenName)) {
+            return noDotNoHyphenName;
+        }
+        // Give up
+        return null;
+    }
 
-	@Nullable
-	private String checkPropertyName(String name) {
-		// Check name as-is
-		if (containsKey(name)) {
-			return name;
-		}
-		// Check name with just dots replaced
-		String noDotName = name.replace('.', '_');
-		if (!name.equals(noDotName) && containsKey(noDotName)) {
-			return noDotName;
-		}
-		// Check name with just hyphens replaced
-		String noHyphenName = name.replace('-', '_');
-		if (!name.equals(noHyphenName) && containsKey(noHyphenName)) {
-			return noHyphenName;
-		}
-		// Check name with dots and hyphens replaced
-		String noDotNoHyphenName = noDotName.replace('-', '_');
-		if (!noDotName.equals(noDotNoHyphenName) && containsKey(noDotNoHyphenName)) {
-			return noDotNoHyphenName;
-		}
-		// Give up
-		return null;
-	}
+    private boolean containsKey(String name) {
+        return (isSecurityManagerPresent()
+                ? this.source.keySet().contains(name)
+                : this.source.containsKey(name));
+    }
 
-	private boolean containsKey(String name) {
-		return (isSecurityManagerPresent() ? this.source.keySet().contains(name) : this.source.containsKey(name));
-	}
-
-	protected boolean isSecurityManagerPresent() {
-		return (System.getSecurityManager() != null);
-	}
-
+    protected boolean isSecurityManagerPresent() {
+        return (System.getSecurityManager() != null);
+    }
 }

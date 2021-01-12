@@ -24,12 +24,12 @@ import org.springframework.transaction.support.ResourceHolderSupport;
 import org.springframework.util.Assert;
 
 /**
- * Resource holder wrapping a JPA {@link EntityManager}.
- * {@link JpaTransactionManager} binds instances of this class to the thread,
- * for a given {@link javax.persistence.EntityManagerFactory}.
+ * Resource holder wrapping a JPA {@link EntityManager}. {@link JpaTransactionManager} binds
+ * instances of this class to the thread, for a given {@link
+ * javax.persistence.EntityManagerFactory}.
  *
- * <p>Also serves as a base class for {@link org.springframework.orm.hibernate5.SessionHolder},
- * as of 5.1.
+ * <p>Also serves as a base class for {@link org.springframework.orm.hibernate5.SessionHolder}, as
+ * of 5.1.
  *
  * <p>Note: This is an SPI class, not intended to be used by applications.
  *
@@ -40,48 +40,42 @@ import org.springframework.util.Assert;
  */
 public class EntityManagerHolder extends ResourceHolderSupport {
 
-	@Nullable
-	private final EntityManager entityManager;
+    @Nullable private final EntityManager entityManager;
 
-	private boolean transactionActive;
+    private boolean transactionActive;
 
-	@Nullable
-	private SavepointManager savepointManager;
+    @Nullable private SavepointManager savepointManager;
 
+    public EntityManagerHolder(@Nullable EntityManager entityManager) {
+        this.entityManager = entityManager;
+    }
 
-	public EntityManagerHolder(@Nullable EntityManager entityManager) {
-		this.entityManager = entityManager;
-	}
+    public EntityManager getEntityManager() {
+        Assert.state(this.entityManager != null, "No EntityManager available");
+        return this.entityManager;
+    }
 
+    protected void setTransactionActive(boolean transactionActive) {
+        this.transactionActive = transactionActive;
+    }
 
-	public EntityManager getEntityManager() {
-		Assert.state(this.entityManager != null, "No EntityManager available");
-		return this.entityManager;
-	}
+    protected boolean isTransactionActive() {
+        return this.transactionActive;
+    }
 
-	protected void setTransactionActive(boolean transactionActive) {
-		this.transactionActive = transactionActive;
-	}
+    protected void setSavepointManager(@Nullable SavepointManager savepointManager) {
+        this.savepointManager = savepointManager;
+    }
 
-	protected boolean isTransactionActive() {
-		return this.transactionActive;
-	}
+    @Nullable
+    protected SavepointManager getSavepointManager() {
+        return this.savepointManager;
+    }
 
-	protected void setSavepointManager(@Nullable SavepointManager savepointManager) {
-		this.savepointManager = savepointManager;
-	}
-
-	@Nullable
-	protected SavepointManager getSavepointManager() {
-		return this.savepointManager;
-	}
-
-
-	@Override
-	public void clear() {
-		super.clear();
-		this.transactionActive = false;
-		this.savepointManager = null;
-	}
-
+    @Override
+    public void clear() {
+        super.clear();
+        this.transactionActive = false;
+        this.savepointManager = null;
+    }
 }

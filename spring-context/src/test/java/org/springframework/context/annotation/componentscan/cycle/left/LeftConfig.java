@@ -21,6 +21,4 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @ComponentScan("org.springframework.context.annotation.componentscan.cycle.right")
-public class LeftConfig {
-
-}
+public class LeftConfig {}

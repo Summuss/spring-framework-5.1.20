@@ -22,64 +22,60 @@ import org.springframework.web.socket.sockjs.frame.Jackson2SockJsMessageCodec;
 import org.springframework.web.socket.sockjs.frame.SockJsMessageCodec;
 import org.springframework.web.socket.sockjs.transport.SockJsServiceConfig;
 
-/**
- * @author Rossen Stoyanchev
- */
+/** @author Rossen Stoyanchev */
 public class StubSockJsServiceConfig implements SockJsServiceConfig {
 
-	private int streamBytesLimit = 128 * 1024;
+    private int streamBytesLimit = 128 * 1024;
 
-	private long heartbeatTime = 25 * 1000;
+    private long heartbeatTime = 25 * 1000;
 
-	private TaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
+    private TaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
 
-	private SockJsMessageCodec messageCodec = new Jackson2SockJsMessageCodec();
+    private SockJsMessageCodec messageCodec = new Jackson2SockJsMessageCodec();
 
-	private int httpMessageCacheSize = 100;
+    private int httpMessageCacheSize = 100;
 
+    @Override
+    public int getStreamBytesLimit() {
+        return this.streamBytesLimit;
+    }
 
-	@Override
-	public int getStreamBytesLimit() {
-		return this.streamBytesLimit;
-	}
+    public void setStreamBytesLimit(int streamBytesLimit) {
+        this.streamBytesLimit = streamBytesLimit;
+    }
 
-	public void setStreamBytesLimit(int streamBytesLimit) {
-		this.streamBytesLimit = streamBytesLimit;
-	}
+    @Override
+    public long getHeartbeatTime() {
+        return this.heartbeatTime;
+    }
 
-	@Override
-	public long getHeartbeatTime() {
-		return this.heartbeatTime;
-	}
+    public void setHeartbeatTime(long heartbeatTime) {
+        this.heartbeatTime = heartbeatTime;
+    }
 
-	public void setHeartbeatTime(long heartbeatTime) {
-		this.heartbeatTime = heartbeatTime;
-	}
+    @Override
+    public TaskScheduler getTaskScheduler() {
+        return this.taskScheduler;
+    }
 
-	@Override
-	public TaskScheduler getTaskScheduler() {
-		return this.taskScheduler;
-	}
+    public void setTaskScheduler(TaskScheduler taskScheduler) {
+        this.taskScheduler = taskScheduler;
+    }
 
-	public void setTaskScheduler(TaskScheduler taskScheduler) {
-		this.taskScheduler = taskScheduler;
-	}
+    @Override
+    public SockJsMessageCodec getMessageCodec() {
+        return this.messageCodec;
+    }
 
-	@Override
-	public SockJsMessageCodec getMessageCodec() {
-		return this.messageCodec;
-	}
+    public void setMessageCodec(SockJsMessageCodec messageCodec) {
+        this.messageCodec = messageCodec;
+    }
 
-	public void setMessageCodec(SockJsMessageCodec messageCodec) {
-		this.messageCodec = messageCodec;
-	}
+    public int getHttpMessageCacheSize() {
+        return this.httpMessageCacheSize;
+    }
 
-	public int getHttpMessageCacheSize() {
-		return this.httpMessageCacheSize;
-	}
-
-	public void setHttpMessageCacheSize(int httpMessageCacheSize) {
-		this.httpMessageCacheSize = httpMessageCacheSize;
-	}
-
+    public void setHttpMessageCacheSize(int httpMessageCacheSize) {
+        this.httpMessageCacheSize = httpMessageCacheSize;
+    }
 }

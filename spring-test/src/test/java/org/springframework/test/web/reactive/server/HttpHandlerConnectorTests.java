@@ -45,90 +45,104 @@ import static org.junit.Assert.assertEquals;
 
 /**
  * Unit tests for {@link HttpHandlerConnector}.
+ *
  * @author Rossen Stoyanchev
  */
 public class HttpHandlerConnectorTests {
 
+    @Test
+    public void adaptRequest() throws Exception {
 
-	@Test
-	public void adaptRequest() throws Exception {
+        TestHttpHandler handler =
+                new TestHttpHandler(
+                        response -> {
+                            response.setStatusCode(HttpStatus.OK);
+                            return response.setComplete();
+                        });
 
-		TestHttpHandler handler = new TestHttpHandler(response -> {
-			response.setStatusCode(HttpStatus.OK);
-			return response.setComplete();
-		});
+        new HttpHandlerConnector(handler)
+                .connect(
+                        HttpMethod.POST,
+                        URI.create("/custom-path"),
+                        request -> {
+                            request.getHeaders().put("custom-header", Arrays.asList("h0", "h1"));
+                            request.getCookies()
+                                    .add("custom-cookie", new HttpCookie("custom-cookie", "c0"));
+                            return request.writeWith(Mono.just(toDataBuffer("Custom body")));
+                        })
+                .block(Duration.ofSeconds(5));
 
-		new HttpHandlerConnector(handler).connect(HttpMethod.POST, URI.create("/custom-path"),
-				request -> {
-					request.getHeaders().put("custom-header", Arrays.asList("h0", "h1"));
-					request.getCookies().add("custom-cookie", new HttpCookie("custom-cookie", "c0"));
-					return request.writeWith(Mono.just(toDataBuffer("Custom body")));
-				}).block(Duration.ofSeconds(5));
+        MockServerHttpRequest request = (MockServerHttpRequest) handler.getSavedRequest();
+        assertEquals(HttpMethod.POST, request.getMethod());
+        assertEquals("/custom-path", request.getURI().toString());
 
-		MockServerHttpRequest request = (MockServerHttpRequest) handler.getSavedRequest();
-		assertEquals(HttpMethod.POST, request.getMethod());
-		assertEquals("/custom-path", request.getURI().toString());
+        HttpHeaders headers = request.getHeaders();
+        assertEquals(Arrays.asList("h0", "h1"), headers.get("custom-header"));
+        assertEquals(
+                new HttpCookie("custom-cookie", "c0"),
+                request.getCookies().getFirst("custom-cookie"));
+        assertEquals(
+                Collections.singletonList("custom-cookie=c0"), headers.get(HttpHeaders.COOKIE));
 
-		HttpHeaders headers = request.getHeaders();
-		assertEquals(Arrays.asList("h0", "h1"), headers.get("custom-header"));
-		assertEquals(new HttpCookie("custom-cookie", "c0"), request.getCookies().getFirst("custom-cookie"));
-		assertEquals(Collections.singletonList("custom-cookie=c0"), headers.get(HttpHeaders.COOKIE));
+        DataBuffer buffer = request.getBody().blockFirst(Duration.ZERO);
+        assertEquals("Custom body", DataBufferTestUtils.dumpString(buffer, UTF_8));
+    }
 
-		DataBuffer buffer = request.getBody().blockFirst(Duration.ZERO);
-		assertEquals("Custom body", DataBufferTestUtils.dumpString(buffer, UTF_8));
-	}
+    @Test
+    public void adaptResponse() throws Exception {
 
-	@Test
-	public void adaptResponse() throws Exception {
+        ResponseCookie cookie = ResponseCookie.from("custom-cookie", "c0").build();
 
-		ResponseCookie cookie = ResponseCookie.from("custom-cookie", "c0").build();
+        TestHttpHandler handler =
+                new TestHttpHandler(
+                        response -> {
+                            response.setStatusCode(HttpStatus.OK);
+                            response.getHeaders().put("custom-header", Arrays.asList("h0", "h1"));
+                            response.addCookie(cookie);
+                            return response.writeWith(Mono.just(toDataBuffer("Custom body")));
+                        });
 
-		TestHttpHandler handler = new TestHttpHandler(response -> {
-			response.setStatusCode(HttpStatus.OK);
-			response.getHeaders().put("custom-header", Arrays.asList("h0", "h1"));
-			response.addCookie(cookie);
-			return response.writeWith(Mono.just(toDataBuffer("Custom body")));
-		});
+        ClientHttpResponse response =
+                new HttpHandlerConnector(handler)
+                        .connect(
+                                HttpMethod.GET,
+                                URI.create("/custom-path"),
+                                ReactiveHttpOutputMessage::setComplete)
+                        .block(Duration.ofSeconds(5));
 
-		ClientHttpResponse response = new HttpHandlerConnector(handler)
-				.connect(HttpMethod.GET, URI.create("/custom-path"), ReactiveHttpOutputMessage::setComplete)
-				.block(Duration.ofSeconds(5));
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        HttpHeaders headers = response.getHeaders();
+        assertEquals(Arrays.asList("h0", "h1"), headers.get("custom-header"));
+        assertEquals(cookie, response.getCookies().getFirst("custom-cookie"));
+        assertEquals(
+                Collections.singletonList("custom-cookie=c0"), headers.get(HttpHeaders.SET_COOKIE));
 
-		assertEquals(HttpStatus.OK, response.getStatusCode());
-		HttpHeaders headers = response.getHeaders();
-		assertEquals(Arrays.asList("h0", "h1"), headers.get("custom-header"));
-		assertEquals(cookie, response.getCookies().getFirst("custom-cookie"));
-		assertEquals(Collections.singletonList("custom-cookie=c0"), headers.get(HttpHeaders.SET_COOKIE));
+        DataBuffer buffer = response.getBody().blockFirst(Duration.ZERO);
+        assertEquals("Custom body", DataBufferTestUtils.dumpString(buffer, UTF_8));
+    }
 
-		DataBuffer buffer = response.getBody().blockFirst(Duration.ZERO);
-		assertEquals("Custom body", DataBufferTestUtils.dumpString(buffer, UTF_8));
-	}
+    private DataBuffer toDataBuffer(String body) {
+        return new DefaultDataBufferFactory().wrap(body.getBytes(UTF_8));
+    }
 
-	private DataBuffer toDataBuffer(String body) {
-		return new DefaultDataBufferFactory().wrap(body.getBytes(UTF_8));
-	}
+    private static class TestHttpHandler implements HttpHandler {
 
+        private ServerHttpRequest savedRequest;
 
-	private static class TestHttpHandler implements HttpHandler {
+        private final Function<ServerHttpResponse, Mono<Void>> responseMonoFunction;
 
-		private ServerHttpRequest savedRequest;
+        public TestHttpHandler(Function<ServerHttpResponse, Mono<Void>> function) {
+            this.responseMonoFunction = function;
+        }
 
-		private final Function<ServerHttpResponse, Mono<Void>> responseMonoFunction;
+        public ServerHttpRequest getSavedRequest() {
+            return this.savedRequest;
+        }
 
-
-		public TestHttpHandler(Function<ServerHttpResponse, Mono<Void>> function) {
-			this.responseMonoFunction = function;
-		}
-
-		public ServerHttpRequest getSavedRequest() {
-			return this.savedRequest;
-		}
-
-		@Override
-		public Mono<Void> handle(ServerHttpRequest request, ServerHttpResponse response) {
-			this.savedRequest = request;
-			return this.responseMonoFunction.apply(response);
-		}
-	}
-
+        @Override
+        public Mono<Void> handle(ServerHttpRequest request, ServerHttpResponse response) {
+            this.savedRequest = request;
+            return this.responseMonoFunction.apply(response);
+        }
+    }
 }

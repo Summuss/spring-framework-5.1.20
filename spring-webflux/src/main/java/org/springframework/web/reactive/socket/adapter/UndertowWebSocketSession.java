@@ -38,8 +38,8 @@ import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
 
 /**
- * Spring {@link WebSocketSession} implementation that adapts to an Undertow
- * {@link io.undertow.websockets.core.WebSocketChannel}.
+ * Spring {@link WebSocketSession} implementation that adapts to an Undertow {@link
+ * io.undertow.websockets.core.WebSocketChannel}.
  *
  * @author Violeta Georgieva
  * @author Rossen Stoyanchev
@@ -47,90 +47,91 @@ import org.springframework.web.reactive.socket.WebSocketSession;
  */
 public class UndertowWebSocketSession extends AbstractListenerWebSocketSession<WebSocketChannel> {
 
-	public UndertowWebSocketSession(WebSocketChannel channel, HandshakeInfo info, DataBufferFactory factory) {
-		this(channel, info, factory, null);
-	}
+    public UndertowWebSocketSession(
+            WebSocketChannel channel, HandshakeInfo info, DataBufferFactory factory) {
+        this(channel, info, factory, null);
+    }
 
-	public UndertowWebSocketSession(WebSocketChannel channel, HandshakeInfo info,
-			DataBufferFactory factory, @Nullable MonoProcessor<Void> completionMono) {
+    public UndertowWebSocketSession(
+            WebSocketChannel channel,
+            HandshakeInfo info,
+            DataBufferFactory factory,
+            @Nullable MonoProcessor<Void> completionMono) {
 
-		super(channel, ObjectUtils.getIdentityHexString(channel), info, factory, completionMono);
-		suspendReceiving();
-	}
+        super(channel, ObjectUtils.getIdentityHexString(channel), info, factory, completionMono);
+        suspendReceiving();
+    }
 
+    @Override
+    protected boolean canSuspendReceiving() {
+        return true;
+    }
 
-	@Override
-	protected boolean canSuspendReceiving() {
-		return true;
-	}
+    @Override
+    protected void suspendReceiving() {
+        getDelegate().suspendReceives();
+    }
 
-	@Override
-	protected void suspendReceiving() {
-		getDelegate().suspendReceives();
-	}
+    @Override
+    protected void resumeReceiving() {
+        getDelegate().resumeReceives();
+    }
 
-	@Override
-	protected void resumeReceiving() {
-		getDelegate().resumeReceives();
-	}
+    @Override
+    protected boolean sendMessage(WebSocketMessage message) throws IOException {
+        ByteBuffer buffer = message.getPayload().asByteBuffer();
+        if (WebSocketMessage.Type.TEXT.equals(message.getType())) {
+            getSendProcessor().setReadyToSend(false);
+            String text = new String(buffer.array(), StandardCharsets.UTF_8);
+            WebSockets.sendText(
+                    text, getDelegate(), new SendProcessorCallback(message.getPayload()));
+        } else if (WebSocketMessage.Type.BINARY.equals(message.getType())) {
+            getSendProcessor().setReadyToSend(false);
+            WebSockets.sendBinary(
+                    buffer, getDelegate(), new SendProcessorCallback(message.getPayload()));
+        } else if (WebSocketMessage.Type.PING.equals(message.getType())) {
+            getSendProcessor().setReadyToSend(false);
+            WebSockets.sendPing(
+                    buffer, getDelegate(), new SendProcessorCallback(message.getPayload()));
+        } else if (WebSocketMessage.Type.PONG.equals(message.getType())) {
+            getSendProcessor().setReadyToSend(false);
+            WebSockets.sendPong(
+                    buffer, getDelegate(), new SendProcessorCallback(message.getPayload()));
+        } else {
+            throw new IllegalArgumentException("Unexpected message type: " + message.getType());
+        }
+        return true;
+    }
 
-	@Override
-	protected boolean sendMessage(WebSocketMessage message) throws IOException {
-		ByteBuffer buffer = message.getPayload().asByteBuffer();
-		if (WebSocketMessage.Type.TEXT.equals(message.getType())) {
-			getSendProcessor().setReadyToSend(false);
-			String text = new String(buffer.array(), StandardCharsets.UTF_8);
-			WebSockets.sendText(text, getDelegate(), new SendProcessorCallback(message.getPayload()));
-		}
-		else if (WebSocketMessage.Type.BINARY.equals(message.getType())) {
-			getSendProcessor().setReadyToSend(false);
-			WebSockets.sendBinary(buffer, getDelegate(), new SendProcessorCallback(message.getPayload()));
-		}
-		else if (WebSocketMessage.Type.PING.equals(message.getType())) {
-			getSendProcessor().setReadyToSend(false);
-			WebSockets.sendPing(buffer, getDelegate(), new SendProcessorCallback(message.getPayload()));
-		}
-		else if (WebSocketMessage.Type.PONG.equals(message.getType())) {
-			getSendProcessor().setReadyToSend(false);
-			WebSockets.sendPong(buffer, getDelegate(), new SendProcessorCallback(message.getPayload()));
-		}
-		else {
-			throw new IllegalArgumentException("Unexpected message type: " + message.getType());
-		}
-		return true;
-	}
+    @Override
+    public Mono<Void> close(CloseStatus status) {
+        CloseMessage cm = new CloseMessage(status.getCode(), status.getReason());
+        if (!getDelegate().isCloseFrameSent()) {
+            WebSockets.sendClose(cm, getDelegate(), null);
+        }
+        return Mono.empty();
+    }
 
-	@Override
-	public Mono<Void> close(CloseStatus status) {
-		CloseMessage cm = new CloseMessage(status.getCode(), status.getReason());
-		if (!getDelegate().isCloseFrameSent()) {
-			WebSockets.sendClose(cm, getDelegate(), null);
-		}
-		return Mono.empty();
-	}
+    private final class SendProcessorCallback implements WebSocketCallback<Void> {
 
+        private final DataBuffer payload;
 
-	private final class SendProcessorCallback implements WebSocketCallback<Void> {
+        SendProcessorCallback(DataBuffer payload) {
+            this.payload = payload;
+        }
 
-		private final DataBuffer payload;
+        @Override
+        public void complete(WebSocketChannel channel, Void context) {
+            DataBufferUtils.release(this.payload);
+            getSendProcessor().setReadyToSend(true);
+            getSendProcessor().onWritePossible();
+        }
 
-		SendProcessorCallback(DataBuffer payload) {
-			this.payload = payload;
-		}
-
-		@Override
-		public void complete(WebSocketChannel channel, Void context) {
-			DataBufferUtils.release(this.payload);
-			getSendProcessor().setReadyToSend(true);
-			getSendProcessor().onWritePossible();
-		}
-
-		@Override
-		public void onError(WebSocketChannel channel, Void context, Throwable throwable) {
-			DataBufferUtils.release(this.payload);
-			getSendProcessor().cancel();
-			getSendProcessor().onError(throwable);
-		}
-	}
-
+        @Override
+        public void onError(WebSocketChannel channel, Void context, Throwable throwable) {
+            DataBufferUtils.release(this.payload);
+            getSendProcessor().cancel();
+            getSendProcessor().onError(throwable);
+        }
+    }
 }

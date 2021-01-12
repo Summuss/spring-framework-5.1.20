@@ -33,150 +33,150 @@ import org.springframework.tests.sample.beans.TestBean;
 
 import static org.junit.Assert.*;
 
-/**
- * @author Juergen Hoeller
- */
+/** @author Juergen Hoeller */
 public class BeanValidationPostProcessorTests {
 
-	@Test
-	public void testNotNullConstraint() {
-		GenericApplicationContext ac = new GenericApplicationContext();
-		ac.registerBeanDefinition("bvpp", new RootBeanDefinition(BeanValidationPostProcessor.class));
-		ac.registerBeanDefinition("capp", new RootBeanDefinition(CommonAnnotationBeanPostProcessor.class));
-		ac.registerBeanDefinition("bean", new RootBeanDefinition(NotNullConstrainedBean.class));
-		try {
-			ac.refresh();
-			fail("Should have thrown BeanCreationException");
-		}
-		catch (BeanCreationException ex) {
-			assertTrue(ex.getRootCause().getMessage().contains("testBean"));
-			assertTrue(ex.getRootCause().getMessage().contains("invalid"));
-		}
-		ac.close();
-	}
+    @Test
+    public void testNotNullConstraint() {
+        GenericApplicationContext ac = new GenericApplicationContext();
+        ac.registerBeanDefinition(
+                "bvpp", new RootBeanDefinition(BeanValidationPostProcessor.class));
+        ac.registerBeanDefinition(
+                "capp", new RootBeanDefinition(CommonAnnotationBeanPostProcessor.class));
+        ac.registerBeanDefinition("bean", new RootBeanDefinition(NotNullConstrainedBean.class));
+        try {
+            ac.refresh();
+            fail("Should have thrown BeanCreationException");
+        } catch (BeanCreationException ex) {
+            assertTrue(ex.getRootCause().getMessage().contains("testBean"));
+            assertTrue(ex.getRootCause().getMessage().contains("invalid"));
+        }
+        ac.close();
+    }
 
-	@Test
-	public void testNotNullConstraintSatisfied() {
-		GenericApplicationContext ac = new GenericApplicationContext();
-		ac.registerBeanDefinition("bvpp", new RootBeanDefinition(BeanValidationPostProcessor.class));
-		ac.registerBeanDefinition("capp", new RootBeanDefinition(CommonAnnotationBeanPostProcessor.class));
-		RootBeanDefinition bd = new RootBeanDefinition(NotNullConstrainedBean.class);
-		bd.getPropertyValues().add("testBean", new TestBean());
-		ac.registerBeanDefinition("bean", bd);
-		ac.refresh();
-		ac.close();
-	}
+    @Test
+    public void testNotNullConstraintSatisfied() {
+        GenericApplicationContext ac = new GenericApplicationContext();
+        ac.registerBeanDefinition(
+                "bvpp", new RootBeanDefinition(BeanValidationPostProcessor.class));
+        ac.registerBeanDefinition(
+                "capp", new RootBeanDefinition(CommonAnnotationBeanPostProcessor.class));
+        RootBeanDefinition bd = new RootBeanDefinition(NotNullConstrainedBean.class);
+        bd.getPropertyValues().add("testBean", new TestBean());
+        ac.registerBeanDefinition("bean", bd);
+        ac.refresh();
+        ac.close();
+    }
 
-	@Test
-	public void testNotNullConstraintAfterInitialization() {
-		GenericApplicationContext ac = new GenericApplicationContext();
-		RootBeanDefinition bvpp = new RootBeanDefinition(BeanValidationPostProcessor.class);
-		bvpp.getPropertyValues().add("afterInitialization", true);
-		ac.registerBeanDefinition("bvpp", bvpp);
-		ac.registerBeanDefinition("capp", new RootBeanDefinition(CommonAnnotationBeanPostProcessor.class));
-		ac.registerBeanDefinition("bean", new RootBeanDefinition(AfterInitConstraintBean.class));
-		ac.refresh();
-		ac.close();
-	}
+    @Test
+    public void testNotNullConstraintAfterInitialization() {
+        GenericApplicationContext ac = new GenericApplicationContext();
+        RootBeanDefinition bvpp = new RootBeanDefinition(BeanValidationPostProcessor.class);
+        bvpp.getPropertyValues().add("afterInitialization", true);
+        ac.registerBeanDefinition("bvpp", bvpp);
+        ac.registerBeanDefinition(
+                "capp", new RootBeanDefinition(CommonAnnotationBeanPostProcessor.class));
+        ac.registerBeanDefinition("bean", new RootBeanDefinition(AfterInitConstraintBean.class));
+        ac.refresh();
+        ac.close();
+    }
 
-	@Test
-	public void testNotNullConstraintAfterInitializationWithProxy() {
-		GenericApplicationContext ac = new GenericApplicationContext();
-		RootBeanDefinition bvpp = new RootBeanDefinition(BeanValidationPostProcessor.class);
-		bvpp.getPropertyValues().add("afterInitialization", true);
-		ac.registerBeanDefinition("bvpp", bvpp);
-		ac.registerBeanDefinition("capp", new RootBeanDefinition(CommonAnnotationBeanPostProcessor.class));
-		ac.registerBeanDefinition("bean", new RootBeanDefinition(AfterInitConstraintBean.class));
-		ac.registerBeanDefinition("autoProxyCreator", new RootBeanDefinition(DefaultAdvisorAutoProxyCreator.class));
-		ac.registerBeanDefinition("asyncAdvisor", new RootBeanDefinition(AsyncAnnotationAdvisor.class));
-		ac.refresh();
-		ac.close();
-	}
+    @Test
+    public void testNotNullConstraintAfterInitializationWithProxy() {
+        GenericApplicationContext ac = new GenericApplicationContext();
+        RootBeanDefinition bvpp = new RootBeanDefinition(BeanValidationPostProcessor.class);
+        bvpp.getPropertyValues().add("afterInitialization", true);
+        ac.registerBeanDefinition("bvpp", bvpp);
+        ac.registerBeanDefinition(
+                "capp", new RootBeanDefinition(CommonAnnotationBeanPostProcessor.class));
+        ac.registerBeanDefinition("bean", new RootBeanDefinition(AfterInitConstraintBean.class));
+        ac.registerBeanDefinition(
+                "autoProxyCreator", new RootBeanDefinition(DefaultAdvisorAutoProxyCreator.class));
+        ac.registerBeanDefinition(
+                "asyncAdvisor", new RootBeanDefinition(AsyncAnnotationAdvisor.class));
+        ac.refresh();
+        ac.close();
+    }
 
-	@Test
-	public void testSizeConstraint() {
-		GenericApplicationContext ac = new GenericApplicationContext();
-		ac.registerBeanDefinition("bvpp", new RootBeanDefinition(BeanValidationPostProcessor.class));
-		RootBeanDefinition bd = new RootBeanDefinition(NotNullConstrainedBean.class);
-		bd.getPropertyValues().add("testBean", new TestBean());
-		bd.getPropertyValues().add("stringValue", "s");
-		ac.registerBeanDefinition("bean", bd);
-		try {
-			ac.refresh();
-			fail("Should have thrown BeanCreationException");
-		}
-		catch (BeanCreationException ex) {
-			assertTrue(ex.getRootCause().getMessage().contains("stringValue"));
-			assertTrue(ex.getRootCause().getMessage().contains("invalid"));
-		}
-		ac.close();
-	}
+    @Test
+    public void testSizeConstraint() {
+        GenericApplicationContext ac = new GenericApplicationContext();
+        ac.registerBeanDefinition(
+                "bvpp", new RootBeanDefinition(BeanValidationPostProcessor.class));
+        RootBeanDefinition bd = new RootBeanDefinition(NotNullConstrainedBean.class);
+        bd.getPropertyValues().add("testBean", new TestBean());
+        bd.getPropertyValues().add("stringValue", "s");
+        ac.registerBeanDefinition("bean", bd);
+        try {
+            ac.refresh();
+            fail("Should have thrown BeanCreationException");
+        } catch (BeanCreationException ex) {
+            assertTrue(ex.getRootCause().getMessage().contains("stringValue"));
+            assertTrue(ex.getRootCause().getMessage().contains("invalid"));
+        }
+        ac.close();
+    }
 
-	@Test
-	public void testSizeConstraintSatisfied() {
-		GenericApplicationContext ac = new GenericApplicationContext();
-		ac.registerBeanDefinition("bvpp", new RootBeanDefinition(BeanValidationPostProcessor.class));
-		RootBeanDefinition bd = new RootBeanDefinition(NotNullConstrainedBean.class);
-		bd.getPropertyValues().add("testBean", new TestBean());
-		bd.getPropertyValues().add("stringValue", "ss");
-		ac.registerBeanDefinition("bean", bd);
-		ac.refresh();
-		ac.close();
-	}
+    @Test
+    public void testSizeConstraintSatisfied() {
+        GenericApplicationContext ac = new GenericApplicationContext();
+        ac.registerBeanDefinition(
+                "bvpp", new RootBeanDefinition(BeanValidationPostProcessor.class));
+        RootBeanDefinition bd = new RootBeanDefinition(NotNullConstrainedBean.class);
+        bd.getPropertyValues().add("testBean", new TestBean());
+        bd.getPropertyValues().add("stringValue", "ss");
+        ac.registerBeanDefinition("bean", bd);
+        ac.refresh();
+        ac.close();
+    }
 
+    public static class NotNullConstrainedBean {
 
-	public static class NotNullConstrainedBean {
+        @NotNull private TestBean testBean;
 
-		@NotNull
-		private TestBean testBean;
+        @Size(min = 2)
+        private String stringValue;
 
-		@Size(min = 2)
-		private String stringValue;
+        public TestBean getTestBean() {
+            return testBean;
+        }
 
-		public TestBean getTestBean() {
-			return testBean;
-		}
+        public void setTestBean(TestBean testBean) {
+            this.testBean = testBean;
+        }
 
-		public void setTestBean(TestBean testBean) {
-			this.testBean = testBean;
-		}
+        public String getStringValue() {
+            return stringValue;
+        }
 
-		public String getStringValue() {
-			return stringValue;
-		}
+        public void setStringValue(String stringValue) {
+            this.stringValue = stringValue;
+        }
 
-		public void setStringValue(String stringValue) {
-			this.stringValue = stringValue;
-		}
+        @PostConstruct
+        public void init() {
+            assertNotNull("Shouldn't be here after constraint checking", this.testBean);
+        }
+    }
 
-		@PostConstruct
-		public void init() {
-			assertNotNull("Shouldn't be here after constraint checking", this.testBean);
-		}
-	}
+    public static class AfterInitConstraintBean {
 
+        @NotNull private TestBean testBean;
 
-	public static class AfterInitConstraintBean {
+        public TestBean getTestBean() {
+            return testBean;
+        }
 
-		@NotNull
-		private TestBean testBean;
+        public void setTestBean(TestBean testBean) {
+            this.testBean = testBean;
+        }
 
-		public TestBean getTestBean() {
-			return testBean;
-		}
+        @PostConstruct
+        public void init() {
+            this.testBean = new TestBean();
+        }
 
-		public void setTestBean(TestBean testBean) {
-			this.testBean = testBean;
-		}
-
-		@PostConstruct
-		public void init() {
-			this.testBean = new TestBean();
-		}
-
-		@Async
-		void asyncMethod() {
-		}
-	}
-
+        @Async
+        void asyncMethod() {}
+    }
 }

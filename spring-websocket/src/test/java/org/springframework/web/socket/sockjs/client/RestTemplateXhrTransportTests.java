@@ -65,160 +65,167 @@ import static org.mockito.BDDMockito.*;
  */
 public class RestTemplateXhrTransportTests {
 
-	private static final Jackson2SockJsMessageCodec CODEC = new Jackson2SockJsMessageCodec();
+    private static final Jackson2SockJsMessageCodec CODEC = new Jackson2SockJsMessageCodec();
 
-	private final WebSocketHandler webSocketHandler = mock(WebSocketHandler.class);
+    private final WebSocketHandler webSocketHandler = mock(WebSocketHandler.class);
 
+    @Test
+    public void connectReceiveAndClose() throws Exception {
+        String body = "o\n" + "a[\"foo\"]\n" + "c[3000,\"Go away!\"]";
+        ClientHttpResponse response = response(HttpStatus.OK, body);
+        connect(response);
 
-	@Test
-	public void connectReceiveAndClose() throws Exception {
-		String body = "o\n" + "a[\"foo\"]\n" + "c[3000,\"Go away!\"]";
-		ClientHttpResponse response = response(HttpStatus.OK, body);
-		connect(response);
+        verify(this.webSocketHandler).afterConnectionEstablished(any());
+        verify(this.webSocketHandler).handleMessage(any(), eq(new TextMessage("foo")));
+        verify(this.webSocketHandler)
+                .afterConnectionClosed(any(), eq(new CloseStatus(3000, "Go away!")));
+        verifyNoMoreInteractions(this.webSocketHandler);
+    }
 
-		verify(this.webSocketHandler).afterConnectionEstablished(any());
-		verify(this.webSocketHandler).handleMessage(any(), eq(new TextMessage("foo")));
-		verify(this.webSocketHandler).afterConnectionClosed(any(), eq(new CloseStatus(3000, "Go away!")));
-		verifyNoMoreInteractions(this.webSocketHandler);
-	}
+    @Test
+    public void connectReceiveAndCloseWithPrelude() throws Exception {
+        StringBuilder sb = new StringBuilder(2048);
+        for (int i = 0; i < 2048; i++) {
+            sb.append('h');
+        }
+        String body = sb.toString() + "\n" + "o\n" + "a[\"foo\"]\n" + "c[3000,\"Go away!\"]";
+        ClientHttpResponse response = response(HttpStatus.OK, body);
+        connect(response);
 
-	@Test
-	public void connectReceiveAndCloseWithPrelude() throws Exception {
-		StringBuilder sb = new StringBuilder(2048);
-		for (int i = 0; i < 2048; i++) {
-			sb.append('h');
-		}
-		String body = sb.toString() + "\n" + "o\n" + "a[\"foo\"]\n" + "c[3000,\"Go away!\"]";
-		ClientHttpResponse response = response(HttpStatus.OK, body);
-		connect(response);
+        verify(this.webSocketHandler).afterConnectionEstablished(any());
+        verify(this.webSocketHandler).handleMessage(any(), eq(new TextMessage("foo")));
+        verify(this.webSocketHandler)
+                .afterConnectionClosed(any(), eq(new CloseStatus(3000, "Go away!")));
+        verifyNoMoreInteractions(this.webSocketHandler);
+    }
 
-		verify(this.webSocketHandler).afterConnectionEstablished(any());
-		verify(this.webSocketHandler).handleMessage(any(), eq(new TextMessage("foo")));
-		verify(this.webSocketHandler).afterConnectionClosed(any(), eq(new CloseStatus(3000, "Go away!")));
-		verifyNoMoreInteractions(this.webSocketHandler);
-	}
+    @Test
+    public void connectReceiveAndCloseWithStompFrame() throws Exception {
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SEND);
+        accessor.setDestination("/destination");
+        MessageHeaders headers = accessor.getMessageHeaders();
+        Message<byte[]> message =
+                MessageBuilder.createMessage("body".getBytes(StandardCharsets.UTF_8), headers);
+        byte[] bytes = new StompEncoder().encode(message);
+        TextMessage textMessage = new TextMessage(bytes);
+        SockJsFrame frame =
+                SockJsFrame.messageFrame(
+                        new Jackson2SockJsMessageCodec(), textMessage.getPayload());
 
-	@Test
-	public void connectReceiveAndCloseWithStompFrame() throws Exception {
-		StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SEND);
-		accessor.setDestination("/destination");
-		MessageHeaders headers = accessor.getMessageHeaders();
-		Message<byte[]> message = MessageBuilder.createMessage("body".getBytes(StandardCharsets.UTF_8), headers);
-		byte[] bytes = new StompEncoder().encode(message);
-		TextMessage textMessage = new TextMessage(bytes);
-		SockJsFrame frame = SockJsFrame.messageFrame(new Jackson2SockJsMessageCodec(), textMessage.getPayload());
+        String body = "o\n" + frame.getContent() + "\n" + "c[3000,\"Go away!\"]";
+        ClientHttpResponse response = response(HttpStatus.OK, body);
+        connect(response);
 
-		String body = "o\n" + frame.getContent() + "\n" + "c[3000,\"Go away!\"]";
-		ClientHttpResponse response = response(HttpStatus.OK, body);
-		connect(response);
+        verify(this.webSocketHandler).afterConnectionEstablished(any());
+        verify(this.webSocketHandler).handleMessage(any(), eq(textMessage));
+        verify(this.webSocketHandler)
+                .afterConnectionClosed(any(), eq(new CloseStatus(3000, "Go away!")));
+        verifyNoMoreInteractions(this.webSocketHandler);
+    }
 
-		verify(this.webSocketHandler).afterConnectionEstablished(any());
-		verify(this.webSocketHandler).handleMessage(any(), eq(textMessage));
-		verify(this.webSocketHandler).afterConnectionClosed(any(), eq(new CloseStatus(3000, "Go away!")));
-		verifyNoMoreInteractions(this.webSocketHandler);
-	}
+    @Test
+    public void connectFailure() throws Exception {
+        final HttpServerErrorException expected =
+                new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR);
+        RestOperations restTemplate = mock(RestOperations.class);
+        given(restTemplate.execute((URI) any(), eq(HttpMethod.POST), any(), any()))
+                .willThrow(expected);
 
-	@Test
-	public void connectFailure() throws Exception {
-		final HttpServerErrorException expected = new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR);
-		RestOperations restTemplate = mock(RestOperations.class);
-		given(restTemplate.execute((URI) any(), eq(HttpMethod.POST), any(), any())).willThrow(expected);
+        final CountDownLatch latch = new CountDownLatch(1);
+        connect(restTemplate)
+                .addCallback(
+                        new ListenableFutureCallback<WebSocketSession>() {
+                            @Override
+                            public void onSuccess(WebSocketSession result) {}
 
-		final CountDownLatch latch = new CountDownLatch(1);
-		connect(restTemplate).addCallback(
-				new ListenableFutureCallback<WebSocketSession>() {
-					@Override
-					public void onSuccess(WebSocketSession result) {
-					}
-					@Override
-					public void onFailure(Throwable ex) {
-						if (ex == expected) {
-							latch.countDown();
-						}
-					}
-				}
-		);
-		verifyNoMoreInteractions(this.webSocketHandler);
-	}
+                            @Override
+                            public void onFailure(Throwable ex) {
+                                if (ex == expected) {
+                                    latch.countDown();
+                                }
+                            }
+                        });
+        verifyNoMoreInteractions(this.webSocketHandler);
+    }
 
-	@Test
-	public void errorResponseStatus() throws Exception {
-		connect(response(HttpStatus.OK, "o\n"), response(HttpStatus.INTERNAL_SERVER_ERROR, "Oops"));
+    @Test
+    public void errorResponseStatus() throws Exception {
+        connect(response(HttpStatus.OK, "o\n"), response(HttpStatus.INTERNAL_SERVER_ERROR, "Oops"));
 
-		verify(this.webSocketHandler).afterConnectionEstablished(any());
-		verify(this.webSocketHandler).handleTransportError(any(), any());
-		verify(this.webSocketHandler).afterConnectionClosed(any(), any());
-		verifyNoMoreInteractions(this.webSocketHandler);
-	}
+        verify(this.webSocketHandler).afterConnectionEstablished(any());
+        verify(this.webSocketHandler).handleTransportError(any(), any());
+        verify(this.webSocketHandler).afterConnectionClosed(any(), any());
+        verifyNoMoreInteractions(this.webSocketHandler);
+    }
 
-	@Test
-	public void responseClosedAfterDisconnected() throws Exception {
-		String body = "o\n" + "c[3000,\"Go away!\"]\n" + "a[\"foo\"]\n";
-		ClientHttpResponse response = response(HttpStatus.OK, body);
-		connect(response);
+    @Test
+    public void responseClosedAfterDisconnected() throws Exception {
+        String body = "o\n" + "c[3000,\"Go away!\"]\n" + "a[\"foo\"]\n";
+        ClientHttpResponse response = response(HttpStatus.OK, body);
+        connect(response);
 
-		verify(this.webSocketHandler).afterConnectionEstablished(any());
-		verify(this.webSocketHandler).afterConnectionClosed(any(), any());
-		verifyNoMoreInteractions(this.webSocketHandler);
-		verify(response).close();
-	}
+        verify(this.webSocketHandler).afterConnectionEstablished(any());
+        verify(this.webSocketHandler).afterConnectionClosed(any(), any());
+        verifyNoMoreInteractions(this.webSocketHandler);
+        verify(response).close();
+    }
 
-	private ListenableFuture<WebSocketSession> connect(ClientHttpResponse... responses) throws Exception {
-		return connect(new TestRestTemplate(responses));
-	}
+    private ListenableFuture<WebSocketSession> connect(ClientHttpResponse... responses)
+            throws Exception {
+        return connect(new TestRestTemplate(responses));
+    }
 
-	private ListenableFuture<WebSocketSession> connect(RestOperations restTemplate, ClientHttpResponse... responses)
-			throws Exception {
+    private ListenableFuture<WebSocketSession> connect(
+            RestOperations restTemplate, ClientHttpResponse... responses) throws Exception {
 
-		RestTemplateXhrTransport transport = new RestTemplateXhrTransport(restTemplate);
-		transport.setTaskExecutor(new SyncTaskExecutor());
+        RestTemplateXhrTransport transport = new RestTemplateXhrTransport(restTemplate);
+        transport.setTaskExecutor(new SyncTaskExecutor());
 
-		SockJsUrlInfo urlInfo = new SockJsUrlInfo(new URI("https://example.com"));
-		HttpHeaders headers = new HttpHeaders();
-		headers.add("h-foo", "h-bar");
-		TransportRequest request = new DefaultTransportRequest(urlInfo, headers, headers,
-				transport, TransportType.XHR, CODEC);
+        SockJsUrlInfo urlInfo = new SockJsUrlInfo(new URI("https://example.com"));
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("h-foo", "h-bar");
+        TransportRequest request =
+                new DefaultTransportRequest(
+                        urlInfo, headers, headers, transport, TransportType.XHR, CODEC);
 
-		return transport.connect(request, this.webSocketHandler);
-	}
+        return transport.connect(request, this.webSocketHandler);
+    }
 
-	private ClientHttpResponse response(HttpStatus status, String body) throws IOException {
-		ClientHttpResponse response = mock(ClientHttpResponse.class);
-		InputStream inputStream = getInputStream(body);
-		given(response.getRawStatusCode()).willReturn(status.value());
-		given(response.getBody()).willReturn(inputStream);
-		return response;
-	}
+    private ClientHttpResponse response(HttpStatus status, String body) throws IOException {
+        ClientHttpResponse response = mock(ClientHttpResponse.class);
+        InputStream inputStream = getInputStream(body);
+        given(response.getRawStatusCode()).willReturn(status.value());
+        given(response.getBody()).willReturn(inputStream);
+        return response;
+    }
 
-	private InputStream getInputStream(String content) {
-		byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
-		return new ByteArrayInputStream(bytes);
-	}
+    private InputStream getInputStream(String content) {
+        byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+        return new ByteArrayInputStream(bytes);
+    }
 
+    private static class TestRestTemplate extends RestTemplate {
 
+        private Queue<ClientHttpResponse> responses = new LinkedBlockingDeque<>();
 
-	private static class TestRestTemplate extends RestTemplate {
+        private TestRestTemplate(ClientHttpResponse... responses) {
+            this.responses.addAll(Arrays.asList(responses));
+        }
 
-		private Queue<ClientHttpResponse> responses = new LinkedBlockingDeque<>();
+        @Override
+        public <T> T execute(
+                URI url,
+                HttpMethod method,
+                @Nullable RequestCallback callback,
+                @Nullable ResponseExtractor<T> extractor)
+                throws RestClientException {
 
-
-		private TestRestTemplate(ClientHttpResponse... responses) {
-			this.responses.addAll(Arrays.asList(responses));
-		}
-
-		@Override
-		public <T> T execute(URI url, HttpMethod method, @Nullable RequestCallback callback,
-				@Nullable ResponseExtractor<T> extractor) throws RestClientException {
-
-			try {
-				extractor.extractData(this.responses.remove());
-			}
-			catch (Throwable t) {
-				throw new RestClientException("Failed to invoke extractor", t);
-			}
-			return null;
-		}
-	}
-
-
+            try {
+                extractor.extractData(this.responses.remove());
+            } catch (Throwable t) {
+                throw new RestClientException("Failed to invoke extractor", t);
+            }
+            return null;
+        }
+    }
 }

@@ -48,121 +48,128 @@ import org.springframework.web.util.UriComponentsBuilder;
  */
 public class MockClientHttpRequest extends AbstractClientHttpRequest {
 
-	private HttpMethod httpMethod;
+    private HttpMethod httpMethod;
 
-	private URI url;
+    private URI url;
 
-	private final DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
+    private final DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
 
-	private Flux<DataBuffer> body = Flux.error(
-			new IllegalStateException("The body is not set. " +
-					"Did handling complete with success? Is a custom \"writeHandler\" configured?"));
+    private Flux<DataBuffer> body =
+            Flux.error(
+                    new IllegalStateException(
+                            "The body is not set. "
+                                    + "Did handling complete with success? Is a custom \"writeHandler\" configured?"));
 
-	private Function<Flux<DataBuffer>, Mono<Void>> writeHandler;
+    private Function<Flux<DataBuffer>, Mono<Void>> writeHandler;
 
+    public MockClientHttpRequest(HttpMethod httpMethod, String urlTemplate, Object... vars) {
+        this(
+                httpMethod,
+                UriComponentsBuilder.fromUriString(urlTemplate)
+                        .buildAndExpand(vars)
+                        .encode()
+                        .toUri());
+    }
 
-	public MockClientHttpRequest(HttpMethod httpMethod, String urlTemplate, Object... vars) {
-		this(httpMethod, UriComponentsBuilder.fromUriString(urlTemplate).buildAndExpand(vars).encode().toUri());
-	}
+    public MockClientHttpRequest(HttpMethod httpMethod, URI url) {
+        this.httpMethod = httpMethod;
+        this.url = url;
+        this.writeHandler =
+                body -> {
+                    this.body = body.cache();
+                    return this.body.then();
+                };
+    }
 
-	public MockClientHttpRequest(HttpMethod httpMethod, URI url) {
-		this.httpMethod = httpMethod;
-		this.url = url;
-		this.writeHandler = body -> {
-			this.body = body.cache();
-			return this.body.then();
-		};
-	}
+    /**
+     * Configure a custom handler for writing the request body.
+     *
+     * <p>The default write handler consumes and caches the request body so it may be accessed
+     * subsequently, e.g. in test assertions. Use this property when the request body is an infinite
+     * stream.
+     *
+     * @param writeHandler the write handler to use returning {@code Mono<Void>} when the body has
+     *     been "written" (i.e. consumed).
+     */
+    public void setWriteHandler(Function<Flux<DataBuffer>, Mono<Void>> writeHandler) {
+        Assert.notNull(writeHandler, "'writeHandler' is required");
+        this.writeHandler = writeHandler;
+    }
 
+    @Override
+    public HttpMethod getMethod() {
+        return this.httpMethod;
+    }
 
-	/**
-	 * Configure a custom handler for writing the request body.
-	 *
-	 * <p>The default write handler consumes and caches the request body so it
-	 * may be accessed subsequently, e.g. in test assertions. Use this property
-	 * when the request body is an infinite stream.
-	 *
-	 * @param writeHandler the write handler to use returning {@code Mono<Void>}
-	 * when the body has been "written" (i.e. consumed).
-	 */
-	public void setWriteHandler(Function<Flux<DataBuffer>, Mono<Void>> writeHandler) {
-		Assert.notNull(writeHandler, "'writeHandler' is required");
-		this.writeHandler = writeHandler;
-	}
+    @Override
+    public URI getURI() {
+        return this.url;
+    }
 
+    @Override
+    public DataBufferFactory bufferFactory() {
+        return this.bufferFactory;
+    }
 
-	@Override
-	public HttpMethod getMethod() {
-		return this.httpMethod;
-	}
+    @Override
+    protected void applyHeaders() {}
 
-	@Override
-	public URI getURI() {
-		return this.url;
-	}
+    @Override
+    protected void applyCookies() {
+        getCookies().values().stream()
+                .flatMap(Collection::stream)
+                .forEach(cookie -> getHeaders().add(HttpHeaders.COOKIE, cookie.toString()));
+    }
 
-	@Override
-	public DataBufferFactory bufferFactory() {
-		return this.bufferFactory;
-	}
+    @Override
+    public Mono<Void> writeWith(Publisher<? extends DataBuffer> body) {
+        return doCommit(() -> Mono.defer(() -> this.writeHandler.apply(Flux.from(body))));
+    }
 
-	@Override
-	protected void applyHeaders() {
-	}
+    @Override
+    public Mono<Void> writeAndFlushWith(Publisher<? extends Publisher<? extends DataBuffer>> body) {
+        return writeWith(Flux.from(body).flatMap(p -> p));
+    }
 
-	@Override
-	protected void applyCookies() {
-		getCookies().values().stream().flatMap(Collection::stream)
-				.forEach(cookie -> getHeaders().add(HttpHeaders.COOKIE, cookie.toString()));
-	}
+    @Override
+    public Mono<Void> setComplete() {
+        return writeWith(Flux.empty());
+    }
 
-	@Override
-	public Mono<Void> writeWith(Publisher<? extends DataBuffer> body) {
-		return doCommit(() -> Mono.defer(() -> this.writeHandler.apply(Flux.from(body))));
-	}
+    /**
+     * Return the request body, or an error stream if the body was never set or when {@link
+     * #setWriteHandler} is configured.
+     */
+    public Flux<DataBuffer> getBody() {
+        return this.body;
+    }
 
-	@Override
-	public Mono<Void> writeAndFlushWith(Publisher<? extends Publisher<? extends DataBuffer>> body) {
-		return writeWith(Flux.from(body).flatMap(p -> p));
-	}
+    /**
+     * Aggregate response data and convert to a String using the "Content-Type" charset or "UTF-8"
+     * by default.
+     */
+    public Mono<String> getBodyAsString() {
 
-	@Override
-	public Mono<Void> setComplete() {
-		return writeWith(Flux.empty());
-	}
+        Charset charset =
+                Optional.ofNullable(getHeaders().getContentType())
+                        .map(MimeType::getCharset)
+                        .orElse(StandardCharsets.UTF_8);
 
+        return getBody()
+                .reduce(
+                        bufferFactory().allocateBuffer(),
+                        (previous, current) -> {
+                            previous.write(current);
+                            DataBufferUtils.release(current);
+                            return previous;
+                        })
+                .map(buffer -> bufferToString(buffer, charset));
+    }
 
-	/**
-	 * Return the request body, or an error stream if the body was never set
-	 * or when {@link #setWriteHandler} is configured.
-	 */
-	public Flux<DataBuffer> getBody() {
-		return this.body;
-	}
-
-	/**
-	 * Aggregate response data and convert to a String using the "Content-Type"
-	 * charset or "UTF-8" by default.
-	 */
-	public Mono<String> getBodyAsString() {
-
-		Charset charset = Optional.ofNullable(getHeaders().getContentType()).map(MimeType::getCharset)
-				.orElse(StandardCharsets.UTF_8);
-
-		return getBody()
-				.reduce(bufferFactory().allocateBuffer(), (previous, current) -> {
-					previous.write(current);
-					DataBufferUtils.release(current);
-					return previous;
-				})
-				.map(buffer -> bufferToString(buffer, charset));
-	}
-
-	private static String bufferToString(DataBuffer buffer, Charset charset) {
-		Assert.notNull(charset, "'charset' must not be null");
-		byte[] bytes = new byte[buffer.readableByteCount()];
-		buffer.read(bytes);
-		return new String(bytes, charset);
-	}
-
+    private static String bufferToString(DataBuffer buffer, Charset charset) {
+        Assert.notNull(charset, "'charset' must not be null");
+        byte[] bytes = new byte[buffer.readableByteCount()];
+        buffer.read(bytes);
+        return new String(bytes, charset);
+    }
 }

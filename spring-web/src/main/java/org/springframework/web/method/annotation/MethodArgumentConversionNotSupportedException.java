@@ -21,9 +21,8 @@ import org.springframework.core.MethodParameter;
 import org.springframework.lang.Nullable;
 
 /**
- * A ConversionNotSupportedException raised while resolving a method argument.
- * Provides access to the target {@link org.springframework.core.MethodParameter
- * MethodParameter}.
+ * A ConversionNotSupportedException raised while resolving a method argument. Provides access to
+ * the target {@link org.springframework.core.MethodParameter MethodParameter}.
  *
  * @author Rossen Stoyanchev
  * @since 4.2
@@ -31,32 +30,29 @@ import org.springframework.lang.Nullable;
 @SuppressWarnings("serial")
 public class MethodArgumentConversionNotSupportedException extends ConversionNotSupportedException {
 
-	private final String name;
+    private final String name;
 
-	private final MethodParameter parameter;
+    private final MethodParameter parameter;
 
+    public MethodArgumentConversionNotSupportedException(
+            @Nullable Object value,
+            @Nullable Class<?> requiredType,
+            String name,
+            MethodParameter param,
+            Throwable cause) {
 
-	public MethodArgumentConversionNotSupportedException(@Nullable Object value,
-			@Nullable Class<?> requiredType, String name, MethodParameter param, Throwable cause) {
+        super(value, requiredType, cause);
+        this.name = name;
+        this.parameter = param;
+    }
 
-		super(value, requiredType, cause);
-		this.name = name;
-		this.parameter = param;
-	}
+    /** Return the name of the method argument. */
+    public String getName() {
+        return this.name;
+    }
 
-
-	/**
-	 * Return the name of the method argument.
-	 */
-	public String getName() {
-		return this.name;
-	}
-
-	/**
-	 * Return the target method parameter.
-	 */
-	public MethodParameter getParameter() {
-		return this.parameter;
-	}
-
+    /** Return the target method parameter. */
+    public MethodParameter getParameter() {
+        return this.parameter;
+    }
 }

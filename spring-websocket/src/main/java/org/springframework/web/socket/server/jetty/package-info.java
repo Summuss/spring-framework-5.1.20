@@ -1,6 +1,4 @@
-/**
- * Server-side support for the Jetty 9+ WebSocket API.
- */
+/** Server-side support for the Jetty 9+ WebSocket API. */
 @NonNullApi
 @NonNullFields
 package org.springframework.web.socket.server.jetty;

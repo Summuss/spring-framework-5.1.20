@@ -35,105 +35,117 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Tests for redirect view, and query string construction.
- * Doesn't test URL encoding, although it does check that it's called.
+ * Tests for redirect view, and query string construction. Doesn't test URL encoding, although it
+ * does check that it's called.
  *
  * @author Sebastien Deleuze
  */
 public class RedirectViewTests {
 
-	private MockServerWebExchange exchange;
+    private MockServerWebExchange exchange;
 
+    @Before
+    public void setup() {
+        this.exchange =
+                MockServerWebExchange.from(
+                        MockServerHttpRequest.get("/context/path").contextPath("/context"));
+    }
 
-	@Before
-	public void setup() {
-		this.exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/context/path").contextPath("/context"));
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void noUrlSet() throws Exception {
+        RedirectView rv = new RedirectView(null);
+        rv.afterPropertiesSet();
+    }
 
+    @Test
+    public void defaultStatusCode() {
+        String url = "https://url.somewhere.com";
+        RedirectView view = new RedirectView(url);
+        view.render(new HashMap<>(), MediaType.TEXT_HTML, this.exchange).block();
+        assertEquals(HttpStatus.SEE_OTHER, this.exchange.getResponse().getStatusCode());
+        assertEquals(URI.create(url), this.exchange.getResponse().getHeaders().getLocation());
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void noUrlSet() throws Exception {
-		RedirectView rv = new RedirectView(null);
-		rv.afterPropertiesSet();
-	}
+    @Test
+    public void customStatusCode() {
+        String url = "https://url.somewhere.com";
+        RedirectView view = new RedirectView(url, HttpStatus.FOUND);
+        view.render(new HashMap<>(), MediaType.TEXT_HTML, this.exchange).block();
+        assertEquals(HttpStatus.FOUND, this.exchange.getResponse().getStatusCode());
+        assertEquals(URI.create(url), this.exchange.getResponse().getHeaders().getLocation());
+    }
 
-	@Test
-	public void defaultStatusCode() {
-		String url = "https://url.somewhere.com";
-		RedirectView view = new RedirectView(url);
-		view.render(new HashMap<>(), MediaType.TEXT_HTML, this.exchange).block();
-		assertEquals(HttpStatus.SEE_OTHER, this.exchange.getResponse().getStatusCode());
-		assertEquals(URI.create(url), this.exchange.getResponse().getHeaders().getLocation());
-	}
+    @Test
+    public void contextRelative() {
+        String url = "/test.html";
+        RedirectView view = new RedirectView(url);
+        view.render(new HashMap<>(), MediaType.TEXT_HTML, this.exchange).block();
+        assertEquals(
+                URI.create("/context/test.html"),
+                this.exchange.getResponse().getHeaders().getLocation());
+    }
 
-	@Test
-	public void customStatusCode() {
-		String url = "https://url.somewhere.com";
-		RedirectView view = new RedirectView(url, HttpStatus.FOUND);
-		view.render(new HashMap<>(), MediaType.TEXT_HTML, this.exchange).block();
-		assertEquals(HttpStatus.FOUND, this.exchange.getResponse().getStatusCode());
-		assertEquals(URI.create(url), this.exchange.getResponse().getHeaders().getLocation());
-	}
+    @Test
+    public void contextRelativeQueryParam() {
+        String url = "/test.html?id=1";
+        RedirectView view = new RedirectView(url);
+        view.render(new HashMap<>(), MediaType.TEXT_HTML, this.exchange).block();
+        assertEquals(
+                URI.create("/context/test.html?id=1"),
+                this.exchange.getResponse().getHeaders().getLocation());
+    }
 
-	@Test
-	public void contextRelative() {
-		String url = "/test.html";
-		RedirectView view = new RedirectView(url);
-		view.render(new HashMap<>(), MediaType.TEXT_HTML, this.exchange).block();
-		assertEquals(URI.create("/context/test.html"), this.exchange.getResponse().getHeaders().getLocation());
-	}
+    @Test
+    public void remoteHost() {
+        RedirectView view = new RedirectView("");
 
-	@Test
-	public void contextRelativeQueryParam() {
-		String url = "/test.html?id=1";
-		RedirectView view = new RedirectView(url);
-		view.render(new HashMap<>(), MediaType.TEXT_HTML, this.exchange).block();
-		assertEquals(URI.create("/context/test.html?id=1"), this.exchange.getResponse().getHeaders().getLocation());
-	}
+        assertFalse(view.isRemoteHost("https://url.somewhere.com"));
+        assertFalse(view.isRemoteHost("/path"));
+        assertFalse(view.isRemoteHost("http://url.somewhereelse.com"));
 
-	@Test
-	public void remoteHost() {
-		RedirectView view = new RedirectView("");
+        view.setHosts("url.somewhere.com");
 
-		assertFalse(view.isRemoteHost("https://url.somewhere.com"));
-		assertFalse(view.isRemoteHost("/path"));
-		assertFalse(view.isRemoteHost("http://url.somewhereelse.com"));
+        assertFalse(view.isRemoteHost("https://url.somewhere.com"));
+        assertFalse(view.isRemoteHost("/path"));
+        assertTrue(view.isRemoteHost("http://url.somewhereelse.com"));
+    }
 
-		view.setHosts("url.somewhere.com");
+    @Test
+    public void expandUriTemplateVariablesFromModel() {
+        String url = "https://url.somewhere.com?foo={foo}";
+        Map<String, String> model = Collections.singletonMap("foo", "bar");
+        RedirectView view = new RedirectView(url);
+        view.render(model, MediaType.TEXT_HTML, this.exchange).block();
+        assertEquals(
+                URI.create("https://url.somewhere.com?foo=bar"),
+                this.exchange.getResponse().getHeaders().getLocation());
+    }
 
-		assertFalse(view.isRemoteHost("https://url.somewhere.com"));
-		assertFalse(view.isRemoteHost("/path"));
-		assertTrue(view.isRemoteHost("http://url.somewhereelse.com"));
-	}
+    @Test
+    public void expandUriTemplateVariablesFromExchangeAttribute() {
+        String url = "https://url.somewhere.com?foo={foo}";
+        Map<String, String> attributes = Collections.singletonMap("foo", "bar");
+        this.exchange
+                .getAttributes()
+                .put(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, attributes);
+        RedirectView view = new RedirectView(url);
+        view.render(new HashMap<>(), MediaType.TEXT_HTML, exchange).block();
+        assertEquals(
+                URI.create("https://url.somewhere.com?foo=bar"),
+                this.exchange.getResponse().getHeaders().getLocation());
+    }
 
-	@Test
-	public void expandUriTemplateVariablesFromModel() {
-		String url = "https://url.somewhere.com?foo={foo}";
-		Map<String, String> model = Collections.singletonMap("foo", "bar");
-		RedirectView view = new RedirectView(url);
-		view.render(model, MediaType.TEXT_HTML, this.exchange).block();
-		assertEquals(URI.create("https://url.somewhere.com?foo=bar"), this.exchange.getResponse().getHeaders().getLocation());
-	}
-
-	@Test
-	public void expandUriTemplateVariablesFromExchangeAttribute() {
-		String url = "https://url.somewhere.com?foo={foo}";
-		Map<String, String> attributes = Collections.singletonMap("foo", "bar");
-		this.exchange.getAttributes().put(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, attributes);
-		RedirectView view = new RedirectView(url);
-		view.render(new HashMap<>(), MediaType.TEXT_HTML, exchange).block();
-		assertEquals(URI.create("https://url.somewhere.com?foo=bar"), this.exchange.getResponse().getHeaders().getLocation());
-	}
-
-	@Test
-	public void propagateQueryParams() throws Exception {
-		RedirectView view = new RedirectView("https://url.somewhere.com?foo=bar#bazz");
-		view.setPropagateQuery(true);
-		this.exchange = MockServerWebExchange.from(MockServerHttpRequest.get("https://url.somewhere.com?a=b&c=d"));
-		view.render(new HashMap<>(), MediaType.TEXT_HTML, this.exchange).block();
-		assertEquals(HttpStatus.SEE_OTHER, this.exchange.getResponse().getStatusCode());
-		assertEquals(URI.create("https://url.somewhere.com?foo=bar&a=b&c=d#bazz"),
-				this.exchange.getResponse().getHeaders().getLocation());
-	}
-
+    @Test
+    public void propagateQueryParams() throws Exception {
+        RedirectView view = new RedirectView("https://url.somewhere.com?foo=bar#bazz");
+        view.setPropagateQuery(true);
+        this.exchange =
+                MockServerWebExchange.from(
+                        MockServerHttpRequest.get("https://url.somewhere.com?a=b&c=d"));
+        view.render(new HashMap<>(), MediaType.TEXT_HTML, this.exchange).block();
+        assertEquals(HttpStatus.SEE_OTHER, this.exchange.getResponse().getStatusCode());
+        assertEquals(
+                URI.create("https://url.somewhere.com?foo=bar&a=b&c=d#bazz"),
+                this.exchange.getResponse().getHeaders().getLocation());
+    }
 }

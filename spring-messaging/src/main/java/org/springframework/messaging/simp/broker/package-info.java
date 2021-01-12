@@ -1,6 +1,6 @@
 /**
- * Provides a "simple" message broker implementation along with an abstract base
- * class and other supporting types such as a registry for subscriptions.
+ * Provides a "simple" message broker implementation along with an abstract base class and other
+ * supporting types such as a registry for subscriptions.
  */
 @NonNullApi
 @NonNullFields

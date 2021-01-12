@@ -34,14 +34,17 @@ import static java.util.Collections.*;
 @BootstrapWith(CustomTestContextBootstrapper.class)
 interface BootstrapWithTestInterface {
 
-	static class CustomTestContextBootstrapper extends DefaultTestContextBootstrapper {
+    static class CustomTestContextBootstrapper extends DefaultTestContextBootstrapper {
 
-		@Override
-		protected List<ContextCustomizerFactory> getContextCustomizerFactories() {
-			return singletonList(
-				(ContextCustomizerFactory) (testClass, configAttributes) -> (ContextCustomizer) (context,
-						mergedConfig) -> context.getBeanFactory().registerSingleton("foo", "foo"));
-		}
-	}
-
+        @Override
+        protected List<ContextCustomizerFactory> getContextCustomizerFactories() {
+            return singletonList(
+                    (ContextCustomizerFactory)
+                            (testClass, configAttributes) ->
+                                    (ContextCustomizer)
+                                            (context, mergedConfig) ->
+                                                    context.getBeanFactory()
+                                                            .registerSingleton("foo", "foo"));
+        }
+    }
 }

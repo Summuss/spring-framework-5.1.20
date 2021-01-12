@@ -26,19 +26,12 @@ import java.util.Set;
  */
 public interface SimpSession {
 
-	/**
-	 * Return the session id.
-	 */
-	String getId();
+    /** Return the session id. */
+    String getId();
 
-	/**
-	 * Return the user associated with the session.
-	 */
-	SimpUser getUser();
+    /** Return the user associated with the session. */
+    SimpUser getUser();
 
-	/**
-	 * Return the subscriptions for this session.
-	 */
-	Set<SimpSubscription> getSubscriptions();
-
+    /** Return the subscriptions for this session. */
+    Set<SimpSubscription> getSubscriptions();
 }

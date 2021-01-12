@@ -19,8 +19,8 @@ package org.springframework.jdbc.support.incrementer;
 import javax.sql.DataSource;
 
 /**
- * {@link DataFieldMaxValueIncrementer} that retrieves the next value
- * of a given PostgreSQL sequence.
+ * {@link DataFieldMaxValueIncrementer} that retrieves the next value of a given PostgreSQL
+ * sequence.
  *
  * <p>Thanks to Tomislav Urban for the suggestion!
  *
@@ -29,27 +29,26 @@ import javax.sql.DataSource;
  */
 public class PostgresSequenceMaxValueIncrementer extends AbstractSequenceMaxValueIncrementer {
 
-	/**
-	 * Default constructor for bean property style usage.
-	 * @see #setDataSource
-	 * @see #setIncrementerName
-	 */
-	public PostgresSequenceMaxValueIncrementer() {
-	}
+    /**
+     * Default constructor for bean property style usage.
+     *
+     * @see #setDataSource
+     * @see #setIncrementerName
+     */
+    public PostgresSequenceMaxValueIncrementer() {}
 
-	/**
-	 * Convenience constructor.
-	 * @param dataSource the DataSource to use
-	 * @param incrementerName the name of the sequence/table to use
-	 */
-	public PostgresSequenceMaxValueIncrementer(DataSource dataSource, String incrementerName) {
-		super(dataSource, incrementerName);
-	}
+    /**
+     * Convenience constructor.
+     *
+     * @param dataSource the DataSource to use
+     * @param incrementerName the name of the sequence/table to use
+     */
+    public PostgresSequenceMaxValueIncrementer(DataSource dataSource, String incrementerName) {
+        super(dataSource, incrementerName);
+    }
 
-
-	@Override
-	protected String getSequenceQuery() {
-		return "select nextval('" + getIncrementerName() + "')";
-	}
-
+    @Override
+    protected String getSequenceQuery() {
+        return "select nextval('" + getIncrementerName() + "')";
+    }
 }

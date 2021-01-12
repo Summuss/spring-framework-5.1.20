@@ -34,110 +34,112 @@ import static org.junit.Assert.*;
 
 public class RedirectViewUriTemplateTests {
 
-	private MockHttpServletRequest request;
+    private MockHttpServletRequest request;
 
-	private MockHttpServletResponse response;
+    private MockHttpServletResponse response;
 
-	@Before
-	public void setUp() {
-		this.request = new MockHttpServletRequest();
-		this.response = new MockHttpServletResponse();
-		this.request.setAttribute(DispatcherServlet.OUTPUT_FLASH_MAP_ATTRIBUTE, new FlashMap());
-		this.request.setAttribute(DispatcherServlet.FLASH_MAP_MANAGER_ATTRIBUTE, new SessionFlashMapManager());
-	}
+    @Before
+    public void setUp() {
+        this.request = new MockHttpServletRequest();
+        this.response = new MockHttpServletResponse();
+        this.request.setAttribute(DispatcherServlet.OUTPUT_FLASH_MAP_ATTRIBUTE, new FlashMap());
+        this.request.setAttribute(
+                DispatcherServlet.FLASH_MAP_MANAGER_ATTRIBUTE, new SessionFlashMapManager());
+    }
 
-	@Test
-	public void uriTemplate() throws Exception {
-		Map<String, Object> model = new HashMap<>();
-		model.put("foo", "bar");
+    @Test
+    public void uriTemplate() throws Exception {
+        Map<String, Object> model = new HashMap<>();
+        model.put("foo", "bar");
 
-		String baseUrl = "https://url.somewhere.com";
-		RedirectView redirectView = new RedirectView(baseUrl + "/{foo}");
-		redirectView.renderMergedOutputModel(model, this.request, this.response);
+        String baseUrl = "https://url.somewhere.com";
+        RedirectView redirectView = new RedirectView(baseUrl + "/{foo}");
+        redirectView.renderMergedOutputModel(model, this.request, this.response);
 
-		assertEquals(baseUrl + "/bar", this.response.getRedirectedUrl());
-	}
+        assertEquals(baseUrl + "/bar", this.response.getRedirectedUrl());
+    }
 
-	@Test
-	public void uriTemplateEncode() throws Exception {
-		Map<String, Object> model = new HashMap<>();
-		model.put("foo", "bar/bar baz");
+    @Test
+    public void uriTemplateEncode() throws Exception {
+        Map<String, Object> model = new HashMap<>();
+        model.put("foo", "bar/bar baz");
 
-		String baseUrl = "https://url.somewhere.com";
-		RedirectView redirectView = new RedirectView(baseUrl + "/context path/{foo}");
-		redirectView.renderMergedOutputModel(model, this.request, this.response);
+        String baseUrl = "https://url.somewhere.com";
+        RedirectView redirectView = new RedirectView(baseUrl + "/context path/{foo}");
+        redirectView.renderMergedOutputModel(model, this.request, this.response);
 
-		assertEquals(baseUrl + "/context path/bar%2Fbar%20baz", this.response.getRedirectedUrl());
-	}
+        assertEquals(baseUrl + "/context path/bar%2Fbar%20baz", this.response.getRedirectedUrl());
+    }
 
-	@Test
-	public void uriTemplateAndArrayQueryParam() throws Exception {
-		Map<String, Object> model = new HashMap<>();
-		model.put("foo", "bar");
-		model.put("fooArr", new String[] { "baz", "bazz" });
+    @Test
+    public void uriTemplateAndArrayQueryParam() throws Exception {
+        Map<String, Object> model = new HashMap<>();
+        model.put("foo", "bar");
+        model.put("fooArr", new String[] {"baz", "bazz"});
 
-		RedirectView redirectView = new RedirectView("/foo/{foo}");
-		redirectView.renderMergedOutputModel(model, this.request, this.response);
+        RedirectView redirectView = new RedirectView("/foo/{foo}");
+        redirectView.renderMergedOutputModel(model, this.request, this.response);
 
-		assertEquals("/foo/bar?fooArr=baz&fooArr=bazz", this.response.getRedirectedUrl());
-	}
+        assertEquals("/foo/bar?fooArr=baz&fooArr=bazz", this.response.getRedirectedUrl());
+    }
 
-	@Test
-	public void uriTemplateWithObjectConversion() throws Exception {
-		Map<String, Object> model = new HashMap<>();
-		model.put("foo", new Long(611));
+    @Test
+    public void uriTemplateWithObjectConversion() throws Exception {
+        Map<String, Object> model = new HashMap<>();
+        model.put("foo", new Long(611));
 
-		RedirectView redirectView = new RedirectView("/foo/{foo}");
-		redirectView.renderMergedOutputModel(model, this.request, this.response);
+        RedirectView redirectView = new RedirectView("/foo/{foo}");
+        redirectView.renderMergedOutputModel(model, this.request, this.response);
 
-		assertEquals("/foo/611", this.response.getRedirectedUrl());
-	}
+        assertEquals("/foo/611", this.response.getRedirectedUrl());
+    }
 
-	@Test
-	public void uriTemplateReuseCurrentRequestVars() throws Exception {
-		Map<String, Object> model = new HashMap<>();
-		model.put("key1", "value1");
-		model.put("name", "value2");
-		model.put("key3", "value3");
+    @Test
+    public void uriTemplateReuseCurrentRequestVars() throws Exception {
+        Map<String, Object> model = new HashMap<>();
+        model.put("key1", "value1");
+        model.put("name", "value2");
+        model.put("key3", "value3");
 
-		Map<String, String> currentRequestUriTemplateVars = new HashMap<>();
-		currentRequestUriTemplateVars.put("var1", "v1");
-		currentRequestUriTemplateVars.put("name", "v2");
-		currentRequestUriTemplateVars.put("var3", "v3");
-		this.request.setAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, currentRequestUriTemplateVars);
+        Map<String, String> currentRequestUriTemplateVars = new HashMap<>();
+        currentRequestUriTemplateVars.put("var1", "v1");
+        currentRequestUriTemplateVars.put("name", "v2");
+        currentRequestUriTemplateVars.put("var3", "v3");
+        this.request.setAttribute(
+                HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, currentRequestUriTemplateVars);
 
-		String url = "https://url.somewhere.com";
-		RedirectView redirectView = new RedirectView(url + "/{key1}/{var1}/{name}");
-		redirectView.renderMergedOutputModel(model, this.request, this.response);
+        String url = "https://url.somewhere.com";
+        RedirectView redirectView = new RedirectView(url + "/{key1}/{var1}/{name}");
+        redirectView.renderMergedOutputModel(model, this.request, this.response);
 
-		assertEquals(url + "/value1/v1/value2?key3=value3", this.response.getRedirectedUrl());
-	}
+        assertEquals(url + "/value1/v1/value2?key3=value3", this.response.getRedirectedUrl());
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void uriTemplateNullValue() throws Exception {
-		new RedirectView("/{foo}").renderMergedOutputModel(new ModelMap(), this.request, this.response);
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void uriTemplateNullValue() throws Exception {
+        new RedirectView("/{foo}")
+                .renderMergedOutputModel(new ModelMap(), this.request, this.response);
+    }
 
-	@Test
-	public void emptyRedirectString() throws Exception {
-		Map<String, Object> model = new HashMap<>();
+    @Test
+    public void emptyRedirectString() throws Exception {
+        Map<String, Object> model = new HashMap<>();
 
-		RedirectView redirectView = new RedirectView("");
-		redirectView.renderMergedOutputModel(model, this.request, this.response);
+        RedirectView redirectView = new RedirectView("");
+        redirectView.renderMergedOutputModel(model, this.request, this.response);
 
-		assertEquals("", this.response.getRedirectedUrl());
-	}
+        assertEquals("", this.response.getRedirectedUrl());
+    }
 
-	// SPR-9016
+    // SPR-9016
 
-	@Test
-	public void dontApplyUriVariables() throws Exception {
-		String url = "/test#{'one','abc'}";
-		RedirectView redirectView = new RedirectView(url, true);
-		redirectView.setExpandUriTemplateVariables(false);
-		redirectView.renderMergedOutputModel(new ModelMap(), this.request, this.response);
+    @Test
+    public void dontApplyUriVariables() throws Exception {
+        String url = "/test#{'one','abc'}";
+        RedirectView redirectView = new RedirectView(url, true);
+        redirectView.setExpandUriTemplateVariables(false);
+        redirectView.renderMergedOutputModel(new ModelMap(), this.request, this.response);
 
-		assertEquals(url, this.response.getRedirectedUrl());
-	}
-
+        assertEquals(url, this.response.getRedirectedUrl());
+    }
 }

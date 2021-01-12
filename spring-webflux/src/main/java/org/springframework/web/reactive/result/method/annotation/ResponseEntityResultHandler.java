@@ -45,132 +45,139 @@ import org.springframework.web.server.ServerWebExchange;
 /**
  * Handles {@link HttpEntity} and {@link ResponseEntity} return values.
  *
- * <p>By default the order for this result handler is set to 0. It is generally
- * safe to place it early in the order as it looks for a concrete return type.
+ * <p>By default the order for this result handler is set to 0. It is generally safe to place it
+ * early in the order as it looks for a concrete return type.
  *
  * @author Rossen Stoyanchev
  * @since 5.0
  */
-public class ResponseEntityResultHandler extends AbstractMessageWriterResultHandler implements HandlerResultHandler {
+public class ResponseEntityResultHandler extends AbstractMessageWriterResultHandler
+        implements HandlerResultHandler {
 
-	private static final Set<HttpMethod> SAFE_METHODS = EnumSet.of(HttpMethod.GET, HttpMethod.HEAD);
+    private static final Set<HttpMethod> SAFE_METHODS = EnumSet.of(HttpMethod.GET, HttpMethod.HEAD);
 
+    /**
+     * Basic constructor with a default {@link ReactiveAdapterRegistry}.
+     *
+     * @param writers writers for serializing to the response body
+     * @param resolver to determine the requested content type
+     */
+    public ResponseEntityResultHandler(
+            List<HttpMessageWriter<?>> writers, RequestedContentTypeResolver resolver) {
 
-	/**
-	 * Basic constructor with a default {@link ReactiveAdapterRegistry}.
-	 * @param writers writers for serializing to the response body
-	 * @param resolver to determine the requested content type
-	 */
-	public ResponseEntityResultHandler(List<HttpMessageWriter<?>> writers,
-			RequestedContentTypeResolver resolver) {
+        this(writers, resolver, ReactiveAdapterRegistry.getSharedInstance());
+    }
 
-		this(writers, resolver, ReactiveAdapterRegistry.getSharedInstance());
-	}
+    /**
+     * Constructor with an {@link ReactiveAdapterRegistry} instance.
+     *
+     * @param writers writers for serializing to the response body
+     * @param resolver to determine the requested content type
+     * @param registry for adaptation to reactive types
+     */
+    public ResponseEntityResultHandler(
+            List<HttpMessageWriter<?>> writers,
+            RequestedContentTypeResolver resolver,
+            ReactiveAdapterRegistry registry) {
 
-	/**
-	 * Constructor with an {@link ReactiveAdapterRegistry} instance.
-	 * @param writers writers for serializing to the response body
-	 * @param resolver to determine the requested content type
-	 * @param registry for adaptation to reactive types
-	 */
-	public ResponseEntityResultHandler(List<HttpMessageWriter<?>> writers,
-			RequestedContentTypeResolver resolver, ReactiveAdapterRegistry registry) {
+        super(writers, resolver, registry);
+        setOrder(0);
+    }
 
-		super(writers, resolver, registry);
-		setOrder(0);
-	}
+    @Override
+    public boolean supports(HandlerResult result) {
+        Class<?> valueType = resolveReturnValueType(result);
+        if (isSupportedType(valueType)) {
+            return true;
+        }
+        ReactiveAdapter adapter = getAdapter(result);
+        return adapter != null
+                && !adapter.isNoValue()
+                && isSupportedType(result.getReturnType().getGeneric().toClass());
+    }
 
+    @Nullable
+    private static Class<?> resolveReturnValueType(HandlerResult result) {
+        Class<?> valueType = result.getReturnType().toClass();
+        Object value = result.getReturnValue();
+        if (valueType == Object.class && value != null) {
+            valueType = value.getClass();
+        }
+        return valueType;
+    }
 
-	@Override
-	public boolean supports(HandlerResult result) {
-		Class<?> valueType = resolveReturnValueType(result);
-		if (isSupportedType(valueType)) {
-			return true;
-		}
-		ReactiveAdapter adapter = getAdapter(result);
-		return adapter != null && !adapter.isNoValue() &&
-				isSupportedType(result.getReturnType().getGeneric().toClass());
-	}
+    private boolean isSupportedType(@Nullable Class<?> clazz) {
+        return (clazz != null
+                && ((HttpEntity.class.isAssignableFrom(clazz)
+                                && !RequestEntity.class.isAssignableFrom(clazz))
+                        || HttpHeaders.class.isAssignableFrom(clazz)));
+    }
 
-	@Nullable
-	private static Class<?> resolveReturnValueType(HandlerResult result) {
-		Class<?> valueType = result.getReturnType().toClass();
-		Object value = result.getReturnValue();
-		if (valueType == Object.class && value != null) {
-			valueType = value.getClass();
-		}
-		return valueType;
-	}
+    @Override
+    public Mono<Void> handleResult(ServerWebExchange exchange, HandlerResult result) {
 
-	private boolean isSupportedType(@Nullable Class<?> clazz) {
-		return (clazz != null && ((HttpEntity.class.isAssignableFrom(clazz) &&
-				!RequestEntity.class.isAssignableFrom(clazz)) ||
-				HttpHeaders.class.isAssignableFrom(clazz)));
-	}
+        Mono<?> returnValueMono;
+        MethodParameter bodyParameter;
+        ReactiveAdapter adapter = getAdapter(result);
+        MethodParameter actualParameter = result.getReturnTypeSource();
 
+        if (adapter != null) {
+            Assert.isTrue(!adapter.isMultiValue(), "Only a single ResponseEntity supported");
+            returnValueMono = Mono.from(adapter.toPublisher(result.getReturnValue()));
+            bodyParameter = actualParameter.nested().nested();
+        } else {
+            returnValueMono = Mono.justOrEmpty(result.getReturnValue());
+            bodyParameter = actualParameter.nested();
+        }
 
-	@Override
-	public Mono<Void> handleResult(ServerWebExchange exchange, HandlerResult result) {
+        return returnValueMono.flatMap(
+                returnValue -> {
+                    HttpEntity<?> httpEntity;
+                    if (returnValue instanceof HttpEntity) {
+                        httpEntity = (HttpEntity<?>) returnValue;
+                    } else if (returnValue instanceof HttpHeaders) {
+                        httpEntity = new ResponseEntity<>((HttpHeaders) returnValue, HttpStatus.OK);
+                    } else {
+                        throw new IllegalArgumentException(
+                                "HttpEntity or HttpHeaders expected but got: "
+                                        + returnValue.getClass());
+                    }
 
-		Mono<?> returnValueMono;
-		MethodParameter bodyParameter;
-		ReactiveAdapter adapter = getAdapter(result);
-		MethodParameter actualParameter = result.getReturnTypeSource();
+                    if (httpEntity instanceof ResponseEntity) {
+                        ResponseEntity<?> responseEntity = (ResponseEntity<?>) httpEntity;
+                        ServerHttpResponse response = exchange.getResponse();
+                        if (response instanceof AbstractServerHttpResponse) {
+                            ((AbstractServerHttpResponse) response)
+                                    .setStatusCodeValue(responseEntity.getStatusCodeValue());
+                        } else {
+                            response.setStatusCode(responseEntity.getStatusCode());
+                        }
+                    }
 
-		if (adapter != null) {
-			Assert.isTrue(!adapter.isMultiValue(), "Only a single ResponseEntity supported");
-			returnValueMono = Mono.from(adapter.toPublisher(result.getReturnValue()));
-			bodyParameter = actualParameter.nested().nested();
-		}
-		else {
-			returnValueMono = Mono.justOrEmpty(result.getReturnValue());
-			bodyParameter = actualParameter.nested();
-		}
+                    HttpHeaders entityHeaders = httpEntity.getHeaders();
+                    HttpHeaders responseHeaders = exchange.getResponse().getHeaders();
+                    if (!entityHeaders.isEmpty()) {
+                        entityHeaders.entrySet().stream()
+                                .forEach(
+                                        entry ->
+                                                responseHeaders.put(
+                                                        entry.getKey(), entry.getValue()));
+                    }
 
-		return returnValueMono.flatMap(returnValue -> {
-			HttpEntity<?> httpEntity;
-			if (returnValue instanceof HttpEntity) {
-				httpEntity = (HttpEntity<?>) returnValue;
-			}
-			else if (returnValue instanceof HttpHeaders) {
-				httpEntity = new ResponseEntity<>((HttpHeaders) returnValue, HttpStatus.OK);
-			}
-			else {
-				throw new IllegalArgumentException(
-						"HttpEntity or HttpHeaders expected but got: " + returnValue.getClass());
-			}
+                    if (httpEntity.getBody() == null || returnValue instanceof HttpHeaders) {
+                        return exchange.getResponse().setComplete();
+                    }
 
-			if (httpEntity instanceof ResponseEntity) {
-				ResponseEntity<?> responseEntity = (ResponseEntity<?>) httpEntity;
-				ServerHttpResponse response = exchange.getResponse();
-				if (response instanceof AbstractServerHttpResponse) {
-					((AbstractServerHttpResponse) response).setStatusCodeValue(responseEntity.getStatusCodeValue());
-				}
-				else {
-					response.setStatusCode(responseEntity.getStatusCode());
-				}
-			}
+                    String etag = entityHeaders.getETag();
+                    Instant lastModified = Instant.ofEpochMilli(entityHeaders.getLastModified());
+                    HttpMethod httpMethod = exchange.getRequest().getMethod();
+                    if (SAFE_METHODS.contains(httpMethod)
+                            && exchange.checkNotModified(etag, lastModified)) {
+                        return exchange.getResponse().setComplete();
+                    }
 
-			HttpHeaders entityHeaders = httpEntity.getHeaders();
-			HttpHeaders responseHeaders = exchange.getResponse().getHeaders();
-			if (!entityHeaders.isEmpty()) {
-				entityHeaders.entrySet().stream()
-						.forEach(entry -> responseHeaders.put(entry.getKey(), entry.getValue()));
-			}
-
-			if (httpEntity.getBody() == null || returnValue instanceof HttpHeaders) {
-				return exchange.getResponse().setComplete();
-			}
-
-			String etag = entityHeaders.getETag();
-			Instant lastModified = Instant.ofEpochMilli(entityHeaders.getLastModified());
-			HttpMethod httpMethod = exchange.getRequest().getMethod();
-			if (SAFE_METHODS.contains(httpMethod) && exchange.checkNotModified(etag, lastModified)) {
-				return exchange.getResponse().setComplete();
-			}
-
-			return writeBody(httpEntity.getBody(), bodyParameter, actualParameter, exchange);
-		});
-	}
-
+                    return writeBody(
+                            httpEntity.getBody(), bodyParameter, actualParameter, exchange);
+                });
+    }
 }

@@ -33,66 +33,75 @@ import org.springframework.util.xml.DomUtils;
 import org.springframework.web.servlet.handler.MappedInterceptor;
 
 /**
- * {@link org.springframework.beans.factory.xml.BeanDefinitionParser} that parses a
- * {@code interceptors} element to register a set of {@link MappedInterceptor} definitions.
+ * {@link org.springframework.beans.factory.xml.BeanDefinitionParser} that parses a {@code
+ * interceptors} element to register a set of {@link MappedInterceptor} definitions.
  *
  * @author Keith Donald
  * @since 3.0
  */
 class InterceptorsBeanDefinitionParser implements BeanDefinitionParser {
 
-	@Override
-	@Nullable
-	public BeanDefinition parse(Element element, ParserContext context) {
-		context.pushContainingComponent(
-				new CompositeComponentDefinition(element.getTagName(), context.extractSource(element)));
+    @Override
+    @Nullable
+    public BeanDefinition parse(Element element, ParserContext context) {
+        context.pushContainingComponent(
+                new CompositeComponentDefinition(
+                        element.getTagName(), context.extractSource(element)));
 
-		RuntimeBeanReference pathMatcherRef = null;
-		if (element.hasAttribute("path-matcher")) {
-			pathMatcherRef = new RuntimeBeanReference(element.getAttribute("path-matcher"));
-		}
+        RuntimeBeanReference pathMatcherRef = null;
+        if (element.hasAttribute("path-matcher")) {
+            pathMatcherRef = new RuntimeBeanReference(element.getAttribute("path-matcher"));
+        }
 
-		List<Element> interceptors = DomUtils.getChildElementsByTagName(element, "bean", "ref", "interceptor");
-		for (Element interceptor : interceptors) {
-			RootBeanDefinition mappedInterceptorDef = new RootBeanDefinition(MappedInterceptor.class);
-			mappedInterceptorDef.setSource(context.extractSource(interceptor));
-			mappedInterceptorDef.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
+        List<Element> interceptors =
+                DomUtils.getChildElementsByTagName(element, "bean", "ref", "interceptor");
+        for (Element interceptor : interceptors) {
+            RootBeanDefinition mappedInterceptorDef =
+                    new RootBeanDefinition(MappedInterceptor.class);
+            mappedInterceptorDef.setSource(context.extractSource(interceptor));
+            mappedInterceptorDef.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
 
-			ManagedList<String> includePatterns = null;
-			ManagedList<String> excludePatterns = null;
-			Object interceptorBean;
-			if ("interceptor".equals(interceptor.getLocalName())) {
-				includePatterns = getIncludePatterns(interceptor, "mapping");
-				excludePatterns = getIncludePatterns(interceptor, "exclude-mapping");
-				Element beanElem = DomUtils.getChildElementsByTagName(interceptor, "bean", "ref").get(0);
-				interceptorBean = context.getDelegate().parsePropertySubElement(beanElem, null);
-			}
-			else {
-				interceptorBean = context.getDelegate().parsePropertySubElement(interceptor, null);
-			}
-			mappedInterceptorDef.getConstructorArgumentValues().addIndexedArgumentValue(0, includePatterns);
-			mappedInterceptorDef.getConstructorArgumentValues().addIndexedArgumentValue(1, excludePatterns);
-			mappedInterceptorDef.getConstructorArgumentValues().addIndexedArgumentValue(2, interceptorBean);
+            ManagedList<String> includePatterns = null;
+            ManagedList<String> excludePatterns = null;
+            Object interceptorBean;
+            if ("interceptor".equals(interceptor.getLocalName())) {
+                includePatterns = getIncludePatterns(interceptor, "mapping");
+                excludePatterns = getIncludePatterns(interceptor, "exclude-mapping");
+                Element beanElem =
+                        DomUtils.getChildElementsByTagName(interceptor, "bean", "ref").get(0);
+                interceptorBean = context.getDelegate().parsePropertySubElement(beanElem, null);
+            } else {
+                interceptorBean = context.getDelegate().parsePropertySubElement(interceptor, null);
+            }
+            mappedInterceptorDef
+                    .getConstructorArgumentValues()
+                    .addIndexedArgumentValue(0, includePatterns);
+            mappedInterceptorDef
+                    .getConstructorArgumentValues()
+                    .addIndexedArgumentValue(1, excludePatterns);
+            mappedInterceptorDef
+                    .getConstructorArgumentValues()
+                    .addIndexedArgumentValue(2, interceptorBean);
 
-			if (pathMatcherRef != null) {
-				mappedInterceptorDef.getPropertyValues().add("pathMatcher", pathMatcherRef);
-			}
+            if (pathMatcherRef != null) {
+                mappedInterceptorDef.getPropertyValues().add("pathMatcher", pathMatcherRef);
+            }
 
-			String beanName = context.getReaderContext().registerWithGeneratedName(mappedInterceptorDef);
-			context.registerComponent(new BeanComponentDefinition(mappedInterceptorDef, beanName));
-		}
+            String beanName =
+                    context.getReaderContext().registerWithGeneratedName(mappedInterceptorDef);
+            context.registerComponent(new BeanComponentDefinition(mappedInterceptorDef, beanName));
+        }
 
-		context.popAndRegisterContainingComponent();
-		return null;
-	}
+        context.popAndRegisterContainingComponent();
+        return null;
+    }
 
-	private ManagedList<String> getIncludePatterns(Element interceptor, String elementName) {
-		List<Element> paths = DomUtils.getChildElementsByTagName(interceptor, elementName);
-		ManagedList<String> patterns = new ManagedList<>(paths.size());
-		for (Element path : paths) {
-			patterns.add(path.getAttribute("path"));
-		}
-		return patterns;
-	}
-
+    private ManagedList<String> getIncludePatterns(Element interceptor, String elementName) {
+        List<Element> paths = DomUtils.getChildElementsByTagName(interceptor, elementName);
+        ManagedList<String> patterns = new ManagedList<>(paths.size());
+        for (Element path : paths) {
+            patterns.add(path.getAttribute("path"));
+        }
+        return patterns;
+    }
 }

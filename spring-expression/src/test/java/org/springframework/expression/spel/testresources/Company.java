@@ -1,17 +1,15 @@
-/**
- *
- */
+/** */
 package org.springframework.expression.spel.testresources;
 
-///CLOVER:OFF
+/// CLOVER:OFF
 public class Company {
-	String address;
+    String address;
 
-	public Company(String string) {
-		this.address = string;
-	}
+    public Company(String string) {
+        this.address = string;
+    }
 
-	public String getAddress() {
-		return address;
-	}
+    public String getAddress() {
+        return address;
+    }
 }

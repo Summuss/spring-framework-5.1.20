@@ -42,84 +42,82 @@ import static org.mockito.Mockito.verify;
 @SuppressWarnings("rawtypes")
 class TestTransport implements Transport {
 
-	private final String name;
+    private final String name;
 
-	private TransportRequest request;
+    private TransportRequest request;
 
-	private ListenableFuture future;
+    private ListenableFuture future;
 
+    public TestTransport(String name) {
+        this.name = name;
+    }
 
-	public TestTransport(String name) {
-		this.name = name;
-	}
+    @Override
+    public List<TransportType> getTransportTypes() {
+        return Collections.singletonList(TransportType.WEBSOCKET);
+    }
 
-	@Override
-	public List<TransportType> getTransportTypes() {
-		return Collections.singletonList(TransportType.WEBSOCKET);
-	}
+    public TransportRequest getRequest() {
+        return this.request;
+    }
 
-	public TransportRequest getRequest() {
-		return this.request;
-	}
+    public boolean invoked() {
+        return this.future != null;
+    }
 
-	public boolean invoked() {
-		return this.future != null;
-	}
+    @SuppressWarnings("unchecked")
+    public ListenableFutureCallback<WebSocketSession> getConnectCallback() {
+        ArgumentCaptor<ListenableFutureCallback> captor =
+                ArgumentCaptor.forClass(ListenableFutureCallback.class);
+        verify(this.future).addCallback(captor.capture());
+        return captor.getValue();
+    }
 
-	@SuppressWarnings("unchecked")
-	public ListenableFutureCallback<WebSocketSession> getConnectCallback() {
-		ArgumentCaptor<ListenableFutureCallback> captor = ArgumentCaptor.forClass(ListenableFutureCallback.class);
-		verify(this.future).addCallback(captor.capture());
-		return captor.getValue();
-	}
+    @SuppressWarnings("unchecked")
+    @Override
+    public ListenableFuture<WebSocketSession> connect(
+            TransportRequest request, WebSocketHandler handler) {
+        this.request = request;
+        this.future = mock(ListenableFuture.class);
+        return this.future;
+    }
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public ListenableFuture<WebSocketSession> connect(TransportRequest request, WebSocketHandler handler) {
-		this.request = request;
-		this.future = mock(ListenableFuture.class);
-		return this.future;
-	}
+    @Override
+    public String toString() {
+        return "TestTransport[" + name + "]";
+    }
 
-	@Override
-	public String toString() {
-		return "TestTransport[" + name + "]";
-	}
+    static class XhrTestTransport extends TestTransport implements XhrTransport {
 
+        private boolean streamingDisabled;
 
-	static class XhrTestTransport extends TestTransport implements XhrTransport {
+        XhrTestTransport(String name) {
+            super(name);
+        }
 
-		private boolean streamingDisabled;
+        @Override
+        public List<TransportType> getTransportTypes() {
+            return (isXhrStreamingDisabled()
+                    ? Collections.singletonList(TransportType.XHR)
+                    : Arrays.asList(TransportType.XHR_STREAMING, TransportType.XHR));
+        }
 
+        public void setStreamingDisabled(boolean streamingDisabled) {
+            this.streamingDisabled = streamingDisabled;
+        }
 
-		XhrTestTransport(String name) {
-			super(name);
-		}
+        @Override
+        public boolean isXhrStreamingDisabled() {
+            return this.streamingDisabled;
+        }
 
-		@Override
-		public List<TransportType> getTransportTypes() {
-			return (isXhrStreamingDisabled() ?
-					Collections.singletonList(TransportType.XHR) :
-					Arrays.asList(TransportType.XHR_STREAMING, TransportType.XHR));
-		}
+        @Override
+        public void executeSendRequest(
+                URI transportUrl, HttpHeaders headers, TextMessage message) {}
 
-		public void setStreamingDisabled(boolean streamingDisabled) {
-			this.streamingDisabled = streamingDisabled;
-		}
-
-		@Override
-		public boolean isXhrStreamingDisabled() {
-			return this.streamingDisabled;
-		}
-
-		@Override
-		public void executeSendRequest(URI transportUrl, HttpHeaders headers, TextMessage message) {
-		}
-
-		@Override
-		public String executeInfoRequest(URI infoUrl, HttpHeaders headers) {
-			return null;
-		}
-	}
-
+        @Override
+        public String executeInfoRequest(URI infoUrl, HttpHeaders headers) {
+            return null;
+        }
+    }
 }

@@ -28,91 +28,89 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 
 /**
- * A generic composite servlet {@link Filter} that just delegates its behavior
- * to a chain (list) of user-supplied filters, achieving the functionality of a
- * {@link FilterChain}, but conveniently using only {@link Filter} instances.
+ * A generic composite servlet {@link Filter} that just delegates its behavior to a chain (list) of
+ * user-supplied filters, achieving the functionality of a {@link FilterChain}, but conveniently
+ * using only {@link Filter} instances.
  *
- * <p>This is useful for filters that require dependency injection, and can
- * therefore be set up in a Spring application context. Typically, this
- * composite would be used in conjunction with {@link DelegatingFilterProxy},
- * so that it can be declared in Spring but applied to a servlet context.
+ * <p>This is useful for filters that require dependency injection, and can therefore be set up in a
+ * Spring application context. Typically, this composite would be used in conjunction with {@link
+ * DelegatingFilterProxy}, so that it can be declared in Spring but applied to a servlet context.
  *
  * @author Dave Syer
  * @since 3.1
  */
 public class CompositeFilter implements Filter {
 
-	private List<? extends Filter> filters = new ArrayList<>();
+    private List<? extends Filter> filters = new ArrayList<>();
 
+    public void setFilters(List<? extends Filter> filters) {
+        this.filters = new ArrayList<>(filters);
+    }
 
-	public void setFilters(List<? extends Filter> filters) {
-		this.filters = new ArrayList<>(filters);
-	}
+    /**
+     * Initialize all the filters, calling each one's init method in turn in the order supplied.
+     *
+     * @see Filter#init(FilterConfig)
+     */
+    @Override
+    public void init(FilterConfig config) throws ServletException {
+        for (Filter filter : this.filters) {
+            filter.init(config);
+        }
+    }
 
+    /**
+     * Forms a temporary chain from the list of delegate filters supplied ({@link #setFilters}) and
+     * executes them in order. Each filter delegates to the next one in the list, achieving the
+     * normal behavior of a {@link FilterChain}, despite the fact that this is a {@link Filter}.
+     *
+     * @see Filter#doFilter(ServletRequest, ServletResponse, FilterChain)
+     */
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
 
-	/**
-	 * Initialize all the filters, calling each one's init method in turn in the order supplied.
-	 * @see Filter#init(FilterConfig)
-	 */
-	@Override
-	public void init(FilterConfig config) throws ServletException {
-		for (Filter filter : this.filters) {
-			filter.init(config);
-		}
-	}
+        new VirtualFilterChain(chain, this.filters).doFilter(request, response);
+    }
 
-	/**
-	 * Forms a temporary chain from the list of delegate filters supplied ({@link #setFilters})
-	 * and executes them in order. Each filter delegates to the next one in the list, achieving
-	 * the normal behavior of a {@link FilterChain}, despite the fact that this is a {@link Filter}.
-	 * @see Filter#doFilter(ServletRequest, ServletResponse, FilterChain)
-	 */
-	@Override
-	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-			throws IOException, ServletException {
+    /**
+     * Clean up all the filters supplied, calling each one's destroy method in turn, but in reverse
+     * order.
+     *
+     * @see Filter#init(FilterConfig)
+     */
+    @Override
+    public void destroy() {
+        for (int i = this.filters.size(); i-- > 0; ) {
+            Filter filter = this.filters.get(i);
+            filter.destroy();
+        }
+    }
 
-		new VirtualFilterChain(chain, this.filters).doFilter(request, response);
-	}
+    private static class VirtualFilterChain implements FilterChain {
 
-	/**
-	 * Clean up all the filters supplied, calling each one's destroy method in turn, but in reverse order.
-	 * @see Filter#init(FilterConfig)
-	 */
-	@Override
-	public void destroy() {
-		for (int i = this.filters.size(); i-- > 0;) {
-			Filter filter = this.filters.get(i);
-			filter.destroy();
-		}
-	}
+        private final FilterChain originalChain;
 
+        private final List<? extends Filter> additionalFilters;
 
-	private static class VirtualFilterChain implements FilterChain {
+        private int currentPosition = 0;
 
-		private final FilterChain originalChain;
+        public VirtualFilterChain(FilterChain chain, List<? extends Filter> additionalFilters) {
+            this.originalChain = chain;
+            this.additionalFilters = additionalFilters;
+        }
 
-		private final List<? extends Filter> additionalFilters;
+        @Override
+        public void doFilter(final ServletRequest request, final ServletResponse response)
+                throws IOException, ServletException {
 
-		private int currentPosition = 0;
-
-		public VirtualFilterChain(FilterChain chain, List<? extends Filter> additionalFilters) {
-			this.originalChain = chain;
-			this.additionalFilters = additionalFilters;
-		}
-
-		@Override
-		public void doFilter(final ServletRequest request, final ServletResponse response)
-				throws IOException, ServletException {
-
-			if (this.currentPosition == this.additionalFilters.size()) {
-				this.originalChain.doFilter(request, response);
-			}
-			else {
-				this.currentPosition++;
-				Filter nextFilter = this.additionalFilters.get(this.currentPosition - 1);
-				nextFilter.doFilter(request, response, this);
-			}
-		}
-	}
-
+            if (this.currentPosition == this.additionalFilters.size()) {
+                this.originalChain.doFilter(request, response);
+            } else {
+                this.currentPosition++;
+                Filter nextFilter = this.additionalFilters.get(this.currentPosition - 1);
+                nextFilter.doFilter(request, response, this);
+            }
+        }
+    }
 }

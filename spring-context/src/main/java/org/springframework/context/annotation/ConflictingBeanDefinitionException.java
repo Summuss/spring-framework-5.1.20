@@ -17,8 +17,8 @@
 package org.springframework.context.annotation;
 
 /**
- * Marker subclass of {@link IllegalStateException}, allowing for explicit
- * catch clauses in calling code.
+ * Marker subclass of {@link IllegalStateException}, allowing for explicit catch clauses in calling
+ * code.
  *
  * @author Chris Beams
  * @since 3.1
@@ -26,8 +26,7 @@ package org.springframework.context.annotation;
 @SuppressWarnings("serial")
 class ConflictingBeanDefinitionException extends IllegalStateException {
 
-	public ConflictingBeanDefinitionException(String message) {
-		super(message);
-	}
-
+    public ConflictingBeanDefinitionException(String message) {
+        super(message);
+    }
 }

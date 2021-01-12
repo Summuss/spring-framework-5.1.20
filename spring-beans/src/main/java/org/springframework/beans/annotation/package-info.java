@@ -1,6 +1,4 @@
-/**
- * Support package for beans-style handling of Java 5 annotations.
- */
+/** Support package for beans-style handling of Java 5 annotations. */
 @NonNullApi
 @NonNullFields
 package org.springframework.beans.annotation;

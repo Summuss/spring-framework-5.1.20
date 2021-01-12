@@ -27,12 +27,12 @@ import org.springframework.lang.Nullable;
 @FunctionalInterface
 public interface ReconnectStrategy {
 
-	/**
-	 * Return the time to the next attempt to reconnect.
-	 * @param attemptCount how many reconnect attempts have been made already
-	 * @return the amount of time in milliseconds, or {@code null} to stop
-	 */
-	@Nullable
-	Long getTimeToNextAttempt(int attemptCount);
-
+    /**
+     * Return the time to the next attempt to reconnect.
+     *
+     * @param attemptCount how many reconnect attempts have been made already
+     * @return the amount of time in milliseconds, or {@code null} to stop
+     */
+    @Nullable
+    Long getTimeToNextAttempt(int attemptCount);
 }

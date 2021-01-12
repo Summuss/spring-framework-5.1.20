@@ -32,51 +32,48 @@ import static org.junit.Assert.*;
  */
 public class PerConnectionWebSocketHandlerTests {
 
+    @Test
+    public void afterConnectionEstablished() throws Exception {
 
-	@Test
-	public void afterConnectionEstablished() throws Exception {
+        @SuppressWarnings("resource")
+        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+        context.refresh();
 
-		@SuppressWarnings("resource")
-		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
-		context.refresh();
+        EchoHandler.reset();
+        PerConnectionWebSocketHandler handler =
+                new PerConnectionWebSocketHandler(EchoHandler.class);
+        handler.setBeanFactory(context.getBeanFactory());
 
-		EchoHandler.reset();
-		PerConnectionWebSocketHandler handler = new PerConnectionWebSocketHandler(EchoHandler.class);
-		handler.setBeanFactory(context.getBeanFactory());
+        WebSocketSession session = new TestWebSocketSession();
+        handler.afterConnectionEstablished(session);
 
-		WebSocketSession session = new TestWebSocketSession();
-		handler.afterConnectionEstablished(session);
+        assertEquals(1, EchoHandler.initCount);
+        assertEquals(0, EchoHandler.destroyCount);
 
-		assertEquals(1, EchoHandler.initCount);
-		assertEquals(0, EchoHandler.destroyCount);
+        handler.afterConnectionClosed(session, CloseStatus.NORMAL);
 
-		handler.afterConnectionClosed(session, CloseStatus.NORMAL);
+        assertEquals(1, EchoHandler.initCount);
+        assertEquals(1, EchoHandler.destroyCount);
+    }
 
-		assertEquals(1, EchoHandler.initCount);
-		assertEquals(1, EchoHandler.destroyCount);
-	}
+    public static class EchoHandler extends AbstractWebSocketHandler implements DisposableBean {
 
+        private static int initCount;
 
-	public static class EchoHandler extends AbstractWebSocketHandler implements DisposableBean {
+        private static int destroyCount;
 
-		private static int initCount;
+        public EchoHandler() {
+            initCount++;
+        }
 
-		private static int destroyCount;
+        @Override
+        public void destroy() throws Exception {
+            destroyCount++;
+        }
 
-
-		public EchoHandler() {
-			initCount++;
-		}
-
-		@Override
-		public void destroy() throws Exception {
-			destroyCount++;
-		}
-
-		public static void reset() {
-			initCount = 0;
-			destroyCount = 0;
-		}
-	}
-
+        public static void reset() {
+            initCount = 0;
+            destroyCount = 0;
+        }
+    }
 }

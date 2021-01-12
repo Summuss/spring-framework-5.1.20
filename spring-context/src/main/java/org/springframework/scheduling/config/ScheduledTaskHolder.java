@@ -28,9 +28,6 @@ import java.util.Set;
  */
 public interface ScheduledTaskHolder {
 
-	/**
-	 * Return an overview of the tasks that have been scheduled by this instance.
-	 */
-	Set<ScheduledTask> getScheduledTasks();
-
+    /** Return an overview of the tasks that have been scheduled by this instance. */
+    Set<ScheduledTask> getScheduledTasks();
 }

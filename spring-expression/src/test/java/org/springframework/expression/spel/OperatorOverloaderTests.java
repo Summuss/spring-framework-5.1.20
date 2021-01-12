@@ -33,45 +33,44 @@ import static org.junit.Assert.*;
  */
 public class OperatorOverloaderTests extends AbstractExpressionTests {
 
-	@Test
-	public void testSimpleOperations() throws Exception {
-		// no built in support for this:
-		evaluateAndCheckError("'abc'-true",SpelMessage.OPERATOR_NOT_SUPPORTED_BETWEEN_TYPES);
+    @Test
+    public void testSimpleOperations() throws Exception {
+        // no built in support for this:
+        evaluateAndCheckError("'abc'-true", SpelMessage.OPERATOR_NOT_SUPPORTED_BETWEEN_TYPES);
 
-		StandardEvaluationContext eContext = TestScenarioCreator.getTestEvaluationContext();
-		eContext.setOperatorOverloader(new StringAndBooleanAddition());
+        StandardEvaluationContext eContext = TestScenarioCreator.getTestEvaluationContext();
+        eContext.setOperatorOverloader(new StringAndBooleanAddition());
 
-		SpelExpression expr = (SpelExpression)parser.parseExpression("'abc'+true");
-		assertEquals("abctrue",expr.getValue(eContext));
+        SpelExpression expr = (SpelExpression) parser.parseExpression("'abc'+true");
+        assertEquals("abctrue", expr.getValue(eContext));
 
-		expr = (SpelExpression)parser.parseExpression("'abc'-true");
-		assertEquals("abc",expr.getValue(eContext));
+        expr = (SpelExpression) parser.parseExpression("'abc'-true");
+        assertEquals("abc", expr.getValue(eContext));
 
-		expr = (SpelExpression)parser.parseExpression("'abc'+null");
-		assertEquals("abcnull",expr.getValue(eContext));
-	}
+        expr = (SpelExpression) parser.parseExpression("'abc'+null");
+        assertEquals("abcnull", expr.getValue(eContext));
+    }
 
+    static class StringAndBooleanAddition implements OperatorOverloader {
 
-	static class StringAndBooleanAddition implements OperatorOverloader {
+        @Override
+        public Object operate(Operation operation, Object leftOperand, Object rightOperand)
+                throws EvaluationException {
+            if (operation == Operation.ADD) {
+                return ((String) leftOperand) + ((Boolean) rightOperand).toString();
+            } else {
+                return leftOperand;
+            }
+        }
 
-		@Override
-		public Object operate(Operation operation, Object leftOperand, Object rightOperand) throws EvaluationException {
-			if (operation==Operation.ADD) {
-				return ((String)leftOperand)+((Boolean)rightOperand).toString();
-			}
-			else {
-				return leftOperand;
-			}
-		}
-
-		@Override
-		public boolean overridesOperation(Operation operation, Object leftOperand, Object rightOperand) throws EvaluationException {
-			if (leftOperand instanceof String && rightOperand instanceof Boolean) {
-				return true;
-			}
-			return false;
-
-		}
-	}
-
+        @Override
+        public boolean overridesOperation(
+                Operation operation, Object leftOperand, Object rightOperand)
+                throws EvaluationException {
+            if (leftOperand instanceof String && rightOperand instanceof Boolean) {
+                return true;
+            }
+            return false;
+        }
+    }
 }

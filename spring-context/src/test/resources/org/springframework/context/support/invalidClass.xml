@@ -3,6 +3,6 @@
 
 <beans>
 
-	<bean id="someMessageSource" class="org.springframework.context.support.StaticMessageSourc" lazy-init="true"/>
+    <bean id="someMessageSource" class="org.springframework.context.support.StaticMessageSourc" lazy-init="true"/>
 
 </beans>

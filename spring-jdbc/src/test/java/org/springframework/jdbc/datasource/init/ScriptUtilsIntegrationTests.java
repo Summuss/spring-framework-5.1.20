@@ -34,28 +34,28 @@ import static org.springframework.jdbc.datasource.init.ScriptUtils.*;
  */
 public class ScriptUtilsIntegrationTests extends AbstractDatabaseInitializationTests {
 
-	protected EmbeddedDatabaseType getEmbeddedDatabaseType() {
-		return EmbeddedDatabaseType.HSQL;
-	}
+    protected EmbeddedDatabaseType getEmbeddedDatabaseType() {
+        return EmbeddedDatabaseType.HSQL;
+    }
 
-	@Before
-	public void setUpSchema() throws SQLException {
-		executeSqlScript(db.getConnection(), usersSchema());
-	}
+    @Before
+    public void setUpSchema() throws SQLException {
+        executeSqlScript(db.getConnection(), usersSchema());
+    }
 
-	@Test
-	public void executeSqlScriptContainingMultiLineComments() throws SQLException {
-		executeSqlScript(db.getConnection(), resource("test-data-with-multi-line-comments.sql"));
-		assertUsersDatabaseCreated("Hoeller", "Brannen");
-	}
+    @Test
+    public void executeSqlScriptContainingMultiLineComments() throws SQLException {
+        executeSqlScript(db.getConnection(), resource("test-data-with-multi-line-comments.sql"));
+        assertUsersDatabaseCreated("Hoeller", "Brannen");
+    }
 
-	/**
-	 * @since 4.2
-	 */
-	@Test
-	public void executeSqlScriptContainingSingleQuotesNestedInsideDoubleQuotes() throws SQLException {
-		executeSqlScript(db.getConnection(), resource("users-data-with-single-quotes-nested-in-double-quotes.sql"));
-		assertUsersDatabaseCreated("Hoeller", "Brannen");
-	}
-
+    /** @since 4.2 */
+    @Test
+    public void executeSqlScriptContainingSingleQuotesNestedInsideDoubleQuotes()
+            throws SQLException {
+        executeSqlScript(
+                db.getConnection(),
+                resource("users-data-with-single-quotes-nested-in-double-quotes.sql"));
+        assertUsersDatabaseCreated("Hoeller", "Brannen");
+    }
 }

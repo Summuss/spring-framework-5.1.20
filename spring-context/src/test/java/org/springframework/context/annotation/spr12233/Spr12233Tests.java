@@ -29,7 +29,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.type.AnnotatedTypeMetadata;
 
-
 /**
  * Tests cornering the regression reported in SPR-12233.
  *
@@ -37,44 +36,39 @@ import org.springframework.core.type.AnnotatedTypeMetadata;
  */
 public class Spr12233Tests {
 
-	@Test
-	public void spr12233() throws Exception {
-		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
-		ctx.register(PropertySourcesPlaceholderConfigurer.class);
-		ctx.register(ImportConfiguration.class);
-		ctx.refresh();
-		ctx.close();
-	}
+    @Test
+    public void spr12233() throws Exception {
+        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+        ctx.register(PropertySourcesPlaceholderConfigurer.class);
+        ctx.register(ImportConfiguration.class);
+        ctx.refresh();
+        ctx.close();
+    }
 
-	static class NeverConfigurationCondition implements ConfigurationCondition {
-		@Override
-		public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
-			return false;
-		}
+    static class NeverConfigurationCondition implements ConfigurationCondition {
+        @Override
+        public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+            return false;
+        }
 
-		@Override
-		public ConfigurationPhase getConfigurationPhase() {
-			return ConfigurationPhase.REGISTER_BEAN;
-		}
-	}
+        @Override
+        public ConfigurationPhase getConfigurationPhase() {
+            return ConfigurationPhase.REGISTER_BEAN;
+        }
+    }
 
-	@Import(ComponentScanningConfiguration.class)
-	static class ImportConfiguration {
+    @Import(ComponentScanningConfiguration.class)
+    static class ImportConfiguration {}
 
-	}
+    @Configuration
+    @ComponentScan
+    static class ComponentScanningConfiguration {}
 
-	@Configuration
-	@ComponentScan
-	static class ComponentScanningConfiguration {
+    @Configuration
+    @Conditional(NeverConfigurationCondition.class)
+    static class ConditionWithPropertyValueInjection {
 
-	}
-
-
-	@Configuration
-	@Conditional(NeverConfigurationCondition.class)
-	static class ConditionWithPropertyValueInjection {
-
-		@Value("${idontexist}")
-		private String property;
-	}
+        @Value("${idontexist}")
+        private String property;
+    }
 }

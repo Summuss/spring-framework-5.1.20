@@ -30,18 +30,19 @@ import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 /**
- * The {@code <errors>} tag renders field errors in an HTML 'span' tag.
- * Displays errors for either an object or a particular field.
+ * The {@code <errors>} tag renders field errors in an HTML 'span' tag. Displays errors for either
+ * an object or a particular field.
  *
  * <p>This tag supports three main usage patterns:
  *
  * <ol>
- *	<li>Field only - set '{@code path}' to the field name (or path)</li>
- *	<li>Object errors only - omit '{@code path}'</li>
- *	<li>All errors - set '{@code path}' to '{@code *}'</li>
+ *   <li>Field only - set '{@code path}' to the field name (or path)
+ *   <li>Object errors only - omit '{@code path}'
+ *   <li>All errors - set '{@code path}' to '{@code *}'
  * </ol>
  *
  * <p>
+ *
  * <table>
  * <caption>Attribute Summary</caption>
  * <thead>
@@ -192,155 +193,155 @@ import org.springframework.util.StringUtils;
 @SuppressWarnings("serial")
 public class ErrorsTag extends AbstractHtmlElementBodyTag implements BodyTag {
 
-	/**
-	 * The key under which this tag exposes error messages in
-	 * the {@link PageContext#PAGE_SCOPE page context scope}.
-	 */
-	public static final String MESSAGES_ATTRIBUTE = "messages";
+    /**
+     * The key under which this tag exposes error messages in the {@link PageContext#PAGE_SCOPE page
+     * context scope}.
+     */
+    public static final String MESSAGES_ATTRIBUTE = "messages";
 
-	/**
-	 * The HTML '{@code span}' tag.
-	 */
-	public static final String SPAN_TAG = "span";
+    /** The HTML '{@code span}' tag. */
+    public static final String SPAN_TAG = "span";
 
+    private String element = SPAN_TAG;
 
-	private String element = SPAN_TAG;
+    private String delimiter = "<br/>";
 
-	private String delimiter = "<br/>";
+    /** Stores any value that existed in the 'errors messages' before the tag was started. */
+    @Nullable private Object oldMessages;
 
-	/**
-	 * Stores any value that existed in the 'errors messages' before the tag was started.
-	 */
-	@Nullable
-	private Object oldMessages;
+    private boolean errorMessagesWereExposed;
 
-	private boolean errorMessagesWereExposed;
+    /**
+     * Set the HTML element must be used to render the error messages.
+     *
+     * <p>Defaults to an HTML '{@code <span/>}' tag.
+     */
+    public void setElement(String element) {
+        Assert.hasText(element, "'element' cannot be null or blank");
+        this.element = element;
+    }
 
+    /** Get the HTML element must be used to render the error messages. */
+    public String getElement() {
+        return this.element;
+    }
 
-	/**
-	 * Set the HTML element must be used to render the error messages.
-	 * <p>Defaults to an HTML '{@code <span/>}' tag.
-	 */
-	public void setElement(String element) {
-		Assert.hasText(element, "'element' cannot be null or blank");
-		this.element = element;
-	}
+    /**
+     * Set the delimiter to be used between error messages.
+     *
+     * <p>Defaults to an HTML '{@code <br/>}' tag.
+     */
+    public void setDelimiter(String delimiter) {
+        this.delimiter = delimiter;
+    }
 
-	/**
-	 * Get the HTML element must be used to render the error messages.
-	 */
-	public String getElement() {
-		return this.element;
-	}
+    /** Return the delimiter to be used between error messages. */
+    public String getDelimiter() {
+        return this.delimiter;
+    }
 
-	/**
-	 * Set the delimiter to be used between error messages.
-	 * <p>Defaults to an HTML '{@code <br/>}' tag.
-	 */
-	public void setDelimiter(String delimiter) {
-		this.delimiter = delimiter;
-	}
+    /**
+     * Get the value for the HTML '{@code id}' attribute.
+     *
+     * <p>Appends '{@code .errors}' to the value returned by {@link #getPropertyPath()} or to the
+     * model attribute name if the {@code <form:errors/>} tag's '{@code path}' attribute has been
+     * omitted.
+     *
+     * @return the value for the HTML '{@code id}' attribute
+     * @see #getPropertyPath()
+     */
+    @Override
+    protected String autogenerateId() throws JspException {
+        String path = getPropertyPath();
+        if ("".equals(path) || "*".equals(path)) {
+            path =
+                    (String)
+                            this.pageContext.getAttribute(
+                                    FormTag.MODEL_ATTRIBUTE_VARIABLE_NAME,
+                                    PageContext.REQUEST_SCOPE);
+        }
+        return StringUtils.deleteAny(path, "[]") + ".errors";
+    }
 
-	/**
-	 * Return the delimiter to be used between error messages.
-	 */
-	public String getDelimiter() {
-		return this.delimiter;
-	}
+    /**
+     * Get the value for the HTML '{@code name}' attribute.
+     *
+     * <p>Simply returns {@code null} because the '{@code name}' attribute is not a validate
+     * attribute for the '{@code span}' element.
+     */
+    @Override
+    @Nullable
+    protected String getName() throws JspException {
+        return null;
+    }
 
+    /**
+     * Should rendering of this tag proceed at all?
+     *
+     * <p>Only renders output when there are errors for the configured {@link #setPath path}.
+     *
+     * @return {@code true} only when there are errors for the configured {@link #setPath path}
+     */
+    @Override
+    protected boolean shouldRender() throws JspException {
+        try {
+            return getBindStatus().isError();
+        } catch (IllegalStateException ex) {
+            // Neither BindingResult nor target object available.
+            return false;
+        }
+    }
 
-	/**
-	 * Get the value for the HTML '{@code id}' attribute.
-	 * <p>Appends '{@code .errors}' to the value returned by {@link #getPropertyPath()}
-	 * or to the model attribute name if the {@code <form:errors/>} tag's
-	 * '{@code path}' attribute has been omitted.
-	 * @return the value for the HTML '{@code id}' attribute
-	 * @see #getPropertyPath()
-	 */
-	@Override
-	protected String autogenerateId() throws JspException {
-		String path = getPropertyPath();
-		if ("".equals(path) || "*".equals(path)) {
-			path = (String) this.pageContext.getAttribute(
-					FormTag.MODEL_ATTRIBUTE_VARIABLE_NAME, PageContext.REQUEST_SCOPE);
-		}
-		return StringUtils.deleteAny(path, "[]") + ".errors";
-	}
+    @Override
+    protected void renderDefaultContent(TagWriter tagWriter) throws JspException {
+        tagWriter.startTag(getElement());
+        writeDefaultAttributes(tagWriter);
+        String delimiter = ObjectUtils.getDisplayString(evaluate("delimiter", getDelimiter()));
+        String[] errorMessages = getBindStatus().getErrorMessages();
+        for (int i = 0; i < errorMessages.length; i++) {
+            String errorMessage = errorMessages[i];
+            if (i > 0) {
+                tagWriter.appendValue(delimiter);
+            }
+            tagWriter.appendValue(getDisplayString(errorMessage));
+        }
+        tagWriter.endTag();
+    }
 
-	/**
-	 * Get the value for the HTML '{@code name}' attribute.
-	 * <p>Simply returns {@code null} because the '{@code name}' attribute
-	 * is not a validate attribute for the '{@code span}' element.
-	 */
-	@Override
-	@Nullable
-	protected String getName() throws JspException {
-		return null;
-	}
+    /**
+     * Exposes any bind status error messages under {@link #MESSAGES_ATTRIBUTE this key} in the
+     * {@link PageContext#PAGE_SCOPE}.
+     *
+     * <p>Only called if {@link #shouldRender()} returns {@code true}.
+     *
+     * @see #removeAttributes()
+     */
+    @Override
+    protected void exposeAttributes() throws JspException {
+        List<String> errorMessages = new ArrayList<>();
+        errorMessages.addAll(Arrays.asList(getBindStatus().getErrorMessages()));
+        this.oldMessages =
+                this.pageContext.getAttribute(MESSAGES_ATTRIBUTE, PageContext.PAGE_SCOPE);
+        this.pageContext.setAttribute(MESSAGES_ATTRIBUTE, errorMessages, PageContext.PAGE_SCOPE);
+        this.errorMessagesWereExposed = true;
+    }
 
-	/**
-	 * Should rendering of this tag proceed at all?
-	 * <p>Only renders output when there are errors for the configured {@link #setPath path}.
-	 * @return {@code true} only when there are errors for the configured {@link #setPath path}
-	 */
-	@Override
-	protected boolean shouldRender() throws JspException {
-		try {
-			return getBindStatus().isError();
-		}
-		catch (IllegalStateException ex) {
-			// Neither BindingResult nor target object available.
-			return false;
-		}
-	}
-
-	@Override
-	protected void renderDefaultContent(TagWriter tagWriter) throws JspException {
-		tagWriter.startTag(getElement());
-		writeDefaultAttributes(tagWriter);
-		String delimiter = ObjectUtils.getDisplayString(evaluate("delimiter", getDelimiter()));
-		String[] errorMessages = getBindStatus().getErrorMessages();
-		for (int i = 0; i < errorMessages.length; i++) {
-			String errorMessage = errorMessages[i];
-			if (i > 0) {
-				tagWriter.appendValue(delimiter);
-			}
-			tagWriter.appendValue(getDisplayString(errorMessage));
-		}
-		tagWriter.endTag();
-	}
-
-	/**
-	 * Exposes any bind status error messages under {@link #MESSAGES_ATTRIBUTE this key}
-	 * in the {@link PageContext#PAGE_SCOPE}.
-	 * <p>Only called if {@link #shouldRender()} returns {@code true}.
-	 * @see #removeAttributes()
-	 */
-	@Override
-	protected void exposeAttributes() throws JspException {
-		List<String> errorMessages = new ArrayList<>();
-		errorMessages.addAll(Arrays.asList(getBindStatus().getErrorMessages()));
-		this.oldMessages = this.pageContext.getAttribute(MESSAGES_ATTRIBUTE, PageContext.PAGE_SCOPE);
-		this.pageContext.setAttribute(MESSAGES_ATTRIBUTE, errorMessages, PageContext.PAGE_SCOPE);
-		this.errorMessagesWereExposed = true;
-	}
-
-	/**
-	 * Removes any bind status error messages that were previously stored under
-	 * {@link #MESSAGES_ATTRIBUTE this key} in the {@link PageContext#PAGE_SCOPE}.
-	 * @see #exposeAttributes()
-	 */
-	@Override
-	protected void removeAttributes() {
-		if (this.errorMessagesWereExposed) {
-			if (this.oldMessages != null) {
-				this.pageContext.setAttribute(MESSAGES_ATTRIBUTE, this.oldMessages, PageContext.PAGE_SCOPE);
-				this.oldMessages = null;
-			}
-			else {
-				this.pageContext.removeAttribute(MESSAGES_ATTRIBUTE, PageContext.PAGE_SCOPE);
-			}
-		}
-	}
-
+    /**
+     * Removes any bind status error messages that were previously stored under {@link
+     * #MESSAGES_ATTRIBUTE this key} in the {@link PageContext#PAGE_SCOPE}.
+     *
+     * @see #exposeAttributes()
+     */
+    @Override
+    protected void removeAttributes() {
+        if (this.errorMessagesWereExposed) {
+            if (this.oldMessages != null) {
+                this.pageContext.setAttribute(
+                        MESSAGES_ATTRIBUTE, this.oldMessages, PageContext.PAGE_SCOPE);
+                this.oldMessages = null;
+            } else {
+                this.pageContext.removeAttribute(MESSAGES_ATTRIBUTE, PageContext.PAGE_SCOPE);
+            }
+        }
+    }
 }

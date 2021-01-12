@@ -23,46 +23,48 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Composite {@link TransactionAttributeSource} implementation that iterates
- * over a given array of {@link TransactionAttributeSource} instances.
+ * Composite {@link TransactionAttributeSource} implementation that iterates over a given array of
+ * {@link TransactionAttributeSource} instances.
  *
  * @author Juergen Hoeller
  * @since 2.0
  */
 @SuppressWarnings("serial")
-public class CompositeTransactionAttributeSource implements TransactionAttributeSource, Serializable {
+public class CompositeTransactionAttributeSource
+        implements TransactionAttributeSource, Serializable {
 
-	private final TransactionAttributeSource[] transactionAttributeSources;
+    private final TransactionAttributeSource[] transactionAttributeSources;
 
+    /**
+     * Create a new CompositeTransactionAttributeSource for the given sources.
+     *
+     * @param transactionAttributeSources the TransactionAttributeSource instances to combine
+     */
+    public CompositeTransactionAttributeSource(
+            TransactionAttributeSource... transactionAttributeSources) {
+        Assert.notNull(
+                transactionAttributeSources, "TransactionAttributeSource array must not be null");
+        this.transactionAttributeSources = transactionAttributeSources;
+    }
 
-	/**
-	 * Create a new CompositeTransactionAttributeSource for the given sources.
-	 * @param transactionAttributeSources the TransactionAttributeSource instances to combine
-	 */
-	public CompositeTransactionAttributeSource(TransactionAttributeSource... transactionAttributeSources) {
-		Assert.notNull(transactionAttributeSources, "TransactionAttributeSource array must not be null");
-		this.transactionAttributeSources = transactionAttributeSources;
-	}
+    /**
+     * Return the TransactionAttributeSource instances that this CompositeTransactionAttributeSource
+     * combines.
+     */
+    public final TransactionAttributeSource[] getTransactionAttributeSources() {
+        return this.transactionAttributeSources;
+    }
 
-	/**
-	 * Return the TransactionAttributeSource instances that this
-	 * CompositeTransactionAttributeSource combines.
-	 */
-	public final TransactionAttributeSource[] getTransactionAttributeSources() {
-		return this.transactionAttributeSources;
-	}
-
-
-	@Override
-	@Nullable
-	public TransactionAttribute getTransactionAttribute(Method method, @Nullable Class<?> targetClass) {
-		for (TransactionAttributeSource source : this.transactionAttributeSources) {
-			TransactionAttribute attr = source.getTransactionAttribute(method, targetClass);
-			if (attr != null) {
-				return attr;
-			}
-		}
-		return null;
-	}
-
+    @Override
+    @Nullable
+    public TransactionAttribute getTransactionAttribute(
+            Method method, @Nullable Class<?> targetClass) {
+        for (TransactionAttributeSource source : this.transactionAttributeSources) {
+            TransactionAttribute attr = source.getTransactionAttribute(method, targetClass);
+            if (attr != null) {
+                return attr;
+            }
+        }
+        return null;
+    }
 }

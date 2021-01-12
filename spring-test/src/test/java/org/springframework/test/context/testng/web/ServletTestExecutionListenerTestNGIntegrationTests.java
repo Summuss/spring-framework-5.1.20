@@ -39,41 +39,41 @@ import static org.junit.Assert.*;
  */
 @ContextConfiguration
 @WebAppConfiguration
-public class ServletTestExecutionListenerTestNGIntegrationTests extends AbstractTestNGSpringContextTests {
+public class ServletTestExecutionListenerTestNGIntegrationTests
+        extends AbstractTestNGSpringContextTests {
 
-	@Configuration
-	static class Config {
-		/* no beans required for this test */
-	}
+    @Configuration
+    static class Config {
+        /* no beans required for this test */
+    }
 
+    @Autowired private MockHttpServletRequest servletRequest;
 
-	@Autowired
-	private MockHttpServletRequest servletRequest;
+    /**
+     * Verifies bug fix for <a href="https://jira.spring.io/browse/SPR-11626">SPR-11626</a>.
+     *
+     * @see #ensureMocksAreReinjectedBetweenTests_2
+     */
+    @Test
+    void ensureMocksAreReinjectedBetweenTests_1() {
+        assertInjectedServletRequestEqualsRequestInRequestContextHolder();
+    }
 
+    /**
+     * Verifies bug fix for <a href="https://jira.spring.io/browse/SPR-11626">SPR-11626</a>.
+     *
+     * @see #ensureMocksAreReinjectedBetweenTests_1
+     */
+    @Test
+    void ensureMocksAreReinjectedBetweenTests_2() {
+        assertInjectedServletRequestEqualsRequestInRequestContextHolder();
+    }
 
-	/**
-	 * Verifies bug fix for <a href="https://jira.spring.io/browse/SPR-11626">SPR-11626</a>.
-	 *
-	 * @see #ensureMocksAreReinjectedBetweenTests_2
-	 */
-	@Test
-	void ensureMocksAreReinjectedBetweenTests_1() {
-		assertInjectedServletRequestEqualsRequestInRequestContextHolder();
-	}
-
-	/**
-	 * Verifies bug fix for <a href="https://jira.spring.io/browse/SPR-11626">SPR-11626</a>.
-	 *
-	 * @see #ensureMocksAreReinjectedBetweenTests_1
-	 */
-	@Test
-	void ensureMocksAreReinjectedBetweenTests_2() {
-		assertInjectedServletRequestEqualsRequestInRequestContextHolder();
-	}
-
-	private void assertInjectedServletRequestEqualsRequestInRequestContextHolder() {
-		assertEquals("Injected ServletRequest must be stored in the RequestContextHolder", servletRequest,
-			((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest());
-	}
-
+    private void assertInjectedServletRequestEqualsRequestInRequestContextHolder() {
+        assertEquals(
+                "Injected ServletRequest must be stored in the RequestContextHolder",
+                servletRequest,
+                ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes())
+                        .getRequest());
+    }
 }

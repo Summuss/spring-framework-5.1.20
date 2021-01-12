@@ -34,127 +34,117 @@ import static org.mockito.Mockito.*;
  */
 public class ListenerReadPublisherTests {
 
-	private final TestListenerReadPublisher publisher = new TestListenerReadPublisher();
+    private final TestListenerReadPublisher publisher = new TestListenerReadPublisher();
 
-	private final TestSubscriber subscriber = new TestSubscriber();
+    private final TestSubscriber subscriber = new TestSubscriber();
 
+    @Before
+    public void setup() {
+        this.publisher.subscribe(this.subscriber);
+    }
 
-	@Before
-	public void setup() {
-		this.publisher.subscribe(this.subscriber);
-	}
+    @Test
+    public void twoReads() {
 
+        this.subscriber.getSubscription().request(2);
+        this.publisher.onDataAvailable();
 
-	@Test
-	public void twoReads() {
+        assertEquals(2, this.publisher.getReadCalls());
+    }
 
-		this.subscriber.getSubscription().request(2);
-		this.publisher.onDataAvailable();
+    @Test // SPR-17410
+    public void discardDataOnError() {
 
-		assertEquals(2, this.publisher.getReadCalls());
-	}
+        this.subscriber.getSubscription().request(2);
+        this.publisher.onDataAvailable();
+        this.publisher.onError(new IllegalStateException());
 
-	@Test // SPR-17410
-	public void discardDataOnError() {
+        assertEquals(2, this.publisher.getReadCalls());
+        assertEquals(1, this.publisher.getDiscardCalls());
+    }
 
-		this.subscriber.getSubscription().request(2);
-		this.publisher.onDataAvailable();
-		this.publisher.onError(new IllegalStateException());
+    @Test // SPR-17410
+    public void discardDataOnCancel() {
 
-		assertEquals(2, this.publisher.getReadCalls());
-		assertEquals(1, this.publisher.getDiscardCalls());
-	}
+        this.subscriber.getSubscription().request(2);
+        this.subscriber.setCancelOnNext(true);
+        this.publisher.onDataAvailable();
 
-	@Test // SPR-17410
-	public void discardDataOnCancel() {
+        assertEquals(1, this.publisher.getReadCalls());
+        assertEquals(1, this.publisher.getDiscardCalls());
+    }
 
-		this.subscriber.getSubscription().request(2);
-		this.subscriber.setCancelOnNext(true);
-		this.publisher.onDataAvailable();
+    private static final class TestListenerReadPublisher
+            extends AbstractListenerReadPublisher<DataBuffer> {
 
-		assertEquals(1, this.publisher.getReadCalls());
-		assertEquals(1, this.publisher.getDiscardCalls());
-	}
+        private int readCalls = 0;
 
+        private int discardCalls = 0;
 
-	private static final class TestListenerReadPublisher extends AbstractListenerReadPublisher<DataBuffer> {
+        public TestListenerReadPublisher() {
+            super("");
+        }
 
-		private int readCalls = 0;
+        public int getReadCalls() {
+            return this.readCalls;
+        }
 
-		private int discardCalls = 0;
+        public int getDiscardCalls() {
+            return this.discardCalls;
+        }
 
+        @Override
+        protected void checkOnDataAvailable() {
+            // no-op
+        }
 
-		public TestListenerReadPublisher() {
-			super("");
-		}
+        @Override
+        protected DataBuffer read() {
+            this.readCalls++;
+            return mock(DataBuffer.class);
+        }
 
+        @Override
+        protected void readingPaused() {
+            // No-op
+        }
 
-		public int getReadCalls() {
-			return this.readCalls;
-		}
+        @Override
+        protected void discardData() {
+            this.discardCalls++;
+        }
+    }
 
-		public int getDiscardCalls() {
-			return this.discardCalls;
-		}
+    private static final class TestSubscriber implements Subscriber<DataBuffer> {
 
-		@Override
-		protected void checkOnDataAvailable() {
-			// no-op
-		}
+        private Subscription subscription;
 
-		@Override
-		protected DataBuffer read() {
-			this.readCalls++;
-			return mock(DataBuffer.class);
-		}
+        private boolean cancelOnNext;
 
-		@Override
-		protected void readingPaused() {
-			// No-op
-		}
+        public Subscription getSubscription() {
+            return this.subscription;
+        }
 
-		@Override
-		protected void discardData() {
-			this.discardCalls++;
-		}
-	}
+        public void setCancelOnNext(boolean cancelOnNext) {
+            this.cancelOnNext = cancelOnNext;
+        }
 
+        @Override
+        public void onSubscribe(Subscription subscription) {
+            this.subscription = subscription;
+        }
 
-	private static final class TestSubscriber implements Subscriber<DataBuffer> {
+        @Override
+        public void onNext(DataBuffer dataBuffer) {
+            if (this.cancelOnNext) {
+                this.subscription.cancel();
+            }
+        }
 
-		private Subscription subscription;
+        @Override
+        public void onError(Throwable t) {}
 
-		private boolean cancelOnNext;
-
-
-		public Subscription getSubscription() {
-			return this.subscription;
-		}
-
-		public void setCancelOnNext(boolean cancelOnNext) {
-			this.cancelOnNext = cancelOnNext;
-		}
-
-
-		@Override
-		public void onSubscribe(Subscription subscription) {
-			this.subscription = subscription;
-		}
-
-		@Override
-		public void onNext(DataBuffer dataBuffer) {
-			if (this.cancelOnNext) {
-				this.subscription.cancel();
-			}
-		}
-
-		@Override
-		public void onError(Throwable t) {
-		}
-
-		@Override
-		public void onComplete() {
-		}
-	}
-
+        @Override
+        public void onComplete() {}
+    }
 }

@@ -24,5 +24,4 @@ import org.springframework.stereotype.Repository;
  * @author Stephane Nicoll
  */
 @Repository
-public class SampleRepository {
-}
+public class SampleRepository {}

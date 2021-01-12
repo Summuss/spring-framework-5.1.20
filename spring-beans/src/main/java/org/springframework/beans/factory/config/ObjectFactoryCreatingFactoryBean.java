@@ -25,22 +25,19 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * A {@link org.springframework.beans.factory.FactoryBean} implementation that
- * returns a value which is an {@link org.springframework.beans.factory.ObjectFactory}
- * that in turn returns a bean sourced from a {@link org.springframework.beans.factory.BeanFactory}.
+ * A {@link org.springframework.beans.factory.FactoryBean} implementation that returns a value which
+ * is an {@link org.springframework.beans.factory.ObjectFactory} that in turn returns a bean sourced
+ * from a {@link org.springframework.beans.factory.BeanFactory}.
  *
- * <p>As such, this may be used to avoid having a client object directly calling
- * {@link org.springframework.beans.factory.BeanFactory#getBean(String)} to get
- * a (typically prototype) bean from a
- * {@link org.springframework.beans.factory.BeanFactory}, which would be a
- * violation of the inversion of control principle. Instead, with the use
- * of this class, the client object can be fed an
- * {@link org.springframework.beans.factory.ObjectFactory} instance as a
- * property which directly returns only the one target bean (again, which is
- * typically a prototype bean).
+ * <p>As such, this may be used to avoid having a client object directly calling {@link
+ * org.springframework.beans.factory.BeanFactory#getBean(String)} to get a (typically prototype)
+ * bean from a {@link org.springframework.beans.factory.BeanFactory}, which would be a violation of
+ * the inversion of control principle. Instead, with the use of this class, the client object can be
+ * fed an {@link org.springframework.beans.factory.ObjectFactory} instance as a property which
+ * directly returns only the one target bean (again, which is typically a prototype bean).
  *
- * <p>A sample config in an XML-based
- * {@link org.springframework.beans.factory.BeanFactory} might look as follows:
+ * <p>A sample config in an XML-based {@link org.springframework.beans.factory.BeanFactory} might
+ * look as follows:
  *
  * <pre class="code">&lt;beans&gt;
  *
@@ -56,10 +53,9 @@ import org.springframework.util.Assert;
  *     &lt;property name="myServiceFactory" ref="myServiceFactory"/&gt;
  *   &lt;/bean&gt;
  *
- *&lt;/beans&gt;</pre>
+ * &lt;/beans&gt;</pre>
  *
- * <p>The attendant {@code MyClientBean} class implementation might look
- * something like this:
+ * <p>The attendant {@code MyClientBean} class implementation might look something like this:
  *
  * <pre class="code">package a.b.c;
  *
@@ -80,14 +76,13 @@ import org.springframework.util.Assert;
  *   }
  * }</pre>
  *
- * <p>An alternate approach to this application of an object creational pattern
- * would be to use the {@link ServiceLocatorFactoryBean}
- * to source (prototype) beans. The {@link ServiceLocatorFactoryBean} approach
- * has the advantage of the fact that one doesn't have to depend on any
- * Spring-specific interface such as {@link org.springframework.beans.factory.ObjectFactory},
- * but has the disadvantage of requiring runtime class generation. Please do
- * consult the {@link ServiceLocatorFactoryBean ServiceLocatorFactoryBean JavaDoc}
- * for a fuller discussion of this issue.
+ * <p>An alternate approach to this application of an object creational pattern would be to use the
+ * {@link ServiceLocatorFactoryBean} to source (prototype) beans. The {@link
+ * ServiceLocatorFactoryBean} approach has the advantage of the fact that one doesn't have to depend
+ * on any Spring-specific interface such as {@link org.springframework.beans.factory.ObjectFactory},
+ * but has the disadvantage of requiring runtime class generation. Please do consult the {@link
+ * ServiceLocatorFactoryBean ServiceLocatorFactoryBean JavaDoc} for a fuller discussion of this
+ * issue.
  *
  * @author Colin Sampaleanu
  * @author Juergen Hoeller
@@ -97,61 +92,55 @@ import org.springframework.util.Assert;
  */
 public class ObjectFactoryCreatingFactoryBean extends AbstractFactoryBean<ObjectFactory<Object>> {
 
-	@Nullable
-	private String targetBeanName;
+    @Nullable private String targetBeanName;
 
+    /**
+     * Set the name of the target bean.
+     *
+     * <p>The target does not <i>have</i> to be a non-singleton bean, but realistically always will
+     * be (because if the target bean were a singleton, then said singleton bean could simply be
+     * injected straight into the dependent object, thus obviating the need for the extra level of
+     * indirection afforded by this factory approach).
+     */
+    public void setTargetBeanName(String targetBeanName) {
+        this.targetBeanName = targetBeanName;
+    }
 
-	/**
-	 * Set the name of the target bean.
-	 * <p>The target does not <i>have</i> to be a non-singleton bean, but realistically
-	 * always will be (because if the target bean were a singleton, then said singleton
-	 * bean could simply be injected straight into the dependent object, thus obviating
-	 * the need for the extra level of indirection afforded by this factory approach).
-	 */
-	public void setTargetBeanName(String targetBeanName) {
-		this.targetBeanName = targetBeanName;
-	}
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        Assert.hasText(this.targetBeanName, "Property 'targetBeanName' is required");
+        super.afterPropertiesSet();
+    }
 
-	@Override
-	public void afterPropertiesSet() throws Exception {
-		Assert.hasText(this.targetBeanName, "Property 'targetBeanName' is required");
-		super.afterPropertiesSet();
-	}
+    @Override
+    public Class<?> getObjectType() {
+        return ObjectFactory.class;
+    }
 
+    @Override
+    protected ObjectFactory<Object> createInstance() {
+        BeanFactory beanFactory = getBeanFactory();
+        Assert.state(beanFactory != null, "No BeanFactory available");
+        Assert.state(this.targetBeanName != null, "No target bean name specified");
+        return new TargetBeanObjectFactory(beanFactory, this.targetBeanName);
+    }
 
-	@Override
-	public Class<?> getObjectType() {
-		return ObjectFactory.class;
-	}
+    /** Independent inner class - for serialization purposes. */
+    @SuppressWarnings("serial")
+    private static class TargetBeanObjectFactory implements ObjectFactory<Object>, Serializable {
 
-	@Override
-	protected ObjectFactory<Object> createInstance() {
-		BeanFactory beanFactory = getBeanFactory();
-		Assert.state(beanFactory != null, "No BeanFactory available");
-		Assert.state(this.targetBeanName != null, "No target bean name specified");
-		return new TargetBeanObjectFactory(beanFactory, this.targetBeanName);
-	}
+        private final BeanFactory beanFactory;
 
+        private final String targetBeanName;
 
-	/**
-	 * Independent inner class - for serialization purposes.
-	 */
-	@SuppressWarnings("serial")
-	private static class TargetBeanObjectFactory implements ObjectFactory<Object>, Serializable {
+        public TargetBeanObjectFactory(BeanFactory beanFactory, String targetBeanName) {
+            this.beanFactory = beanFactory;
+            this.targetBeanName = targetBeanName;
+        }
 
-		private final BeanFactory beanFactory;
-
-		private final String targetBeanName;
-
-		public TargetBeanObjectFactory(BeanFactory beanFactory, String targetBeanName) {
-			this.beanFactory = beanFactory;
-			this.targetBeanName = targetBeanName;
-		}
-
-		@Override
-		public Object getObject() throws BeansException {
-			return this.beanFactory.getBean(this.targetBeanName);
-		}
-	}
-
+        @Override
+        public Object getObject() throws BeansException {
+            return this.beanFactory.getBean(this.targetBeanName);
+        }
+    }
 }

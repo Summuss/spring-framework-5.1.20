@@ -39,129 +39,131 @@ import static org.junit.Assert.*;
  */
 public class ExecutorBeanDefinitionParserTests {
 
-	private ApplicationContext context;
+    private ApplicationContext context;
 
+    @Before
+    public void setup() {
+        this.context =
+                new ClassPathXmlApplicationContext(
+                        "executorContext.xml", ExecutorBeanDefinitionParserTests.class);
+    }
 
-	@Before
-	public void setup() {
-		this.context = new ClassPathXmlApplicationContext(
-				"executorContext.xml", ExecutorBeanDefinitionParserTests.class);
-	}
+    @Test
+    public void defaultExecutor() throws Exception {
+        ThreadPoolTaskExecutor executor =
+                this.context.getBean("default", ThreadPoolTaskExecutor.class);
+        assertEquals(1, getCorePoolSize(executor));
+        assertEquals(Integer.MAX_VALUE, getMaxPoolSize(executor));
+        assertEquals(Integer.MAX_VALUE, getQueueCapacity(executor));
+        assertEquals(60, getKeepAliveSeconds(executor));
+        assertEquals(false, getAllowCoreThreadTimeOut(executor));
 
+        FutureTask<String> task =
+                new FutureTask<>(
+                        new Callable<String>() {
+                            @Override
+                            public String call() throws Exception {
+                                return "foo";
+                            }
+                        });
+        executor.execute(task);
+        assertEquals("foo", task.get());
+    }
 
-	@Test
-	public void defaultExecutor() throws Exception {
-		ThreadPoolTaskExecutor executor = this.context.getBean("default", ThreadPoolTaskExecutor.class);
-		assertEquals(1, getCorePoolSize(executor));
-		assertEquals(Integer.MAX_VALUE, getMaxPoolSize(executor));
-		assertEquals(Integer.MAX_VALUE, getQueueCapacity(executor));
-		assertEquals(60, getKeepAliveSeconds(executor));
-		assertEquals(false, getAllowCoreThreadTimeOut(executor));
+    @Test
+    public void singleSize() {
+        Object executor = this.context.getBean("singleSize");
+        assertEquals(42, getCorePoolSize(executor));
+        assertEquals(42, getMaxPoolSize(executor));
+    }
 
-		FutureTask<String> task = new FutureTask<>(new Callable<String>() {
-			@Override
-			public String call() throws Exception {
-				return "foo";
-			}
-		});
-		executor.execute(task);
-		assertEquals("foo", task.get());
-	}
+    @Test(expected = BeanCreationException.class)
+    public void invalidPoolSize() {
+        this.context.getBean("invalidPoolSize");
+    }
 
-	@Test
-	public void singleSize() {
-		Object executor = this.context.getBean("singleSize");
-		assertEquals(42, getCorePoolSize(executor));
-		assertEquals(42, getMaxPoolSize(executor));
-	}
+    @Test
+    public void rangeWithBoundedQueue() {
+        Object executor = this.context.getBean("rangeWithBoundedQueue");
+        assertEquals(7, getCorePoolSize(executor));
+        assertEquals(42, getMaxPoolSize(executor));
+        assertEquals(11, getQueueCapacity(executor));
+    }
 
-	@Test(expected = BeanCreationException.class)
-	public void invalidPoolSize() {
-		this.context.getBean("invalidPoolSize");
-	}
+    @Test
+    public void rangeWithUnboundedQueue() {
+        Object executor = this.context.getBean("rangeWithUnboundedQueue");
+        assertEquals(9, getCorePoolSize(executor));
+        assertEquals(9, getMaxPoolSize(executor));
+        assertEquals(37, getKeepAliveSeconds(executor));
+        assertEquals(true, getAllowCoreThreadTimeOut(executor));
+        assertEquals(Integer.MAX_VALUE, getQueueCapacity(executor));
+    }
 
-	@Test
-	public void rangeWithBoundedQueue() {
-		Object executor = this.context.getBean("rangeWithBoundedQueue");
-		assertEquals(7, getCorePoolSize(executor));
-		assertEquals(42, getMaxPoolSize(executor));
-		assertEquals(11, getQueueCapacity(executor));
-	}
+    @Test
+    public void propertyPlaceholderWithSingleSize() {
+        Object executor = this.context.getBean("propertyPlaceholderWithSingleSize");
+        assertEquals(123, getCorePoolSize(executor));
+        assertEquals(123, getMaxPoolSize(executor));
+        assertEquals(60, getKeepAliveSeconds(executor));
+        assertEquals(false, getAllowCoreThreadTimeOut(executor));
+        assertEquals(Integer.MAX_VALUE, getQueueCapacity(executor));
+    }
 
-	@Test
-	public void rangeWithUnboundedQueue() {
-		Object executor = this.context.getBean("rangeWithUnboundedQueue");
-		assertEquals(9, getCorePoolSize(executor));
-		assertEquals(9, getMaxPoolSize(executor));
-		assertEquals(37, getKeepAliveSeconds(executor));
-		assertEquals(true, getAllowCoreThreadTimeOut(executor));
-		assertEquals(Integer.MAX_VALUE, getQueueCapacity(executor));
-	}
+    @Test
+    public void propertyPlaceholderWithRange() {
+        Object executor = this.context.getBean("propertyPlaceholderWithRange");
+        assertEquals(5, getCorePoolSize(executor));
+        assertEquals(25, getMaxPoolSize(executor));
+        assertEquals(false, getAllowCoreThreadTimeOut(executor));
+        assertEquals(10, getQueueCapacity(executor));
+    }
 
-	@Test
-	public void propertyPlaceholderWithSingleSize() {
-		Object executor = this.context.getBean("propertyPlaceholderWithSingleSize");
-		assertEquals(123, getCorePoolSize(executor));
-		assertEquals(123, getMaxPoolSize(executor));
-		assertEquals(60, getKeepAliveSeconds(executor));
-		assertEquals(false, getAllowCoreThreadTimeOut(executor));
-		assertEquals(Integer.MAX_VALUE, getQueueCapacity(executor));
-	}
+    @Test
+    public void propertyPlaceholderWithRangeAndCoreThreadTimeout() {
+        Object executor = this.context.getBean("propertyPlaceholderWithRangeAndCoreThreadTimeout");
+        assertEquals(99, getCorePoolSize(executor));
+        assertEquals(99, getMaxPoolSize(executor));
+        assertEquals(true, getAllowCoreThreadTimeOut(executor));
+    }
 
-	@Test
-	public void propertyPlaceholderWithRange() {
-		Object executor = this.context.getBean("propertyPlaceholderWithRange");
-		assertEquals(5, getCorePoolSize(executor));
-		assertEquals(25, getMaxPoolSize(executor));
-		assertEquals(false, getAllowCoreThreadTimeOut(executor));
-		assertEquals(10, getQueueCapacity(executor));
-	}
+    @Test(expected = BeanCreationException.class)
+    public void propertyPlaceholderWithInvalidPoolSize() {
+        this.context.getBean("propertyPlaceholderWithInvalidPoolSize");
+    }
 
-	@Test
-	public void propertyPlaceholderWithRangeAndCoreThreadTimeout() {
-		Object executor = this.context.getBean("propertyPlaceholderWithRangeAndCoreThreadTimeout");
-		assertEquals(99, getCorePoolSize(executor));
-		assertEquals(99, getMaxPoolSize(executor));
-		assertEquals(true, getAllowCoreThreadTimeOut(executor));
-	}
+    @Test
+    public void threadNamePrefix() {
+        CustomizableThreadCreator executor =
+                this.context.getBean("default", CustomizableThreadCreator.class);
+        assertEquals("default-", executor.getThreadNamePrefix());
+    }
 
-	@Test(expected = BeanCreationException.class)
-	public void propertyPlaceholderWithInvalidPoolSize() {
-		this.context.getBean("propertyPlaceholderWithInvalidPoolSize");
-	}
+    @Test
+    public void typeCheck() {
+        assertTrue(this.context.isTypeMatch("default", Executor.class));
+        assertTrue(this.context.isTypeMatch("default", TaskExecutor.class));
+        assertTrue(this.context.isTypeMatch("default", ThreadPoolTaskExecutor.class));
+    }
 
-	@Test
-	public void threadNamePrefix() {
-		CustomizableThreadCreator executor = this.context.getBean("default", CustomizableThreadCreator.class);
-		assertEquals("default-", executor.getThreadNamePrefix());
-	}
+    private int getCorePoolSize(Object executor) {
+        return (Integer) new DirectFieldAccessor(executor).getPropertyValue("corePoolSize");
+    }
 
-	@Test
-	public void typeCheck() {
-		assertTrue(this.context.isTypeMatch("default", Executor.class));
-		assertTrue(this.context.isTypeMatch("default", TaskExecutor.class));
-		assertTrue(this.context.isTypeMatch("default", ThreadPoolTaskExecutor.class));
-	}
+    private int getMaxPoolSize(Object executor) {
+        return (Integer) new DirectFieldAccessor(executor).getPropertyValue("maxPoolSize");
+    }
 
+    private int getQueueCapacity(Object executor) {
+        return (Integer) new DirectFieldAccessor(executor).getPropertyValue("queueCapacity");
+    }
 
-	private int getCorePoolSize(Object executor) {
-		return (Integer) new DirectFieldAccessor(executor).getPropertyValue("corePoolSize");
-	}
+    private int getKeepAliveSeconds(Object executor) {
+        return (Integer) new DirectFieldAccessor(executor).getPropertyValue("keepAliveSeconds");
+    }
 
-	private int getMaxPoolSize(Object executor) {
-		return (Integer) new DirectFieldAccessor(executor).getPropertyValue("maxPoolSize");
-	}
-
-	private int getQueueCapacity(Object executor) {
-		return (Integer) new DirectFieldAccessor(executor).getPropertyValue("queueCapacity");
-	}
-
-	private int getKeepAliveSeconds(Object executor) {
-		return (Integer) new DirectFieldAccessor(executor).getPropertyValue("keepAliveSeconds");
-	}
-
-	private boolean getAllowCoreThreadTimeOut(Object executor) {
-		return (Boolean) new DirectFieldAccessor(executor).getPropertyValue("allowCoreThreadTimeOut");
-	}
-
+    private boolean getAllowCoreThreadTimeOut(Object executor) {
+        return (Boolean)
+                new DirectFieldAccessor(executor).getPropertyValue("allowCoreThreadTimeOut");
+    }
 }

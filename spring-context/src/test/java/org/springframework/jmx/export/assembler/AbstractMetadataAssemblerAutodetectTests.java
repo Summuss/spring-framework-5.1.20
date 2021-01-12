@@ -18,18 +18,15 @@ package org.springframework.jmx.export.assembler;
 
 import org.springframework.jmx.export.metadata.JmxAttributeSource;
 
-/**
- * @author Rob Harrop
- */
+/** @author Rob Harrop */
 public abstract class AbstractMetadataAssemblerAutodetectTests extends AbstractAutodetectTests {
 
-	@Override
-	protected AutodetectCapableMBeanInfoAssembler getAssembler() {
-		MetadataMBeanInfoAssembler assembler = new MetadataMBeanInfoAssembler();
-		assembler.setAttributeSource(getAttributeSource());
-		return assembler;
-	}
+    @Override
+    protected AutodetectCapableMBeanInfoAssembler getAssembler() {
+        MetadataMBeanInfoAssembler assembler = new MetadataMBeanInfoAssembler();
+        assembler.setAttributeSource(getAttributeSource());
+        return assembler;
+    }
 
-	protected abstract JmxAttributeSource getAttributeSource();
-
+    protected abstract JmxAttributeSource getAttributeSource();
 }

@@ -32,12 +32,12 @@ import org.springframework.core.convert.converter.ConverterRegistry;
 import org.springframework.format.datetime.DateFormatterRegistrar;
 
 /**
- * Installs lower-level type converters required to integrate
- * Joda-Time support into Spring's field formatting system.
+ * Installs lower-level type converters required to integrate Joda-Time support into Spring's field
+ * formatting system.
  *
- * <p>Note: {@link JodaTimeFormatterRegistrar} installs these converters
- * and relies on several of them for its formatters. Some additional
- * converters are just being registered for custom conversion scenarios.
+ * <p>Note: {@link JodaTimeFormatterRegistrar} installs these converters and relies on several of
+ * them for its formatters. Some additional converters are just being registered for custom
+ * conversion scenarios.
  *
  * @author Keith Donald
  * @author Phillip Webb
@@ -46,174 +46,169 @@ import org.springframework.format.datetime.DateFormatterRegistrar;
  */
 final class JodaTimeConverters {
 
-	private JodaTimeConverters() {
-	}
+    private JodaTimeConverters() {}
 
+    /**
+     * Install the converters into the converter registry.
+     *
+     * @param registry the converter registry
+     */
+    @SuppressWarnings("deprecation")
+    public static void registerConverters(ConverterRegistry registry) {
+        DateFormatterRegistrar.addDateConverters(registry);
 
-	/**
-	 * Install the converters into the converter registry.
-	 * @param registry the converter registry
-	 */
-	@SuppressWarnings("deprecation")
-	public static void registerConverters(ConverterRegistry registry) {
-		DateFormatterRegistrar.addDateConverters(registry);
+        registry.addConverter(new DateTimeToLocalDateConverter());
+        registry.addConverter(new DateTimeToLocalTimeConverter());
+        registry.addConverter(new DateTimeToLocalDateTimeConverter());
+        registry.addConverter(new DateTimeToDateMidnightConverter());
+        registry.addConverter(new DateTimeToMutableDateTimeConverter());
+        registry.addConverter(new DateTimeToInstantConverter());
+        registry.addConverter(new DateTimeToDateConverter());
+        registry.addConverter(new DateTimeToCalendarConverter());
+        registry.addConverter(new DateTimeToLongConverter());
+        registry.addConverter(new DateToReadableInstantConverter());
+        registry.addConverter(new CalendarToReadableInstantConverter());
+        registry.addConverter(new LongToReadableInstantConverter());
+        registry.addConverter(new LocalDateTimeToLocalDateConverter());
+        registry.addConverter(new LocalDateTimeToLocalTimeConverter());
+    }
 
-		registry.addConverter(new DateTimeToLocalDateConverter());
-		registry.addConverter(new DateTimeToLocalTimeConverter());
-		registry.addConverter(new DateTimeToLocalDateTimeConverter());
-		registry.addConverter(new DateTimeToDateMidnightConverter());
-		registry.addConverter(new DateTimeToMutableDateTimeConverter());
-		registry.addConverter(new DateTimeToInstantConverter());
-		registry.addConverter(new DateTimeToDateConverter());
-		registry.addConverter(new DateTimeToCalendarConverter());
-		registry.addConverter(new DateTimeToLongConverter());
-		registry.addConverter(new DateToReadableInstantConverter());
-		registry.addConverter(new CalendarToReadableInstantConverter());
-		registry.addConverter(new LongToReadableInstantConverter());
-		registry.addConverter(new LocalDateTimeToLocalDateConverter());
-		registry.addConverter(new LocalDateTimeToLocalTimeConverter());
-	}
+    private static class DateTimeToLocalDateConverter implements Converter<DateTime, LocalDate> {
 
+        @Override
+        public LocalDate convert(DateTime source) {
+            return source.toLocalDate();
+        }
+    }
 
-	private static class DateTimeToLocalDateConverter implements Converter<DateTime, LocalDate> {
+    private static class DateTimeToLocalTimeConverter implements Converter<DateTime, LocalTime> {
 
-		@Override
-		public LocalDate convert(DateTime source) {
-			return source.toLocalDate();
-		}
-	}
+        @Override
+        public LocalTime convert(DateTime source) {
+            return source.toLocalTime();
+        }
+    }
 
+    private static class DateTimeToLocalDateTimeConverter
+            implements Converter<DateTime, LocalDateTime> {
 
-	private static class DateTimeToLocalTimeConverter implements Converter<DateTime, LocalTime> {
+        @Override
+        public LocalDateTime convert(DateTime source) {
+            return source.toLocalDateTime();
+        }
+    }
 
-		@Override
-		public LocalTime convert(DateTime source) {
-			return source.toLocalTime();
-		}
-	}
+    @Deprecated
+    private static class DateTimeToDateMidnightConverter
+            implements Converter<DateTime, org.joda.time.DateMidnight> {
 
+        @Override
+        public org.joda.time.DateMidnight convert(DateTime source) {
+            return source.toDateMidnight();
+        }
+    }
 
-	private static class DateTimeToLocalDateTimeConverter implements Converter<DateTime, LocalDateTime> {
+    private static class DateTimeToMutableDateTimeConverter
+            implements Converter<DateTime, MutableDateTime> {
 
-		@Override
-		public LocalDateTime convert(DateTime source) {
-			return source.toLocalDateTime();
-		}
-	}
+        @Override
+        public MutableDateTime convert(DateTime source) {
+            return source.toMutableDateTime();
+        }
+    }
 
+    private static class DateTimeToInstantConverter implements Converter<DateTime, Instant> {
 
-	@Deprecated
-	private static class DateTimeToDateMidnightConverter implements Converter<DateTime, org.joda.time.DateMidnight> {
+        @Override
+        public Instant convert(DateTime source) {
+            return source.toInstant();
+        }
+    }
 
-		@Override
-		public org.joda.time.DateMidnight convert(DateTime source) {
-			return source.toDateMidnight();
-		}
-	}
+    private static class DateTimeToDateConverter implements Converter<DateTime, Date> {
 
+        @Override
+        public Date convert(DateTime source) {
+            return source.toDate();
+        }
+    }
 
-	private static class DateTimeToMutableDateTimeConverter implements Converter<DateTime, MutableDateTime> {
+    private static class DateTimeToCalendarConverter implements Converter<DateTime, Calendar> {
 
-		@Override
-		public MutableDateTime convert(DateTime source) {
-			return source.toMutableDateTime();
-		}
-	}
+        @Override
+        public Calendar convert(DateTime source) {
+            return source.toGregorianCalendar();
+        }
+    }
 
+    private static class DateTimeToLongConverter implements Converter<DateTime, Long> {
 
-	private static class DateTimeToInstantConverter implements Converter<DateTime, Instant> {
+        @Override
+        public Long convert(DateTime source) {
+            return source.getMillis();
+        }
+    }
 
-		@Override
-		public Instant convert(DateTime source) {
-			return source.toInstant();
-		}
-	}
+    /**
+     * Used when printing a {@code java.util.Date} field with a ReadableInstantPrinter.
+     *
+     * @see MillisecondInstantPrinter
+     * @see JodaDateTimeFormatAnnotationFormatterFactory
+     */
+    private static class DateToReadableInstantConverter
+            implements Converter<Date, ReadableInstant> {
 
+        @Override
+        public ReadableInstant convert(Date source) {
+            return new DateTime(source);
+        }
+    }
 
-	private static class DateTimeToDateConverter implements Converter<DateTime, Date> {
+    /**
+     * Used when printing a {@code java.util.Calendar} field with a ReadableInstantPrinter.
+     *
+     * @see MillisecondInstantPrinter
+     * @see JodaDateTimeFormatAnnotationFormatterFactory
+     */
+    private static class CalendarToReadableInstantConverter
+            implements Converter<Calendar, ReadableInstant> {
 
-		@Override
-		public Date convert(DateTime source) {
-			return source.toDate();
-		}
-	}
+        @Override
+        public ReadableInstant convert(Calendar source) {
+            return new DateTime(source);
+        }
+    }
 
+    /**
+     * Used when printing a Long field with a ReadableInstantPrinter.
+     *
+     * @see MillisecondInstantPrinter
+     * @see JodaDateTimeFormatAnnotationFormatterFactory
+     */
+    private static class LongToReadableInstantConverter
+            implements Converter<Long, ReadableInstant> {
 
-	private static class DateTimeToCalendarConverter implements Converter<DateTime, Calendar> {
+        @Override
+        public ReadableInstant convert(Long source) {
+            return new DateTime(source.longValue());
+        }
+    }
 
-		@Override
-		public Calendar convert(DateTime source) {
-			return source.toGregorianCalendar();
-		}
-	}
+    private static class LocalDateTimeToLocalDateConverter
+            implements Converter<LocalDateTime, LocalDate> {
 
+        @Override
+        public LocalDate convert(LocalDateTime source) {
+            return source.toLocalDate();
+        }
+    }
 
-	private static class DateTimeToLongConverter implements Converter<DateTime, Long> {
+    private static class LocalDateTimeToLocalTimeConverter
+            implements Converter<LocalDateTime, LocalTime> {
 
-		@Override
-		public Long convert(DateTime source) {
-			return source.getMillis();
-		}
-	}
-
-
-	/**
-	 * Used when printing a {@code java.util.Date} field with a ReadableInstantPrinter.
-	 * @see MillisecondInstantPrinter
-	 * @see JodaDateTimeFormatAnnotationFormatterFactory
-	 */
-	private static class DateToReadableInstantConverter implements Converter<Date, ReadableInstant> {
-
-		@Override
-		public ReadableInstant convert(Date source) {
-			return new DateTime(source);
-		}
-	}
-
-
-	/**
-	 * Used when printing a {@code java.util.Calendar} field with a ReadableInstantPrinter.
-	 * @see MillisecondInstantPrinter
-	 * @see JodaDateTimeFormatAnnotationFormatterFactory
-	 */
-	private static class CalendarToReadableInstantConverter implements Converter<Calendar, ReadableInstant> {
-
-		@Override
-		public ReadableInstant convert(Calendar source) {
-			return new DateTime(source);
-		}
-	}
-
-
-	/**
-	 * Used when printing a Long field with a ReadableInstantPrinter.
-	 * @see MillisecondInstantPrinter
-	 * @see JodaDateTimeFormatAnnotationFormatterFactory
-	 */
-	private static class LongToReadableInstantConverter implements Converter<Long, ReadableInstant> {
-
-		@Override
-		public ReadableInstant convert(Long source) {
-			return new DateTime(source.longValue());
-		}
-	}
-
-
-	private static class LocalDateTimeToLocalDateConverter implements Converter<LocalDateTime, LocalDate> {
-
-		@Override
-		public LocalDate convert(LocalDateTime source) {
-			return source.toLocalDate();
-		}
-	}
-
-
-	private static class LocalDateTimeToLocalTimeConverter implements Converter<LocalDateTime, LocalTime> {
-
-		@Override
-		public LocalTime convert(LocalDateTime source) {
-			return source.toLocalTime();
-		}
-	}
-
+        @Override
+        public LocalTime convert(LocalDateTime source) {
+            return source.toLocalTime();
+        }
+    }
 }

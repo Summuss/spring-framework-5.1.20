@@ -35,39 +35,35 @@ import org.springframework.web.util.WebUtils;
  * @author Rossen Stoyanchev
  * @since 3.1
  */
-public class ServletCookieValueMethodArgumentResolver extends AbstractCookieValueMethodArgumentResolver {
+public class ServletCookieValueMethodArgumentResolver
+        extends AbstractCookieValueMethodArgumentResolver {
 
-	private UrlPathHelper urlPathHelper = UrlPathHelper.defaultInstance;
+    private UrlPathHelper urlPathHelper = UrlPathHelper.defaultInstance;
 
+    public ServletCookieValueMethodArgumentResolver(@Nullable ConfigurableBeanFactory beanFactory) {
+        super(beanFactory);
+    }
 
-	public ServletCookieValueMethodArgumentResolver(@Nullable ConfigurableBeanFactory beanFactory) {
-		super(beanFactory);
-	}
+    public void setUrlPathHelper(UrlPathHelper urlPathHelper) {
+        this.urlPathHelper = urlPathHelper;
+    }
 
+    @Override
+    @Nullable
+    protected Object resolveName(
+            String cookieName, MethodParameter parameter, NativeWebRequest webRequest)
+            throws Exception {
 
-	public void setUrlPathHelper(UrlPathHelper urlPathHelper) {
-		this.urlPathHelper = urlPathHelper;
-	}
+        HttpServletRequest servletRequest = webRequest.getNativeRequest(HttpServletRequest.class);
+        Assert.state(servletRequest != null, "No HttpServletRequest");
 
-
-	@Override
-	@Nullable
-	protected Object resolveName(String cookieName, MethodParameter parameter,
-			NativeWebRequest webRequest) throws Exception {
-
-		HttpServletRequest servletRequest = webRequest.getNativeRequest(HttpServletRequest.class);
-		Assert.state(servletRequest != null, "No HttpServletRequest");
-
-		Cookie cookieValue = WebUtils.getCookie(servletRequest, cookieName);
-		if (Cookie.class.isAssignableFrom(parameter.getNestedParameterType())) {
-			return cookieValue;
-		}
-		else if (cookieValue != null) {
-			return this.urlPathHelper.decodeRequestString(servletRequest, cookieValue.getValue());
-		}
-		else {
-			return null;
-		}
-	}
-
+        Cookie cookieValue = WebUtils.getCookie(servletRequest, cookieName);
+        if (Cookie.class.isAssignableFrom(parameter.getNestedParameterType())) {
+            return cookieValue;
+        } else if (cookieValue != null) {
+            return this.urlPathHelper.decodeRequestString(servletRequest, cookieValue.getValue());
+        } else {
+            return null;
+        }
+    }
 }

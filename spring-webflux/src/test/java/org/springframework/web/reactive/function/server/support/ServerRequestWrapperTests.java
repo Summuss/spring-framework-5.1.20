@@ -38,147 +38,144 @@ import org.springframework.web.reactive.function.server.ServerRequest;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
-/**
- * @author Arjen Poutsma
- */
+/** @author Arjen Poutsma */
 public class ServerRequestWrapperTests {
 
-	private final ServerRequest mockRequest = mock(ServerRequest.class);
+    private final ServerRequest mockRequest = mock(ServerRequest.class);
 
-	private final ServerRequestWrapper wrapper = new ServerRequestWrapper(mockRequest);
+    private final ServerRequestWrapper wrapper = new ServerRequestWrapper(mockRequest);
 
+    @Test
+    public void request() {
+        assertSame(mockRequest, wrapper.request());
+    }
 
-	@Test
-	public void request() {
-		assertSame(mockRequest, wrapper.request());
-	}
+    @Test
+    public void method() {
+        HttpMethod method = HttpMethod.POST;
+        when(mockRequest.method()).thenReturn(method);
 
-	@Test
-	public void method() {
-		HttpMethod method = HttpMethod.POST;
-		when(mockRequest.method()).thenReturn(method);
+        assertSame(method, wrapper.method());
+    }
 
-		assertSame(method, wrapper.method());
-	}
+    @Test
+    public void uri() {
+        URI uri = URI.create("https://example.com");
+        when(mockRequest.uri()).thenReturn(uri);
 
-	@Test
-	public void uri() {
-		URI uri = URI.create("https://example.com");
-		when(mockRequest.uri()).thenReturn(uri);
+        assertSame(uri, wrapper.uri());
+    }
 
-		assertSame(uri, wrapper.uri());
-	}
+    @Test
+    public void path() {
+        String path = "/foo/bar";
+        when(mockRequest.path()).thenReturn(path);
 
-	@Test
-	public void path() {
-		String path = "/foo/bar";
-		when(mockRequest.path()).thenReturn(path);
+        assertSame(path, wrapper.path());
+    }
 
-		assertSame(path, wrapper.path());
-	}
+    @Test
+    public void headers() {
+        ServerRequest.Headers headers = mock(ServerRequest.Headers.class);
+        when(mockRequest.headers()).thenReturn(headers);
 
-	@Test
-	public void headers() {
-		ServerRequest.Headers headers = mock(ServerRequest.Headers.class);
-		when(mockRequest.headers()).thenReturn(headers);
+        assertSame(headers, wrapper.headers());
+    }
 
-		assertSame(headers, wrapper.headers());
-	}
+    @Test
+    public void attribute() {
+        String name = "foo";
+        String value = "bar";
+        when(mockRequest.attribute(name)).thenReturn(Optional.of(value));
 
-	@Test
-	public void attribute() {
-		String name = "foo";
-		String value = "bar";
-		when(mockRequest.attribute(name)).thenReturn(Optional.of(value));
+        assertEquals(Optional.of(value), wrapper.attribute(name));
+    }
 
-		assertEquals(Optional.of(value), wrapper.attribute(name));
-	}
+    @Test
+    public void queryParam() {
+        String name = "foo";
+        String value = "bar";
+        when(mockRequest.queryParam(name)).thenReturn(Optional.of(value));
 
-	@Test
-	public void queryParam() {
-		String name = "foo";
-		String value = "bar";
-		when(mockRequest.queryParam(name)).thenReturn(Optional.of(value));
+        assertEquals(Optional.of(value), wrapper.queryParam(name));
+    }
 
-		assertEquals(Optional.of(value), wrapper.queryParam(name));
-	}
+    @Test
+    public void queryParams() {
+        MultiValueMap<String, String> value = new LinkedMultiValueMap<>();
+        value.add("foo", "bar");
+        when(mockRequest.queryParams()).thenReturn(value);
 
-	@Test
-	public void queryParams() {
-		MultiValueMap<String, String> value = new LinkedMultiValueMap<>();
-		value.add("foo", "bar");
-		when(mockRequest.queryParams()).thenReturn(value);
+        assertSame(value, wrapper.queryParams());
+    }
 
-		assertSame(value, wrapper.queryParams());
-	}
+    @Test
+    public void pathVariable() {
+        String name = "foo";
+        String value = "bar";
+        when(mockRequest.pathVariable(name)).thenReturn(value);
 
-	@Test
-	public void pathVariable() {
-		String name = "foo";
-		String value = "bar";
-		when(mockRequest.pathVariable(name)).thenReturn(value);
+        assertEquals(value, wrapper.pathVariable(name));
+    }
 
-		assertEquals(value, wrapper.pathVariable(name));
-	}
+    @Test
+    public void pathVariables() {
+        Map<String, String> pathVariables = Collections.singletonMap("foo", "bar");
+        when(mockRequest.pathVariables()).thenReturn(pathVariables);
 
-	@Test
-	public void pathVariables() {
-		Map<String, String> pathVariables = Collections.singletonMap("foo", "bar");
-		when(mockRequest.pathVariables()).thenReturn(pathVariables);
+        assertSame(pathVariables, wrapper.pathVariables());
+    }
 
-		assertSame(pathVariables, wrapper.pathVariables());
-	}
+    @Test
+    @SuppressWarnings("unchecked")
+    public void cookies() {
+        MultiValueMap<String, HttpCookie> cookies = mock(MultiValueMap.class);
+        when(mockRequest.cookies()).thenReturn(cookies);
 
-	@Test
-	@SuppressWarnings("unchecked")
-	public void cookies() {
-		MultiValueMap<String, HttpCookie> cookies = mock(MultiValueMap.class);
-		when(mockRequest.cookies()).thenReturn(cookies);
+        assertSame(cookies, wrapper.cookies());
+    }
 
-		assertSame(cookies, wrapper.cookies());
-	}
+    @Test
+    public void bodyExtractor() {
+        Mono<String> result = Mono.just("foo");
+        BodyExtractor<Mono<String>, ReactiveHttpInputMessage> extractor =
+                BodyExtractors.toMono(String.class);
+        when(mockRequest.body(extractor)).thenReturn(result);
 
-	@Test
-	public void bodyExtractor() {
-		Mono<String> result = Mono.just("foo");
-		BodyExtractor<Mono<String>, ReactiveHttpInputMessage> extractor = BodyExtractors.toMono(String.class);
-		when(mockRequest.body(extractor)).thenReturn(result);
+        assertSame(result, wrapper.body(extractor));
+    }
 
-		assertSame(result, wrapper.body(extractor));
-	}
+    @Test
+    public void bodyToMonoClass() {
+        Mono<String> result = Mono.just("foo");
+        when(mockRequest.bodyToMono(String.class)).thenReturn(result);
 
-	@Test
-	public void bodyToMonoClass() {
-		Mono<String> result = Mono.just("foo");
-		when(mockRequest.bodyToMono(String.class)).thenReturn(result);
+        assertSame(result, wrapper.bodyToMono(String.class));
+    }
 
-		assertSame(result, wrapper.bodyToMono(String.class));
-	}
+    @Test
+    public void bodyToMonoParameterizedTypeReference() {
+        Mono<String> result = Mono.just("foo");
+        ParameterizedTypeReference<String> reference = new ParameterizedTypeReference<String>() {};
+        when(mockRequest.bodyToMono(reference)).thenReturn(result);
 
-	@Test
-	public void bodyToMonoParameterizedTypeReference() {
-		Mono<String> result = Mono.just("foo");
-		ParameterizedTypeReference<String> reference = new ParameterizedTypeReference<String>() {};
-		when(mockRequest.bodyToMono(reference)).thenReturn(result);
+        assertSame(result, wrapper.bodyToMono(reference));
+    }
 
-		assertSame(result, wrapper.bodyToMono(reference));
-	}
+    @Test
+    public void bodyToFluxClass() {
+        Flux<String> result = Flux.just("foo");
+        when(mockRequest.bodyToFlux(String.class)).thenReturn(result);
 
-	@Test
-	public void bodyToFluxClass() {
-		Flux<String> result = Flux.just("foo");
-		when(mockRequest.bodyToFlux(String.class)).thenReturn(result);
+        assertSame(result, wrapper.bodyToFlux(String.class));
+    }
 
-		assertSame(result, wrapper.bodyToFlux(String.class));
-	}
+    @Test
+    public void bodyToFluxParameterizedTypeReference() {
+        Flux<String> result = Flux.just("foo");
+        ParameterizedTypeReference<String> reference = new ParameterizedTypeReference<String>() {};
+        when(mockRequest.bodyToFlux(reference)).thenReturn(result);
 
-	@Test
-	public void bodyToFluxParameterizedTypeReference() {
-		Flux<String> result = Flux.just("foo");
-		ParameterizedTypeReference<String> reference = new ParameterizedTypeReference<String>() {};
-		when(mockRequest.bodyToFlux(reference)).thenReturn(result);
-
-		assertSame(result, wrapper.bodyToFlux(reference));
-	}
-
+        assertSame(result, wrapper.bodyToFlux(reference));
+    }
 }

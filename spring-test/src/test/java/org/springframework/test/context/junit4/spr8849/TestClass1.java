@@ -29,8 +29,8 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import static org.junit.Assert.*;
 
 /**
- * This name of this class intentionally does not end with "Test" or "Tests"
- * since it should only be run as part of the test suite: {@link Spr8849Tests}.
+ * This name of this class intentionally does not end with "Test" or "Tests" since it should only be
+ * run as part of the test suite: {@link Spr8849Tests}.
  *
  * @author Mickael Leduque
  * @author Sam Brannen
@@ -41,19 +41,15 @@ import static org.junit.Assert.*;
 @ContextConfiguration
 public class TestClass1 {
 
-	@Configuration
-	@ImportResource("classpath:/org/springframework/test/context/junit4/spr8849/datasource-config.xml")
-	static class Config {
-	}
+    @Configuration
+    @ImportResource(
+            "classpath:/org/springframework/test/context/junit4/spr8849/datasource-config.xml")
+    static class Config {}
 
+    @Resource DataSource dataSource;
 
-	@Resource
-	DataSource dataSource;
-
-
-	@Test
-	public void dummyTest() {
-		assertNotNull(dataSource);
-	}
-
+    @Test
+    public void dummyTest() {
+        assertNotNull(dataSource);
+    }
 }

@@ -32,24 +32,22 @@ import org.springframework.web.context.request.NativeWebRequest;
 @FunctionalInterface
 public interface ContentNegotiationStrategy {
 
-	/**
-	 * A singleton list with {@link MediaType#ALL} that is returned from
-	 * {@link #resolveMediaTypes} when no specific media types are requested.
-	 * @since 5.0.5
-	 */
-	List<MediaType> MEDIA_TYPE_ALL_LIST = Collections.singletonList(MediaType.ALL);
+    /**
+     * A singleton list with {@link MediaType#ALL} that is returned from {@link #resolveMediaTypes}
+     * when no specific media types are requested.
+     *
+     * @since 5.0.5
+     */
+    List<MediaType> MEDIA_TYPE_ALL_LIST = Collections.singletonList(MediaType.ALL);
 
-
-	/**
-	 * Resolve the given request to a list of media types. The returned list is
-	 * ordered by specificity first and by quality parameter second.
-	 * @param webRequest the current request
-	 * @return the requested media types, or {@link #MEDIA_TYPE_ALL_LIST} if none
-	 * were requested.
-	 * @throws HttpMediaTypeNotAcceptableException if the requested media
-	 * types cannot be parsed
-	 */
-	List<MediaType> resolveMediaTypes(NativeWebRequest webRequest)
-			throws HttpMediaTypeNotAcceptableException;
-
+    /**
+     * Resolve the given request to a list of media types. The returned list is ordered by
+     * specificity first and by quality parameter second.
+     *
+     * @param webRequest the current request
+     * @return the requested media types, or {@link #MEDIA_TYPE_ALL_LIST} if none were requested.
+     * @throws HttpMediaTypeNotAcceptableException if the requested media types cannot be parsed
+     */
+    List<MediaType> resolveMediaTypes(NativeWebRequest webRequest)
+            throws HttpMediaTypeNotAcceptableException;
 }

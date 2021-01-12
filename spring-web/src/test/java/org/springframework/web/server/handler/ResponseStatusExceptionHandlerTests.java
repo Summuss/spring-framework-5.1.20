@@ -47,69 +47,76 @@ import static org.junit.Assert.assertThat;
  */
 public class ResponseStatusExceptionHandlerTests {
 
-	protected final MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/"));
+    protected final MockServerWebExchange exchange =
+            MockServerWebExchange.from(MockServerHttpRequest.get("/"));
 
-	protected ResponseStatusExceptionHandler handler;
+    protected ResponseStatusExceptionHandler handler;
 
+    @Before
+    public void setup() {
+        this.handler = createResponseStatusExceptionHandler();
+    }
 
-	@Before
-	public void setup() {
-		this.handler = createResponseStatusExceptionHandler();
-	}
+    protected ResponseStatusExceptionHandler createResponseStatusExceptionHandler() {
+        return new ResponseStatusExceptionHandler();
+    }
 
-	protected ResponseStatusExceptionHandler createResponseStatusExceptionHandler() {
-		return new ResponseStatusExceptionHandler();
-	}
+    @Test
+    public void handleResponseStatusException() {
+        Throwable ex = new ResponseStatusException(HttpStatus.BAD_REQUEST, "");
+        this.handler.handle(this.exchange, ex).block(Duration.ofSeconds(5));
+        assertEquals(HttpStatus.BAD_REQUEST, this.exchange.getResponse().getStatusCode());
+    }
 
+    @Test
+    public void handleNestedResponseStatusException() {
+        Throwable ex = new Exception(new ResponseStatusException(HttpStatus.BAD_REQUEST, ""));
+        this.handler.handle(this.exchange, ex).block(Duration.ofSeconds(5));
+        assertEquals(HttpStatus.BAD_REQUEST, this.exchange.getResponse().getStatusCode());
+    }
 
-	@Test
-	public void handleResponseStatusException() {
-		Throwable ex = new ResponseStatusException(HttpStatus.BAD_REQUEST, "");
-		this.handler.handle(this.exchange, ex).block(Duration.ofSeconds(5));
-		assertEquals(HttpStatus.BAD_REQUEST, this.exchange.getResponse().getStatusCode());
-	}
+    @Test // gh-23741
+    public void handleMethodNotAllowed() {
+        Throwable ex =
+                new MethodNotAllowedException(
+                        HttpMethod.PATCH, Arrays.asList(HttpMethod.POST, HttpMethod.PUT));
+        this.handler.handle(this.exchange, ex).block(Duration.ofSeconds(5));
 
-	@Test
-	public void handleNestedResponseStatusException() {
-		Throwable ex = new Exception(new ResponseStatusException(HttpStatus.BAD_REQUEST, ""));
-		this.handler.handle(this.exchange, ex).block(Duration.ofSeconds(5));
-		assertEquals(HttpStatus.BAD_REQUEST, this.exchange.getResponse().getStatusCode());
-	}
+        MockServerHttpResponse response = this.exchange.getResponse();
+        assertEquals(HttpStatus.METHOD_NOT_ALLOWED, response.getStatusCode());
+        assertThat(response.getHeaders().getAllow(), contains(HttpMethod.POST, HttpMethod.PUT));
+    }
 
-	@Test // gh-23741
-	public void handleMethodNotAllowed() {
-		Throwable ex = new MethodNotAllowedException(HttpMethod.PATCH, Arrays.asList(HttpMethod.POST, HttpMethod.PUT));
-		this.handler.handle(this.exchange, ex).block(Duration.ofSeconds(5));
+    @Test // gh-23741
+    public void handleResponseStatusExceptionWithHeaders() {
+        Throwable ex =
+                new NotAcceptableStatusException(
+                        Arrays.asList(MediaType.TEXT_PLAIN, MediaType.TEXT_HTML));
+        this.handler.handle(this.exchange, ex).block(Duration.ofSeconds(5));
 
-		MockServerHttpResponse response = this.exchange.getResponse();
-		assertEquals(HttpStatus.METHOD_NOT_ALLOWED, response.getStatusCode());
-		assertThat(response.getHeaders().getAllow(), contains(HttpMethod.POST, HttpMethod.PUT));
-	}
+        MockServerHttpResponse response = this.exchange.getResponse();
+        assertEquals(HttpStatus.NOT_ACCEPTABLE, response.getStatusCode());
+        assertThat(
+                response.getHeaders().getAccept(),
+                contains(MediaType.TEXT_PLAIN, MediaType.TEXT_HTML));
+    }
 
-	@Test // gh-23741
-	public void handleResponseStatusExceptionWithHeaders() {
-		Throwable ex = new NotAcceptableStatusException(Arrays.asList(MediaType.TEXT_PLAIN, MediaType.TEXT_HTML));
-		this.handler.handle(this.exchange, ex).block(Duration.ofSeconds(5));
+    @Test
+    public void unresolvedException() {
+        Throwable expected = new IllegalStateException();
+        Mono<Void> mono = this.handler.handle(this.exchange, expected);
+        StepVerifier.create(mono).consumeErrorWith(actual -> assertSame(expected, actual)).verify();
+    }
 
-		MockServerHttpResponse response = this.exchange.getResponse();
-		assertEquals(HttpStatus.NOT_ACCEPTABLE, response.getStatusCode());
-		assertThat(response.getHeaders().getAccept(), contains(MediaType.TEXT_PLAIN, MediaType.TEXT_HTML));
-	}
-
-	@Test
-	public void unresolvedException() {
-		Throwable expected = new IllegalStateException();
-		Mono<Void> mono = this.handler.handle(this.exchange, expected);
-		StepVerifier.create(mono).consumeErrorWith(actual -> assertSame(expected, actual)).verify();
-	}
-
-	@Test  // SPR-16231
-	public void responseCommitted() {
-		Throwable ex = new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Oops");
-		this.exchange.getResponse().setStatusCode(HttpStatus.CREATED);
-		Mono<Void> mono = this.exchange.getResponse().setComplete()
-				.then(Mono.defer(() -> this.handler.handle(this.exchange, ex)));
-		StepVerifier.create(mono).consumeErrorWith(actual -> assertSame(ex, actual)).verify();
-	}
-
+    @Test // SPR-16231
+    public void responseCommitted() {
+        Throwable ex = new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Oops");
+        this.exchange.getResponse().setStatusCode(HttpStatus.CREATED);
+        Mono<Void> mono =
+                this.exchange
+                        .getResponse()
+                        .setComplete()
+                        .then(Mono.defer(() -> this.handler.handle(this.exchange, ex)));
+        StepVerifier.create(mono).consumeErrorWith(actual -> assertSame(ex, actual)).verify();
+    }
 }

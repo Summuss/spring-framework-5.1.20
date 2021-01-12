@@ -45,208 +45,213 @@ import static org.junit.Assert.*;
  */
 public class SessionScopeTests {
 
-	private final DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
+    private final DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
 
+    @Before
+    public void setup() throws Exception {
+        this.beanFactory.registerScope("session", new SessionScope());
+        XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(this.beanFactory);
+        reader.loadBeanDefinitions(new ClassPathResource("sessionScopeTests.xml", getClass()));
+    }
 
-	@Before
-	public void setup() throws Exception {
-		this.beanFactory.registerScope("session", new SessionScope());
-		XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(this.beanFactory);
-		reader.loadBeanDefinitions(new ClassPathResource("sessionScopeTests.xml", getClass()));
-	}
+    @After
+    public void resetRequestAttributes() {
+        RequestContextHolder.setRequestAttributes(null);
+    }
 
-	@After
-	public void resetRequestAttributes() {
-		RequestContextHolder.setRequestAttributes(null);
-	}
+    @Test
+    public void getFromScope() throws Exception {
+        AtomicInteger count = new AtomicInteger();
+        MockHttpSession session =
+                new MockHttpSession() {
+                    @Override
+                    public void setAttribute(String name, Object value) {
+                        super.setAttribute(name, value);
+                        count.incrementAndGet();
+                    }
+                };
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setSession(session);
+        ServletRequestAttributes requestAttributes = new ServletRequestAttributes(request);
 
+        RequestContextHolder.setRequestAttributes(requestAttributes);
+        String name = "sessionScopedObject";
+        assertNull(session.getAttribute(name));
+        TestBean bean = (TestBean) this.beanFactory.getBean(name);
+        assertEquals(1, count.intValue());
+        assertEquals(session.getAttribute(name), bean);
+        assertSame(bean, this.beanFactory.getBean(name));
+        assertEquals(1, count.intValue());
 
-	@Test
-	public void getFromScope() throws Exception {
-		AtomicInteger count = new AtomicInteger();
-		MockHttpSession session = new MockHttpSession() {
-			@Override
-			public void setAttribute(String name, Object value) {
-				super.setAttribute(name, value);
-				count.incrementAndGet();
-			}
-		};
-		MockHttpServletRequest request = new MockHttpServletRequest();
-		request.setSession(session);
-		ServletRequestAttributes requestAttributes = new ServletRequestAttributes(request);
+        // should re-propagate updated attribute
+        requestAttributes.requestCompleted();
+        assertEquals(session.getAttribute(name), bean);
+        assertEquals(2, count.intValue());
+    }
 
-		RequestContextHolder.setRequestAttributes(requestAttributes);
-		String name = "sessionScopedObject";
-		assertNull(session.getAttribute(name));
-		TestBean bean = (TestBean) this.beanFactory.getBean(name);
-		assertEquals(1, count.intValue());
-		assertEquals(session.getAttribute(name), bean);
-		assertSame(bean, this.beanFactory.getBean(name));
-		assertEquals(1, count.intValue());
+    @Test
+    public void getFromScopeWithSingleAccess() throws Exception {
+        AtomicInteger count = new AtomicInteger();
+        MockHttpSession session =
+                new MockHttpSession() {
+                    @Override
+                    public void setAttribute(String name, Object value) {
+                        super.setAttribute(name, value);
+                        count.incrementAndGet();
+                    }
+                };
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setSession(session);
+        ServletRequestAttributes requestAttributes = new ServletRequestAttributes(request);
 
-		// should re-propagate updated attribute
-		requestAttributes.requestCompleted();
-		assertEquals(session.getAttribute(name), bean);
-		assertEquals(2, count.intValue());
-	}
+        RequestContextHolder.setRequestAttributes(requestAttributes);
+        String name = "sessionScopedObject";
+        assertNull(session.getAttribute(name));
+        TestBean bean = (TestBean) this.beanFactory.getBean(name);
+        assertEquals(1, count.intValue());
 
-	@Test
-	public void getFromScopeWithSingleAccess() throws Exception {
-		AtomicInteger count = new AtomicInteger();
-		MockHttpSession session = new MockHttpSession() {
-			@Override
-			public void setAttribute(String name, Object value) {
-				super.setAttribute(name, value);
-				count.incrementAndGet();
-			}
-		};
-		MockHttpServletRequest request = new MockHttpServletRequest();
-		request.setSession(session);
-		ServletRequestAttributes requestAttributes = new ServletRequestAttributes(request);
+        // should re-propagate updated attribute
+        requestAttributes.requestCompleted();
+        assertEquals(session.getAttribute(name), bean);
+        assertEquals(2, count.intValue());
+    }
 
-		RequestContextHolder.setRequestAttributes(requestAttributes);
-		String name = "sessionScopedObject";
-		assertNull(session.getAttribute(name));
-		TestBean bean = (TestBean) this.beanFactory.getBean(name);
-		assertEquals(1, count.intValue());
+    @Test
+    public void destructionAtSessionTermination() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setSession(session);
+        ServletRequestAttributes requestAttributes = new ServletRequestAttributes(request);
 
-		// should re-propagate updated attribute
-		requestAttributes.requestCompleted();
-		assertEquals(session.getAttribute(name), bean);
-		assertEquals(2, count.intValue());
-	}
+        RequestContextHolder.setRequestAttributes(requestAttributes);
+        String name = "sessionScopedDisposableObject";
+        assertNull(session.getAttribute(name));
+        DerivedTestBean bean = (DerivedTestBean) this.beanFactory.getBean(name);
+        assertEquals(session.getAttribute(name), bean);
+        assertSame(bean, this.beanFactory.getBean(name));
 
-	@Test
-	public void destructionAtSessionTermination() throws Exception {
-		MockHttpSession session = new MockHttpSession();
-		MockHttpServletRequest request = new MockHttpServletRequest();
-		request.setSession(session);
-		ServletRequestAttributes requestAttributes = new ServletRequestAttributes(request);
+        requestAttributes.requestCompleted();
+        session.invalidate();
+        assertTrue(bean.wasDestroyed());
+    }
 
-		RequestContextHolder.setRequestAttributes(requestAttributes);
-		String name = "sessionScopedDisposableObject";
-		assertNull(session.getAttribute(name));
-		DerivedTestBean bean = (DerivedTestBean) this.beanFactory.getBean(name);
-		assertEquals(session.getAttribute(name), bean);
-		assertSame(bean, this.beanFactory.getBean(name));
+    @Test
+    public void destructionWithSessionSerialization() throws Exception {
+        doTestDestructionWithSessionSerialization(false);
+    }
 
-		requestAttributes.requestCompleted();
-		session.invalidate();
-		assertTrue(bean.wasDestroyed());
-	}
+    @Test
+    public void destructionWithSessionSerializationAndBeanPostProcessor() throws Exception {
+        this.beanFactory.addBeanPostProcessor(new CustomDestructionAwareBeanPostProcessor());
+        doTestDestructionWithSessionSerialization(false);
+    }
 
-	@Test
-	public void destructionWithSessionSerialization() throws Exception {
-		doTestDestructionWithSessionSerialization(false);
-	}
+    @Test
+    public void destructionWithSessionSerializationAndSerializableBeanPostProcessor()
+            throws Exception {
+        this.beanFactory.addBeanPostProcessor(
+                new CustomSerializableDestructionAwareBeanPostProcessor());
+        doTestDestructionWithSessionSerialization(true);
+    }
 
-	@Test
-	public void destructionWithSessionSerializationAndBeanPostProcessor() throws Exception {
-		this.beanFactory.addBeanPostProcessor(new CustomDestructionAwareBeanPostProcessor());
-		doTestDestructionWithSessionSerialization(false);
-	}
+    private void doTestDestructionWithSessionSerialization(boolean beanNameReset) throws Exception {
+        Serializable serializedState = null;
 
-	@Test
-	public void destructionWithSessionSerializationAndSerializableBeanPostProcessor() throws Exception {
-		this.beanFactory.addBeanPostProcessor(new CustomSerializableDestructionAwareBeanPostProcessor());
-		doTestDestructionWithSessionSerialization(true);
-	}
+        MockHttpSession session = new MockHttpSession();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setSession(session);
+        ServletRequestAttributes requestAttributes = new ServletRequestAttributes(request);
 
-	private void doTestDestructionWithSessionSerialization(boolean beanNameReset) throws Exception {
-		Serializable serializedState = null;
+        RequestContextHolder.setRequestAttributes(requestAttributes);
+        String name = "sessionScopedDisposableObject";
+        assertNull(session.getAttribute(name));
+        DerivedTestBean bean = (DerivedTestBean) this.beanFactory.getBean(name);
+        assertEquals(session.getAttribute(name), bean);
+        assertSame(bean, this.beanFactory.getBean(name));
 
-		MockHttpSession session = new MockHttpSession();
-		MockHttpServletRequest request = new MockHttpServletRequest();
-		request.setSession(session);
-		ServletRequestAttributes requestAttributes = new ServletRequestAttributes(request);
+        requestAttributes.requestCompleted();
+        serializedState = session.serializeState();
+        assertFalse(bean.wasDestroyed());
 
-		RequestContextHolder.setRequestAttributes(requestAttributes);
-		String name = "sessionScopedDisposableObject";
-		assertNull(session.getAttribute(name));
-		DerivedTestBean bean = (DerivedTestBean) this.beanFactory.getBean(name);
-		assertEquals(session.getAttribute(name), bean);
-		assertSame(bean, this.beanFactory.getBean(name));
+        serializedState =
+                (Serializable) SerializationTestUtils.serializeAndDeserialize(serializedState);
 
-		requestAttributes.requestCompleted();
-		serializedState = session.serializeState();
-		assertFalse(bean.wasDestroyed());
+        session = new MockHttpSession();
+        session.deserializeState(serializedState);
+        request = new MockHttpServletRequest();
+        request.setSession(session);
+        requestAttributes = new ServletRequestAttributes(request);
 
-		serializedState = (Serializable) SerializationTestUtils.serializeAndDeserialize(serializedState);
+        RequestContextHolder.setRequestAttributes(requestAttributes);
+        name = "sessionScopedDisposableObject";
+        assertNotNull(session.getAttribute(name));
+        bean = (DerivedTestBean) this.beanFactory.getBean(name);
+        assertEquals(session.getAttribute(name), bean);
+        assertSame(bean, this.beanFactory.getBean(name));
 
-		session = new MockHttpSession();
-		session.deserializeState(serializedState);
-		request = new MockHttpServletRequest();
-		request.setSession(session);
-		requestAttributes = new ServletRequestAttributes(request);
+        requestAttributes.requestCompleted();
+        session.invalidate();
+        assertTrue(bean.wasDestroyed());
 
-		RequestContextHolder.setRequestAttributes(requestAttributes);
-		name = "sessionScopedDisposableObject";
-		assertNotNull(session.getAttribute(name));
-		bean = (DerivedTestBean) this.beanFactory.getBean(name);
-		assertEquals(session.getAttribute(name), bean);
-		assertSame(bean, this.beanFactory.getBean(name));
+        if (beanNameReset) {
+            assertNull(bean.getBeanName());
+        } else {
+            assertNotNull(bean.getBeanName());
+        }
+    }
 
-		requestAttributes.requestCompleted();
-		session.invalidate();
-		assertTrue(bean.wasDestroyed());
+    private static class CustomDestructionAwareBeanPostProcessor
+            implements DestructionAwareBeanPostProcessor {
 
-		if (beanNameReset) {
-			assertNull(bean.getBeanName());
-		}
-		else {
-			assertNotNull(bean.getBeanName());
-		}
-	}
+        @Override
+        public Object postProcessBeforeInitialization(Object bean, String beanName)
+                throws BeansException {
+            return bean;
+        }
 
+        @Override
+        public Object postProcessAfterInitialization(Object bean, String beanName)
+                throws BeansException {
+            return bean;
+        }
 
-	private static class CustomDestructionAwareBeanPostProcessor implements DestructionAwareBeanPostProcessor {
+        @Override
+        public void postProcessBeforeDestruction(Object bean, String beanName)
+                throws BeansException {}
 
-		@Override
-		public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
-			return bean;
-		}
+        @Override
+        public boolean requiresDestruction(Object bean) {
+            return true;
+        }
+    }
 
-		@Override
-		public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
-			return bean;
-		}
+    @SuppressWarnings("serial")
+    private static class CustomSerializableDestructionAwareBeanPostProcessor
+            implements DestructionAwareBeanPostProcessor, Serializable {
 
-		@Override
-		public void postProcessBeforeDestruction(Object bean, String beanName) throws BeansException {
-		}
+        @Override
+        public Object postProcessBeforeInitialization(Object bean, String beanName)
+                throws BeansException {
+            return bean;
+        }
 
-		@Override
-		public boolean requiresDestruction(Object bean) {
-			return true;
-		}
-	}
+        @Override
+        public Object postProcessAfterInitialization(Object bean, String beanName)
+                throws BeansException {
+            return bean;
+        }
 
+        @Override
+        public void postProcessBeforeDestruction(Object bean, String beanName)
+                throws BeansException {
+            if (bean instanceof BeanNameAware) {
+                ((BeanNameAware) bean).setBeanName(null);
+            }
+        }
 
-	@SuppressWarnings("serial")
-	private static class CustomSerializableDestructionAwareBeanPostProcessor
-			implements DestructionAwareBeanPostProcessor, Serializable {
-
-		@Override
-		public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
-			return bean;
-		}
-
-		@Override
-		public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
-			return bean;
-		}
-
-		@Override
-		public void postProcessBeforeDestruction(Object bean, String beanName) throws BeansException {
-			if (bean instanceof BeanNameAware) {
-				((BeanNameAware) bean).setBeanName(null);
-			}
-		}
-
-		@Override
-		public boolean requiresDestruction(Object bean) {
-			return true;
-		}
-	}
-
+        @Override
+        public boolean requiresDestruction(Object bean) {
+            return true;
+        }
+    }
 }

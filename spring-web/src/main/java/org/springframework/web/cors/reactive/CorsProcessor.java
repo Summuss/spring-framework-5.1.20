@@ -21,9 +21,9 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.server.ServerWebExchange;
 
 /**
- * A strategy to apply CORS validation checks and updates to a
- * {@link ServerWebExchange}, either rejecting through the response or adding
- * CORS related headers, based on a pre-selected {@link CorsConfiguration}.
+ * A strategy to apply CORS validation checks and updates to a {@link ServerWebExchange}, either
+ * rejecting through the response or adding CORS related headers, based on a pre-selected {@link
+ * CorsConfiguration}.
  *
  * @author Sebastien Deleuze
  * @author Rossen Stoyanchev
@@ -32,13 +32,13 @@ import org.springframework.web.server.ServerWebExchange;
  */
 public interface CorsProcessor {
 
-	/**
-	 * Process a request using the given {@code CorsConfiguration}.
-	 * @param configuration the CORS configuration to use; possibly {@code null}
-	 * in which case pre-flight requests are rejected, but all others allowed.
-	 * @param exchange the current exchange
-	 * @return {@code false} if the request was rejected, {@code true} otherwise
-	 */
-	boolean process(@Nullable CorsConfiguration configuration, ServerWebExchange exchange);
-
+    /**
+     * Process a request using the given {@code CorsConfiguration}.
+     *
+     * @param configuration the CORS configuration to use; possibly {@code null} in which case
+     *     pre-flight requests are rejected, but all others allowed.
+     * @param exchange the current exchange
+     * @return {@code false} if the request was rejected, {@code true} otherwise
+     */
+    boolean process(@Nullable CorsConfiguration configuration, ServerWebExchange exchange);
 }

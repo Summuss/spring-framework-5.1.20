@@ -3,11 +3,11 @@
 
 <beans>
 
-	<bean id="testBean" class="org.springframework.aop.framework.CglibTestBean">
-		<property name="name" value="Rob Harrop"/>
-		<lookup-method name="getName" bean="fixedName"/>
-	</bean>
+    <bean id="testBean" class="org.springframework.aop.framework.CglibTestBean">
+        <property name="name" value="Rob Harrop"/>
+        <lookup-method name="getName" bean="fixedName"/>
+    </bean>
 
-	<bean id="fixedName" class="java.lang.String"/>
+    <bean id="fixedName" class="java.lang.String"/>
 
 </beans>

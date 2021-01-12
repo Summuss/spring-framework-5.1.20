@@ -64,237 +64,254 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 
 /**
  * Tests with {@link Filter}'s.
+ *
  * @author Rob Winch
  */
 public class FilterTests {
 
-	@Test
-	public void whenFiltersCompleteMvcProcessesRequest() throws Exception {
-		standaloneSetup(new PersonController())
-			.addFilters(new ContinueFilter()).build()
-			.perform(post("/persons").param("name", "Andy"))
-				.andExpect(status().isFound())
-				.andExpect(redirectedUrl("/person/1"))
-				.andExpect(model().size(1))
-				.andExpect(model().attributeExists("id"))
-				.andExpect(flash().attributeCount(1))
-				.andExpect(flash().attribute("message", "success!"));
-	}
+    @Test
+    public void whenFiltersCompleteMvcProcessesRequest() throws Exception {
+        standaloneSetup(new PersonController())
+                .addFilters(new ContinueFilter())
+                .build()
+                .perform(post("/persons").param("name", "Andy"))
+                .andExpect(status().isFound())
+                .andExpect(redirectedUrl("/person/1"))
+                .andExpect(model().size(1))
+                .andExpect(model().attributeExists("id"))
+                .andExpect(flash().attributeCount(1))
+                .andExpect(flash().attribute("message", "success!"));
+    }
 
-	@Test
-	public void filtersProcessRequest() throws Exception {
-		standaloneSetup(new PersonController())
-			.addFilters(new ContinueFilter(), new RedirectFilter()).build()
-			.perform(post("/persons").param("name", "Andy"))
-				.andExpect(redirectedUrl("/login"));
-	}
+    @Test
+    public void filtersProcessRequest() throws Exception {
+        standaloneSetup(new PersonController())
+                .addFilters(new ContinueFilter(), new RedirectFilter())
+                .build()
+                .perform(post("/persons").param("name", "Andy"))
+                .andExpect(redirectedUrl("/login"));
+    }
 
-	@Test
-	public void filterMappedBySuffix() throws Exception {
-		standaloneSetup(new PersonController())
-			.addFilter(new RedirectFilter(), "*.html").build()
-			.perform(post("/persons.html").param("name", "Andy"))
-				.andExpect(redirectedUrl("/login"));
-	}
+    @Test
+    public void filterMappedBySuffix() throws Exception {
+        standaloneSetup(new PersonController())
+                .addFilter(new RedirectFilter(), "*.html")
+                .build()
+                .perform(post("/persons.html").param("name", "Andy"))
+                .andExpect(redirectedUrl("/login"));
+    }
 
-	@Test
-	public void filterWithExactMapping() throws Exception {
-		standaloneSetup(new PersonController())
-			.addFilter(new RedirectFilter(), "/p", "/persons").build()
-			.perform(post("/persons").param("name", "Andy"))
-				.andExpect(redirectedUrl("/login"));
-	}
+    @Test
+    public void filterWithExactMapping() throws Exception {
+        standaloneSetup(new PersonController())
+                .addFilter(new RedirectFilter(), "/p", "/persons")
+                .build()
+                .perform(post("/persons").param("name", "Andy"))
+                .andExpect(redirectedUrl("/login"));
+    }
 
-	@Test
-	public void filterSkipped() throws Exception {
-		standaloneSetup(new PersonController())
-			.addFilter(new RedirectFilter(), "/p", "/person").build()
-			.perform(post("/persons").param("name", "Andy"))
-				.andExpect(status().isFound())
-				.andExpect(redirectedUrl("/person/1"))
-				.andExpect(model().size(1))
-				.andExpect(model().attributeExists("id"))
-				.andExpect(flash().attributeCount(1))
-				.andExpect(flash().attribute("message", "success!"));
-	}
+    @Test
+    public void filterSkipped() throws Exception {
+        standaloneSetup(new PersonController())
+                .addFilter(new RedirectFilter(), "/p", "/person")
+                .build()
+                .perform(post("/persons").param("name", "Andy"))
+                .andExpect(status().isFound())
+                .andExpect(redirectedUrl("/person/1"))
+                .andExpect(model().size(1))
+                .andExpect(model().attributeExists("id"))
+                .andExpect(flash().attributeCount(1))
+                .andExpect(flash().attribute("message", "success!"));
+    }
 
-	@Test
-	public void filterWrapsRequestResponse() throws Exception {
-		standaloneSetup(new PersonController())
-			.addFilters(new WrappingRequestResponseFilter()).build()
-			.perform(post("/user"))
-				.andExpect(model().attribute("principal", WrappingRequestResponseFilter.PRINCIPAL_NAME));
-	}
+    @Test
+    public void filterWrapsRequestResponse() throws Exception {
+        standaloneSetup(new PersonController())
+                .addFilters(new WrappingRequestResponseFilter())
+                .build()
+                .perform(post("/user"))
+                .andExpect(
+                        model().attribute(
+                                        "principal", WrappingRequestResponseFilter.PRINCIPAL_NAME));
+    }
 
-	@Test // SPR-16067, SPR-16695
-	public void filterWrapsRequestResponseAndPerformsAsyncDispatch() throws Exception {
-		MockMvc mockMvc = standaloneSetup(new PersonController())
-				.addFilters(new WrappingRequestResponseFilter(), new ShallowEtagHeaderFilter())
-				.build();
+    @Test // SPR-16067, SPR-16695
+    public void filterWrapsRequestResponseAndPerformsAsyncDispatch() throws Exception {
+        MockMvc mockMvc =
+                standaloneSetup(new PersonController())
+                        .addFilters(
+                                new WrappingRequestResponseFilter(), new ShallowEtagHeaderFilter())
+                        .build();
 
-		MvcResult mvcResult = mockMvc.perform(get("/persons/1").accept(MediaType.APPLICATION_JSON))
-				.andExpect(request().asyncStarted())
-				.andExpect(request().asyncResult(new Person("Lukas")))
-				.andReturn();
+        MvcResult mvcResult =
+                mockMvc.perform(get("/persons/1").accept(MediaType.APPLICATION_JSON))
+                        .andExpect(request().asyncStarted())
+                        .andExpect(request().asyncResult(new Person("Lukas")))
+                        .andReturn();
 
-		mockMvc.perform(asyncDispatch(mvcResult))
-				.andExpect(status().isOk())
-				.andExpect(header().longValue("Content-Length", 53))
-				.andExpect(header().string("ETag", "\"0e37becb4f0c90709cb2e1efcc61eaa00\""))
-				.andExpect(content().string("{\"name\":\"Lukas\",\"someDouble\":0.0,\"someBoolean\":false}"));
-	}
+        mockMvc.perform(asyncDispatch(mvcResult))
+                .andExpect(status().isOk())
+                .andExpect(header().longValue("Content-Length", 53))
+                .andExpect(header().string("ETag", "\"0e37becb4f0c90709cb2e1efcc61eaa00\""))
+                .andExpect(
+                        content()
+                                .string(
+                                        "{\"name\":\"Lukas\",\"someDouble\":0.0,\"someBoolean\":false}"));
+    }
 
+    @Controller
+    private static class PersonController {
 
-	@Controller
-	private static class PersonController {
+        @PostMapping(path = "/persons")
+        public String save(@Valid Person person, Errors errors, RedirectAttributes redirectAttrs) {
+            if (errors.hasErrors()) {
+                return "person/add";
+            }
+            redirectAttrs.addAttribute("id", "1");
+            redirectAttrs.addFlashAttribute("message", "success!");
+            return "redirect:/person/{id}";
+        }
 
-		@PostMapping(path="/persons")
-		public String save(@Valid Person person, Errors errors, RedirectAttributes redirectAttrs) {
-			if (errors.hasErrors()) {
-				return "person/add";
-			}
-			redirectAttrs.addAttribute("id", "1");
-			redirectAttrs.addFlashAttribute("message", "success!");
-			return "redirect:/person/{id}";
-		}
+        @PostMapping("/user")
+        public ModelAndView user(Principal principal) {
+            return new ModelAndView("user/view", "principal", principal.getName());
+        }
 
-		@PostMapping("/user")
-		public ModelAndView user(Principal principal) {
-			return new ModelAndView("user/view", "principal", principal.getName());
-		}
+        @GetMapping("/forward")
+        public String forward() {
+            return "forward:/persons";
+        }
 
-		@GetMapping("/forward")
-		public String forward() {
-			return "forward:/persons";
-		}
+        @GetMapping("persons/{id}")
+        @ResponseBody
+        public CompletableFuture<Person> getPerson() {
+            return CompletableFuture.completedFuture(new Person("Lukas"));
+        }
+    }
 
-		@GetMapping("persons/{id}")
-		@ResponseBody
-		public CompletableFuture<Person> getPerson() {
-			return CompletableFuture.completedFuture(new Person("Lukas"));
-		}
-	}
+    private class ContinueFilter extends OncePerRequestFilter {
 
-	private class ContinueFilter extends OncePerRequestFilter {
+        @Override
+        protected void doFilterInternal(
+                HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+                throws ServletException, IOException {
 
-		@Override
-		protected void doFilterInternal(HttpServletRequest request,
-				HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+            filterChain.doFilter(request, response);
+        }
+    }
 
-			filterChain.doFilter(request, response);
-		}
-	}
+    private static class WrappingRequestResponseFilter extends OncePerRequestFilter {
 
-	private static class WrappingRequestResponseFilter extends OncePerRequestFilter {
+        public static final String PRINCIPAL_NAME = "WrapRequestResponseFilterPrincipal";
 
-		public static final String PRINCIPAL_NAME = "WrapRequestResponseFilterPrincipal";
+        @Override
+        protected void doFilterInternal(
+                HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+                throws ServletException, IOException {
 
+            filterChain.doFilter(
+                    new HttpServletRequestWrapper(request) {
 
-		@Override
-		protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-				FilterChain filterChain) throws ServletException, IOException {
+                        @Override
+                        public Principal getUserPrincipal() {
+                            return () -> PRINCIPAL_NAME;
+                        }
 
-			filterChain.doFilter(new HttpServletRequestWrapper(request) {
+                        // Like Spring Security does in HttpServlet3RequestFactory..
 
-				@Override
-				public Principal getUserPrincipal() {
-					return () -> PRINCIPAL_NAME;
-				}
+                        @Override
+                        public AsyncContext getAsyncContext() {
+                            return super.getAsyncContext() != null
+                                    ? new AsyncContextWrapper(super.getAsyncContext())
+                                    : null;
+                        }
+                    },
+                    new HttpServletResponseWrapper(response));
+        }
+    }
 
-				// Like Spring Security does in HttpServlet3RequestFactory..
+    private class RedirectFilter extends OncePerRequestFilter {
 
-				@Override
-				public AsyncContext getAsyncContext() {
-					return super.getAsyncContext() != null ?
-							new AsyncContextWrapper(super.getAsyncContext()) : null;
-				}
+        @Override
+        protected void doFilterInternal(
+                HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+                throws ServletException, IOException {
 
-			}, new HttpServletResponseWrapper(response));
-		}
-	}
+            response.sendRedirect("/login");
+        }
+    }
 
-	private class RedirectFilter extends OncePerRequestFilter {
+    private static class AsyncContextWrapper implements AsyncContext {
 
-		@Override
-		protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-				FilterChain filterChain) throws ServletException, IOException {
+        private final AsyncContext delegate;
 
-			response.sendRedirect("/login");
-		}
-	}
+        public AsyncContextWrapper(AsyncContext delegate) {
+            this.delegate = delegate;
+        }
 
+        @Override
+        public ServletRequest getRequest() {
+            return this.delegate.getRequest();
+        }
 
-	private static class AsyncContextWrapper implements AsyncContext {
+        @Override
+        public ServletResponse getResponse() {
+            return this.delegate.getResponse();
+        }
 
-		private final AsyncContext delegate;
+        @Override
+        public boolean hasOriginalRequestAndResponse() {
+            return this.delegate.hasOriginalRequestAndResponse();
+        }
 
-		public AsyncContextWrapper(AsyncContext delegate) {
-			this.delegate = delegate;
-		}
+        @Override
+        public void dispatch() {
+            this.delegate.dispatch();
+        }
 
-		@Override
-		public ServletRequest getRequest() {
-			return this.delegate.getRequest();
-		}
+        @Override
+        public void dispatch(String path) {
+            this.delegate.dispatch(path);
+        }
 
-		@Override
-		public ServletResponse getResponse() {
-			return this.delegate.getResponse();
-		}
+        @Override
+        public void dispatch(ServletContext context, String path) {
+            this.delegate.dispatch(context, path);
+        }
 
-		@Override
-		public boolean hasOriginalRequestAndResponse() {
-			return this.delegate.hasOriginalRequestAndResponse();
-		}
+        @Override
+        public void complete() {
+            this.delegate.complete();
+        }
 
-		@Override
-		public void dispatch() {
-			this.delegate.dispatch();
-		}
+        @Override
+        public void start(Runnable run) {
+            this.delegate.start(run);
+        }
 
-		@Override
-		public void dispatch(String path) {
-			this.delegate.dispatch(path);
-		}
+        @Override
+        public void addListener(AsyncListener listener) {
+            this.delegate.addListener(listener);
+        }
 
-		@Override
-		public void dispatch(ServletContext context, String path) {
-			this.delegate.dispatch(context, path);
-		}
+        @Override
+        public void addListener(AsyncListener listener, ServletRequest req, ServletResponse res) {
+            this.delegate.addListener(listener, req, res);
+        }
 
-		@Override
-		public void complete() {
-			this.delegate.complete();
-		}
+        @Override
+        public <T extends AsyncListener> T createListener(Class<T> clazz) throws ServletException {
+            return this.delegate.createListener(clazz);
+        }
 
-		@Override
-		public void start(Runnable run) {
-			this.delegate.start(run);
-		}
+        @Override
+        public void setTimeout(long timeout) {
+            this.delegate.setTimeout(timeout);
+        }
 
-		@Override
-		public void addListener(AsyncListener listener) {
-			this.delegate.addListener(listener);
-		}
-
-		@Override
-		public void addListener(AsyncListener listener, ServletRequest req, ServletResponse res) {
-			this.delegate.addListener(listener, req, res);
-		}
-
-		@Override
-		public <T extends AsyncListener> T createListener(Class<T> clazz) throws ServletException {
-			return this.delegate.createListener(clazz);
-		}
-
-		@Override
-		public void setTimeout(long timeout) {
-			this.delegate.setTimeout(timeout);
-		}
-
-		@Override
-		public long getTimeout() {
-			return this.delegate.getTimeout();
-		}
-	}
+        @Override
+        public long getTimeout() {
+            return this.delegate.getTimeout();
+        }
+    }
 }

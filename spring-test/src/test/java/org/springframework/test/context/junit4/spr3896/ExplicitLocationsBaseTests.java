@@ -27,9 +27,9 @@ import org.springframework.tests.sample.beans.Employee;
 import static org.junit.Assert.*;
 
 /**
- * JUnit 4 based integration test for verifying support for the
- * {@link ContextConfiguration#inheritLocations() inheritLocations} flag of
- * {@link ContextConfiguration @ContextConfiguration} indirectly proposed in <a
+ * JUnit 4 based integration test for verifying support for the {@link
+ * ContextConfiguration#inheritLocations() inheritLocations} flag of {@link
+ * ContextConfiguration @ContextConfiguration} indirectly proposed in <a
  * href="https://opensource.atlassian.com/projects/spring/browse/SPR-3896"
  * target="_blank">SPR-3896</a>.
  *
@@ -40,13 +40,11 @@ import static org.junit.Assert.*;
 @ContextConfiguration("DefaultLocationsBaseTests-context.xml")
 public class ExplicitLocationsBaseTests {
 
-	@Autowired
-	protected Employee employee;
+    @Autowired protected Employee employee;
 
-
-	@Test
-	public void verifyEmployeeSetFromBaseContextConfig() {
-		assertNotNull("The employee should have been autowired.", this.employee);
-		assertEquals("John Smith", this.employee.getName());
-	}
+    @Test
+    public void verifyEmployeeSetFromBaseContextConfig() {
+        assertNotNull("The employee should have been autowired.", this.employee);
+        assertEquals("John Smith", this.employee.getName());
+    }
 }

@@ -39,114 +39,111 @@ import static org.junit.Assert.*;
  */
 public class ViewControllerRegistryTests {
 
-	private ViewControllerRegistry registry;
+    private ViewControllerRegistry registry;
 
-	private MockHttpServletRequest request;
+    private MockHttpServletRequest request;
 
-	private MockHttpServletResponse response;
+    private MockHttpServletResponse response;
 
+    @Before
+    public void setup() {
+        this.registry = new ViewControllerRegistry(new StaticApplicationContext());
+        this.request = new MockHttpServletRequest("GET", "/");
+        this.response = new MockHttpServletResponse();
+    }
 
-	@Before
-	public void setup() {
-		this.registry = new ViewControllerRegistry(new StaticApplicationContext());
-		this.request = new MockHttpServletRequest("GET", "/");
-		this.response = new MockHttpServletResponse();
-	}
+    @Test
+    public void noViewControllers() {
+        assertNull(this.registry.buildHandlerMapping());
+    }
 
+    @Test
+    public void addViewController() {
+        this.registry.addViewController("/path").setViewName("viewName");
+        ParameterizableViewController controller = getController("/path");
 
-	@Test
-	public void noViewControllers() {
-		assertNull(this.registry.buildHandlerMapping());
-	}
+        assertEquals("viewName", controller.getViewName());
+        assertNull(controller.getStatusCode());
+        assertFalse(controller.isStatusOnly());
+        assertNotNull(controller.getApplicationContext());
+    }
 
-	@Test
-	public void addViewController() {
-		this.registry.addViewController("/path").setViewName("viewName");
-		ParameterizableViewController controller = getController("/path");
+    @Test
+    public void addViewControllerWithDefaultViewName() {
+        this.registry.addViewController("/path");
+        ParameterizableViewController controller = getController("/path");
 
-		assertEquals("viewName", controller.getViewName());
-		assertNull(controller.getStatusCode());
-		assertFalse(controller.isStatusOnly());
-		assertNotNull(controller.getApplicationContext());
-	}
+        assertNull(controller.getViewName());
+        assertNull(controller.getStatusCode());
+        assertFalse(controller.isStatusOnly());
+        assertNotNull(controller.getApplicationContext());
+    }
 
-	@Test
-	public void addViewControllerWithDefaultViewName() {
-		this.registry.addViewController("/path");
-		ParameterizableViewController controller = getController("/path");
+    @Test
+    public void addRedirectViewController() throws Exception {
+        this.registry.addRedirectViewController("/path", "/redirectTo");
+        RedirectView redirectView = getRedirectView("/path");
+        this.request.setQueryString("a=b");
+        this.request.setContextPath("/context");
+        redirectView.render(Collections.emptyMap(), this.request, this.response);
 
-		assertNull(controller.getViewName());
-		assertNull(controller.getStatusCode());
-		assertFalse(controller.isStatusOnly());
-		assertNotNull(controller.getApplicationContext());
-	}
+        assertEquals(302, this.response.getStatus());
+        assertEquals("/context/redirectTo", this.response.getRedirectedUrl());
+        assertNotNull(redirectView.getApplicationContext());
+    }
 
-	@Test
-	public void addRedirectViewController() throws Exception {
-		this.registry.addRedirectViewController("/path", "/redirectTo");
-		RedirectView redirectView = getRedirectView("/path");
-		this.request.setQueryString("a=b");
-		this.request.setContextPath("/context");
-		redirectView.render(Collections.emptyMap(), this.request, this.response);
+    @Test
+    public void addRedirectViewControllerWithCustomSettings() throws Exception {
+        this.registry
+                .addRedirectViewController("/path", "/redirectTo")
+                .setContextRelative(false)
+                .setKeepQueryParams(true)
+                .setStatusCode(HttpStatus.PERMANENT_REDIRECT);
 
-		assertEquals(302, this.response.getStatus());
-		assertEquals("/context/redirectTo", this.response.getRedirectedUrl());
-		assertNotNull(redirectView.getApplicationContext());
-	}
+        RedirectView redirectView = getRedirectView("/path");
+        this.request.setQueryString("a=b");
+        this.request.setContextPath("/context");
+        redirectView.render(Collections.emptyMap(), this.request, this.response);
 
-	@Test
-	public void addRedirectViewControllerWithCustomSettings() throws Exception {
-		this.registry.addRedirectViewController("/path", "/redirectTo")
-				.setContextRelative(false)
-				.setKeepQueryParams(true)
-				.setStatusCode(HttpStatus.PERMANENT_REDIRECT);
+        assertEquals(308, this.response.getStatus());
+        assertEquals("/redirectTo?a=b", response.getRedirectedUrl());
+        assertNotNull(redirectView.getApplicationContext());
+    }
 
-		RedirectView redirectView = getRedirectView("/path");
-		this.request.setQueryString("a=b");
-		this.request.setContextPath("/context");
-		redirectView.render(Collections.emptyMap(), this.request, this.response);
+    @Test
+    public void addStatusController() {
+        this.registry.addStatusController("/path", HttpStatus.NOT_FOUND);
+        ParameterizableViewController controller = getController("/path");
 
-		assertEquals(308, this.response.getStatus());
-		assertEquals("/redirectTo?a=b", response.getRedirectedUrl());
-		assertNotNull(redirectView.getApplicationContext());
-	}
+        assertNull(controller.getViewName());
+        assertEquals(HttpStatus.NOT_FOUND, controller.getStatusCode());
+        assertTrue(controller.isStatusOnly());
+        assertNotNull(controller.getApplicationContext());
+    }
 
-	@Test
-	public void addStatusController() {
-		this.registry.addStatusController("/path", HttpStatus.NOT_FOUND);
-		ParameterizableViewController controller = getController("/path");
+    @Test
+    public void order() {
+        this.registry.addViewController("/path");
+        SimpleUrlHandlerMapping handlerMapping = this.registry.buildHandlerMapping();
+        assertEquals(1, handlerMapping.getOrder());
 
-		assertNull(controller.getViewName());
-		assertEquals(HttpStatus.NOT_FOUND, controller.getStatusCode());
-		assertTrue(controller.isStatusOnly());
-		assertNotNull(controller.getApplicationContext());
-	}
+        this.registry.setOrder(2);
+        handlerMapping = this.registry.buildHandlerMapping();
+        assertEquals(2, handlerMapping.getOrder());
+    }
 
-	@Test
-	public void order() {
-		this.registry.addViewController("/path");
-		SimpleUrlHandlerMapping handlerMapping = this.registry.buildHandlerMapping();
-		assertEquals(1, handlerMapping.getOrder());
+    private ParameterizableViewController getController(String path) {
+        Map<String, ?> urlMap = this.registry.buildHandlerMapping().getUrlMap();
+        ParameterizableViewController controller = (ParameterizableViewController) urlMap.get(path);
+        assertNotNull(controller);
+        return controller;
+    }
 
-		this.registry.setOrder(2);
-		handlerMapping = this.registry.buildHandlerMapping();
-		assertEquals(2, handlerMapping.getOrder());
-	}
-
-
-	private ParameterizableViewController getController(String path) {
-		Map<String, ?> urlMap = this.registry.buildHandlerMapping().getUrlMap();
-		ParameterizableViewController controller = (ParameterizableViewController) urlMap.get(path);
-		assertNotNull(controller);
-		return controller;
-	}
-
-	private RedirectView getRedirectView(String path) {
-		ParameterizableViewController controller = getController(path);
-		assertNull(controller.getViewName());
-		assertNotNull(controller.getView());
-		assertEquals(RedirectView.class, controller.getView().getClass());
-		return (RedirectView) controller.getView();
-	}
-
+    private RedirectView getRedirectView(String path) {
+        ParameterizableViewController controller = getController(path);
+        assertNull(controller.getViewName());
+        assertNotNull(controller.getView());
+        assertEquals(RedirectView.class, controller.getView().getClass());
+        return (RedirectView) controller.getView();
+    }
 }

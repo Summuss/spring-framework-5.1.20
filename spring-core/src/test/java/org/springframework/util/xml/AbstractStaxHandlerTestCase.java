@@ -45,118 +45,117 @@ import static org.xmlunit.matchers.CompareMatcher.*;
  */
 public abstract class AbstractStaxHandlerTestCase {
 
-	private static final String COMPLEX_XML =
-			"<?xml version='1.0' encoding='UTF-8'?>" +
-					"<!DOCTYPE beans PUBLIC \"-//SPRING//DTD BEAN 2.0//EN\" \"https://www.springframework.org/dtd/spring-beans-2.0.dtd\">" +
-					"<?pi content?><root xmlns='namespace'><prefix:child xmlns:prefix='namespace2' prefix:attr='value'>characters <![CDATA[cdata]]></prefix:child>" +
-					"<!-- comment -->" +
-					"</root>";
+    private static final String COMPLEX_XML =
+            "<?xml version='1.0' encoding='UTF-8'?>"
+                    + "<!DOCTYPE beans PUBLIC \"-//SPRING//DTD BEAN 2.0//EN\" \"https://www.springframework.org/dtd/spring-beans-2.0.dtd\">"
+                    + "<?pi content?><root xmlns='namespace'><prefix:child xmlns:prefix='namespace2' prefix:attr='value'>characters <![CDATA[cdata]]></prefix:child>"
+                    + "<!-- comment -->"
+                    + "</root>";
 
-	private static final String SIMPLE_XML = "<?xml version='1.0' encoding='UTF-8'?>" +
-					"<?pi content?><root xmlns='namespace'><prefix:child xmlns:prefix='namespace2' prefix:attr='value'>content</prefix:child>" +
-					"</root>";
+    private static final String SIMPLE_XML =
+            "<?xml version='1.0' encoding='UTF-8'?>"
+                    + "<?pi content?><root xmlns='namespace'><prefix:child xmlns:prefix='namespace2' prefix:attr='value'>content</prefix:child>"
+                    + "</root>";
 
-	private static final Predicate<Node> nodeFilter = (n -> n.getNodeType() != Node.COMMENT_NODE &&
-			n.getNodeType() != Node.DOCUMENT_TYPE_NODE && n.getNodeType() != Node.PROCESSING_INSTRUCTION_NODE);
+    private static final Predicate<Node> nodeFilter =
+            (n ->
+                    n.getNodeType() != Node.COMMENT_NODE
+                            && n.getNodeType() != Node.DOCUMENT_TYPE_NODE
+                            && n.getNodeType() != Node.PROCESSING_INSTRUCTION_NODE);
 
+    private XMLReader xmlReader;
 
-	private XMLReader xmlReader;
+    @Before
+    @SuppressWarnings("deprecation") // on JDK 9
+    public void createXMLReader() throws Exception {
+        xmlReader = org.xml.sax.helpers.XMLReaderFactory.createXMLReader();
+    }
 
+    @Test
+    public void noNamespacePrefixes() throws Exception {
+        Assume.assumeTrue(wwwSpringframeworkOrgIsAccessible());
 
-	@Before
-	@SuppressWarnings("deprecation")  // on JDK 9
-	public void createXMLReader() throws Exception {
-		xmlReader = org.xml.sax.helpers.XMLReaderFactory.createXMLReader();
-	}
+        StringWriter stringWriter = new StringWriter();
+        AbstractStaxHandler handler = createStaxHandler(new StreamResult(stringWriter));
+        xmlReader.setContentHandler(handler);
+        xmlReader.setProperty("http://xml.org/sax/properties/lexical-handler", handler);
 
+        xmlReader.setFeature("http://xml.org/sax/features/namespaces", true);
+        xmlReader.setFeature("http://xml.org/sax/features/namespace-prefixes", false);
 
-	@Test
-	public void noNamespacePrefixes() throws Exception {
-		Assume.assumeTrue(wwwSpringframeworkOrgIsAccessible());
+        xmlReader.parse(new InputSource(new StringReader(COMPLEX_XML)));
 
-		StringWriter stringWriter = new StringWriter();
-		AbstractStaxHandler handler = createStaxHandler(new StreamResult(stringWriter));
-		xmlReader.setContentHandler(handler);
-		xmlReader.setProperty("http://xml.org/sax/properties/lexical-handler", handler);
+        assertThat(stringWriter.toString(), isSimilarTo(COMPLEX_XML).withNodeFilter(nodeFilter));
+    }
 
-		xmlReader.setFeature("http://xml.org/sax/features/namespaces", true);
-		xmlReader.setFeature("http://xml.org/sax/features/namespace-prefixes", false);
+    private static boolean wwwSpringframeworkOrgIsAccessible() {
+        try {
+            new Socket("www.springframework.org", 80).close();
+        } catch (Exception e) {
+            return false;
+        }
+        return true;
+    }
 
-		xmlReader.parse(new InputSource(new StringReader(COMPLEX_XML)));
+    @Test
+    public void namespacePrefixes() throws Exception {
+        Assume.assumeTrue(wwwSpringframeworkOrgIsAccessible());
 
-		assertThat(stringWriter.toString(), isSimilarTo(COMPLEX_XML).withNodeFilter(nodeFilter));
-	}
+        StringWriter stringWriter = new StringWriter();
+        AbstractStaxHandler handler = createStaxHandler(new StreamResult(stringWriter));
+        xmlReader.setContentHandler(handler);
+        xmlReader.setProperty("http://xml.org/sax/properties/lexical-handler", handler);
 
-	private static boolean wwwSpringframeworkOrgIsAccessible() {
-		try {
-			new Socket("www.springframework.org", 80).close();
-		}
-		catch (Exception e) {
-			return false;
-		}
-		return true;
-	}
+        xmlReader.setFeature("http://xml.org/sax/features/namespaces", true);
+        xmlReader.setFeature("http://xml.org/sax/features/namespace-prefixes", true);
 
-	@Test
-	public void namespacePrefixes() throws Exception {
-		Assume.assumeTrue(wwwSpringframeworkOrgIsAccessible());
+        xmlReader.parse(new InputSource(new StringReader(COMPLEX_XML)));
 
-		StringWriter stringWriter = new StringWriter();
-		AbstractStaxHandler handler = createStaxHandler(new StreamResult(stringWriter));
-		xmlReader.setContentHandler(handler);
-		xmlReader.setProperty("http://xml.org/sax/properties/lexical-handler", handler);
+        assertThat(stringWriter.toString(), isSimilarTo(COMPLEX_XML).withNodeFilter(nodeFilter));
+    }
 
-		xmlReader.setFeature("http://xml.org/sax/features/namespaces", true);
-		xmlReader.setFeature("http://xml.org/sax/features/namespace-prefixes", true);
+    @Test
+    public void noNamespacePrefixesDom() throws Exception {
+        DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
+        documentBuilderFactory.setNamespaceAware(true);
+        DocumentBuilder documentBuilder = documentBuilderFactory.newDocumentBuilder();
 
-		xmlReader.parse(new InputSource(new StringReader(COMPLEX_XML)));
+        Document expected = documentBuilder.parse(new InputSource(new StringReader(SIMPLE_XML)));
 
-		assertThat(stringWriter.toString(), isSimilarTo(COMPLEX_XML).withNodeFilter(nodeFilter));
-	}
+        Document result = documentBuilder.newDocument();
+        AbstractStaxHandler handler = createStaxHandler(new DOMResult(result));
+        xmlReader.setContentHandler(handler);
+        xmlReader.setProperty("http://xml.org/sax/properties/lexical-handler", handler);
 
-	@Test
-	public void noNamespacePrefixesDom() throws Exception {
-		DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
-		documentBuilderFactory.setNamespaceAware(true);
-		DocumentBuilder documentBuilder = documentBuilderFactory.newDocumentBuilder();
+        xmlReader.setFeature("http://xml.org/sax/features/namespaces", true);
+        xmlReader.setFeature("http://xml.org/sax/features/namespace-prefixes", false);
 
-		Document expected = documentBuilder.parse(new InputSource(new StringReader(SIMPLE_XML)));
+        xmlReader.parse(new InputSource(new StringReader(SIMPLE_XML)));
 
-		Document result = documentBuilder.newDocument();
-		AbstractStaxHandler handler = createStaxHandler(new DOMResult(result));
-		xmlReader.setContentHandler(handler);
-		xmlReader.setProperty("http://xml.org/sax/properties/lexical-handler", handler);
+        assertThat(result, isSimilarTo(expected).withNodeFilter(nodeFilter));
+    }
 
-		xmlReader.setFeature("http://xml.org/sax/features/namespaces", true);
-		xmlReader.setFeature("http://xml.org/sax/features/namespace-prefixes", false);
+    @Test
+    public void namespacePrefixesDom() throws Exception {
+        DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
+        documentBuilderFactory.setNamespaceAware(true);
+        DocumentBuilder documentBuilder = documentBuilderFactory.newDocumentBuilder();
 
-		xmlReader.parse(new InputSource(new StringReader(SIMPLE_XML)));
+        Document expected = documentBuilder.parse(new InputSource(new StringReader(SIMPLE_XML)));
 
-		assertThat(result, isSimilarTo(expected).withNodeFilter(nodeFilter));
-	}
+        Document result = documentBuilder.newDocument();
+        AbstractStaxHandler handler = createStaxHandler(new DOMResult(result));
+        xmlReader.setContentHandler(handler);
+        xmlReader.setProperty("http://xml.org/sax/properties/lexical-handler", handler);
 
-	@Test
-	public void namespacePrefixesDom() throws Exception {
-		DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
-		documentBuilderFactory.setNamespaceAware(true);
-		DocumentBuilder documentBuilder = documentBuilderFactory.newDocumentBuilder();
+        xmlReader.setFeature("http://xml.org/sax/features/namespaces", true);
+        xmlReader.setFeature("http://xml.org/sax/features/namespace-prefixes", true);
 
-		Document expected = documentBuilder.parse(new InputSource(new StringReader(SIMPLE_XML)));
+        xmlReader.parse(new InputSource(new StringReader(SIMPLE_XML)));
 
-		Document result = documentBuilder.newDocument();
-		AbstractStaxHandler handler = createStaxHandler(new DOMResult(result));
-		xmlReader.setContentHandler(handler);
-		xmlReader.setProperty("http://xml.org/sax/properties/lexical-handler", handler);
+        assertThat(expected, isSimilarTo(result).withNodeFilter(nodeFilter));
+    }
 
-		xmlReader.setFeature("http://xml.org/sax/features/namespaces", true);
-		xmlReader.setFeature("http://xml.org/sax/features/namespace-prefixes", true);
-
-		xmlReader.parse(new InputSource(new StringReader(SIMPLE_XML)));
-
-		assertThat(expected, isSimilarTo(result).withNodeFilter(nodeFilter));
-	}
-
-
-	protected abstract AbstractStaxHandler createStaxHandler(Result result) throws XMLStreamException;
-
+    protected abstract AbstractStaxHandler createStaxHandler(Result result)
+            throws XMLStreamException;
 }

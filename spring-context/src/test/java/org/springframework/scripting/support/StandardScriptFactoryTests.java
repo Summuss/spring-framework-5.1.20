@@ -36,32 +36,40 @@ import static org.junit.Assert.*;
  */
 public class StandardScriptFactoryTests {
 
-	@Test
-	public void testJsr223FromTagWithInterface() throws Exception {
-		ApplicationContext ctx = new ClassPathXmlApplicationContext("jsr223-with-xsd.xml", getClass());
-		assertTrue(Arrays.asList(ctx.getBeanNamesForType(Messenger.class)).contains("messengerWithInterface"));
-		Messenger messenger = (Messenger) ctx.getBean("messengerWithInterface");
-		assertFalse(AopUtils.isAopProxy(messenger));
-		assertEquals("Hello World!", messenger.getMessage());
-	}
+    @Test
+    public void testJsr223FromTagWithInterface() throws Exception {
+        ApplicationContext ctx =
+                new ClassPathXmlApplicationContext("jsr223-with-xsd.xml", getClass());
+        assertTrue(
+                Arrays.asList(ctx.getBeanNamesForType(Messenger.class))
+                        .contains("messengerWithInterface"));
+        Messenger messenger = (Messenger) ctx.getBean("messengerWithInterface");
+        assertFalse(AopUtils.isAopProxy(messenger));
+        assertEquals("Hello World!", messenger.getMessage());
+    }
 
-	@Test
-	public void testRefreshableJsr223FromTagWithInterface() throws Exception {
-		ApplicationContext ctx = new ClassPathXmlApplicationContext("jsr223-with-xsd.xml", getClass());
-		assertTrue(Arrays.asList(ctx.getBeanNamesForType(Messenger.class)).contains("refreshableMessengerWithInterface"));
-		Messenger messenger = (Messenger) ctx.getBean("refreshableMessengerWithInterface");
-		assertTrue(AopUtils.isAopProxy(messenger));
-		assertTrue(messenger instanceof Refreshable);
-		assertEquals("Hello World!", messenger.getMessage());
-	}
+    @Test
+    public void testRefreshableJsr223FromTagWithInterface() throws Exception {
+        ApplicationContext ctx =
+                new ClassPathXmlApplicationContext("jsr223-with-xsd.xml", getClass());
+        assertTrue(
+                Arrays.asList(ctx.getBeanNamesForType(Messenger.class))
+                        .contains("refreshableMessengerWithInterface"));
+        Messenger messenger = (Messenger) ctx.getBean("refreshableMessengerWithInterface");
+        assertTrue(AopUtils.isAopProxy(messenger));
+        assertTrue(messenger instanceof Refreshable);
+        assertEquals("Hello World!", messenger.getMessage());
+    }
 
-	@Test
-	public void testInlineJsr223FromTagWithInterface() throws Exception {
-		ApplicationContext ctx = new ClassPathXmlApplicationContext("jsr223-with-xsd.xml", getClass());
-		assertTrue(Arrays.asList(ctx.getBeanNamesForType(Messenger.class)).contains("inlineMessengerWithInterface"));
-		Messenger messenger = (Messenger) ctx.getBean("inlineMessengerWithInterface");
-		assertFalse(AopUtils.isAopProxy(messenger));
-		assertEquals("Hello World!", messenger.getMessage());
-	}
-
+    @Test
+    public void testInlineJsr223FromTagWithInterface() throws Exception {
+        ApplicationContext ctx =
+                new ClassPathXmlApplicationContext("jsr223-with-xsd.xml", getClass());
+        assertTrue(
+                Arrays.asList(ctx.getBeanNamesForType(Messenger.class))
+                        .contains("inlineMessengerWithInterface"));
+        Messenger messenger = (Messenger) ctx.getBean("inlineMessengerWithInterface");
+        assertFalse(AopUtils.isAopProxy(messenger));
+        assertEquals("Hello World!", messenger.getMessage());
+    }
 }

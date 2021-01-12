@@ -25,8 +25,8 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import static org.junit.Assert.*;
 
 /**
- * Integration tests for meta-annotation attribute override support, relying on
- * default attribute values defined in {@link ConfigClassesAndProfileResolverWithCustomDefaultsMetaConfig}.
+ * Integration tests for meta-annotation attribute override support, relying on default attribute
+ * values defined in {@link ConfigClassesAndProfileResolverWithCustomDefaultsMetaConfig}.
  *
  * @author Sam Brannen
  * @since 4.0.3
@@ -35,12 +35,10 @@ import static org.junit.Assert.*;
 @ConfigClassesAndProfileResolverWithCustomDefaultsMetaConfig
 public class ConfigClassesAndProfileResolverWithCustomDefaultsMetaConfigTests {
 
-	@Autowired
-	private String foo;
+    @Autowired private String foo;
 
-
-	@Test
-	public void foo() {
-		assertEquals("Resolver Foo", foo);
-	}
+    @Test
+    public void foo() {
+        assertEquals("Resolver Foo", foo);
+    }
 }

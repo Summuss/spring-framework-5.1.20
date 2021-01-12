@@ -30,9 +30,9 @@ import static org.springframework.test.context.junit4.JUnitTestingUtils.*;
  */
 public class ServletContextAwareBeanWacTests {
 
-	@Test
-	public void ensureServletContextAwareBeanIsProcessedProperlyWhenExecutingJUnitManually() throws Exception {
-		runTestsAndAssertCounters(BasicAnnotationConfigWacTests.class, 3, 0, 3, 0, 0);
-	}
-
+    @Test
+    public void ensureServletContextAwareBeanIsProcessedProperlyWhenExecutingJUnitManually()
+            throws Exception {
+        runTestsAndAssertCounters(BasicAnnotationConfigWacTests.class, 3, 0, 3, 0, 0);
+    }
 }

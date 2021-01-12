@@ -30,20 +30,19 @@ import static org.junit.Assert.*;
  */
 public class AopNamespaceHandlerReturningTests {
 
-	@Test
-	public void testReturningOnReturningAdvice() {
-		new ClassPathXmlApplicationContext(getClass().getSimpleName() + "-ok.xml", getClass());
-	}
+    @Test
+    public void testReturningOnReturningAdvice() {
+        new ClassPathXmlApplicationContext(getClass().getSimpleName() + "-ok.xml", getClass());
+    }
 
-	@Test
-	public void testParseReturningOnOtherAdviceType() {
-		try {
-		new ClassPathXmlApplicationContext(getClass().getSimpleName() + "-error.xml", getClass());
-			fail("Expected BeanDefinitionStoreException");
-		}
-		catch (BeanDefinitionStoreException ex) {
-			assertTrue(ex.contains(SAXParseException.class));
-		}
-	}
-
+    @Test
+    public void testParseReturningOnOtherAdviceType() {
+        try {
+            new ClassPathXmlApplicationContext(
+                    getClass().getSimpleName() + "-error.xml", getClass());
+            fail("Expected BeanDefinitionStoreException");
+        } catch (BeanDefinitionStoreException ex) {
+            assertTrue(ex.contains(SAXParseException.class));
+        }
+    }
 }

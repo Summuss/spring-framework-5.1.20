@@ -29,12 +29,11 @@ import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.*;
 
 /**
- * Unit tests for SPR-8954, in which a custom {@link InstantiationAwareBeanPostProcessor}
- * forces the predicted type of a FactoryBean, effectively preventing retrieval of the
- * bean from calls to #getBeansOfType(FactoryBean.class). The implementation of
- * {@link AbstractBeanFactory#isFactoryBean(String, RootBeanDefinition)} now ensures
- * that not only the predicted bean type is considered, but also the original bean
- * definition's beanClass.
+ * Unit tests for SPR-8954, in which a custom {@link InstantiationAwareBeanPostProcessor} forces the
+ * predicted type of a FactoryBean, effectively preventing retrieval of the bean from calls to
+ * #getBeansOfType(FactoryBean.class). The implementation of {@link
+ * AbstractBeanFactory#isFactoryBean(String, RootBeanDefinition)} now ensures that not only the
+ * predicted bean type is considered, but also the original bean definition's beanClass.
  *
  * @author Chris Beams
  * @author Oliver Gierke
@@ -42,98 +41,90 @@ import static org.junit.Assert.*;
 @SuppressWarnings("resource")
 public class Spr8954Tests {
 
-	@Test
-	public void repro() {
-		AnnotationConfigApplicationContext bf = new AnnotationConfigApplicationContext();
-		bf.registerBeanDefinition("fooConfig", new RootBeanDefinition(FooConfig.class));
-		bf.getBeanFactory().addBeanPostProcessor(new PredictingBPP());
-		bf.refresh();
+    @Test
+    public void repro() {
+        AnnotationConfigApplicationContext bf = new AnnotationConfigApplicationContext();
+        bf.registerBeanDefinition("fooConfig", new RootBeanDefinition(FooConfig.class));
+        bf.getBeanFactory().addBeanPostProcessor(new PredictingBPP());
+        bf.refresh();
 
-		assertThat(bf.getBean("foo"), instanceOf(Foo.class));
-		assertThat(bf.getBean("&foo"), instanceOf(FooFactoryBean.class));
+        assertThat(bf.getBean("foo"), instanceOf(Foo.class));
+        assertThat(bf.getBean("&foo"), instanceOf(FooFactoryBean.class));
 
-		assertThat(bf.isTypeMatch("&foo", FactoryBean.class), is(true));
+        assertThat(bf.isTypeMatch("&foo", FactoryBean.class), is(true));
 
-		@SuppressWarnings("rawtypes")
-		Map<String, FactoryBean> fbBeans = bf.getBeansOfType(FactoryBean.class);
-		assertThat(1, equalTo(fbBeans.size()));
-		assertThat("&foo", equalTo(fbBeans.keySet().iterator().next()));
+        @SuppressWarnings("rawtypes")
+        Map<String, FactoryBean> fbBeans = bf.getBeansOfType(FactoryBean.class);
+        assertThat(1, equalTo(fbBeans.size()));
+        assertThat("&foo", equalTo(fbBeans.keySet().iterator().next()));
 
-		Map<String, AnInterface> aiBeans = bf.getBeansOfType(AnInterface.class);
-		assertThat(1, equalTo(aiBeans.size()));
-		assertThat("&foo", equalTo(aiBeans.keySet().iterator().next()));
-	}
+        Map<String, AnInterface> aiBeans = bf.getBeansOfType(AnInterface.class);
+        assertThat(1, equalTo(aiBeans.size()));
+        assertThat("&foo", equalTo(aiBeans.keySet().iterator().next()));
+    }
 
-	@Test
-	public void findsBeansByTypeIfNotInstantiated() {
-		AnnotationConfigApplicationContext bf = new AnnotationConfigApplicationContext();
-		bf.registerBeanDefinition("fooConfig", new RootBeanDefinition(FooConfig.class));
-		bf.getBeanFactory().addBeanPostProcessor(new PredictingBPP());
-		bf.refresh();
+    @Test
+    public void findsBeansByTypeIfNotInstantiated() {
+        AnnotationConfigApplicationContext bf = new AnnotationConfigApplicationContext();
+        bf.registerBeanDefinition("fooConfig", new RootBeanDefinition(FooConfig.class));
+        bf.getBeanFactory().addBeanPostProcessor(new PredictingBPP());
+        bf.refresh();
 
-		assertThat(bf.isTypeMatch("&foo", FactoryBean.class), is(true));
+        assertThat(bf.isTypeMatch("&foo", FactoryBean.class), is(true));
 
-		@SuppressWarnings("rawtypes")
-		Map<String, FactoryBean> fbBeans = bf.getBeansOfType(FactoryBean.class);
-		assertThat(1, equalTo(fbBeans.size()));
-		assertThat("&foo", equalTo(fbBeans.keySet().iterator().next()));
+        @SuppressWarnings("rawtypes")
+        Map<String, FactoryBean> fbBeans = bf.getBeansOfType(FactoryBean.class);
+        assertThat(1, equalTo(fbBeans.size()));
+        assertThat("&foo", equalTo(fbBeans.keySet().iterator().next()));
 
-		Map<String, AnInterface> aiBeans = bf.getBeansOfType(AnInterface.class);
-		assertThat(1, equalTo(aiBeans.size()));
-		assertThat("&foo", equalTo(aiBeans.keySet().iterator().next()));
-	}
+        Map<String, AnInterface> aiBeans = bf.getBeansOfType(AnInterface.class);
+        assertThat(1, equalTo(aiBeans.size()));
+        assertThat("&foo", equalTo(aiBeans.keySet().iterator().next()));
+    }
 
+    static class FooConfig {
 
-	static class FooConfig {
+        @Bean
+        FooFactoryBean foo() {
+            return new FooFactoryBean();
+        }
+    }
 
-		@Bean FooFactoryBean foo() {
-			return new FooFactoryBean();
-		}
-	}
+    static class FooFactoryBean implements FactoryBean<Foo>, AnInterface {
 
+        @Override
+        public Foo getObject() {
+            return new Foo();
+        }
 
-	static class FooFactoryBean implements FactoryBean<Foo>, AnInterface {
+        @Override
+        public Class<?> getObjectType() {
+            return Foo.class;
+        }
 
-		@Override
-		public Foo getObject() {
-			return new Foo();
-		}
+        @Override
+        public boolean isSingleton() {
+            return true;
+        }
+    }
 
-		@Override
-		public Class<?> getObjectType() {
-			return Foo.class;
-		}
+    interface AnInterface {}
 
-		@Override
-		public boolean isSingleton() {
-			return true;
-		}
-	}
+    static class Foo {}
 
+    interface PredictedType {}
 
-	interface AnInterface {
-	}
+    static class PredictingBPP extends InstantiationAwareBeanPostProcessorAdapter {
 
+        @Override
+        public Class<?> predictBeanType(Class<?> beanClass, String beanName) {
+            return FactoryBean.class.isAssignableFrom(beanClass) ? PredictedType.class : null;
+        }
 
-	static class Foo {
-	}
-
-
-	interface PredictedType {
-	}
-
-
-	static class PredictingBPP extends InstantiationAwareBeanPostProcessorAdapter {
-
-		@Override
-		public Class<?> predictBeanType(Class<?> beanClass, String beanName) {
-			return FactoryBean.class.isAssignableFrom(beanClass) ? PredictedType.class : null;
-		}
-
-		@Override
-		public PropertyValues postProcessProperties(PropertyValues pvs, Object bean, String beanName) {
-			return pvs;
-		}
-	}
-
+        @Override
+        public PropertyValues postProcessProperties(
+                PropertyValues pvs, Object bean, String beanName) {
+            return pvs;
+        }
+    }
 }

@@ -30,28 +30,24 @@ import org.springframework.web.server.WebHandler;
  */
 public class WebHandlerDecorator implements WebHandler {
 
-	private final WebHandler delegate;
+    private final WebHandler delegate;
 
+    public WebHandlerDecorator(WebHandler delegate) {
+        Assert.notNull(delegate, "'delegate' must not be null");
+        this.delegate = delegate;
+    }
 
-	public WebHandlerDecorator(WebHandler delegate) {
-		Assert.notNull(delegate, "'delegate' must not be null");
-		this.delegate = delegate;
-	}
+    public WebHandler getDelegate() {
+        return this.delegate;
+    }
 
+    @Override
+    public Mono<Void> handle(ServerWebExchange exchange) {
+        return this.delegate.handle(exchange);
+    }
 
-	public WebHandler getDelegate() {
-		return this.delegate;
-	}
-
-
-	@Override
-	public Mono<Void> handle(ServerWebExchange exchange) {
-		return this.delegate.handle(exchange);
-	}
-
-	@Override
-	public String toString() {
-		return getClass().getSimpleName() + " [delegate=" + this.delegate + "]";
-	}
-
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " [delegate=" + this.delegate + "]";
+    }
 }

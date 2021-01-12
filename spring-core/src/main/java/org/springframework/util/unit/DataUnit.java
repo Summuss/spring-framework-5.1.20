@@ -19,12 +19,13 @@ package org.springframework.util.unit;
 /**
  * A standard set of {@link DataSize} units.
  *
- * <p>The unit prefixes used in this class are
- * <a href="https://en.wikipedia.org/wiki/Binary_prefix">binary prefixes</a>
- * indicating multiplication by powers of 2. The following table displays the
- * enum constants defined in this class and corresponding values.
+ * <p>The unit prefixes used in this class are <a
+ * href="https://en.wikipedia.org/wiki/Binary_prefix">binary prefixes</a> indicating multiplication
+ * by powers of 2. The following table displays the enum constants defined in this class and
+ * corresponding values.
  *
  * <p>
+ *
  * <table border="1">
  * <tr><th>Constant</th><th>Data Size</th><th>Power&nbsp;of&nbsp;2</th><th>Size in Bytes</th></tr>
  * <tr><td>{@link #BYTES}</td><td>1B</td><td>2^0</td><td>1</td></tr>
@@ -41,60 +42,48 @@ package org.springframework.util.unit;
  */
 public enum DataUnit {
 
-	/**
-	 * Bytes, represented by suffix {@code B}.
-	 */
-	BYTES("B", DataSize.ofBytes(1)),
+    /** Bytes, represented by suffix {@code B}. */
+    BYTES("B", DataSize.ofBytes(1)),
 
-	/**
-	 * Kilobytes, represented by suffix {@code KB}.
-	 */
-	KILOBYTES("KB", DataSize.ofKilobytes(1)),
+    /** Kilobytes, represented by suffix {@code KB}. */
+    KILOBYTES("KB", DataSize.ofKilobytes(1)),
 
-	/**
-	 * Megabytes, represented by suffix {@code MB}.
-	 */
-	MEGABYTES("MB", DataSize.ofMegabytes(1)),
+    /** Megabytes, represented by suffix {@code MB}. */
+    MEGABYTES("MB", DataSize.ofMegabytes(1)),
 
-	/**
-	 * Gigabytes, represented by suffix {@code GB}.
-	 */
-	GIGABYTES("GB", DataSize.ofGigabytes(1)),
+    /** Gigabytes, represented by suffix {@code GB}. */
+    GIGABYTES("GB", DataSize.ofGigabytes(1)),
 
-	/**
-	 * Terabytes, represented by suffix {@code TB}.
-	 */
-	TERABYTES("TB", DataSize.ofTerabytes(1));
+    /** Terabytes, represented by suffix {@code TB}. */
+    TERABYTES("TB", DataSize.ofTerabytes(1));
 
+    private final String suffix;
 
-	private final String suffix;
+    private final DataSize size;
 
-	private final DataSize size;
+    DataUnit(String suffix, DataSize size) {
+        this.suffix = suffix;
+        this.size = size;
+    }
 
+    DataSize size() {
+        return this.size;
+    }
 
-	DataUnit(String suffix, DataSize size) {
-		this.suffix = suffix;
-		this.size = size;
-	}
-
-	DataSize size() {
-		return this.size;
-	}
-
-	/**
-	 * Return the {@link DataUnit} matching the specified {@code suffix}.
-	 * @param suffix one of the standard suffixes
-	 * @return the {@link DataUnit} matching the specified {@code suffix}
-	 * @throws IllegalArgumentException if the suffix does not match the suffix
-	 * of any of this enum's constants
-	 */
-	public static DataUnit fromSuffix(String suffix) {
-		for (DataUnit candidate : values()) {
-			if (candidate.suffix.equals(suffix)) {
-				return candidate;
-			}
-		}
-		throw new IllegalArgumentException("Unknown data unit suffix '" + suffix + "'");
-	}
-
+    /**
+     * Return the {@link DataUnit} matching the specified {@code suffix}.
+     *
+     * @param suffix one of the standard suffixes
+     * @return the {@link DataUnit} matching the specified {@code suffix}
+     * @throws IllegalArgumentException if the suffix does not match the suffix of any of this
+     *     enum's constants
+     */
+    public static DataUnit fromSuffix(String suffix) {
+        for (DataUnit candidate : values()) {
+            if (candidate.suffix.equals(suffix)) {
+                return candidate;
+            }
+        }
+        throw new IllegalArgumentException("Unknown data unit suffix '" + suffix + "'");
+    }
 }

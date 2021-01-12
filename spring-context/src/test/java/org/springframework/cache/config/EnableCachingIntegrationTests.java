@@ -47,172 +47,161 @@ import static org.springframework.cache.CacheTestUtils.*;
  */
 public class EnableCachingIntegrationTests {
 
-	private ConfigurableApplicationContext context;
+    private ConfigurableApplicationContext context;
 
+    @After
+    public void closeContext() {
+        if (this.context != null) {
+            this.context.close();
+        }
+    }
 
-	@After
-	public void closeContext() {
-		if (this.context != null) {
-			this.context.close();
-		}
-	}
+    @Test
+    public void fooServiceWithInterface() {
+        this.context = new AnnotationConfigApplicationContext(FooConfig.class);
+        FooService service = this.context.getBean(FooService.class);
+        fooGetSimple(service);
+    }
 
+    @Test
+    public void fooServiceWithInterfaceCglib() {
+        this.context = new AnnotationConfigApplicationContext(FooConfigCglib.class);
+        FooService service = this.context.getBean(FooService.class);
+        fooGetSimple(service);
+    }
 
-	@Test
-	public void fooServiceWithInterface() {
-		this.context = new AnnotationConfigApplicationContext(FooConfig.class);
-		FooService service = this.context.getBean(FooService.class);
-		fooGetSimple(service);
-	}
+    private void fooGetSimple(FooService service) {
+        Cache cache = getCache();
 
-	@Test
-	public void fooServiceWithInterfaceCglib() {
-		this.context = new AnnotationConfigApplicationContext(FooConfigCglib.class);
-		FooService service = this.context.getBean(FooService.class);
-		fooGetSimple(service);
-	}
+        Object key = new Object();
+        assertCacheMiss(key, cache);
 
-	private void fooGetSimple(FooService service) {
-		Cache cache = getCache();
+        Object value = service.getSimple(key);
+        assertCacheHit(key, value, cache);
+    }
 
-		Object key = new Object();
-		assertCacheMiss(key, cache);
+    @Test
+    public void beanConditionOff() {
+        this.context = new AnnotationConfigApplicationContext(BeanConditionConfig.class);
+        FooService service = this.context.getBean(FooService.class);
+        Cache cache = getCache();
 
-		Object value = service.getSimple(key);
-		assertCacheHit(key, value, cache);
-	}
+        Object key = new Object();
+        service.getWithCondition(key);
+        assertCacheMiss(key, cache);
+        service.getWithCondition(key);
+        assertCacheMiss(key, cache);
 
-	@Test
-	public void beanConditionOff() {
-		this.context = new AnnotationConfigApplicationContext(BeanConditionConfig.class);
-		FooService service = this.context.getBean(FooService.class);
-		Cache cache = getCache();
+        assertEquals(2, this.context.getBean(BeanConditionConfig.Bar.class).count);
+    }
 
-		Object key = new Object();
-		service.getWithCondition(key);
-		assertCacheMiss(key, cache);
-		service.getWithCondition(key);
-		assertCacheMiss(key, cache);
+    @Test
+    public void beanConditionOn() {
+        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+        ctx.setEnvironment(new MockEnvironment().withProperty("bar.enabled", "true"));
+        ctx.register(BeanConditionConfig.class);
+        ctx.refresh();
+        this.context = ctx;
 
-		assertEquals(2, this.context.getBean(BeanConditionConfig.Bar.class).count);
-	}
+        FooService service = this.context.getBean(FooService.class);
+        Cache cache = getCache();
 
-	@Test
-	public void beanConditionOn() {
-		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
-		ctx.setEnvironment(new MockEnvironment().withProperty("bar.enabled", "true"));
-		ctx.register(BeanConditionConfig.class);
-		ctx.refresh();
-		this.context = ctx;
+        Object key = new Object();
+        Object value = service.getWithCondition(key);
+        assertCacheHit(key, value, cache);
+        value = service.getWithCondition(key);
+        assertCacheHit(key, value, cache);
 
-		FooService service = this.context.getBean(FooService.class);
-		Cache cache = getCache();
+        assertEquals(2, this.context.getBean(BeanConditionConfig.Bar.class).count);
+    }
 
-		Object key = new Object();
-		Object value = service.getWithCondition(key);
-		assertCacheHit(key, value, cache);
-		value = service.getWithCondition(key);
-		assertCacheHit(key, value, cache);
+    private Cache getCache() {
+        return this.context.getBean(CacheManager.class).getCache("testCache");
+    }
 
-		assertEquals(2, this.context.getBean(BeanConditionConfig.Bar.class).count);
-	}
+    @Configuration
+    static class SharedConfig extends CachingConfigurerSupport {
 
-	private Cache getCache() {
-		return this.context.getBean(CacheManager.class).getCache("testCache");
-	}
+        @Override
+        @Bean
+        public CacheManager cacheManager() {
+            return CacheTestUtils.createSimpleCacheManager("testCache");
+        }
+    }
 
+    @Configuration
+    @Import(SharedConfig.class)
+    @EnableCaching
+    static class FooConfig {
 
-	@Configuration
-	static class SharedConfig extends CachingConfigurerSupport {
+        @Bean
+        public FooService fooService() {
+            return new FooServiceImpl();
+        }
+    }
 
-		@Override
-		@Bean
-		public CacheManager cacheManager() {
-			return CacheTestUtils.createSimpleCacheManager("testCache");
-		}
-	}
+    @Configuration
+    @Import(SharedConfig.class)
+    @EnableCaching(proxyTargetClass = true)
+    static class FooConfigCglib {
 
+        @Bean
+        public FooService fooService() {
+            return new FooServiceImpl();
+        }
+    }
 
-	@Configuration
-	@Import(SharedConfig.class)
-	@EnableCaching
-	static class FooConfig {
+    interface FooService {
 
-		@Bean
-		public FooService fooService() {
-			return new FooServiceImpl();
-		}
-	}
+        Object getSimple(Object key);
 
+        Object getWithCondition(Object key);
+    }
 
-	@Configuration
-	@Import(SharedConfig.class)
-	@EnableCaching(proxyTargetClass = true)
-	static class FooConfigCglib {
+    @CacheConfig(cacheNames = "testCache")
+    static class FooServiceImpl implements FooService {
 
-		@Bean
-		public FooService fooService() {
-			return new FooServiceImpl();
-		}
-	}
+        private final AtomicLong counter = new AtomicLong();
 
+        @Override
+        @Cacheable
+        public Object getSimple(Object key) {
+            return this.counter.getAndIncrement();
+        }
 
-	interface FooService {
+        @Override
+        @Cacheable(condition = "@bar.enabled")
+        public Object getWithCondition(Object key) {
+            return this.counter.getAndIncrement();
+        }
+    }
 
-		Object getSimple(Object key);
+    @Configuration
+    @Import(FooConfig.class)
+    @EnableCaching
+    static class BeanConditionConfig {
 
-		Object getWithCondition(Object key);
-	}
+        @Autowired Environment env;
 
+        @Bean
+        public Bar bar() {
+            return new Bar(Boolean.valueOf(env.getProperty("bar.enabled")));
+        }
 
-	@CacheConfig(cacheNames = "testCache")
-	static class FooServiceImpl implements FooService {
+        static class Bar {
 
-		private final AtomicLong counter = new AtomicLong();
+            public int count;
 
-		@Override
-		@Cacheable
-		public Object getSimple(Object key) {
-			return this.counter.getAndIncrement();
-		}
+            private final boolean enabled;
 
-		@Override
-		@Cacheable(condition = "@bar.enabled")
-		public Object getWithCondition(Object key) {
-			return this.counter.getAndIncrement();
-		}
-	}
+            public Bar(boolean enabled) {
+                this.enabled = enabled;
+            }
 
-
-	@Configuration
-	@Import(FooConfig.class)
-	@EnableCaching
-	static class BeanConditionConfig {
-
-		@Autowired
-		Environment env;
-
-		@Bean
-		public Bar bar() {
-			return new Bar(Boolean.valueOf(env.getProperty("bar.enabled")));
-		}
-
-
-		static class Bar {
-
-			public int count;
-
-			private final boolean enabled;
-
-			public Bar(boolean enabled) {
-				this.enabled = enabled;
-			}
-
-			public boolean isEnabled() {
-				this.count++;
-				return this.enabled;
-			}
-		}
-	}
-
+            public boolean isEnabled() {
+                this.count++;
+                return this.enabled;
+            }
+        }
+    }
 }

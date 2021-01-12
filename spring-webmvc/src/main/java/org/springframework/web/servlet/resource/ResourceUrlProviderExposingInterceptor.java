@@ -24,38 +24,34 @@ import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
 /**
- * An interceptor that exposes the {@link ResourceUrlProvider} instance it
- * is configured with as a request attribute.
+ * An interceptor that exposes the {@link ResourceUrlProvider} instance it is configured with as a
+ * request attribute.
  *
  * @author Rossen Stoyanchev
  * @since 4.1
  */
 public class ResourceUrlProviderExposingInterceptor extends HandlerInterceptorAdapter {
 
-	/**
-	 * Name of the request attribute that holds the {@link ResourceUrlProvider}.
-	 */
-	public static final String RESOURCE_URL_PROVIDER_ATTR = ResourceUrlProvider.class.getName();
+    /** Name of the request attribute that holds the {@link ResourceUrlProvider}. */
+    public static final String RESOURCE_URL_PROVIDER_ATTR = ResourceUrlProvider.class.getName();
 
-	private final ResourceUrlProvider resourceUrlProvider;
+    private final ResourceUrlProvider resourceUrlProvider;
 
+    public ResourceUrlProviderExposingInterceptor(ResourceUrlProvider resourceUrlProvider) {
+        Assert.notNull(resourceUrlProvider, "ResourceUrlProvider is required");
+        this.resourceUrlProvider = resourceUrlProvider;
+    }
 
-	public ResourceUrlProviderExposingInterceptor(ResourceUrlProvider resourceUrlProvider) {
-		Assert.notNull(resourceUrlProvider, "ResourceUrlProvider is required");
-		this.resourceUrlProvider = resourceUrlProvider;
-	}
+    @Override
+    public boolean preHandle(
+            HttpServletRequest request, HttpServletResponse response, Object handler)
+            throws Exception {
 
-	@Override
-	public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
-			throws Exception {
-
-		try {
-			request.setAttribute(RESOURCE_URL_PROVIDER_ATTR, this.resourceUrlProvider);
-		}
-		catch (ResourceUrlEncodingFilter.LookupPathIndexException ex) {
-			throw new ServletRequestBindingException(ex.getMessage(), ex);
-		}
-		return true;
-	}
-
+        try {
+            request.setAttribute(RESOURCE_URL_PROVIDER_ATTR, this.resourceUrlProvider);
+        } catch (ResourceUrlEncodingFilter.LookupPathIndexException ex) {
+            throw new ServletRequestBindingException(ex.getMessage(), ex);
+        }
+        return true;
+    }
 }

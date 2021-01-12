@@ -16,20 +16,18 @@
 
 package org.springframework.jmx.export.annotation;
 
-/**
- * @author Rob Harrop
- */
+/** @author Rob Harrop */
 public interface IAnnotationTestBean {
 
-	@ManagedAttribute
-	String getColour();
+    @ManagedAttribute
+    String getColour();
 
-	@ManagedAttribute
-	void setColour(String colour);
+    @ManagedAttribute
+    void setColour(String colour);
 
-	@ManagedOperation
-	void fromInterface();
+    @ManagedOperation
+    void fromInterface();
 
-	@ManagedOperation
-	int getExpensiveToCalculate();
+    @ManagedOperation
+    int getExpensiveToCalculate();
 }

@@ -23,9 +23,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotation which indicates that a method parameter should be bound to the headers of a
- * message. The annotated parameter must be assignable to {@link java.util.Map} with
- * String keys and Object values.
+ * Annotation which indicates that a method parameter should be bound to the headers of a message.
+ * The annotated parameter must be assignable to {@link java.util.Map} with String keys and Object
+ * values.
  *
  * @author Rossen Stoyanchev
  * @since 4.0
@@ -33,6 +33,4 @@ import java.lang.annotation.Target;
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-public @interface Headers {
-
-}
+public @interface Headers {}

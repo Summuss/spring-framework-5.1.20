@@ -39,225 +39,253 @@ import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.*;
 
 /**
- * Tests proving that @Qualifier annotations work when used
- * with @Configuration classes on @Bean methods.
+ * Tests proving that @Qualifier annotations work when used with @Configuration classes on @Bean
+ * methods.
  *
  * @author Chris Beams
  * @author Juergen Hoeller
  */
 public class BeanMethodQualificationTests {
 
-	@Test
-	public void testStandard() {
-		AnnotationConfigApplicationContext ctx =
-				new AnnotationConfigApplicationContext(StandardConfig.class, StandardPojo.class);
-		assertFalse(ctx.getBeanFactory().containsSingleton("testBean1"));
-		StandardPojo pojo = ctx.getBean(StandardPojo.class);
-		assertThat(pojo.testBean.getName(), equalTo("interesting"));
-		assertThat(pojo.testBean2.getName(), equalTo("boring"));
-	}
+    @Test
+    public void testStandard() {
+        AnnotationConfigApplicationContext ctx =
+                new AnnotationConfigApplicationContext(StandardConfig.class, StandardPojo.class);
+        assertFalse(ctx.getBeanFactory().containsSingleton("testBean1"));
+        StandardPojo pojo = ctx.getBean(StandardPojo.class);
+        assertThat(pojo.testBean.getName(), equalTo("interesting"));
+        assertThat(pojo.testBean2.getName(), equalTo("boring"));
+    }
 
-	@Test
-	public void testScoped() {
-		AnnotationConfigApplicationContext ctx =
-				new AnnotationConfigApplicationContext(ScopedConfig.class, StandardPojo.class);
-		assertFalse(ctx.getBeanFactory().containsSingleton("testBean1"));
-		StandardPojo pojo = ctx.getBean(StandardPojo.class);
-		assertThat(pojo.testBean.getName(), equalTo("interesting"));
-		assertThat(pojo.testBean2.getName(), equalTo("boring"));
-	}
+    @Test
+    public void testScoped() {
+        AnnotationConfigApplicationContext ctx =
+                new AnnotationConfigApplicationContext(ScopedConfig.class, StandardPojo.class);
+        assertFalse(ctx.getBeanFactory().containsSingleton("testBean1"));
+        StandardPojo pojo = ctx.getBean(StandardPojo.class);
+        assertThat(pojo.testBean.getName(), equalTo("interesting"));
+        assertThat(pojo.testBean2.getName(), equalTo("boring"));
+    }
 
-	@Test
-	public void testScopedProxy() {
-		AnnotationConfigApplicationContext ctx =
-				new AnnotationConfigApplicationContext(ScopedProxyConfig.class, StandardPojo.class);
-		assertTrue(ctx.getBeanFactory().containsSingleton("testBean1"));  // a shared scoped proxy
-		StandardPojo pojo = ctx.getBean(StandardPojo.class);
-		assertThat(pojo.testBean.getName(), equalTo("interesting"));
-		assertThat(pojo.testBean2.getName(), equalTo("boring"));
-	}
+    @Test
+    public void testScopedProxy() {
+        AnnotationConfigApplicationContext ctx =
+                new AnnotationConfigApplicationContext(ScopedProxyConfig.class, StandardPojo.class);
+        assertTrue(ctx.getBeanFactory().containsSingleton("testBean1")); // a shared scoped proxy
+        StandardPojo pojo = ctx.getBean(StandardPojo.class);
+        assertThat(pojo.testBean.getName(), equalTo("interesting"));
+        assertThat(pojo.testBean2.getName(), equalTo("boring"));
+    }
 
-	@Test
-	public void testCustomWithLazyResolution() {
-		AnnotationConfigApplicationContext ctx =
-				new AnnotationConfigApplicationContext(CustomConfig.class, CustomPojo.class);
-		assertFalse(ctx.getBeanFactory().containsSingleton("testBean1"));
-		assertFalse(ctx.getBeanFactory().containsSingleton("testBean2"));
-		assertTrue(BeanFactoryAnnotationUtils.isQualifierMatch(value -> value.equals("boring"),
-				"testBean2", ctx.getDefaultListableBeanFactory()));
-		CustomPojo pojo = ctx.getBean(CustomPojo.class);
-		assertThat(pojo.testBean.getName(), equalTo("interesting"));
-		TestBean testBean2 = BeanFactoryAnnotationUtils.qualifiedBeanOfType(
-				ctx.getDefaultListableBeanFactory(), TestBean.class, "boring");
-		assertThat(testBean2.getName(), equalTo("boring"));
-	}
+    @Test
+    public void testCustomWithLazyResolution() {
+        AnnotationConfigApplicationContext ctx =
+                new AnnotationConfigApplicationContext(CustomConfig.class, CustomPojo.class);
+        assertFalse(ctx.getBeanFactory().containsSingleton("testBean1"));
+        assertFalse(ctx.getBeanFactory().containsSingleton("testBean2"));
+        assertTrue(
+                BeanFactoryAnnotationUtils.isQualifierMatch(
+                        value -> value.equals("boring"),
+                        "testBean2",
+                        ctx.getDefaultListableBeanFactory()));
+        CustomPojo pojo = ctx.getBean(CustomPojo.class);
+        assertThat(pojo.testBean.getName(), equalTo("interesting"));
+        TestBean testBean2 =
+                BeanFactoryAnnotationUtils.qualifiedBeanOfType(
+                        ctx.getDefaultListableBeanFactory(), TestBean.class, "boring");
+        assertThat(testBean2.getName(), equalTo("boring"));
+    }
 
-	@Test
-	public void testCustomWithEarlyResolution() {
-		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
-		ctx.register(CustomConfig.class, CustomPojo.class);
-		ctx.refresh();
-		assertFalse(ctx.getBeanFactory().containsSingleton("testBean1"));
-		assertFalse(ctx.getBeanFactory().containsSingleton("testBean2"));
-		ctx.getBean("testBean2");
-		assertTrue(BeanFactoryAnnotationUtils.isQualifierMatch(value -> value.equals("boring"),
-				"testBean2", ctx.getDefaultListableBeanFactory()));
-		CustomPojo pojo = ctx.getBean(CustomPojo.class);
-		assertThat(pojo.testBean.getName(), equalTo("interesting"));
-	}
+    @Test
+    public void testCustomWithEarlyResolution() {
+        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+        ctx.register(CustomConfig.class, CustomPojo.class);
+        ctx.refresh();
+        assertFalse(ctx.getBeanFactory().containsSingleton("testBean1"));
+        assertFalse(ctx.getBeanFactory().containsSingleton("testBean2"));
+        ctx.getBean("testBean2");
+        assertTrue(
+                BeanFactoryAnnotationUtils.isQualifierMatch(
+                        value -> value.equals("boring"),
+                        "testBean2",
+                        ctx.getDefaultListableBeanFactory()));
+        CustomPojo pojo = ctx.getBean(CustomPojo.class);
+        assertThat(pojo.testBean.getName(), equalTo("interesting"));
+    }
 
-	@Test
-	public void testCustomWithAsm() {
-		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
-		ctx.registerBeanDefinition("customConfig", new RootBeanDefinition(CustomConfig.class.getName()));
-		RootBeanDefinition customPojo = new RootBeanDefinition(CustomPojo.class.getName());
-		customPojo.setLazyInit(true);
-		ctx.registerBeanDefinition("customPojo", customPojo);
-		ctx.refresh();
-		assertFalse(ctx.getBeanFactory().containsSingleton("testBean1"));
-		assertFalse(ctx.getBeanFactory().containsSingleton("testBean2"));
-		CustomPojo pojo = ctx.getBean(CustomPojo.class);
-		assertThat(pojo.testBean.getName(), equalTo("interesting"));
-	}
+    @Test
+    public void testCustomWithAsm() {
+        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+        ctx.registerBeanDefinition(
+                "customConfig", new RootBeanDefinition(CustomConfig.class.getName()));
+        RootBeanDefinition customPojo = new RootBeanDefinition(CustomPojo.class.getName());
+        customPojo.setLazyInit(true);
+        ctx.registerBeanDefinition("customPojo", customPojo);
+        ctx.refresh();
+        assertFalse(ctx.getBeanFactory().containsSingleton("testBean1"));
+        assertFalse(ctx.getBeanFactory().containsSingleton("testBean2"));
+        CustomPojo pojo = ctx.getBean(CustomPojo.class);
+        assertThat(pojo.testBean.getName(), equalTo("interesting"));
+    }
 
-	@Test
-	public void testCustomWithAttributeOverride() {
-		AnnotationConfigApplicationContext ctx =
-				new AnnotationConfigApplicationContext(CustomConfigWithAttributeOverride.class, CustomPojo.class);
-		assertFalse(ctx.getBeanFactory().containsSingleton("testBeanX"));
-		CustomPojo pojo = ctx.getBean(CustomPojo.class);
-		assertThat(pojo.testBean.getName(), equalTo("interesting"));
-	}
+    @Test
+    public void testCustomWithAttributeOverride() {
+        AnnotationConfigApplicationContext ctx =
+                new AnnotationConfigApplicationContext(
+                        CustomConfigWithAttributeOverride.class, CustomPojo.class);
+        assertFalse(ctx.getBeanFactory().containsSingleton("testBeanX"));
+        CustomPojo pojo = ctx.getBean(CustomPojo.class);
+        assertThat(pojo.testBean.getName(), equalTo("interesting"));
+    }
 
+    @Configuration
+    static class StandardConfig {
 
-	@Configuration
-	static class StandardConfig {
+        @Bean
+        @Qualifier("interesting")
+        @Lazy
+        public TestBean testBean1() {
+            return new TestBean("interesting");
+        }
 
-		@Bean @Qualifier("interesting") @Lazy
-		public TestBean testBean1() {
-			return new TestBean("interesting");
-		}
+        @Bean
+        @Boring
+        public TestBean testBean2(@Lazy TestBean testBean1) {
+            TestBean tb = new TestBean("boring");
+            tb.setSpouse(testBean1);
+            return tb;
+        }
+    }
 
-		@Bean @Boring
-		public TestBean testBean2(@Lazy TestBean testBean1) {
-			TestBean tb = new TestBean("boring");
-			tb.setSpouse(testBean1);
-			return tb;
-		}
-	}
+    @Configuration
+    static class ScopedConfig {
 
-	@Configuration
-	static class ScopedConfig {
+        @Bean
+        @Qualifier("interesting")
+        @Scope("prototype")
+        public TestBean testBean1() {
+            return new TestBean("interesting");
+        }
 
-		@Bean @Qualifier("interesting") @Scope("prototype")
-		public TestBean testBean1() {
-			return new TestBean("interesting");
-		}
+        @Bean
+        @Boring
+        @Scope("prototype")
+        public TestBean testBean2(TestBean testBean1) {
+            TestBean tb = new TestBean("boring");
+            tb.setSpouse(testBean1);
+            return tb;
+        }
+    }
 
-		@Bean @Boring @Scope("prototype")
-		public TestBean testBean2(TestBean testBean1) {
-			TestBean tb = new TestBean("boring");
-			tb.setSpouse(testBean1);
-			return tb;
-		}
-	}
+    @Configuration
+    static class ScopedProxyConfig {
 
-	@Configuration
-	static class ScopedProxyConfig {
+        @Bean
+        @Qualifier("interesting")
+        @Scope(value = "prototype", proxyMode = ScopedProxyMode.TARGET_CLASS)
+        public TestBean testBean1() {
+            return new TestBean("interesting");
+        }
 
-		@Bean @Qualifier("interesting") @Scope(value="prototype", proxyMode=ScopedProxyMode.TARGET_CLASS)
-		public TestBean testBean1() {
-			return new TestBean("interesting");
-		}
+        @Bean
+        @Boring
+        @Scope(value = "prototype", proxyMode = ScopedProxyMode.TARGET_CLASS)
+        public TestBean testBean2(TestBean testBean1) {
+            TestBean tb = new TestBean("boring");
+            tb.setSpouse(testBean1);
+            return tb;
+        }
+    }
 
-		@Bean @Boring @Scope(value="prototype", proxyMode=ScopedProxyMode.TARGET_CLASS)
-		public TestBean testBean2(TestBean testBean1) {
-			TestBean tb = new TestBean("boring");
-			tb.setSpouse(testBean1);
-			return tb;
-		}
-	}
+    @Component
+    @Lazy
+    static class StandardPojo {
 
-	@Component @Lazy
-	static class StandardPojo {
+        @Autowired
+        @Qualifier("interesting")
+        TestBean testBean;
 
-		@Autowired @Qualifier("interesting") TestBean testBean;
+        @Autowired @Boring TestBean testBean2;
+    }
 
-		@Autowired @Boring TestBean testBean2;
-	}
+    @Qualifier
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface Boring {}
 
-	@Qualifier
-	@Retention(RetentionPolicy.RUNTIME)
-	public @interface Boring {
-	}
+    @Configuration
+    static class CustomConfig {
 
-	@Configuration
-	static class CustomConfig {
+        @InterestingBean
+        public TestBean testBean1() {
+            return new TestBean("interesting");
+        }
 
-		@InterestingBean
-		public TestBean testBean1() {
-			return new TestBean("interesting");
-		}
+        @Bean
+        @Qualifier("boring")
+        @Lazy
+        public TestBean testBean2(@Lazy TestBean testBean1) {
+            TestBean tb = new TestBean("boring");
+            tb.setSpouse(testBean1);
+            return tb;
+        }
+    }
 
-		@Bean @Qualifier("boring") @Lazy
-		public TestBean testBean2(@Lazy TestBean testBean1) {
-			TestBean tb = new TestBean("boring");
-			tb.setSpouse(testBean1);
-			return tb;
-		}
-	}
+    @Configuration
+    static class CustomConfigWithAttributeOverride {
 
-	@Configuration
-	static class CustomConfigWithAttributeOverride {
+        @InterestingBeanWithName(name = "testBeanX")
+        public TestBean testBean1() {
+            return new TestBean("interesting");
+        }
 
-		@InterestingBeanWithName(name="testBeanX")
-		public TestBean testBean1() {
-			return new TestBean("interesting");
-		}
+        @Bean
+        @Qualifier("boring")
+        public TestBean testBean2(@Lazy TestBean testBean1) {
+            TestBean tb = new TestBean("boring");
+            tb.setSpouse(testBean1);
+            return tb;
+        }
+    }
 
-		@Bean @Qualifier("boring")
-		public TestBean testBean2(@Lazy TestBean testBean1) {
-			TestBean tb = new TestBean("boring");
-			tb.setSpouse(testBean1);
-			return tb;
-		}
-	}
+    @InterestingPojo
+    static class CustomPojo {
 
-	@InterestingPojo
-	static class CustomPojo {
+        @InterestingNeed TestBean testBean;
 
-		@InterestingNeed TestBean testBean;
+        @InterestingNeedWithRequiredOverride(required = false)
+        NestedTestBean nestedTestBean;
+    }
 
-		@InterestingNeedWithRequiredOverride(required=false) NestedTestBean nestedTestBean;
-	}
+    @Bean
+    @Lazy
+    @Qualifier("interesting")
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface InterestingBean {}
 
-	@Bean @Lazy @Qualifier("interesting")
-	@Retention(RetentionPolicy.RUNTIME)
-	public @interface InterestingBean {
-	}
+    @Bean
+    @Lazy
+    @Qualifier("interesting")
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface InterestingBeanWithName {
 
-	@Bean @Lazy @Qualifier("interesting")
-	@Retention(RetentionPolicy.RUNTIME)
-	public @interface InterestingBeanWithName {
+        String name();
+    }
 
-		String name();
-	}
+    @Autowired
+    @Qualifier("interesting")
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface InterestingNeed {}
 
-	@Autowired @Qualifier("interesting")
-	@Retention(RetentionPolicy.RUNTIME)
-	public @interface InterestingNeed {
-	}
+    @Autowired
+    @Qualifier("interesting")
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface InterestingNeedWithRequiredOverride {
 
-	@Autowired @Qualifier("interesting")
-	@Retention(RetentionPolicy.RUNTIME)
-	public @interface InterestingNeedWithRequiredOverride {
+        boolean required();
+    }
 
-		boolean required();
-	}
-
-	@Component @Lazy
-	@Retention(RetentionPolicy.RUNTIME)
-	public @interface InterestingPojo {
-	}
-
+    @Component
+    @Lazy
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface InterestingPojo {}
 }

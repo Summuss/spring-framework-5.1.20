@@ -17,11 +17,11 @@
 package org.springframework.asm;
 
 /**
- * Utility class exposing constants related to Spring's internal repackaging
- * of the ASM bytecode library: currently based on ASM 7.x plus minor patches.
+ * Utility class exposing constants related to Spring's internal repackaging of the ASM bytecode
+ * library: currently based on ASM 7.x plus minor patches.
  *
- * <p>See <a href="package-summary.html">package-level javadocs</a> for more
- * information on {@code org.springframework.asm}.
+ * <p>See <a href="package-summary.html">package-level javadocs</a> for more information on {@code
+ * org.springframework.asm}.
  *
  * @author Chris Beams
  * @author Juergen Hoeller
@@ -29,10 +29,9 @@ package org.springframework.asm;
  */
 public final class SpringAsmInfo {
 
-	/**
-	 * The ASM compatibility version for Spring's ASM visitor implementations:
-	 * currently {@link Opcodes#ASM7}, as of Spring Framework 5.1.
-	 */
-	public static final int ASM_VERSION = Opcodes.ASM7;
-
+    /**
+     * The ASM compatibility version for Spring's ASM visitor implementations: currently {@link
+     * Opcodes#ASM7}, as of Spring Framework 5.1.
+     */
+    public static final int ASM_VERSION = Opcodes.ASM7;
 }

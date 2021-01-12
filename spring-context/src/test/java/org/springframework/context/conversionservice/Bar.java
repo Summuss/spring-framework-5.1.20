@@ -16,19 +16,16 @@
 
 package org.springframework.context.conversionservice;
 
-/**
- * @author Keith Donald
- */
+/** @author Keith Donald */
 public class Bar {
 
-	private String value;
+    private String value;
 
-	public Bar(String value) {
-		this.value = value;
-	}
+    public Bar(String value) {
+        this.value = value;
+    }
 
-	public String getValue() {
-		return value;
-	}
-
+    public String getValue() {
+        return value;
+    }
 }

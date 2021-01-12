@@ -16,7 +16,6 @@
 
 package org.springframework.test.web.servlet.samples.spr;
 
-
 import java.net.URI;
 
 import org.junit.Before;
@@ -63,75 +62,80 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppC
 @ContextConfiguration
 public class EncodedUriTests {
 
-	@Autowired
-	private WebApplicationContext wac;
+    @Autowired private WebApplicationContext wac;
 
-	private MockMvc mockMvc;
+    private MockMvc mockMvc;
 
-	@Before
-	public void setup() {
-		this.mockMvc = webAppContextSetup(this.wac).build();
-	}
+    @Before
+    public void setup() {
+        this.mockMvc = webAppContextSetup(this.wac).build();
+    }
 
-	@Test
-	public void test() throws Exception {
-		String id = "a/b";
-		URI url = UriComponentsBuilder.fromUriString("/circuit").pathSegment(id).build().encode().toUri();
-		ResultActions result = mockMvc.perform(get(url));
-		result.andExpect(status().isOk()).andExpect(model().attribute("receivedId", is(id)));
-	}
+    @Test
+    public void test() throws Exception {
+        String id = "a/b";
+        URI url =
+                UriComponentsBuilder.fromUriString("/circuit")
+                        .pathSegment(id)
+                        .build()
+                        .encode()
+                        .toUri();
+        ResultActions result = mockMvc.perform(get(url));
+        result.andExpect(status().isOk()).andExpect(model().attribute("receivedId", is(id)));
+    }
 
+    @Configuration
+    @EnableWebMvc
+    static class WebConfig implements WebMvcConfigurer {
 
-	@Configuration
-	@EnableWebMvc
-	static class WebConfig implements WebMvcConfigurer {
+        @Bean
+        public MyController myController() {
+            return new MyController();
+        }
 
-		@Bean
-		public MyController myController() {
-			return new MyController();
-		}
+        @Bean
+        public HandlerMappingConfigurer myHandlerMappingConfigurer() {
+            return new HandlerMappingConfigurer();
+        }
 
-		@Bean
-		public HandlerMappingConfigurer myHandlerMappingConfigurer() {
-			return new HandlerMappingConfigurer();
-		}
+        @Override
+        public void configureViewResolvers(ViewResolverRegistry registry) {
+            registry.jsp("", "");
+        }
+    }
 
-		@Override
-		public void configureViewResolvers(ViewResolverRegistry registry) {
-			registry.jsp("", "");
-		}
-	}
+    @Controller
+    private static class MyController {
 
-	@Controller
-	private static class MyController {
+        @RequestMapping(value = "/circuit/{id}", method = RequestMethod.GET)
+        public String getCircuit(@PathVariable String id, Model model) {
+            model.addAttribute("receivedId", id);
+            return "result";
+        }
+    }
 
-		@RequestMapping(value = "/circuit/{id}", method = RequestMethod.GET)
-		public String getCircuit(@PathVariable String id, Model model) {
-			model.addAttribute("receivedId", id);
-			return "result";
-		}
-	}
+    @Component
+    private static class HandlerMappingConfigurer implements BeanPostProcessor, PriorityOrdered {
 
-	@Component
-	private static class HandlerMappingConfigurer implements BeanPostProcessor, PriorityOrdered {
+        public Object postProcessBeforeInitialization(Object bean, String beanName)
+                throws BeansException {
+            if (bean instanceof RequestMappingHandlerMapping) {
+                RequestMappingHandlerMapping requestMappingHandlerMapping =
+                        (RequestMappingHandlerMapping) bean;
 
-		public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
-			if (bean instanceof RequestMappingHandlerMapping) {
-				RequestMappingHandlerMapping requestMappingHandlerMapping = (RequestMappingHandlerMapping) bean;
+                // URL decode after request mapping, not before.
+                requestMappingHandlerMapping.setUrlDecode(false);
+            }
+            return bean;
+        }
 
-				// URL decode after request mapping, not before.
-				requestMappingHandlerMapping.setUrlDecode(false);
-			}
-			return bean;
-		}
+        public Object postProcessAfterInitialization(Object bean, String beanName)
+                throws BeansException {
+            return bean;
+        }
 
-		public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
-			return bean;
-		}
-
-		public int getOrder() {
-			return PriorityOrdered.HIGHEST_PRECEDENCE;
-		}
-	}
-
+        public int getOrder() {
+            return PriorityOrdered.HIGHEST_PRECEDENCE;
+        }
+    }
 }

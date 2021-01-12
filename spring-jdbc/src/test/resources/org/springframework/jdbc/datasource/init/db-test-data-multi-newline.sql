@@ -1,5 +1,5 @@
-insert into T_TEST (NAME) 
-values ('Keith')
-
-insert into T_TEST (NAME)
-values ('Dave')
+INSERT INTO T_TEST (NAME)
+VALUES ('Keith')
+    INSERT
+INTO T_TEST (NAME)
+VALUES ('Dave')

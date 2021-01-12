@@ -33,25 +33,24 @@ import static org.junit.Assert.*;
  * @since 3.1
  */
 @RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration(classes = { DefaultProfileConfig.class, DevProfileConfig.class }, loader = AnnotationConfigContextLoader.class)
+@ContextConfiguration(
+        classes = {DefaultProfileConfig.class, DevProfileConfig.class},
+        loader = AnnotationConfigContextLoader.class)
 public class DefaultProfileAnnotationConfigTests {
 
-	@Autowired
-	protected Pet pet;
+    @Autowired protected Pet pet;
 
-	@Autowired(required = false)
-	protected Employee employee;
+    @Autowired(required = false)
+    protected Employee employee;
 
+    @Test
+    public void pet() {
+        assertNotNull(pet);
+        assertEquals("Fido", pet.getName());
+    }
 
-	@Test
-	public void pet() {
-		assertNotNull(pet);
-		assertEquals("Fido", pet.getName());
-	}
-
-	@Test
-	public void employee() {
-		assertNull("employee bean should not be created for the default profile", employee);
-	}
-
+    @Test
+    public void employee() {
+        assertNull("employee bean should not be created for the default profile", employee);
+    }
 }

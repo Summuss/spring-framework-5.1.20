@@ -39,142 +39,142 @@ import org.springframework.util.CollectionUtils;
  */
 public class ServletServerHttpResponse implements ServerHttpResponse {
 
-	private final HttpServletResponse servletResponse;
+    private final HttpServletResponse servletResponse;
 
-	private final HttpHeaders headers;
+    private final HttpHeaders headers;
 
-	private boolean headersWritten = false;
+    private boolean headersWritten = false;
 
-	private boolean bodyUsed = false;
+    private boolean bodyUsed = false;
 
+    /**
+     * Construct a new instance of the ServletServerHttpResponse based on the given {@link
+     * HttpServletResponse}.
+     *
+     * @param servletResponse the servlet response
+     */
+    public ServletServerHttpResponse(HttpServletResponse servletResponse) {
+        Assert.notNull(servletResponse, "HttpServletResponse must not be null");
+        this.servletResponse = servletResponse;
+        this.headers = new ServletResponseHttpHeaders();
+    }
 
-	/**
-	 * Construct a new instance of the ServletServerHttpResponse based on the given {@link HttpServletResponse}.
-	 * @param servletResponse the servlet response
-	 */
-	public ServletServerHttpResponse(HttpServletResponse servletResponse) {
-		Assert.notNull(servletResponse, "HttpServletResponse must not be null");
-		this.servletResponse = servletResponse;
-		this.headers = new ServletResponseHttpHeaders();
-	}
+    /** Return the {@code HttpServletResponse} this object is based on. */
+    public HttpServletResponse getServletResponse() {
+        return this.servletResponse;
+    }
 
+    @Override
+    public void setStatusCode(HttpStatus status) {
+        Assert.notNull(status, "HttpStatus must not be null");
+        this.servletResponse.setStatus(status.value());
+    }
 
-	/**
-	 * Return the {@code HttpServletResponse} this object is based on.
-	 */
-	public HttpServletResponse getServletResponse() {
-		return this.servletResponse;
-	}
+    @Override
+    public HttpHeaders getHeaders() {
+        return (this.headersWritten ? HttpHeaders.readOnlyHttpHeaders(this.headers) : this.headers);
+    }
 
-	@Override
-	public void setStatusCode(HttpStatus status) {
-		Assert.notNull(status, "HttpStatus must not be null");
-		this.servletResponse.setStatus(status.value());
-	}
+    @Override
+    public OutputStream getBody() throws IOException {
+        this.bodyUsed = true;
+        writeHeaders();
+        return this.servletResponse.getOutputStream();
+    }
 
-	@Override
-	public HttpHeaders getHeaders() {
-		return (this.headersWritten ? HttpHeaders.readOnlyHttpHeaders(this.headers) : this.headers);
-	}
+    @Override
+    public void flush() throws IOException {
+        writeHeaders();
+        if (this.bodyUsed) {
+            this.servletResponse.flushBuffer();
+        }
+    }
 
-	@Override
-	public OutputStream getBody() throws IOException {
-		this.bodyUsed = true;
-		writeHeaders();
-		return this.servletResponse.getOutputStream();
-	}
+    @Override
+    public void close() {
+        writeHeaders();
+    }
 
-	@Override
-	public void flush() throws IOException {
-		writeHeaders();
-		if (this.bodyUsed) {
-			this.servletResponse.flushBuffer();
-		}
-	}
+    private void writeHeaders() {
+        if (!this.headersWritten) {
+            getHeaders()
+                    .forEach(
+                            (headerName, headerValues) -> {
+                                for (String headerValue : headerValues) {
+                                    this.servletResponse.addHeader(headerName, headerValue);
+                                }
+                            });
+            // HttpServletResponse exposes some headers as properties: we should include those if
+            // not already present
+            if (this.servletResponse.getContentType() == null
+                    && this.headers.getContentType() != null) {
+                this.servletResponse.setContentType(this.headers.getContentType().toString());
+            }
+            if (this.servletResponse.getCharacterEncoding() == null
+                    && this.headers.getContentType() != null
+                    && this.headers.getContentType().getCharset() != null) {
+                this.servletResponse.setCharacterEncoding(
+                        this.headers.getContentType().getCharset().name());
+            }
+            this.headersWritten = true;
+        }
+    }
 
-	@Override
-	public void close() {
-		writeHeaders();
-	}
+    /**
+     * Extends HttpHeaders with the ability to look up headers already present in the underlying
+     * HttpServletResponse.
+     *
+     * <p>The intent is merely to expose what is available through the HttpServletResponse i.e. the
+     * ability to look up specific header values by name. All other map-related operations (e.g.
+     * iteration, removal, etc) apply only to values added directly through HttpHeaders methods.
+     *
+     * @since 4.0.3
+     */
+    private class ServletResponseHttpHeaders extends HttpHeaders {
 
-	private void writeHeaders() {
-		if (!this.headersWritten) {
-			getHeaders().forEach((headerName, headerValues) -> {
-				for (String headerValue : headerValues) {
-					this.servletResponse.addHeader(headerName, headerValue);
-				}
-			});
-			// HttpServletResponse exposes some headers as properties: we should include those if not already present
-			if (this.servletResponse.getContentType() == null && this.headers.getContentType() != null) {
-				this.servletResponse.setContentType(this.headers.getContentType().toString());
-			}
-			if (this.servletResponse.getCharacterEncoding() == null && this.headers.getContentType() != null &&
-					this.headers.getContentType().getCharset() != null) {
-				this.servletResponse.setCharacterEncoding(this.headers.getContentType().getCharset().name());
-			}
-			this.headersWritten = true;
-		}
-	}
+        private static final long serialVersionUID = 3410708522401046302L;
 
+        @Override
+        public boolean containsKey(Object key) {
+            return (super.containsKey(key) || (get(key) != null));
+        }
 
-	/**
-	 * Extends HttpHeaders with the ability to look up headers already present in
-	 * the underlying HttpServletResponse.
-	 *
-	 * <p>The intent is merely to expose what is available through the HttpServletResponse
-	 * i.e. the ability to look up specific header values by name. All other
-	 * map-related operations (e.g. iteration, removal, etc) apply only to values
-	 * added directly through HttpHeaders methods.
-	 *
-	 * @since 4.0.3
-	 */
-	private class ServletResponseHttpHeaders extends HttpHeaders {
+        @Override
+        @Nullable
+        public String getFirst(String headerName) {
+            String value = servletResponse.getHeader(headerName);
+            if (value != null) {
+                return value;
+            } else {
+                return super.getFirst(headerName);
+            }
+        }
 
-		private static final long serialVersionUID = 3410708522401046302L;
+        @Override
+        public List<String> get(Object key) {
+            Assert.isInstanceOf(String.class, key, "Key must be a String-based header name");
 
-		@Override
-		public boolean containsKey(Object key) {
-			return (super.containsKey(key) || (get(key) != null));
-		}
+            Collection<String> values1 = servletResponse.getHeaders((String) key);
+            if (headersWritten) {
+                return new ArrayList<>(values1);
+            }
+            boolean isEmpty1 = CollectionUtils.isEmpty(values1);
 
-		@Override
-		@Nullable
-		public String getFirst(String headerName) {
-			String value = servletResponse.getHeader(headerName);
-			if (value != null) {
-				return value;
-			}
-			else {
-				return super.getFirst(headerName);
-			}
-		}
+            List<String> values2 = super.get(key);
+            boolean isEmpty2 = CollectionUtils.isEmpty(values2);
 
-		@Override
-		public List<String> get(Object key) {
-			Assert.isInstanceOf(String.class, key, "Key must be a String-based header name");
+            if (isEmpty1 && isEmpty2) {
+                return null;
+            }
 
-			Collection<String> values1 = servletResponse.getHeaders((String) key);
-			if (headersWritten) {
-				return new ArrayList<>(values1);
-			}
-			boolean isEmpty1 = CollectionUtils.isEmpty(values1);
-
-			List<String> values2 = super.get(key);
-			boolean isEmpty2 = CollectionUtils.isEmpty(values2);
-
-			if (isEmpty1 && isEmpty2) {
-				return null;
-			}
-
-			List<String> values = new ArrayList<>();
-			if (!isEmpty1) {
-				values.addAll(values1);
-			}
-			if (!isEmpty2) {
-				values.addAll(values2);
-			}
-			return values;
-		}
-	}
-
+            List<String> values = new ArrayList<>();
+            if (!isEmpty1) {
+                values.addAll(values1);
+            }
+            if (!isEmpty2) {
+                values.addAll(values2);
+            }
+            return values;
+        }
+    }
 }

@@ -24,5 +24,4 @@ import javax.persistence.MappedSuperclass;
  * @author Stephane Nicoll
  */
 @MappedSuperclass
-public abstract class SampleMappedSuperClass {
-}
+public abstract class SampleMappedSuperClass {}

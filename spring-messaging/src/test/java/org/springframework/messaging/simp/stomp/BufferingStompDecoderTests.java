@@ -37,175 +37,173 @@ import static org.junit.Assert.fail;
  */
 public class BufferingStompDecoderTests {
 
-	private final StompDecoder STOMP_DECODER = new StompDecoder();
+    private final StompDecoder STOMP_DECODER = new StompDecoder();
 
+    @Test
+    public void basic() throws InterruptedException {
+        BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 128);
+        String chunk = "SEND\na:alpha\n\nMessage body\0";
 
-	@Test
-	public void basic() throws InterruptedException {
-		BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 128);
-		String chunk = "SEND\na:alpha\n\nMessage body\0";
+        List<Message<byte[]>> messages = stompDecoder.decode(toByteBuffer(chunk));
+        assertEquals(1, messages.size());
+        assertEquals("Message body", new String(messages.get(0).getPayload()));
 
-		List<Message<byte[]>> messages = stompDecoder.decode(toByteBuffer(chunk));
-		assertEquals(1, messages.size());
-		assertEquals("Message body", new String(messages.get(0).getPayload()));
+        assertEquals(0, stompDecoder.getBufferSize());
+        assertNull(stompDecoder.getExpectedContentLength());
+    }
 
-		assertEquals(0, stompDecoder.getBufferSize());
-		assertNull(stompDecoder.getExpectedContentLength());
-	}
+    @Test
+    public void oneMessageInTwoChunks() throws InterruptedException {
+        BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 128);
+        String chunk1 = "SEND\na:alpha\n\nMessage";
+        String chunk2 = " body\0";
 
-	@Test
-	public void oneMessageInTwoChunks() throws InterruptedException {
-		BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 128);
-		String chunk1 = "SEND\na:alpha\n\nMessage";
-		String chunk2 = " body\0";
+        List<Message<byte[]>> messages = stompDecoder.decode(toByteBuffer(chunk1));
+        assertEquals(Collections.<Message<byte[]>>emptyList(), messages);
 
-		List<Message<byte[]>> messages = stompDecoder.decode(toByteBuffer(chunk1));
-		assertEquals(Collections.<Message<byte[]>>emptyList(), messages);
+        messages = stompDecoder.decode(toByteBuffer(chunk2));
+        assertEquals(1, messages.size());
+        assertEquals("Message body", new String(messages.get(0).getPayload()));
 
-		messages = stompDecoder.decode(toByteBuffer(chunk2));
-		assertEquals(1, messages.size());
-		assertEquals("Message body", new String(messages.get(0).getPayload()));
+        assertEquals(0, stompDecoder.getBufferSize());
+        assertNull(stompDecoder.getExpectedContentLength());
+    }
 
-		assertEquals(0, stompDecoder.getBufferSize());
-		assertNull(stompDecoder.getExpectedContentLength());
-	}
+    @Test
+    public void twoMessagesInOneChunk() throws InterruptedException {
+        BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 128);
+        String chunk = "SEND\na:alpha\n\nPayload1\0" + "SEND\na:alpha\n\nPayload2\0";
+        List<Message<byte[]>> messages = stompDecoder.decode(toByteBuffer(chunk));
 
-	@Test
-	public void twoMessagesInOneChunk() throws InterruptedException {
-		BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 128);
-		String chunk = "SEND\na:alpha\n\nPayload1\0" + "SEND\na:alpha\n\nPayload2\0";
-		List<Message<byte[]>> messages = stompDecoder.decode(toByteBuffer(chunk));
+        assertEquals(2, messages.size());
+        assertEquals("Payload1", new String(messages.get(0).getPayload()));
+        assertEquals("Payload2", new String(messages.get(1).getPayload()));
 
-		assertEquals(2, messages.size());
-		assertEquals("Payload1", new String(messages.get(0).getPayload()));
-		assertEquals("Payload2", new String(messages.get(1).getPayload()));
+        assertEquals(0, stompDecoder.getBufferSize());
+        assertNull(stompDecoder.getExpectedContentLength());
+    }
 
-		assertEquals(0, stompDecoder.getBufferSize());
-		assertNull(stompDecoder.getExpectedContentLength());
-	}
+    @Test
+    public void oneFullAndOneSplitMessageContentLength() throws InterruptedException {
+        BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 128);
+        int contentLength = "Payload2a-Payload2b".getBytes().length;
+        String chunk1 = "SEND\na:alpha\n\nPayload1\0SEND\ncontent-length:" + contentLength + "\n";
+        List<Message<byte[]>> messages = stompDecoder.decode(toByteBuffer(chunk1));
 
-	@Test
-	public void oneFullAndOneSplitMessageContentLength() throws InterruptedException {
-		BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 128);
-		int contentLength = "Payload2a-Payload2b".getBytes().length;
-		String chunk1 = "SEND\na:alpha\n\nPayload1\0SEND\ncontent-length:" + contentLength + "\n";
-		List<Message<byte[]>> messages = stompDecoder.decode(toByteBuffer(chunk1));
+        assertEquals(1, messages.size());
+        assertEquals("Payload1", new String(messages.get(0).getPayload()));
 
-		assertEquals(1, messages.size());
-		assertEquals("Payload1", new String(messages.get(0).getPayload()));
+        assertEquals(23, stompDecoder.getBufferSize());
+        assertEquals(contentLength, (int) stompDecoder.getExpectedContentLength());
 
-		assertEquals(23, stompDecoder.getBufferSize());
-		assertEquals(contentLength, (int) stompDecoder.getExpectedContentLength());
+        String chunk2 = "\nPayload2a";
+        messages = stompDecoder.decode(toByteBuffer(chunk2));
 
-		String chunk2 = "\nPayload2a";
-		messages = stompDecoder.decode(toByteBuffer(chunk2));
+        assertEquals(0, messages.size());
+        assertEquals(33, stompDecoder.getBufferSize());
+        assertEquals(contentLength, (int) stompDecoder.getExpectedContentLength());
 
-		assertEquals(0, messages.size());
-		assertEquals(33, stompDecoder.getBufferSize());
-		assertEquals(contentLength, (int) stompDecoder.getExpectedContentLength());
+        String chunk3 = "-Payload2b\0";
+        messages = stompDecoder.decode(toByteBuffer(chunk3));
 
-		String chunk3 = "-Payload2b\0";
-		messages = stompDecoder.decode(toByteBuffer(chunk3));
+        assertEquals(1, messages.size());
+        assertEquals("Payload2a-Payload2b", new String(messages.get(0).getPayload()));
+        assertEquals(0, stompDecoder.getBufferSize());
+        assertNull(stompDecoder.getExpectedContentLength());
+    }
 
-		assertEquals(1, messages.size());
-		assertEquals("Payload2a-Payload2b", new String(messages.get(0).getPayload()));
-		assertEquals(0, stompDecoder.getBufferSize());
-		assertNull(stompDecoder.getExpectedContentLength());
-	}
+    @Test
+    public void oneFullAndOneSplitMessageNoContentLength() throws InterruptedException {
+        BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 128);
+        String chunk1 = "SEND\na:alpha\n\nPayload1\0SEND\na:alpha\n";
+        List<Message<byte[]>> messages = stompDecoder.decode(toByteBuffer(chunk1));
 
-	@Test
-	public void oneFullAndOneSplitMessageNoContentLength() throws InterruptedException {
-		BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 128);
-		String chunk1 = "SEND\na:alpha\n\nPayload1\0SEND\na:alpha\n";
-		List<Message<byte[]>> messages = stompDecoder.decode(toByteBuffer(chunk1));
+        assertEquals(1, messages.size());
+        assertEquals("Payload1", new String(messages.get(0).getPayload()));
 
-		assertEquals(1, messages.size());
-		assertEquals("Payload1", new String(messages.get(0).getPayload()));
+        assertEquals(13, stompDecoder.getBufferSize());
+        assertNull(stompDecoder.getExpectedContentLength());
 
-		assertEquals(13, stompDecoder.getBufferSize());
-		assertNull(stompDecoder.getExpectedContentLength());
+        String chunk2 = "\nPayload2a";
+        messages = stompDecoder.decode(toByteBuffer(chunk2));
 
-		String chunk2 = "\nPayload2a";
-		messages = stompDecoder.decode(toByteBuffer(chunk2));
+        assertEquals(0, messages.size());
+        assertEquals(23, stompDecoder.getBufferSize());
+        assertNull(stompDecoder.getExpectedContentLength());
 
-		assertEquals(0, messages.size());
-		assertEquals(23, stompDecoder.getBufferSize());
-		assertNull(stompDecoder.getExpectedContentLength());
+        String chunk3 = "-Payload2b\0";
+        messages = stompDecoder.decode(toByteBuffer(chunk3));
 
-		String chunk3 = "-Payload2b\0";
-		messages = stompDecoder.decode(toByteBuffer(chunk3));
+        assertEquals(1, messages.size());
+        assertEquals("Payload2a-Payload2b", new String(messages.get(0).getPayload()));
+        assertEquals(0, stompDecoder.getBufferSize());
+        assertNull(stompDecoder.getExpectedContentLength());
+    }
 
-		assertEquals(1, messages.size());
-		assertEquals("Payload2a-Payload2b", new String(messages.get(0).getPayload()));
-		assertEquals(0, stompDecoder.getBufferSize());
-		assertNull(stompDecoder.getExpectedContentLength());
-	}
+    @Test
+    public void oneFullAndOneSplitWithContentLengthExceedingBufferSize()
+            throws InterruptedException {
+        BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 128);
+        String chunk1 = "SEND\na:alpha\n\nPayload1\0SEND\ncontent-length:129\n";
+        List<Message<byte[]>> messages = stompDecoder.decode(toByteBuffer(chunk1));
 
-	@Test
-	public void oneFullAndOneSplitWithContentLengthExceedingBufferSize() throws InterruptedException {
-		BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 128);
-		String chunk1 = "SEND\na:alpha\n\nPayload1\0SEND\ncontent-length:129\n";
-		List<Message<byte[]>> messages = stompDecoder.decode(toByteBuffer(chunk1));
+        assertEquals("We should have gotten the 1st message", 1, messages.size());
+        assertEquals("Payload1", new String(messages.get(0).getPayload()));
 
-		assertEquals("We should have gotten the 1st message", 1, messages.size());
-		assertEquals("Payload1", new String(messages.get(0).getPayload()));
+        assertEquals(24, stompDecoder.getBufferSize());
+        assertEquals(129, (int) stompDecoder.getExpectedContentLength());
 
-		assertEquals(24, stompDecoder.getBufferSize());
-		assertEquals(129, (int) stompDecoder.getExpectedContentLength());
+        try {
+            String chunk2 = "\nPayload2a";
+            stompDecoder.decode(toByteBuffer(chunk2));
+            fail("Expected exception");
+        } catch (StompConversionException ex) {
+            // expected
+        }
+    }
 
-		try {
-			String chunk2 = "\nPayload2a";
-			stompDecoder.decode(toByteBuffer(chunk2));
-			fail("Expected exception");
-		}
-		catch (StompConversionException ex) {
-			// expected
-		}
-	}
+    @Test(expected = StompConversionException.class)
+    public void bufferSizeLimit() {
+        BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 10);
+        String payload = "SEND\na:alpha\n\nMessage body";
+        stompDecoder.decode(toByteBuffer(payload));
+    }
 
-	@Test(expected = StompConversionException.class)
-	public void bufferSizeLimit() {
-		BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 10);
-		String payload = "SEND\na:alpha\n\nMessage body";
-		stompDecoder.decode(toByteBuffer(payload));
-	}
+    @Test
+    public void incompleteCommand() {
+        BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 128);
+        String chunk = "MESSAG";
 
-	@Test
-	public void incompleteCommand() {
-		BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 128);
-		String chunk = "MESSAG";
+        List<Message<byte[]>> messages = stompDecoder.decode(toByteBuffer(chunk));
+        assertEquals(0, messages.size());
+    }
 
-		List<Message<byte[]>> messages = stompDecoder.decode(toByteBuffer(chunk));
-		assertEquals(0, messages.size());
-	}
+    // SPR-13416
 
-	// SPR-13416
+    @Test
+    public void incompleteHeaderWithPartialEscapeSequence() throws Exception {
+        BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 128);
+        String chunk = "SEND\na:long\\";
 
-	@Test
-	public void incompleteHeaderWithPartialEscapeSequence() throws Exception {
-		BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 128);
-		String chunk = "SEND\na:long\\";
+        List<Message<byte[]>> messages = stompDecoder.decode(toByteBuffer(chunk));
+        assertEquals(0, messages.size());
+    }
 
-		List<Message<byte[]>> messages = stompDecoder.decode(toByteBuffer(chunk));
-		assertEquals(0, messages.size());
-	}
+    @Test(expected = StompConversionException.class)
+    public void invalidEscapeSequence() {
+        BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 128);
+        String payload = "SEND\na:alpha\\x\\n\nMessage body\0";
+        stompDecoder.decode(toByteBuffer(payload));
+    }
 
-	@Test(expected = StompConversionException.class)
-	public void invalidEscapeSequence() {
-		BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 128);
-		String payload = "SEND\na:alpha\\x\\n\nMessage body\0";
-		stompDecoder.decode(toByteBuffer(payload));
-	}
+    @Test(expected = StompConversionException.class)
+    public void invalidEscapeSequenceWithSingleSlashAtEndOfHeaderValue() {
+        BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 128);
+        String payload = "SEND\na:alpha\\\n\nMessage body\0";
+        stompDecoder.decode(toByteBuffer(payload));
+    }
 
-	@Test(expected = StompConversionException.class)
-	public void invalidEscapeSequenceWithSingleSlashAtEndOfHeaderValue() {
-		BufferingStompDecoder stompDecoder = new BufferingStompDecoder(STOMP_DECODER, 128);
-		String payload = "SEND\na:alpha\\\n\nMessage body\0";
-		stompDecoder.decode(toByteBuffer(payload));
-	}
-
-	private ByteBuffer toByteBuffer(String chunk) {
-		return ByteBuffer.wrap(chunk.getBytes(StandardCharsets.UTF_8));
-	}
-
+    private ByteBuffer toByteBuffer(String chunk) {
+        return ByteBuffer.wrap(chunk.getBytes(StandardCharsets.UTF_8));
+    }
 }

@@ -26,14 +26,14 @@ import javax.annotation.Nonnull;
 import javax.annotation.meta.TypeQualifierDefault;
 
 /**
- * A common Spring annotation to declare that fields are to be considered as
- * non-nullable by default for a given package.
+ * A common Spring annotation to declare that fields are to be considered as non-nullable by default
+ * for a given package.
  *
- * <p>Leverages JSR-305 meta-annotations to indicate nullability in Java to common
- * tools with JSR-305 support and used by Kotlin to infer nullability of Spring API.
+ * <p>Leverages JSR-305 meta-annotations to indicate nullability in Java to common tools with
+ * JSR-305 support and used by Kotlin to infer nullability of Spring API.
  *
- * <p>Should be used at package level in association with {@link Nullable}
- * annotations at field level.
+ * <p>Should be used at package level in association with {@link Nullable} annotations at field
+ * level.
  *
  * @author Sebastien Deleuze
  * @since 5.0
@@ -46,5 +46,4 @@ import javax.annotation.meta.TypeQualifierDefault;
 @Documented
 @Nonnull
 @TypeQualifierDefault(ElementType.FIELD)
-public @interface NonNullFields {
-}
+public @interface NonNullFields {}

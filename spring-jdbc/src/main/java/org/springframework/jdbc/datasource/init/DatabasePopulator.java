@@ -32,21 +32,20 @@ import java.sql.SQLException;
 @FunctionalInterface
 public interface DatabasePopulator {
 
-	/**
-	 * Populate, initialize, or clean up the database using the provided JDBC
-	 * connection.
-	 * <p>Concrete implementations <em>may</em> throw an {@link SQLException} if
-	 * an error is encountered but are <em>strongly encouraged</em> to throw a
-	 * specific {@link ScriptException} instead. For example, Spring's
-	 * {@link ResourceDatabasePopulator} and {@link DatabasePopulatorUtils} wrap
-	 * all {@code SQLExceptions} in {@code ScriptExceptions}.
-	 * @param connection the JDBC connection to use to populate the db; already
-	 * configured and ready to use; never {@code null}
-	 * @throws SQLException if an unrecoverable data access exception occurs
-	 * during database population
-	 * @throws ScriptException in all other error cases
-	 * @see DatabasePopulatorUtils#execute
-	 */
-	void populate(Connection connection) throws SQLException, ScriptException;
-
+    /**
+     * Populate, initialize, or clean up the database using the provided JDBC connection.
+     *
+     * <p>Concrete implementations <em>may</em> throw an {@link SQLException} if an error is
+     * encountered but are <em>strongly encouraged</em> to throw a specific {@link ScriptException}
+     * instead. For example, Spring's {@link ResourceDatabasePopulator} and {@link
+     * DatabasePopulatorUtils} wrap all {@code SQLExceptions} in {@code ScriptExceptions}.
+     *
+     * @param connection the JDBC connection to use to populate the db; already configured and ready
+     *     to use; never {@code null}
+     * @throws SQLException if an unrecoverable data access exception occurs during database
+     *     population
+     * @throws ScriptException in all other error cases
+     * @see DatabasePopulatorUtils#execute
+     */
+    void populate(Connection connection) throws SQLException, ScriptException;
 }

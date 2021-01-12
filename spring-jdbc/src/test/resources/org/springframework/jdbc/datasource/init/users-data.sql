@@ -1,3 +1,2 @@
-INSERT INTO
-users(first_name, last_name)
-values('Sam', 'Brannen');
+INSERT INTO users(first_name, last_name)
+VALUES ('Sam', 'Brannen');

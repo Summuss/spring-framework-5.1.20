@@ -50,11 +50,11 @@ import org.springframework.web.socket.sockjs.frame.SockJsMessageCodec;
 import org.springframework.web.socket.sockjs.support.AbstractSockJsService;
 
 /**
- * A basic implementation of {@link org.springframework.web.socket.sockjs.SockJsService}
- * with support for SPI-based transport handling and session management.
+ * A basic implementation of {@link org.springframework.web.socket.sockjs.SockJsService} with
+ * support for SPI-based transport handling and session management.
  *
- * <p>Based on the {@link TransportHandler} SPI. {@code TransportHandlers} may
- * additionally implement the {@link SockJsSessionFactory} and {@link HandshakeHandler} interfaces.
+ * <p>Based on the {@link TransportHandler} SPI. {@code TransportHandlers} may additionally
+ * implement the {@link SockJsSessionFactory} and {@link HandshakeHandler} interfaces.
  *
  * <p>See the {@link AbstractSockJsService} base class for important details on request mapping.
  *
@@ -63,328 +63,339 @@ import org.springframework.web.socket.sockjs.support.AbstractSockJsService;
  * @author Sebastien Deleuze
  * @since 4.0
  */
-public class TransportHandlingSockJsService extends AbstractSockJsService implements SockJsServiceConfig, Lifecycle {
+public class TransportHandlingSockJsService extends AbstractSockJsService
+        implements SockJsServiceConfig, Lifecycle {
 
-	private static final boolean jackson2Present = ClassUtils.isPresent(
-			"com.fasterxml.jackson.databind.ObjectMapper", TransportHandlingSockJsService.class.getClassLoader());
+    private static final boolean jackson2Present =
+            ClassUtils.isPresent(
+                    "com.fasterxml.jackson.databind.ObjectMapper",
+                    TransportHandlingSockJsService.class.getClassLoader());
 
+    private final Map<TransportType, TransportHandler> handlers =
+            new EnumMap<>(TransportType.class);
 
-	private final Map<TransportType, TransportHandler> handlers = new EnumMap<>(TransportType.class);
+    @Nullable private SockJsMessageCodec messageCodec;
 
-	@Nullable
-	private SockJsMessageCodec messageCodec;
+    private final List<HandshakeInterceptor> interceptors = new ArrayList<>();
 
-	private final List<HandshakeInterceptor> interceptors = new ArrayList<>();
+    private final Map<String, SockJsSession> sessions = new ConcurrentHashMap<>();
 
-	private final Map<String, SockJsSession> sessions = new ConcurrentHashMap<>();
+    @Nullable private ScheduledFuture<?> sessionCleanupTask;
 
-	@Nullable
-	private ScheduledFuture<?> sessionCleanupTask;
+    private volatile boolean running;
 
-	private volatile boolean running;
+    /**
+     * Create a TransportHandlingSockJsService with given {@link TransportHandler handler} types.
+     *
+     * @param scheduler a task scheduler for heart-beat messages and removing timed-out sessions;
+     *     the provided TaskScheduler should be declared as a Spring bean to ensure it gets
+     *     initialized at start-up and shuts down when the application stops
+     * @param handlers one or more {@link TransportHandler} implementations to use
+     */
+    public TransportHandlingSockJsService(TaskScheduler scheduler, TransportHandler... handlers) {
+        this(scheduler, Arrays.asList(handlers));
+    }
 
+    /**
+     * Create a TransportHandlingSockJsService with given {@link TransportHandler handler} types.
+     *
+     * @param scheduler a task scheduler for heart-beat messages and removing timed-out sessions;
+     *     the provided TaskScheduler should be declared as a Spring bean to ensure it gets
+     *     initialized at start-up and shuts down when the application stops
+     * @param handlers one or more {@link TransportHandler} implementations to use
+     */
+    public TransportHandlingSockJsService(
+            TaskScheduler scheduler, Collection<TransportHandler> handlers) {
+        super(scheduler);
 
-	/**
-	 * Create a TransportHandlingSockJsService with given {@link TransportHandler handler} types.
-	 * @param scheduler a task scheduler for heart-beat messages and removing timed-out sessions;
-	 * the provided TaskScheduler should be declared as a Spring bean to ensure it gets
-	 * initialized at start-up and shuts down when the application stops
-	 * @param handlers one or more {@link TransportHandler} implementations to use
-	 */
-	public TransportHandlingSockJsService(TaskScheduler scheduler, TransportHandler... handlers) {
-		this(scheduler, Arrays.asList(handlers));
-	}
+        if (CollectionUtils.isEmpty(handlers)) {
+            logger.warn("No transport handlers specified for TransportHandlingSockJsService");
+        } else {
+            for (TransportHandler handler : handlers) {
+                handler.initialize(this);
+                this.handlers.put(handler.getTransportType(), handler);
+            }
+        }
 
-	/**
-	 * Create a TransportHandlingSockJsService with given {@link TransportHandler handler} types.
-	 * @param scheduler a task scheduler for heart-beat messages and removing timed-out sessions;
-	 * the provided TaskScheduler should be declared as a Spring bean to ensure it gets
-	 * initialized at start-up and shuts down when the application stops
-	 * @param handlers one or more {@link TransportHandler} implementations to use
-	 */
-	public TransportHandlingSockJsService(TaskScheduler scheduler, Collection<TransportHandler> handlers) {
-		super(scheduler);
+        if (jackson2Present) {
+            this.messageCodec = new Jackson2SockJsMessageCodec();
+        }
+    }
 
-		if (CollectionUtils.isEmpty(handlers)) {
-			logger.warn("No transport handlers specified for TransportHandlingSockJsService");
-		}
-		else {
-			for (TransportHandler handler : handlers) {
-				handler.initialize(this);
-				this.handlers.put(handler.getTransportType(), handler);
-			}
-		}
+    /** Return the registered handlers per transport type. */
+    public Map<TransportType, TransportHandler> getTransportHandlers() {
+        return Collections.unmodifiableMap(this.handlers);
+    }
 
-		if (jackson2Present) {
-			this.messageCodec = new Jackson2SockJsMessageCodec();
-		}
-	}
+    /** The codec to use for encoding and decoding SockJS messages. */
+    public void setMessageCodec(SockJsMessageCodec messageCodec) {
+        this.messageCodec = messageCodec;
+    }
 
+    public SockJsMessageCodec getMessageCodec() {
+        Assert.state(
+                this.messageCodec != null,
+                "A SockJsMessageCodec is required but not available: "
+                        + "Add Jackson to the classpath, or configure a custom SockJsMessageCodec.");
+        return this.messageCodec;
+    }
 
-	/**
-	 * Return the registered handlers per transport type.
-	 */
-	public Map<TransportType, TransportHandler> getTransportHandlers() {
-		return Collections.unmodifiableMap(this.handlers);
-	}
+    /** Configure one or more WebSocket handshake request interceptors. */
+    public void setHandshakeInterceptors(@Nullable List<HandshakeInterceptor> interceptors) {
+        this.interceptors.clear();
+        if (interceptors != null) {
+            this.interceptors.addAll(interceptors);
+        }
+    }
 
-	/**
-	 * The codec to use for encoding and decoding SockJS messages.
-	 */
-	public void setMessageCodec(SockJsMessageCodec messageCodec) {
-		this.messageCodec = messageCodec;
-	}
+    /** Return the configured WebSocket handshake request interceptors. */
+    public List<HandshakeInterceptor> getHandshakeInterceptors() {
+        return this.interceptors;
+    }
 
-	public SockJsMessageCodec getMessageCodec() {
-		Assert.state(this.messageCodec != null, "A SockJsMessageCodec is required but not available: " +
-				"Add Jackson to the classpath, or configure a custom SockJsMessageCodec.");
-		return this.messageCodec;
-	}
+    @Override
+    public void start() {
+        if (!isRunning()) {
+            this.running = true;
+            for (TransportHandler handler : this.handlers.values()) {
+                if (handler instanceof Lifecycle) {
+                    ((Lifecycle) handler).start();
+                }
+            }
+        }
+    }
 
-	/**
-	 * Configure one or more WebSocket handshake request interceptors.
-	 */
-	public void setHandshakeInterceptors(@Nullable List<HandshakeInterceptor> interceptors) {
-		this.interceptors.clear();
-		if (interceptors != null) {
-			this.interceptors.addAll(interceptors);
-		}
-	}
+    @Override
+    public void stop() {
+        if (isRunning()) {
+            this.running = false;
+            for (TransportHandler handler : this.handlers.values()) {
+                if (handler instanceof Lifecycle) {
+                    ((Lifecycle) handler).stop();
+                }
+            }
+        }
+    }
 
-	/**
-	 * Return the configured WebSocket handshake request interceptors.
-	 */
-	public List<HandshakeInterceptor> getHandshakeInterceptors() {
-		return this.interceptors;
-	}
+    @Override
+    public boolean isRunning() {
+        return this.running;
+    }
 
+    @Override
+    protected void handleRawWebSocketRequest(
+            ServerHttpRequest request, ServerHttpResponse response, WebSocketHandler handler)
+            throws IOException {
 
-	@Override
-	public void start() {
-		if (!isRunning()) {
-			this.running = true;
-			for (TransportHandler handler : this.handlers.values()) {
-				if (handler instanceof Lifecycle) {
-					((Lifecycle) handler).start();
-				}
-			}
-		}
-	}
+        TransportHandler transportHandler = this.handlers.get(TransportType.WEBSOCKET);
+        if (!(transportHandler instanceof HandshakeHandler)) {
+            logger.error("No handler configured for raw WebSocket messages");
+            response.setStatusCode(HttpStatus.NOT_FOUND);
+            return;
+        }
 
-	@Override
-	public void stop() {
-		if (isRunning()) {
-			this.running = false;
-			for (TransportHandler handler : this.handlers.values()) {
-				if (handler instanceof Lifecycle) {
-					((Lifecycle) handler).stop();
-				}
-			}
-		}
-	}
+        HandshakeInterceptorChain chain = new HandshakeInterceptorChain(this.interceptors, handler);
+        HandshakeFailureException failure = null;
 
-	@Override
-	public boolean isRunning() {
-		return this.running;
-	}
+        try {
+            Map<String, Object> attributes = new HashMap<>();
+            if (!chain.applyBeforeHandshake(request, response, attributes)) {
+                return;
+            }
+            ((HandshakeHandler) transportHandler)
+                    .doHandshake(request, response, handler, attributes);
+            chain.applyAfterHandshake(request, response, null);
+        } catch (HandshakeFailureException ex) {
+            failure = ex;
+        } catch (Throwable ex) {
+            failure =
+                    new HandshakeFailureException(
+                            "Uncaught failure for request " + request.getURI(), ex);
+        } finally {
+            if (failure != null) {
+                chain.applyAfterHandshake(request, response, failure);
+                throw failure;
+            }
+        }
+    }
 
+    @Override
+    protected void handleTransportRequest(
+            ServerHttpRequest request,
+            ServerHttpResponse response,
+            WebSocketHandler handler,
+            String sessionId,
+            String transport)
+            throws SockJsException {
 
-	@Override
-	protected void handleRawWebSocketRequest(ServerHttpRequest request, ServerHttpResponse response,
-			WebSocketHandler handler) throws IOException {
+        TransportType transportType = TransportType.fromValue(transport);
+        if (transportType == null) {
+            if (logger.isWarnEnabled()) {
+                logger.warn("Unknown transport type for " + request.getURI());
+            }
+            response.setStatusCode(HttpStatus.NOT_FOUND);
+            return;
+        }
 
-		TransportHandler transportHandler = this.handlers.get(TransportType.WEBSOCKET);
-		if (!(transportHandler instanceof HandshakeHandler)) {
-			logger.error("No handler configured for raw WebSocket messages");
-			response.setStatusCode(HttpStatus.NOT_FOUND);
-			return;
-		}
+        TransportHandler transportHandler = this.handlers.get(transportType);
+        if (transportHandler == null) {
+            if (logger.isWarnEnabled()) {
+                logger.warn("No TransportHandler for " + request.getURI());
+            }
+            response.setStatusCode(HttpStatus.NOT_FOUND);
+            return;
+        }
 
-		HandshakeInterceptorChain chain = new HandshakeInterceptorChain(this.interceptors, handler);
-		HandshakeFailureException failure = null;
+        SockJsException failure = null;
+        HandshakeInterceptorChain chain = new HandshakeInterceptorChain(this.interceptors, handler);
 
-		try {
-			Map<String, Object> attributes = new HashMap<>();
-			if (!chain.applyBeforeHandshake(request, response, attributes)) {
-				return;
-			}
-			((HandshakeHandler) transportHandler).doHandshake(request, response, handler, attributes);
-			chain.applyAfterHandshake(request, response, null);
-		}
-		catch (HandshakeFailureException ex) {
-			failure = ex;
-		}
-		catch (Throwable ex) {
-			failure = new HandshakeFailureException("Uncaught failure for request " + request.getURI(), ex);
-		}
-			finally {
-			if (failure != null) {
-				chain.applyAfterHandshake(request, response, failure);
-				throw failure;
-			}
-		}
-	}
+        try {
+            HttpMethod supportedMethod = transportType.getHttpMethod();
+            if (supportedMethod != request.getMethod()) {
+                if (request.getMethod() == HttpMethod.OPTIONS && transportType.supportsCors()) {
+                    if (checkOrigin(request, response, HttpMethod.OPTIONS, supportedMethod)) {
+                        response.setStatusCode(HttpStatus.NO_CONTENT);
+                        addCacheHeaders(response);
+                    }
+                } else if (transportType.supportsCors()) {
+                    sendMethodNotAllowed(response, supportedMethod, HttpMethod.OPTIONS);
+                } else {
+                    sendMethodNotAllowed(response, supportedMethod);
+                }
+                return;
+            }
 
-	@Override
-	protected void handleTransportRequest(ServerHttpRequest request, ServerHttpResponse response,
-			WebSocketHandler handler, String sessionId, String transport) throws SockJsException {
+            SockJsSession session = this.sessions.get(sessionId);
+            if (session == null) {
+                if (transportHandler instanceof SockJsSessionFactory) {
+                    Map<String, Object> attributes = new HashMap<>();
+                    if (!chain.applyBeforeHandshake(request, response, attributes)) {
+                        return;
+                    }
+                    SockJsSessionFactory sessionFactory = (SockJsSessionFactory) transportHandler;
+                    session = createSockJsSession(sessionId, sessionFactory, handler, attributes);
+                } else {
+                    response.setStatusCode(HttpStatus.NOT_FOUND);
+                    if (logger.isDebugEnabled()) {
+                        logger.debug(
+                                "Session not found, sessionId="
+                                        + sessionId
+                                        + ". The session may have been closed "
+                                        + "(e.g. missed heart-beat) while a message was coming in.");
+                    }
+                    return;
+                }
+            } else {
+                Principal principal = session.getPrincipal();
+                if (principal != null && !principal.equals(request.getPrincipal())) {
+                    logger.debug(
+                            "The user for the session does not match the user for the request.");
+                    response.setStatusCode(HttpStatus.NOT_FOUND);
+                    return;
+                }
+                if (!transportHandler.checkSessionType(session)) {
+                    logger.debug("Session type does not match the transport type for the request.");
+                    response.setStatusCode(HttpStatus.NOT_FOUND);
+                    return;
+                }
+            }
 
-		TransportType transportType = TransportType.fromValue(transport);
-		if (transportType == null) {
-			if (logger.isWarnEnabled()) {
-				logger.warn("Unknown transport type for " + request.getURI());
-			}
-			response.setStatusCode(HttpStatus.NOT_FOUND);
-			return;
-		}
+            if (transportType.sendsNoCacheInstruction()) {
+                addNoCacheHeaders(response);
+            }
+            if (transportType.supportsCors() && !checkOrigin(request, response)) {
+                return;
+            }
 
-		TransportHandler transportHandler = this.handlers.get(transportType);
-		if (transportHandler == null) {
-			if (logger.isWarnEnabled()) {
-				logger.warn("No TransportHandler for " + request.getURI());
-			}
-			response.setStatusCode(HttpStatus.NOT_FOUND);
-			return;
-		}
+            transportHandler.handleRequest(request, response, handler, session);
+            chain.applyAfterHandshake(request, response, null);
+        } catch (SockJsException ex) {
+            failure = ex;
+        } catch (Throwable ex) {
+            failure =
+                    new SockJsException(
+                            "Uncaught failure for request " + request.getURI(), sessionId, ex);
+        } finally {
+            if (failure != null) {
+                chain.applyAfterHandshake(request, response, failure);
+                throw failure;
+            }
+        }
+    }
 
-		SockJsException failure = null;
-		HandshakeInterceptorChain chain = new HandshakeInterceptorChain(this.interceptors, handler);
+    @Override
+    protected boolean validateRequest(String serverId, String sessionId, String transport) {
+        if (!super.validateRequest(serverId, sessionId, transport)) {
+            return false;
+        }
 
-		try {
-			HttpMethod supportedMethod = transportType.getHttpMethod();
-			if (supportedMethod != request.getMethod()) {
-				if (request.getMethod() == HttpMethod.OPTIONS && transportType.supportsCors()) {
-					if (checkOrigin(request, response, HttpMethod.OPTIONS, supportedMethod)) {
-						response.setStatusCode(HttpStatus.NO_CONTENT);
-						addCacheHeaders(response);
-					}
-				}
-				else if (transportType.supportsCors()) {
-					sendMethodNotAllowed(response, supportedMethod, HttpMethod.OPTIONS);
-				}
-				else {
-					sendMethodNotAllowed(response, supportedMethod);
-				}
-				return;
-			}
+        if (!this.allowedOrigins.contains("*")) {
+            TransportType transportType = TransportType.fromValue(transport);
+            if (transportType == null || !transportType.supportsOrigin()) {
+                if (logger.isWarnEnabled()) {
+                    logger.warn(
+                            "Origin check enabled but transport '"
+                                    + transport
+                                    + "' does not support it.");
+                }
+                return false;
+            }
+        }
 
-			SockJsSession session = this.sessions.get(sessionId);
-			if (session == null) {
-				if (transportHandler instanceof SockJsSessionFactory) {
-					Map<String, Object> attributes = new HashMap<>();
-					if (!chain.applyBeforeHandshake(request, response, attributes)) {
-						return;
-					}
-					SockJsSessionFactory sessionFactory = (SockJsSessionFactory) transportHandler;
-					session = createSockJsSession(sessionId, sessionFactory, handler, attributes);
-				}
-				else {
-					response.setStatusCode(HttpStatus.NOT_FOUND);
-					if (logger.isDebugEnabled()) {
-						logger.debug("Session not found, sessionId=" + sessionId +
-								". The session may have been closed " +
-								"(e.g. missed heart-beat) while a message was coming in.");
-					}
-					return;
-				}
-			}
-			else {
-				Principal principal = session.getPrincipal();
-				if (principal != null && !principal.equals(request.getPrincipal())) {
-					logger.debug("The user for the session does not match the user for the request.");
-					response.setStatusCode(HttpStatus.NOT_FOUND);
-					return;
-				}
-				if (!transportHandler.checkSessionType(session)) {
-					logger.debug("Session type does not match the transport type for the request.");
-					response.setStatusCode(HttpStatus.NOT_FOUND);
-					return;
-				}
-			}
+        return true;
+    }
 
-			if (transportType.sendsNoCacheInstruction()) {
-				addNoCacheHeaders(response);
-			}
-			if (transportType.supportsCors() && !checkOrigin(request, response)) {
-				return;
-			}
+    private SockJsSession createSockJsSession(
+            String sessionId,
+            SockJsSessionFactory sessionFactory,
+            WebSocketHandler handler,
+            Map<String, Object> attributes) {
 
-			transportHandler.handleRequest(request, response, handler, session);
-			chain.applyAfterHandshake(request, response, null);
-		}
-		catch (SockJsException ex) {
-			failure = ex;
-		}
-		catch (Throwable ex) {
-			failure = new SockJsException("Uncaught failure for request " + request.getURI(), sessionId, ex);
-		}
-		finally {
-			if (failure != null) {
-				chain.applyAfterHandshake(request, response, failure);
-				throw failure;
-			}
-		}
-	}
+        SockJsSession session = this.sessions.get(sessionId);
+        if (session != null) {
+            return session;
+        }
+        if (this.sessionCleanupTask == null) {
+            scheduleSessionTask();
+        }
+        session = sessionFactory.createSession(sessionId, handler, attributes);
+        this.sessions.put(sessionId, session);
+        return session;
+    }
 
-	@Override
-	protected boolean validateRequest(String serverId, String sessionId, String transport) {
-		if (!super.validateRequest(serverId, sessionId, transport)) {
-			return false;
-		}
-
-		if (!this.allowedOrigins.contains("*")) {
-			TransportType transportType = TransportType.fromValue(transport);
-			if (transportType == null || !transportType.supportsOrigin()) {
-				if (logger.isWarnEnabled()) {
-					logger.warn("Origin check enabled but transport '" + transport + "' does not support it.");
-				}
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	private SockJsSession createSockJsSession(String sessionId, SockJsSessionFactory sessionFactory,
-			WebSocketHandler handler, Map<String, Object> attributes) {
-
-		SockJsSession session = this.sessions.get(sessionId);
-		if (session != null) {
-			return session;
-		}
-		if (this.sessionCleanupTask == null) {
-			scheduleSessionTask();
-		}
-		session = sessionFactory.createSession(sessionId, handler, attributes);
-		this.sessions.put(sessionId, session);
-		return session;
-	}
-
-	private void scheduleSessionTask() {
-		synchronized (this.sessions) {
-			if (this.sessionCleanupTask != null) {
-				return;
-			}
-			this.sessionCleanupTask = getTaskScheduler().scheduleAtFixedRate(() -> {
-				List<String> removedIds = new ArrayList<>();
-				for (SockJsSession session : this.sessions.values()) {
-					try {
-						if (session.getTimeSinceLastActive() > getDisconnectDelay()) {
-							this.sessions.remove(session.getId());
-							removedIds.add(session.getId());
-							session.close();
-						}
-					}
-					catch (Throwable ex) {
-						// Could be part of normal workflow (e.g. browser tab closed)
-						logger.debug("Failed to close " + session, ex);
-					}
-				}
-				if (logger.isDebugEnabled() && !removedIds.isEmpty()) {
-					logger.debug("Closed " + removedIds.size() + " sessions: " + removedIds);
-				}
-			}, getDisconnectDelay());
-		}
-	}
-
+    private void scheduleSessionTask() {
+        synchronized (this.sessions) {
+            if (this.sessionCleanupTask != null) {
+                return;
+            }
+            this.sessionCleanupTask =
+                    getTaskScheduler()
+                            .scheduleAtFixedRate(
+                                    () -> {
+                                        List<String> removedIds = new ArrayList<>();
+                                        for (SockJsSession session : this.sessions.values()) {
+                                            try {
+                                                if (session.getTimeSinceLastActive()
+                                                        > getDisconnectDelay()) {
+                                                    this.sessions.remove(session.getId());
+                                                    removedIds.add(session.getId());
+                                                    session.close();
+                                                }
+                                            } catch (Throwable ex) {
+                                                // Could be part of normal workflow (e.g. browser
+                                                // tab closed)
+                                                logger.debug("Failed to close " + session, ex);
+                                            }
+                                        }
+                                        if (logger.isDebugEnabled() && !removedIds.isEmpty()) {
+                                            logger.debug(
+                                                    "Closed "
+                                                            + removedIds.size()
+                                                            + " sessions: "
+                                                            + removedIds);
+                                        }
+                                    },
+                                    getDisconnectDelay());
+        }
+    }
 }

@@ -56,167 +56,205 @@ import org.springframework.util.MimeType;
  * @author Rossen Stoyanchev
  * @author Arjen Poutsma
  * @since 5.0
- * @see <a href="https://github.com/FasterXML/jackson-core/issues/57" target="_blank">Add support for non-blocking ("async") JSON parsing</a>
+ * @see <a href="https://github.com/FasterXML/jackson-core/issues/57" target="_blank">Add support
+ *     for non-blocking ("async") JSON parsing</a>
  */
-public abstract class AbstractJackson2Decoder extends Jackson2CodecSupport implements HttpMessageDecoder<Object> {
+public abstract class AbstractJackson2Decoder extends Jackson2CodecSupport
+        implements HttpMessageDecoder<Object> {
 
-	private int maxInMemorySize = -1;
+    private int maxInMemorySize = -1;
 
+    /**
+     * Until https://github.com/FasterXML/jackson-core/issues/476 is resolved, we need to ensure
+     * buffer recycling is off.
+     */
+    private final JsonFactory jsonFactory;
 
-	/**
-	 * Until https://github.com/FasterXML/jackson-core/issues/476 is resolved,
-	 * we need to ensure buffer recycling is off.
-	 */
-	private final JsonFactory jsonFactory;
+    /** Constructor with a Jackson {@link ObjectMapper} to use. */
+    protected AbstractJackson2Decoder(ObjectMapper mapper, MimeType... mimeTypes) {
+        super(mapper, mimeTypes);
+        this.jsonFactory =
+                mapper.getFactory()
+                        .copy()
+                        .disable(JsonFactory.Feature.USE_THREAD_LOCAL_FOR_BUFFER_RECYCLING);
+    }
 
+    /**
+     * Set the max number of bytes that can be buffered by this decoder. This is either the size of
+     * the entire input when decoding as a whole, or the size of one top-level JSON object within a
+     * JSON stream. When the limit is exceeded, {@link DataBufferLimitException} is raised.
+     *
+     * <p>By default in 5.1 this is set to -1, unlimited. In 5.2 the default value for this limit is
+     * set to 256K.
+     *
+     * @param byteCount the max number of bytes to buffer, or -1 for unlimited
+     * @since 5.1.11
+     */
+    public void setMaxInMemorySize(int byteCount) {
+        this.maxInMemorySize = byteCount;
+    }
 
-	/**
-	 * Constructor with a Jackson {@link ObjectMapper} to use.
-	 */
-	protected AbstractJackson2Decoder(ObjectMapper mapper, MimeType... mimeTypes) {
-		super(mapper, mimeTypes);
-		this.jsonFactory = mapper.getFactory().copy()
-				.disable(JsonFactory.Feature.USE_THREAD_LOCAL_FOR_BUFFER_RECYCLING);
-	}
+    /**
+     * Return the {@link #setMaxInMemorySize configured} byte count limit.
+     *
+     * @since 5.1.11
+     */
+    public int getMaxInMemorySize() {
+        return this.maxInMemorySize;
+    }
 
+    @Override
+    public boolean canDecode(ResolvableType elementType, @Nullable MimeType mimeType) {
+        JavaType javaType = getObjectMapper().constructType(elementType.getType());
+        // Skip String: CharSequenceDecoder + "*/*" comes after
+        return (!CharSequence.class.isAssignableFrom(elementType.toClass())
+                && getObjectMapper().canDeserialize(javaType)
+                && supportsMimeType(mimeType));
+    }
 
-	/**
-	 * Set the max number of bytes that can be buffered by this decoder. This
-	 * is either the size of the entire input when decoding as a whole, or the
-	 * size of one top-level JSON object within a JSON stream. When the limit
-	 * is exceeded, {@link DataBufferLimitException} is raised.
-	 * <p>By default in 5.1 this is set to -1, unlimited. In 5.2 the default
-	 * value for this limit is set to 256K.
-	 * @param byteCount the max number of bytes to buffer, or -1 for unlimited
-	 * @since 5.1.11
-	 */
-	public void setMaxInMemorySize(int byteCount) {
-		this.maxInMemorySize = byteCount;
-	}
+    @Override
+    public Flux<Object> decode(
+            Publisher<DataBuffer> input,
+            ResolvableType elementType,
+            @Nullable MimeType mimeType,
+            @Nullable Map<String, Object> hints) {
 
-	/**
-	 * Return the {@link #setMaxInMemorySize configured} byte count limit.
-	 * @since 5.1.11
-	 */
-	public int getMaxInMemorySize() {
-		return this.maxInMemorySize;
-	}
+        boolean forceUseOfBigDecimal =
+                getObjectMapper().isEnabled(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+        if (BigDecimal.class.equals(elementType.getType())) {
+            forceUseOfBigDecimal = true;
+        }
 
+        Flux<DataBuffer> processed = processInput(input, elementType, mimeType, hints);
+        Flux<TokenBuffer> tokens =
+                Jackson2Tokenizer.tokenize(
+                        processed,
+                        this.jsonFactory,
+                        getObjectMapper(),
+                        true,
+                        forceUseOfBigDecimal,
+                        getMaxInMemorySize());
+        return decodeInternal(tokens, elementType, mimeType, hints);
+    }
 
-	@Override
-	public boolean canDecode(ResolvableType elementType, @Nullable MimeType mimeType) {
-		JavaType javaType = getObjectMapper().constructType(elementType.getType());
-		// Skip String: CharSequenceDecoder + "*/*" comes after
-		return (!CharSequence.class.isAssignableFrom(elementType.toClass()) &&
-				getObjectMapper().canDeserialize(javaType) && supportsMimeType(mimeType));
-	}
+    /**
+     * Process the input publisher into a flux. Default implementation returns {@link
+     * Flux#from(Publisher)}, but subclasses can choose to to customize this behaviour.
+     *
+     * @param input the {@code DataBuffer} input stream to process
+     * @param elementType the expected type of elements in the output stream
+     * @param mimeType the MIME type associated with the input stream (optional)
+     * @param hints additional information about how to do encode
+     * @return the processed flux
+     * @since 5.1.14
+     */
+    protected Flux<DataBuffer> processInput(
+            Publisher<DataBuffer> input,
+            ResolvableType elementType,
+            @Nullable MimeType mimeType,
+            @Nullable Map<String, Object> hints) {
 
-	@Override
-	public Flux<Object> decode(Publisher<DataBuffer> input, ResolvableType elementType,
-			@Nullable MimeType mimeType, @Nullable Map<String, Object> hints) {
+        return Flux.from(input);
+    }
 
-		boolean forceUseOfBigDecimal = getObjectMapper().isEnabled(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
-		if (BigDecimal.class.equals(elementType.getType())) {
-			forceUseOfBigDecimal = true;
-		}
+    @Override
+    public Mono<Object> decodeToMono(
+            Publisher<DataBuffer> input,
+            ResolvableType elementType,
+            @Nullable MimeType mimeType,
+            @Nullable Map<String, Object> hints) {
 
-		Flux<DataBuffer> processed = processInput(input, elementType, mimeType, hints);
-		Flux<TokenBuffer> tokens = Jackson2Tokenizer.tokenize(processed, this.jsonFactory, getObjectMapper(),
-				true, forceUseOfBigDecimal, getMaxInMemorySize());
-		return decodeInternal(tokens, elementType, mimeType, hints);
-	}
+        boolean forceUseOfBigDecimal =
+                getObjectMapper().isEnabled(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+        if (BigDecimal.class.equals(elementType.getType())) {
+            forceUseOfBigDecimal = true;
+        }
 
-	/**
-	 * Process the input publisher into a flux. Default implementation returns
-	 * {@link Flux#from(Publisher)}, but subclasses can choose to to customize
-	 * this behaviour.
-	 * @param input the {@code DataBuffer} input stream to process
-	 * @param elementType the expected type of elements in the output stream
-	 * @param mimeType the MIME type associated with the input stream (optional)
-	 * @param hints additional information about how to do encode
-	 * @return the processed flux
-	 * @since 5.1.14
-	 */
-	protected Flux<DataBuffer> processInput(Publisher<DataBuffer> input, ResolvableType elementType,
-				@Nullable MimeType mimeType, @Nullable Map<String, Object> hints) {
+        Flux<DataBuffer> processed = processInput(input, elementType, mimeType, hints);
+        Flux<TokenBuffer> tokens =
+                Jackson2Tokenizer.tokenize(
+                        processed,
+                        this.jsonFactory,
+                        getObjectMapper(),
+                        false,
+                        forceUseOfBigDecimal,
+                        getMaxInMemorySize());
+        return decodeInternal(tokens, elementType, mimeType, hints).singleOrEmpty();
+    }
 
-		return Flux.from(input);
-	}
+    private Flux<Object> decodeInternal(
+            Flux<TokenBuffer> tokens,
+            ResolvableType elementType,
+            @Nullable MimeType mimeType,
+            @Nullable Map<String, Object> hints) {
 
-	@Override
-	public Mono<Object> decodeToMono(Publisher<DataBuffer> input, ResolvableType elementType,
-			@Nullable MimeType mimeType, @Nullable Map<String, Object> hints) {
+        Assert.notNull(tokens, "'tokens' must not be null");
+        Assert.notNull(elementType, "'elementType' must not be null");
 
-		boolean forceUseOfBigDecimal = getObjectMapper().isEnabled(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
-		if (BigDecimal.class.equals(elementType.getType())) {
-			forceUseOfBigDecimal = true;
-		}
+        MethodParameter param = getParameter(elementType);
+        Class<?> contextClass = (param != null ? param.getContainingClass() : null);
+        JavaType javaType = getJavaType(elementType.getType(), contextClass);
+        Class<?> jsonView =
+                (hints != null ? (Class<?>) hints.get(Jackson2CodecSupport.JSON_VIEW_HINT) : null);
 
-		Flux<DataBuffer> processed = processInput(input, elementType, mimeType, hints);
-		Flux<TokenBuffer> tokens = Jackson2Tokenizer.tokenize(processed, this.jsonFactory, getObjectMapper(),
-				false, forceUseOfBigDecimal, getMaxInMemorySize());
-		return decodeInternal(tokens, elementType, mimeType, hints).singleOrEmpty();
-	}
+        ObjectReader reader =
+                (jsonView != null
+                        ? getObjectMapper().readerWithView(jsonView).forType(javaType)
+                        : getObjectMapper().readerFor(javaType));
 
-	private Flux<Object> decodeInternal(Flux<TokenBuffer> tokens, ResolvableType elementType,
-			@Nullable MimeType mimeType, @Nullable Map<String, Object> hints) {
+        return tokens.flatMap(
+                tokenBuffer -> {
+                    try {
+                        Object value = reader.readValue(tokenBuffer.asParser(getObjectMapper()));
+                        if (!Hints.isLoggingSuppressed(hints)) {
+                            LogFormatUtils.traceDebug(
+                                    logger,
+                                    traceOn -> {
+                                        String formatted =
+                                                LogFormatUtils.formatValue(value, !traceOn);
+                                        return Hints.getLogPrefix(hints)
+                                                + "Decoded ["
+                                                + formatted
+                                                + "]";
+                                    });
+                        }
+                        return Mono.justOrEmpty(value);
+                    } catch (InvalidDefinitionException ex) {
+                        return Mono.error(
+                                new CodecException("Type definition error: " + ex.getType(), ex));
+                    } catch (JsonProcessingException ex) {
+                        return Mono.error(
+                                new DecodingException(
+                                        "JSON decoding error: " + ex.getOriginalMessage(), ex));
+                    } catch (IOException ex) {
+                        return Mono.error(
+                                new DecodingException("I/O error while parsing input stream", ex));
+                    }
+                });
+    }
 
-		Assert.notNull(tokens, "'tokens' must not be null");
-		Assert.notNull(elementType, "'elementType' must not be null");
+    // HttpMessageDecoder
 
-		MethodParameter param = getParameter(elementType);
-		Class<?> contextClass = (param != null ? param.getContainingClass() : null);
-		JavaType javaType = getJavaType(elementType.getType(), contextClass);
-		Class<?> jsonView = (hints != null ? (Class<?>) hints.get(Jackson2CodecSupport.JSON_VIEW_HINT) : null);
+    @Override
+    public Map<String, Object> getDecodeHints(
+            ResolvableType actualType,
+            ResolvableType elementType,
+            ServerHttpRequest request,
+            ServerHttpResponse response) {
 
-		ObjectReader reader = (jsonView != null ?
-				getObjectMapper().readerWithView(jsonView).forType(javaType) :
-				getObjectMapper().readerFor(javaType));
+        return getHints(actualType);
+    }
 
-		return tokens.flatMap(tokenBuffer -> {
-			try {
-				Object value = reader.readValue(tokenBuffer.asParser(getObjectMapper()));
-				if (!Hints.isLoggingSuppressed(hints)) {
-					LogFormatUtils.traceDebug(logger, traceOn -> {
-						String formatted = LogFormatUtils.formatValue(value, !traceOn);
-						return Hints.getLogPrefix(hints) + "Decoded [" + formatted + "]";
-					});
-				}
-				return Mono.justOrEmpty(value);
-			}
-			catch (InvalidDefinitionException ex) {
-				return Mono.error(new CodecException("Type definition error: " + ex.getType(), ex));
-			}
-			catch (JsonProcessingException ex) {
-				return Mono.error(new DecodingException("JSON decoding error: " + ex.getOriginalMessage(), ex));
-			}
-			catch (IOException ex) {
-				return Mono.error(new DecodingException("I/O error while parsing input stream", ex));
-			}
-		});
-	}
+    @Override
+    public List<MimeType> getDecodableMimeTypes() {
+        return getMimeTypes();
+    }
 
+    // Jackson2CodecSupport
 
-	// HttpMessageDecoder
-
-	@Override
-	public Map<String, Object> getDecodeHints(ResolvableType actualType, ResolvableType elementType,
-			ServerHttpRequest request, ServerHttpResponse response) {
-
-		return getHints(actualType);
-	}
-
-	@Override
-	public List<MimeType> getDecodableMimeTypes() {
-		return getMimeTypes();
-	}
-
-
-	// Jackson2CodecSupport
-
-	@Override
-	protected <A extends Annotation> A getAnnotation(MethodParameter parameter, Class<A> annotType) {
-		return parameter.getParameterAnnotation(annotType);
-	}
-
+    @Override
+    protected <A extends Annotation> A getAnnotation(
+            MethodParameter parameter, Class<A> annotType) {
+        return parameter.getParameterAnnotation(annotType);
+    }
 }

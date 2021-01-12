@@ -25,9 +25,6 @@ import org.springframework.stereotype.Component;
  */
 public class SampleNonStaticEmbedded {
 
-	@Component
-	public class InvalidCandidate {
-
-	}
-
+    @Component
+    public class InvalidCandidate {}
 }

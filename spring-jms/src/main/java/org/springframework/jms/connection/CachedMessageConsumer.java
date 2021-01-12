@@ -28,78 +28,79 @@ import javax.jms.TopicSubscriber;
 import org.springframework.lang.Nullable;
 
 /**
- * JMS MessageConsumer decorator that adapts all calls
- * to a shared MessageConsumer instance underneath.
+ * JMS MessageConsumer decorator that adapts all calls to a shared MessageConsumer instance
+ * underneath.
  *
  * @author Juergen Hoeller
  * @since 2.5.6
  */
 class CachedMessageConsumer implements MessageConsumer, QueueReceiver, TopicSubscriber {
 
-	protected final MessageConsumer target;
+    protected final MessageConsumer target;
 
+    public CachedMessageConsumer(MessageConsumer target) {
+        this.target = target;
+    }
 
-	public CachedMessageConsumer(MessageConsumer target) {
-		this.target = target;
-	}
+    @Override
+    public String getMessageSelector() throws JMSException {
+        return this.target.getMessageSelector();
+    }
 
+    @Override
+    @Nullable
+    public Queue getQueue() throws JMSException {
+        return (this.target instanceof QueueReceiver
+                ? ((QueueReceiver) this.target).getQueue()
+                : null);
+    }
 
-	@Override
-	public String getMessageSelector() throws JMSException {
-		return this.target.getMessageSelector();
-	}
+    @Override
+    @Nullable
+    public Topic getTopic() throws JMSException {
+        return (this.target instanceof TopicSubscriber
+                ? ((TopicSubscriber) this.target).getTopic()
+                : null);
+    }
 
-	@Override
-	@Nullable
-	public Queue getQueue() throws JMSException {
-		return (this.target instanceof QueueReceiver ? ((QueueReceiver) this.target).getQueue() : null);
-	}
+    @Override
+    public boolean getNoLocal() throws JMSException {
+        return (this.target instanceof TopicSubscriber
+                && ((TopicSubscriber) this.target).getNoLocal());
+    }
 
-	@Override
-	@Nullable
-	public Topic getTopic() throws JMSException {
-		return (this.target instanceof TopicSubscriber ? ((TopicSubscriber) this.target).getTopic() : null);
-	}
+    @Override
+    public MessageListener getMessageListener() throws JMSException {
+        return this.target.getMessageListener();
+    }
 
-	@Override
-	public boolean getNoLocal() throws JMSException {
-		return (this.target instanceof TopicSubscriber && ((TopicSubscriber) this.target).getNoLocal());
-	}
+    @Override
+    public void setMessageListener(MessageListener messageListener) throws JMSException {
+        this.target.setMessageListener(messageListener);
+    }
 
-	@Override
-	public MessageListener getMessageListener() throws JMSException {
-		return this.target.getMessageListener();
-	}
+    @Override
+    public Message receive() throws JMSException {
+        return this.target.receive();
+    }
 
-	@Override
-	public void setMessageListener(MessageListener messageListener) throws JMSException {
-		this.target.setMessageListener(messageListener);
-	}
+    @Override
+    public Message receive(long timeout) throws JMSException {
+        return this.target.receive(timeout);
+    }
 
-	@Override
-	public Message receive() throws JMSException {
-		return this.target.receive();
-	}
+    @Override
+    public Message receiveNoWait() throws JMSException {
+        return this.target.receiveNoWait();
+    }
 
-	@Override
-	public Message receive(long timeout) throws JMSException {
-		return this.target.receive(timeout);
-	}
+    @Override
+    public void close() throws JMSException {
+        // It's a cached MessageConsumer...
+    }
 
-	@Override
-	public Message receiveNoWait() throws JMSException {
-		return this.target.receiveNoWait();
-	}
-
-	@Override
-	public void close() throws JMSException {
-		// It's a cached MessageConsumer...
-	}
-
-
-	@Override
-	public String toString() {
-		return "Cached JMS MessageConsumer: " + this.target;
-	}
-
+    @Override
+    public String toString() {
+        return "Cached JMS MessageConsumer: " + this.target;
+    }
 }

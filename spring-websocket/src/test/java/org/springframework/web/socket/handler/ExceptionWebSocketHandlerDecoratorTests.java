@@ -33,71 +33,73 @@ import static org.mockito.BDDMockito.*;
  */
 public class ExceptionWebSocketHandlerDecoratorTests {
 
-	private TestWebSocketSession session;
+    private TestWebSocketSession session;
 
-	private ExceptionWebSocketHandlerDecorator decorator;
+    private ExceptionWebSocketHandlerDecorator decorator;
 
-	private WebSocketHandler delegate;
+    private WebSocketHandler delegate;
 
+    @Before
+    public void setup() {
 
-	@Before
-	public void setup() {
+        this.delegate = mock(WebSocketHandler.class);
+        this.decorator = new ExceptionWebSocketHandlerDecorator(this.delegate);
 
-		this.delegate = mock(WebSocketHandler.class);
-		this.decorator = new ExceptionWebSocketHandlerDecorator(this.delegate);
+        this.session = new TestWebSocketSession();
+        this.session.setOpen(true);
+    }
 
-		this.session = new TestWebSocketSession();
-		this.session.setOpen(true);
-	}
+    @Test
+    public void afterConnectionEstablished() throws Exception {
 
-	@Test
-	public void afterConnectionEstablished() throws Exception {
+        willThrow(new IllegalStateException("error"))
+                .given(this.delegate)
+                .afterConnectionEstablished(this.session);
 
-		willThrow(new IllegalStateException("error"))
-			.given(this.delegate).afterConnectionEstablished(this.session);
+        this.decorator.afterConnectionEstablished(this.session);
 
-		this.decorator.afterConnectionEstablished(this.session);
+        assertEquals(CloseStatus.SERVER_ERROR, this.session.getCloseStatus());
+    }
 
-		assertEquals(CloseStatus.SERVER_ERROR, this.session.getCloseStatus());
-	}
+    @Test
+    public void handleMessage() throws Exception {
 
-	@Test
-	public void handleMessage() throws Exception {
+        TextMessage message = new TextMessage("payload");
 
-		TextMessage message = new TextMessage("payload");
+        willThrow(new IllegalStateException("error"))
+                .given(this.delegate)
+                .handleMessage(this.session, message);
 
-		willThrow(new IllegalStateException("error"))
-			.given(this.delegate).handleMessage(this.session, message);
+        this.decorator.handleMessage(this.session, message);
 
-		this.decorator.handleMessage(this.session, message);
+        assertEquals(CloseStatus.SERVER_ERROR, this.session.getCloseStatus());
+    }
 
-		assertEquals(CloseStatus.SERVER_ERROR, this.session.getCloseStatus());
-	}
+    @Test
+    public void handleTransportError() throws Exception {
 
-	@Test
-	public void handleTransportError() throws Exception {
+        Exception exception = new Exception("transport error");
 
-		Exception exception = new Exception("transport error");
+        willThrow(new IllegalStateException("error"))
+                .given(this.delegate)
+                .handleTransportError(this.session, exception);
 
-		willThrow(new IllegalStateException("error"))
-			.given(this.delegate).handleTransportError(this.session, exception);
+        this.decorator.handleTransportError(this.session, exception);
 
-		this.decorator.handleTransportError(this.session, exception);
+        assertEquals(CloseStatus.SERVER_ERROR, this.session.getCloseStatus());
+    }
 
-		assertEquals(CloseStatus.SERVER_ERROR, this.session.getCloseStatus());
-	}
+    @Test
+    public void afterConnectionClosed() throws Exception {
 
-	@Test
-	public void afterConnectionClosed() throws Exception {
+        CloseStatus closeStatus = CloseStatus.NORMAL;
 
-		CloseStatus closeStatus = CloseStatus.NORMAL;
+        willThrow(new IllegalStateException("error"))
+                .given(this.delegate)
+                .afterConnectionClosed(this.session, closeStatus);
 
-		willThrow(new IllegalStateException("error"))
-			.given(this.delegate).afterConnectionClosed(this.session, closeStatus);
+        this.decorator.afterConnectionClosed(this.session, closeStatus);
 
-		this.decorator.afterConnectionClosed(this.session, closeStatus);
-
-		assertNull(this.session.getCloseStatus());
-	}
-
+        assertNull(this.session.getCloseStatus());
+    }
 }

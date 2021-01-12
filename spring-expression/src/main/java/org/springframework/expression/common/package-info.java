@@ -1,6 +1,4 @@
-/**
- * Common utility classes behind the <em>Spring Expression Language</em>.
- */
+/** Common utility classes behind the <em>Spring Expression Language</em>. */
 @NonNullApi
 @NonNullFields
 package org.springframework.expression.common;

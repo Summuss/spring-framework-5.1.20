@@ -22,8 +22,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Custom context hierarchy configuration annotation that is itself meta-annotated
- * with {@link MetaContextHierarchyConfig @MetaContextHierarchyConfig}.
+ * Custom context hierarchy configuration annotation that is itself meta-annotated with {@link
+ * MetaContextHierarchyConfig @MetaContextHierarchyConfig}.
  *
  * @author Sam Brannen
  * @since 4.0.3
@@ -31,6 +31,4 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @MetaContextHierarchyConfig
-public @interface MetaMetaContextHierarchyConfig {
-
-}
+public @interface MetaMetaContextHierarchyConfig {}

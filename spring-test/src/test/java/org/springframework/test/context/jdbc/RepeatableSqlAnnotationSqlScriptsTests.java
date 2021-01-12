@@ -29,8 +29,8 @@ import org.springframework.test.context.junit4.AbstractTransactionalJUnit4Spring
 import static org.junit.Assert.*;
 
 /**
- * This is a copy of {@link TransactionalSqlScriptsTests} that verifies proper
- * handling of {@link Sql @Sql} as a {@link Repeatable} annotation.
+ * This is a copy of {@link TransactionalSqlScriptsTests} that verifies proper handling of {@link
+ * Sql @Sql} as a {@link Repeatable} annotation.
  *
  * @author Sam Brannen
  * @since 4.1
@@ -40,26 +40,26 @@ import static org.junit.Assert.*;
 @Sql("schema.sql")
 @Sql("data.sql")
 @DirtiesContext
-public class RepeatableSqlAnnotationSqlScriptsTests extends AbstractTransactionalJUnit4SpringContextTests {
+public class RepeatableSqlAnnotationSqlScriptsTests
+        extends AbstractTransactionalJUnit4SpringContextTests {
 
-	@Test
-	// test##_ prefix is required for @FixMethodOrder.
-	public void test01_classLevelScripts() {
-		assertNumUsers(1);
-	}
+    @Test
+    // test##_ prefix is required for @FixMethodOrder.
+    public void test01_classLevelScripts() {
+        assertNumUsers(1);
+    }
 
-	@Test
-	@Sql("drop-schema.sql")
-	@Sql("schema.sql")
-	@Sql("data.sql")
-	@Sql("data-add-dogbert.sql")
-	// test##_ prefix is required for @FixMethodOrder.
-	public void test02_methodLevelScripts() {
-		assertNumUsers(2);
-	}
+    @Test
+    @Sql("drop-schema.sql")
+    @Sql("schema.sql")
+    @Sql("data.sql")
+    @Sql("data-add-dogbert.sql")
+    // test##_ prefix is required for @FixMethodOrder.
+    public void test02_methodLevelScripts() {
+        assertNumUsers(2);
+    }
 
-	protected void assertNumUsers(int expected) {
-		assertEquals("Number of rows in the 'user' table.", expected, countRowsInTable("user"));
-	}
-
+    protected void assertNumUsers(int expected) {
+        assertEquals("Number of rows in the 'user' table.", expected, countRowsInTable("user"));
+    }
 }

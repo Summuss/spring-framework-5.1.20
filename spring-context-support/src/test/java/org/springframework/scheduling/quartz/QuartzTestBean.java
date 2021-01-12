@@ -16,30 +16,26 @@
 
 package org.springframework.scheduling.quartz;
 
-/**
- * @author Rob Harrop
- */
+/** @author Rob Harrop */
 public class QuartzTestBean {
 
-	private int importCount;
+    private int importCount;
 
-	private int exportCount;
+    private int exportCount;
 
+    public void doImport() {
+        ++importCount;
+    }
 
-	public void doImport() {
-		++importCount;
-	}
+    public void doExport() {
+        ++exportCount;
+    }
 
-	public void doExport() {
-		++exportCount;
-	}
+    public int getImportCount() {
+        return importCount;
+    }
 
-	public int getImportCount() {
-		return importCount;
-	}
-
-	public int getExportCount() {
-		return exportCount;
-	}
-
+    public int getExportCount() {
+        return exportCount;
+    }
 }

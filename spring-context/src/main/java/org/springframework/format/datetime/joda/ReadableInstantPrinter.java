@@ -31,21 +31,19 @@ import org.springframework.format.Printer;
  */
 public final class ReadableInstantPrinter implements Printer<ReadableInstant> {
 
-	private final DateTimeFormatter formatter;
+    private final DateTimeFormatter formatter;
 
+    /**
+     * Create a new ReadableInstantPrinter.
+     *
+     * @param formatter the Joda DateTimeFormatter instance
+     */
+    public ReadableInstantPrinter(DateTimeFormatter formatter) {
+        this.formatter = formatter;
+    }
 
-	/**
-	 * Create a new ReadableInstantPrinter.
-	 * @param formatter the Joda DateTimeFormatter instance
-	 */
-	public ReadableInstantPrinter(DateTimeFormatter formatter) {
-		this.formatter = formatter;
-	}
-
-
-	@Override
-	public String print(ReadableInstant instant, Locale locale) {
-		return JodaTimeContextHolder.getFormatter(this.formatter, locale).print(instant);
-	}
-
+    @Override
+    public String print(ReadableInstant instant, Locale locale) {
+        return JodaTimeContextHolder.getFormatter(this.formatter, locale).print(instant);
+    }
 }

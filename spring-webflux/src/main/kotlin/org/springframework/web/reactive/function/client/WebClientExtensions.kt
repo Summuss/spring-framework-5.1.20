@@ -33,7 +33,7 @@ import reactor.core.publisher.Mono
  */
 @Suppress("EXTENSION_SHADOWED_BY_MEMBER")
 inline fun <reified T : Any, S : Publisher<T>> RequestBodySpec.body(publisher: S): RequestHeadersSpec<*> =
-		body(publisher, object : ParameterizedTypeReference<T>() {})
+        body(publisher, object : ParameterizedTypeReference<T>() {})
 
 /**
  * Extension for [WebClient.ResponseSpec.bodyToMono] providing a `bodyToMono<Foo>()` variant
@@ -44,7 +44,7 @@ inline fun <reified T : Any, S : Publisher<T>> RequestBodySpec.body(publisher: S
  * @since 5.0
  */
 inline fun <reified T : Any> WebClient.ResponseSpec.bodyToMono(): Mono<T> =
-		bodyToMono(object : ParameterizedTypeReference<T>() {})
+        bodyToMono(object : ParameterizedTypeReference<T>() {})
 
 
 /**
@@ -56,4 +56,4 @@ inline fun <reified T : Any> WebClient.ResponseSpec.bodyToMono(): Mono<T> =
  * @since 5.0
  */
 inline fun <reified T : Any> WebClient.ResponseSpec.bodyToFlux(): Flux<T> =
-		bodyToFlux(object : ParameterizedTypeReference<T>() {})
+        bodyToFlux(object : ParameterizedTypeReference<T>() {})

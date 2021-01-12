@@ -1,6 +1,4 @@
-/**
- * A generic back-off abstraction.
- */
+/** A generic back-off abstraction. */
 @NonNullApi
 @NonNullFields
 package org.springframework.util.backoff;

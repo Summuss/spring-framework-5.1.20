@@ -24,5 +24,4 @@ import org.springframework.stereotype.Indexed;
  * @author Stephane Nicoll
  */
 @Indexed
-public interface SmartRepo<T, I> extends Repo<T, I> {
-}
+public interface SmartRepo<T, I> extends Repo<T, I> {}

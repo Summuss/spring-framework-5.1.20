@@ -29,8 +29,7 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Implementation of {@code XMLEventReader} based on a {@link List}
- * of {@link XMLEvent} elements.
+ * Implementation of {@code XMLEventReader} based on a {@link List} of {@link XMLEvent} elements.
  *
  * @author Arjen Poutsma
  * @author Juergen Hoeller
@@ -38,106 +37,99 @@ import org.springframework.util.Assert;
  */
 class ListBasedXMLEventReader extends AbstractXMLEventReader {
 
-	private final List<XMLEvent> events;
+    private final List<XMLEvent> events;
 
-	@Nullable
-	private XMLEvent currentEvent;
+    @Nullable private XMLEvent currentEvent;
 
-	private int cursor = 0;
+    private int cursor = 0;
 
+    public ListBasedXMLEventReader(List<XMLEvent> events) {
+        Assert.notNull(events, "XMLEvent List must not be null");
+        this.events = new ArrayList<>(events);
+    }
 
-	public ListBasedXMLEventReader(List<XMLEvent> events) {
-		Assert.notNull(events, "XMLEvent List must not be null");
-		this.events = new ArrayList<>(events);
-	}
+    @Override
+    public boolean hasNext() {
+        return (this.cursor < this.events.size());
+    }
 
+    @Override
+    public XMLEvent nextEvent() {
+        if (hasNext()) {
+            this.currentEvent = this.events.get(this.cursor);
+            this.cursor++;
+            return this.currentEvent;
+        } else {
+            throw new NoSuchElementException();
+        }
+    }
 
-	@Override
-	public boolean hasNext() {
-		return (this.cursor < this.events.size());
-	}
+    @Override
+    @Nullable
+    public XMLEvent peek() {
+        if (hasNext()) {
+            return this.events.get(this.cursor);
+        } else {
+            return null;
+        }
+    }
 
-	@Override
-	public XMLEvent nextEvent() {
-		if (hasNext()) {
-			this.currentEvent = this.events.get(this.cursor);
-			this.cursor++;
-			return this.currentEvent;
-		}
-		else {
-			throw new NoSuchElementException();
-		}
-	}
+    @Override
+    public String getElementText() throws XMLStreamException {
+        checkIfClosed();
+        if (this.currentEvent == null || !this.currentEvent.isStartElement()) {
+            throw new XMLStreamException("Not at START_ELEMENT: " + this.currentEvent);
+        }
 
-	@Override
-	@Nullable
-	public XMLEvent peek() {
-		if (hasNext()) {
-			return this.events.get(this.cursor);
-		}
-		else {
-			return null;
-		}
-	}
+        StringBuilder builder = new StringBuilder();
+        while (true) {
+            XMLEvent event = nextEvent();
+            if (event.isEndElement()) {
+                break;
+            } else if (!event.isCharacters()) {
+                throw new XMLStreamException("Unexpected non-text event: " + event);
+            }
+            Characters characters = event.asCharacters();
+            if (!characters.isIgnorableWhiteSpace()) {
+                builder.append(event.asCharacters().getData());
+            }
+        }
+        return builder.toString();
+    }
 
-	@Override
-	public String getElementText() throws XMLStreamException {
-		checkIfClosed();
-		if (this.currentEvent == null || !this.currentEvent.isStartElement()) {
-			throw new XMLStreamException("Not at START_ELEMENT: " + this.currentEvent);
-		}
+    @Override
+    @Nullable
+    public XMLEvent nextTag() throws XMLStreamException {
+        checkIfClosed();
 
-		StringBuilder builder = new StringBuilder();
-		while (true) {
-			XMLEvent event = nextEvent();
-			if (event.isEndElement()) {
-				break;
-			}
-			else if (!event.isCharacters()) {
-				throw new XMLStreamException("Unexpected non-text event: " + event);
-			}
-			Characters characters = event.asCharacters();
-			if (!characters.isIgnorableWhiteSpace()) {
-				builder.append(event.asCharacters().getData());
-			}
-		}
-		return builder.toString();
-	}
+        while (true) {
+            XMLEvent event = nextEvent();
+            switch (event.getEventType()) {
+                case XMLStreamConstants.START_ELEMENT:
+                case XMLStreamConstants.END_ELEMENT:
+                    return event;
+                case XMLStreamConstants.END_DOCUMENT:
+                    return null;
+                case XMLStreamConstants.SPACE:
+                case XMLStreamConstants.COMMENT:
+                case XMLStreamConstants.PROCESSING_INSTRUCTION:
+                    continue;
+                case XMLStreamConstants.CDATA:
+                case XMLStreamConstants.CHARACTERS:
+                    if (!event.asCharacters().isWhiteSpace()) {
+                        throw new XMLStreamException(
+                                "Non-ignorable whitespace CDATA or CHARACTERS event: " + event);
+                    }
+                    break;
+                default:
+                    throw new XMLStreamException("Expected START_ELEMENT or END_ELEMENT: " + event);
+            }
+        }
+    }
 
-	@Override
-	@Nullable
-	public XMLEvent nextTag() throws XMLStreamException {
-		checkIfClosed();
-
-		while (true) {
-			XMLEvent event = nextEvent();
-			switch (event.getEventType()) {
-				case XMLStreamConstants.START_ELEMENT:
-				case XMLStreamConstants.END_ELEMENT:
-					return event;
-				case XMLStreamConstants.END_DOCUMENT:
-					return null;
-				case XMLStreamConstants.SPACE:
-				case XMLStreamConstants.COMMENT:
-				case XMLStreamConstants.PROCESSING_INSTRUCTION:
-					continue;
-				case XMLStreamConstants.CDATA:
-				case XMLStreamConstants.CHARACTERS:
-					if (!event.asCharacters().isWhiteSpace()) {
-						throw new XMLStreamException(
-								"Non-ignorable whitespace CDATA or CHARACTERS event: " + event);
-					}
-					break;
-				default:
-					throw new XMLStreamException("Expected START_ELEMENT or END_ELEMENT: " + event);
-			}
-		}
-	}
-
-	@Override
-	public void close() {
-		super.close();
-		this.events.clear();
-	}
-
+    @Override
+    public void close() {
+        super.close();
+        this.events.clear();
+    }
 }
