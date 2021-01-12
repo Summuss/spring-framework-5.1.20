@@ -118,8 +118,8 @@ configure(allprojects) { project ->
 		kotlinOptions {
 			jvmTarget = "1.8"
 			freeCompilerArgs = ["-Xjsr305=strict"]
-			apiVersion = "1.1"
-			languageVersion = "1.1"
+			apiVersion = "1.2"
+			languageVersion = "1.2"
 		}
 	}
 
